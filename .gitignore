@@ -1,0 +1,15 @@
+**/.DS_Store
+docs/Plan & Solution/~$*.xlsx
+tmp/
+node_modules/
+.pnpm-store/
+dist/
+target/
+.env
+.env.*
+!.env.example
+coverage/
+playwright-report/
+test-results/
+*.log
+Internal-docs/

@@ -1,0 +1,7 @@
+interface:
+  display_name: "AIRTEKPOWER Product Knowledge"
+  short_description: "Fan taxonomy, product data, and evidence rules"
+  brand_color: "#0C7497"
+  default_prompt: "Use $airtek-product-knowledge to structure or verify this AIRTEKPOWER product, selector, or technical content."
+policy:
+  allow_implicit_invocation: true

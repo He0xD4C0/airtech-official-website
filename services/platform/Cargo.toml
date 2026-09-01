@@ -1,0 +1,58 @@
+[package]
+name = "airtek-platform"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+publish = false
+
+[features]
+default = []
+production = []
+devtools = ["dep:clap", "dep:portable-pty", "axum/ws"]
+
+[dependencies]
+async-trait = "0.1"
+argon2 = { version = "0.5", features = ["std"] }
+axum = { version = "0.8", features = ["http2", "json", "macros"] }
+base64 = "0.22"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4.5", features = ["derive", "env"], optional = true }
+data-encoding = "2"
+dotenvy = "0.15"
+futures-util = "0.3"
+portable-pty = { version = "0.9", optional = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+ring = "0.17"
+sqlx = { version = "0.8", features = ["chrono", "json", "migrate", "postgres", "runtime-tokio-rustls", "uuid"] }
+subtle = "2.6"
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "net", "process", "rt-multi-thread", "signal", "sync", "time"] }
+totp-rs = { version = "=5.7.2", features = ["otpauth", "zeroize"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["cors", "request-id", "set-header", "trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+uuid = { version = "1", features = ["serde", "v4"] }
+zeroize = "1.8"
+
+[dev-dependencies]
+http-body-util = "0.1"
+
+[[bin]]
+name = "airtek-api"
+path = "src/bin/api.rs"
+
+[[bin]]
+name = "airtek-worker"
+path = "src/bin/worker.rs"
+
+[[bin]]
+name = "airtek-migrate"
+path = "src/bin/migrate.rs"
+
+[[bin]]
+name = "airtekctl"
+path = "src/bin/airtekctl.rs"
+required-features = ["devtools"]

@@ -1,0 +1,2347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIRTEK Fan Selector</title>
+
+<style>
+:root {
+    --blue: #1464d2;
+    --blue-dark: #0b4fae;
+    --blue-light: #eef5ff;
+    --text: #182230;
+    --muted: #667085;
+    --border: #dfe4ea;
+    --bg: #f5f7fa;
+    --green: #15803d;
+    --green-bg: #edf8f1;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Arial,
+        sans-serif;
+    color: var(--text);
+    background: var(--bg);
+}
+
+button,
+input,
+select {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+.header {
+    height: 72px;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+}
+
+.header-inner {
+    max-width: 1380px;
+    height: 100%;
+    margin: auto;
+    padding: 0 30px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logo {
+    font-size: 23px;
+    font-weight: 800;
+    letter-spacing: .8px;
+}
+
+.logo span {
+    color: var(--blue);
+}
+
+.nav {
+    display: flex;
+    gap: 30px;
+    color: #596474;
+    font-size: 14px;
+}
+
+.nav a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.page {
+    max-width: 1380px;
+    margin: auto;
+    padding: 42px 30px 100px;
+}
+
+.breadcrumb {
+    font-size: 13px;
+    color: #7b8492;
+    margin-bottom: 22px;
+}
+
+.hero {
+    margin-bottom: 32px;
+}
+
+.hero h1 {
+    font-size: 38px;
+    margin: 0 0 10px;
+    letter-spacing: -1px;
+}
+
+.hero p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 16px;
+}
+
+/* SELECTOR */
+
+.selector {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.selector-title {
+    padding: 22px 26px;
+    border-bottom: 1px solid var(--border);
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.selector-title h2 {
+    margin: 0;
+    font-size: 19px;
+}
+
+.selector-title span {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.selector-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+.selector-column {
+    padding: 28px;
+}
+
+.selector-column + .selector-column {
+    border-left: 1px solid var(--border);
+}
+
+.column-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: #687384;
+    margin-bottom: 24px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 19px;
+}
+
+.form-row.three {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+.field label {
+    display: block;
+    margin-bottom: 7px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.field input,
+.field select {
+    width: 100%;
+    height: 42px;
+    border: 1px solid #cfd6df;
+    border-radius: 5px;
+    padding: 0 12px;
+    background: #fff;
+    color: var(--text);
+}
+
+.field input:focus,
+.field select:focus {
+    outline: none;
+    border-color: var(--blue);
+}
+
+.unit-input {
+    display: flex;
+}
+
+.unit-input input {
+    border-radius: 5px 0 0 5px;
+}
+
+.unit-input select {
+    width: 105px;
+    border-left: 0;
+    border-radius: 0 5px 5px 0;
+}
+
+.checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px 22px;
+    margin-top: 5px;
+}
+
+.check {
+    font-size: 13px;
+    color: #4f5b6c;
+}
+
+.check input {
+    margin-right: 6px;
+}
+
+.priority {
+    display: flex;
+    gap: 10px;
+}
+
+.priority label {
+    flex: 1;
+    border: 1px solid var(--border);
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.priority input {
+    margin-right: 5px;
+}
+
+.selector-footer {
+    border-top: 1px solid var(--border);
+    padding: 18px 26px;
+
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn {
+    height: 42px;
+    padding: 0 20px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: #485466;
+    font-weight: 600;
+}
+
+.btn-primary {
+    background: var(--blue);
+    color: white;
+    border-color: var(--blue);
+}
+
+.btn-primary:hover {
+    background: var(--blue-dark);
+}
+
+.btn-outline {
+    color: var(--blue);
+    border-color: var(--blue);
+    background: white;
+}
+
+/* RESULTS */
+
+.results {
+    margin-top: 36px;
+}
+
+.results-header {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px 8px 0 0;
+    padding: 19px 22px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.results-header h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.results-count {
+    color: var(--muted);
+    font-size: 13px;
+    margin-left: 8px;
+}
+
+.sort {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.sort select {
+    height: 35px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 0 10px;
+}
+
+/* TABLE */
+
+.table-wrap {
+    overflow-x: auto;
+    background: white;
+    border: 1px solid var(--border);
+    border-top: 0;
+}
+
+.product-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1000px;
+}
+
+.product-table th {
+    background: #f8fafc;
+    color: #687384;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    text-align: left;
+    padding: 13px 15px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.product-table td {
+    padding: 17px 15px;
+    border-bottom: 1px solid #edf0f3;
+    font-size: 13px;
+}
+
+.product-row {
+    cursor: pointer;
+    transition: background .12s;
+}
+
+.product-row:hover {
+    background: #f8fbff;
+}
+
+.product-row:last-child td {
+    border-bottom: 0;
+}
+
+.product-name {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.fan-thumb {
+    width: 52px;
+    height: 52px;
+    border-radius: 5px;
+    background: #f0f3f6;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fan-icon {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+
+    background:
+        radial-gradient(
+            circle,
+            #fff 0 17%,
+            #aeb7c1 18% 28%,
+            #3f4954 29% 44%,
+            #d5dbe1 45% 100%
+        );
+}
+
+.model {
+    font-weight: 700;
+    color: var(--text);
+}
+
+.product-type {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+}
+
+.spec {
+    white-space: nowrap;
+}
+
+.match {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    padding: 5px 9px;
+    border-radius: 20px;
+
+    color: var(--green);
+    background: var(--green-bg);
+
+    font-weight: 700;
+    font-size: 12px;
+}
+
+.match.medium {
+    color: #996300;
+    background: #fff7df;
+}
+
+.view {
+    color: var(--blue);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* COMPARE FLOAT */
+
+.compare-bar {
+    position: fixed;
+    right: 28px;
+    bottom: 25px;
+
+    background: #182230;
+    color: white;
+
+    padding: 13px 14px 13px 18px;
+    border-radius: 7px;
+
+    box-shadow: 0 10px 35px rgba(0,0,0,.25);
+
+    display: none;
+    align-items: center;
+    gap: 18px;
+
+    z-index: 50;
+}
+
+.compare-info strong {
+    display: block;
+    font-size: 13px;
+}
+
+.compare-info span {
+    font-size: 11px;
+    color: #b8c0cc;
+}
+
+.compare-bar button {
+    background: white;
+    color: #182230;
+    border: 0;
+    border-radius: 4px;
+    height: 36px;
+    padding: 0 14px;
+    font-weight: 700;
+}
+
+/* MODAL */
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(14, 23, 35, .48);
+
+    display: none;
+    align-items: center;
+    justify-content: center;
+
+    z-index: 100;
+}
+
+.modal {
+    width: min(1100px, calc(100% - 40px));
+    max-height: 90vh;
+    overflow: auto;
+    background: white;
+    border-radius: 9px;
+    box-shadow: 0 25px 80px rgba(0,0,0,.3);
+}
+
+.modal-header {
+    padding: 21px 25px;
+    border-bottom: 1px solid var(--border);
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.close {
+    border: 0;
+    background: none;
+    font-size: 25px;
+    color: #7b8492;
+}
+
+.compare-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.compare-table th,
+.compare-table td {
+    padding: 15px 18px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    font-size: 13px;
+}
+
+.compare-table th {
+    background: #f8fafc;
+    min-width: 160px;
+}
+
+.compare-product {
+    font-weight: 700;
+    color: var(--blue);
+}
+
+.compare-actions {
+    padding: 20px 25px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* DETAIL */
+
+.detail {
+    display: none;
+    margin-top: 30px;
+}
+
+.detail-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    overflow: hidden;
+}
+
+.detail-top {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+}
+
+.detail-image {
+    min-height: 400px;
+    background: #f4f6f8;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.big-fan {
+    width: 260px;
+    height: 260px;
+    border-radius: 50%;
+
+    background:
+        radial-gradient(
+            circle,
+            #fff 0 18%,
+            #9aa5b0 19% 29%,
+            #3b4651 30% 44%,
+            #d6dce2 45% 100%
+        );
+
+    box-shadow: 0 25px 50px rgba(0,0,0,.18);
+}
+
+.detail-info {
+    padding: 42px;
+}
+
+.detail-kicker {
+    color: var(--blue);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.detail-info h1 {
+    font-size: 32px;
+    margin: 10px 0 5px;
+}
+
+.detail-model {
+    color: var(--muted);
+    margin-bottom: 25px;
+}
+
+.detail-match {
+    background: var(--green-bg);
+    padding: 15px;
+    border-radius: 6px;
+    color: var(--green);
+    margin-bottom: 25px;
+}
+
+.detail-spec-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1px solid var(--border);
+}
+
+.detail-spec {
+    padding: 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.detail-spec:nth-child(odd) {
+    border-right: 1px solid var(--border);
+}
+
+.detail-spec span {
+    display: block;
+}
+
+.detail-spec span:first-child {
+    color: var(--muted);
+    font-size: 11px;
+    margin-bottom: 4px;
+}
+
+.detail-spec span:last-child {
+    font-weight: 700;
+}
+
+.detail-bottom {
+    padding: 25px 42px;
+    border-top: 1px solid var(--border);
+
+    display: flex;
+    gap: 10px;
+}
+
+/* RFQ */
+
+.rfq {
+    display: none;
+    margin-top: 30px;
+}
+
+.rfq-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 35px;
+}
+
+.rfq-card h1 {
+    margin-top: 0;
+}
+
+.rfq-products {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    padding: 18px;
+    margin: 25px 0;
+}
+
+.rfq-product {
+    padding: 8px 0;
+    border-bottom: 1px solid #e5e9ee;
+    font-weight: 600;
+}
+
+.rfq-product:last-child {
+    border-bottom: 0;
+}
+
+.rfq-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+.rfq-field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 7px;
+}
+
+.rfq-field input,
+.rfq-field textarea {
+    width: 100%;
+    border: 1px solid #cfd6df;
+    border-radius: 5px;
+    padding: 12px;
+}
+
+.rfq-field textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.full {
+    grid-column: 1 / -1;
+}
+
+/* RESPONSIVE */
+
+@media(max-width:900px) {
+
+    .nav {
+        display: none;
+    }
+
+    .selector-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .selector-column + .selector-column {
+        border-left: 0;
+        border-top: 1px solid var(--border);
+    }
+
+    .detail-top {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-image {
+        min-height: 280px;
+    }
+}
+
+@media(max-width:650px) {
+
+    .page {
+        padding: 25px 15px 100px;
+    }
+
+    .header-inner {
+        padding: 0 15px;
+    }
+
+    .hero h1 {
+        font-size: 30px;
+    }
+
+    .form-row,
+    .form-row.three,
+    .rfq-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .selector-column {
+        padding: 20px;
+    }
+
+    .selector-footer {
+        padding: 15px 20px;
+    }
+
+    .results-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .detail-info {
+        padding: 25px;
+    }
+
+    .detail-bottom {
+        padding: 20px 25px;
+        flex-wrap: wrap;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header class="header">
+
+<div class="header-inner">
+
+<div class="logo">
+AIRTEK <span>POWER</span>
+</div>
+
+<nav class="nav">
+<a href="#">Products</a>
+<a href="#">Applications</a>
+<a href="#">Technology</a>
+<a href="#">Resources</a>
+<a href="#">About Us</a>
+<a href="#">Contact</a>
+</nav>
+
+</div>
+
+</header>
+
+
+<main class="page">
+
+<div class="breadcrumb">
+Home / Fan Selector
+</div>
+
+<section class="hero">
+
+<h1>Fan Selection Tool</h1>
+
+<p>
+Find the right AIRTEK fan based on your application,
+performance requirements and installation constraints.
+</p>
+
+</section>
+
+
+<!-- SELECTOR -->
+
+<section class="selector">
+
+<div class="selector-title">
+
+<h2>Application & Performance Requirements</h2>
+
+<span>
+Enter the requirements you already know
+</span>
+
+</div>
+
+
+<div class="selector-grid">
+
+
+<!-- LEFT -->
+
+<div class="selector-column">
+
+<div class="column-title">
+Application & Installation
+</div>
+
+
+<div class="form-row">
+
+<div class="field">
+
+<label>Application</label>
+
+<select id="application">
+
+<option>Industrial Equipment</option>
+<option>HVAC / AHU</option>
+<option>Data Center</option>
+<option>Refrigeration</option>
+<option>Battery / Energy Storage</option>
+<option>Ventilation</option>
+<option>Other</option>
+
+</select>
+
+</div>
+
+
+<div class="field">
+
+<label>Air / Ambient Temperature</label>
+
+<div class="unit-input">
+
+<input
+id="temperature"
+value="40"
+type="number">
+
+<select>
+<option>°C</option>
+<option>°F</option>
+</select>
+
+</div>
+
+</div>
+
+</div>
+
+
+<div class="column-title">
+Installation Space
+</div>
+
+
+<div class="form-row three">
+
+<div class="field">
+
+<label>Max Width</label>
+
+<div class="unit-input">
+
+<input value="350">
+
+<select>
+<option>mm</option>
+</select>
+
+</div>
+
+</div>
+
+
+<div class="field">
+
+<label>Max Height</label>
+
+<div class="unit-input">
+
+<input value="350">
+
+<select>
+<option>mm</option>
+</select>
+
+</div>
+
+</div>
+
+
+<div class="field">
+
+<label>Max Depth</label>
+
+<div class="unit-input">
+
+<input value="300">
+
+<select>
+<option>mm</option>
+</select>
+
+</div>
+
+</div>
+
+</div>
+
+
+<div class="column-title">
+Environment
+</div>
+
+
+<div class="checks">
+
+<label class="check">
+<input type="checkbox">
+Outdoor
+</label>
+
+<label class="check">
+<input type="checkbox">
+Dust
+</label>
+
+<label class="check">
+<input type="checkbox">
+Humidity
+</label>
+
+<label class="check">
+<input type="checkbox">
+Corrosive
+</label>
+
+</div>
+
+
+<div class="column-title" style="margin-top:25px;">
+Certifications
+</div>
+
+
+<div class="checks">
+
+<label class="check">
+<input type="checkbox">
+CE
+</label>
+
+<label class="check">
+<input type="checkbox">
+UL
+</label>
+
+<label class="check">
+<input type="checkbox">
+RoHS
+</label>
+
+</div>
+
+</div>
+
+
+<!-- RIGHT -->
+
+<div class="selector-column">
+
+<div class="column-title">
+Air Performance
+</div>
+
+
+<div class="form-row">
+
+<div class="field">
+
+<label>Required Airflow</label>
+
+<div class="unit-input">
+
+<input
+id="airflow"
+value="3000"
+type="number">
+
+<select>
+<option>m³/h</option>
+<option>CFM</option>
+</select>
+
+</div>
+
+</div>
+
+
+<div class="field">
+
+<label>Static Pressure</label>
+
+<div class="unit-input">
+
+<input
+id="pressure"
+value="700"
+type="number">
+
+<select>
+<option>Pa</option>
+<option>inH₂O</option>
+</select>
+
+</div>
+
+</div>
+
+</div>
+
+
+<div class="field" style="margin-bottom:25px;">
+
+<label>
+Don't know your system pressure?
+</label>
+
+<label class="check">
+
+<input type="checkbox">
+
+Estimate from application
+
+</label>
+
+</div>
+
+
+<div class="column-title">
+Electrical
+</div>
+
+
+<div class="form-row">
+
+<div class="field">
+
+<label>Voltage</label>
+
+<select id="voltage">
+
+<option>AC 230V</option>
+<option>AC 115V</option>
+<option>AC 380V</option>
+<option>AC 400V</option>
+<option>DC 12V</option>
+<option>DC 24V</option>
+<option>DC 48V</option>
+
+</select>
+
+</div>
+
+
+<div class="field">
+
+<label>Frequency</label>
+
+<select>
+
+<option>50 Hz</option>
+<option>60 Hz</option>
+<option>50 / 60 Hz</option>
+
+</select>
+
+</div>
+
+</div>
+
+
+<div class="form-row">
+
+<div class="field">
+
+<label>Motor / Fan Type</label>
+
+<select>
+
+<option>Any</option>
+<option>EC</option>
+<option>AC</option>
+<option>DC</option>
+
+</select>
+
+</div>
+
+
+<div class="field">
+
+<label>Control</label>
+
+<select>
+
+<option>Any</option>
+<option>0–10 V</option>
+<option>PWM</option>
+<option>RS485 / Modbus</option>
+<option>Fixed Speed</option>
+
+</select>
+
+</div>
+
+</div>
+
+
+<div class="column-title">
+Performance Priority
+</div>
+
+
+<div class="priority">
+
+<label>
+<input type="radio" name="priority" checked>
+Best Match
+</label>
+
+<label>
+<input type="radio" name="priority">
+Efficiency
+</label>
+
+<label>
+<input type="radio" name="priority">
+Compact
+</label>
+
+<label>
+<input type="radio" name="priority">
+Low Noise
+</label>
+
+</div>
+
+</div>
+
+</div>
+
+
+<div class="selector-footer">
+
+<button
+class="btn"
+onclick="resetSelector()">
+
+Reset
+
+</button>
+
+<button
+class="btn btn-primary"
+onclick="searchProducts()">
+
+SEARCH FANS →
+
+</button>
+
+</div>
+
+</section>
+
+
+<!-- RESULTS -->
+
+<section
+class="results"
+id="results"
+style="display:none;">
+
+<div class="results-header">
+
+<div>
+
+<h2>
+Recommended Products
+
+<span class="results-count">
+5 products found
+</span>
+
+</h2>
+
+</div>
+
+<div class="sort">
+
+<span>Sort by</span>
+
+<select onchange="sortProducts(this.value)">
+
+<option value="match">
+Best Match
+</option>
+
+<option value="airflow">
+Airflow
+</option>
+
+<option value="power">
+Lowest Power
+</option>
+
+<option value="diameter">
+Smallest Size
+</option>
+
+</select>
+
+</div>
+
+</div>
+
+
+<div class="table-wrap">
+
+<table class="product-table">
+
+<thead>
+
+<tr>
+
+<th style="width:40px;"></th>
+
+<th>Product</th>
+
+<th>Type</th>
+
+<th>Airflow</th>
+
+<th>Pressure</th>
+
+<th>Power</th>
+
+<th>Voltage</th>
+
+<th>Control</th>
+
+<th>Match</th>
+
+<th></th>
+
+</tr>
+
+</thead>
+
+<tbody id="productRows">
+</tbody>
+
+</table>
+
+</div>
+
+</section>
+
+
+<!-- PRODUCT DETAIL -->
+
+<section
+class="detail"
+id="detail">
+
+<div class="detail-card">
+
+<div class="detail-top">
+
+<div class="detail-image">
+
+<div class="big-fan"></div>
+
+</div>
+
+
+<div class="detail-info">
+
+<div class="detail-kicker">
+AIRTEK POWER
+</div>
+
+<h1 id="detailName">
+EC Backward Curved Centrifugal Fan
+</h1>
+
+<div
+class="detail-model"
+id="detailModel">
+B23E280H128-102-B0
+</div>
+
+
+<div class="detail-match">
+
+<strong>
+✓ Excellent Match for Your Requirements
+</strong>
+
+<div style="margin-top:5px;font-size:13px;">
+The selected model meets the airflow,
+pressure and electrical requirements entered
+in the Fan Selector.
+</div>
+
+</div>
+
+
+<div class="detail-spec-grid">
+
+<div class="detail-spec">
+<span>Max Airflow</span>
+<span id="dAirflow">3,800 m³/h</span>
+</div>
+
+<div class="detail-spec">
+<span>Static Pressure</span>
+<span id="dPressure">900 Pa</span>
+</div>
+
+<div class="detail-spec">
+<span>Voltage</span>
+<span id="dVoltage">AC 230V</span>
+</div>
+
+<div class="detail-spec">
+<span>Power</span>
+<span id="dPower">350 W</span>
+</div>
+
+<div class="detail-spec">
+<span>Fan Diameter</span>
+<span id="dDiameter">280 mm</span>
+</div>
+
+<div class="detail-spec">
+<span>Speed</span>
+<span>Variable Speed</span>
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+
+<div class="detail-bottom">
+
+<button
+class="btn"
+onclick="closeDetail()">
+
+← Back to Results
+
+</button>
+
+<button
+class="btn btn-outline">
+
+Download Datasheet
+
+</button>
+
+<button
+class="btn btn-outline">
+
+CAD / 3D Model
+
+</button>
+
+<button
+class="btn btn-primary"
+onclick="openRFQ(currentProduct)">
+
+REQUEST A QUOTE →
+
+</button>
+
+</div>
+
+</div>
+
+</section>
+
+
+<!-- RFQ -->
+
+<section
+class="rfq"
+id="rfq">
+
+<div class="rfq-card">
+
+<div class="breadcrumb">
+Fan Selector / Request a Quote
+</div>
+
+<h1>
+Request a Quote
+</h1>
+
+<p style="color:var(--muted);">
+Your selected products and technical requirements
+have been automatically attached.
+</p>
+
+
+<div class="rfq-products">
+
+<strong>
+Selected Products
+</strong>
+
+<div id="rfqProducts">
+</div>
+
+</div>
+
+
+<div class="rfq-grid">
+
+<div class="rfq-field">
+
+<label>Company</label>
+
+<input placeholder="Company name">
+
+</div>
+
+
+<div class="rfq-field">
+
+<label>Name</label>
+
+<input placeholder="Your name">
+
+</div>
+
+
+<div class="rfq-field">
+
+<label>Email</label>
+
+<input placeholder="name@company.com">
+
+</div>
+
+
+<div class="rfq-field">
+
+<label>Estimated Quantity</label>
+
+<input placeholder="e.g. 500 pcs/year">
+
+</div>
+
+
+<div class="rfq-field full">
+
+<label>Application / Additional Requirements</label>
+
+<textarea id="rfqMessage"></textarea>
+
+</div>
+
+</div>
+
+
+<div style="
+margin-top:25px;
+display:flex;
+justify-content:flex-end;
+gap:10px;
+">
+
+<button
+class="btn"
+onclick="closeRFQ()">
+
+Back
+
+</button>
+
+<button
+class="btn btn-primary"
+onclick="submitRFQ()">
+
+SUBMIT RFQ →
+
+</button>
+
+</div>
+
+</div>
+
+</section>
+
+</main>
+
+
+<!-- COMPARE FLOAT -->
+
+<div
+class="compare-bar"
+id="compareBar">
+
+<div class="compare-info">
+
+<strong id="compareCount">
+0 products selected
+</strong>
+
+<span>
+Compare selected products
+</span>
+
+</div>
+
+<button onclick="openCompare()">
+COMPARE →
+</button>
+
+</div>
+
+
+<!-- COMPARE MODAL -->
+
+<div
+class="overlay"
+id="compareOverlay">
+
+<div class="modal">
+
+<div class="modal-header">
+
+<h2>
+Compare Products
+</h2>
+
+<button
+class="close"
+onclick="closeCompare()">
+×
+</button>
+
+</div>
+
+
+<div style="overflow:auto;">
+
+<table class="compare-table">
+
+<thead>
+
+<tr>
+
+<th>Specification</th>
+
+<th>B23E280H128-102-B0</th>
+
+<th>B23E280H81-92-00</th>
+
+<th>B23E250H85-92-00</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+<tr>
+<th>Fan Type</th>
+<td>EC Centrifugal</td>
+<td>EC Centrifugal</td>
+<td>EC Centrifugal</td>
+</tr>
+
+<tr>
+<th>Diameter</th>
+<td>280 mm</td>
+<td>280 mm</td>
+<td>250 mm</td>
+</tr>
+
+<tr>
+<th>Max Airflow</th>
+<td>3,800 m³/h</td>
+<td>2,900 m³/h</td>
+<td>2,600 m³/h</td>
+</tr>
+
+<tr>
+<th>Static Pressure</th>
+<td>900 Pa</td>
+<td>760 Pa</td>
+<td>720 Pa</td>
+</tr>
+
+<tr>
+<th>Power</th>
+<td>350 W</td>
+<td>180 W</td>
+<td>250 W</td>
+</tr>
+
+<tr>
+<th>Voltage</th>
+<td>AC 230V</td>
+<td>AC 230V</td>
+<td>AC 230V</td>
+</tr>
+
+<tr>
+<th>Speed</th>
+<td>Variable</td>
+<td>Variable</td>
+<td>Variable</td>
+</tr>
+
+<tr>
+<th>Control</th>
+<td>0–10V</td>
+<td>0–10V</td>
+<td>0–10V / PWM</td>
+</tr>
+
+<tr>
+<th>Match</th>
+<td>
+<span class="match">96%</span>
+</td>
+
+<td>
+<span class="match">91%</span>
+</td>
+
+<td>
+<span class="match medium">86%</span>
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+
+<div class="compare-actions">
+
+<button
+class="btn"
+onclick="closeCompare()">
+
+Close
+
+</button>
+
+<button
+class="btn btn-outline"
+onclick="showDetailFromCompare('B23E280H128-102-B0')">
+
+View Product
+
+</button>
+
+<button
+class="btn btn-primary"
+onclick="openRFQFromCompare()">
+
+REQUEST A QUOTE →
+
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+
+<script>
+
+const products = [
+
+{
+    model: "B23E280H128-102-B0",
+    name: "EC Backward Curved Centrifugal Fan",
+    type: "EC Centrifugal Fan",
+    diameter: 280,
+    airflow: 3800,
+    pressure: 900,
+    power: 350,
+    voltage: "AC 230V",
+    control: "0–10V",
+    match: 96
+},
+
+{
+    model: "B23E280H81-92-00",
+    name: "EC Backward Curved Centrifugal Fan",
+    type: "EC Centrifugal Fan",
+    diameter: 280,
+    airflow: 2900,
+    pressure: 760,
+    power: 180,
+    voltage: "AC 230V",
+    control: "0–10V",
+    match: 91
+},
+
+{
+    model: "B23E250H85-92-00",
+    name: "EC Backward Curved Centrifugal Fan",
+    type: "EC Centrifugal Fan",
+    diameter: 250,
+    airflow: 2600,
+    pressure: 720,
+    power: 250,
+    voltage: "AC 230V",
+    control: "0–10V / PWM",
+    match: 86
+},
+
+{
+    model: "B23A280H92-92-A0",
+    name: "AC Backward Curved Centrifugal Fan",
+    type: "AC Centrifugal Fan",
+    diameter: 280,
+    airflow: 3000,
+    pressure: 700,
+    power: 300,
+    voltage: "AC 230V",
+    control: "Fixed Speed",
+    match: 82
+},
+
+{
+    model: "B23E250H73-72-A0",
+    name: "EC Backward Curved Centrifugal Fan",
+    type: "EC Centrifugal Fan",
+    diameter: 250,
+    airflow: 2200,
+    pressure: 600,
+    power: 90,
+    voltage: "AC 230V",
+    control: "Variable",
+    match: 76
+}
+
+];
+
+
+let selected = [];
+
+let currentProduct = null;
+
+
+function searchProducts() {
+
+    const results =
+        document.getElementById("results");
+
+    results.style.display = "block";
+
+    renderProducts();
+
+    results.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+    });
+
+}
+
+
+function renderProducts(list = products) {
+
+    const tbody =
+        document.getElementById("productRows");
+
+    tbody.innerHTML = "";
+
+    list.forEach(product => {
+
+        const tr =
+            document.createElement("tr");
+
+        tr.className = "product-row";
+
+        tr.onclick = function(e) {
+
+            if(e.target.type === "checkbox") {
+                return;
+            }
+
+            openDetail(product);
+
+        };
+
+
+        const checked =
+            selected.includes(product.model)
+            ? "checked"
+            : "";
+
+
+        tr.innerHTML = `
+
+<td>
+
+<input
+type="checkbox"
+${checked}
+onclick="toggleCompare(event,'${product.model}')">
+
+</td>
+
+
+<td>
+
+<div class="product-name">
+
+<div class="fan-thumb">
+
+<div class="fan-icon"></div>
+
+</div>
+
+<div>
+
+<div class="model">
+${product.model}
+</div>
+
+<div class="product-type">
+${product.name}
+</div>
+
+</div>
+
+</div>
+
+</td>
+
+
+<td>
+${product.type}
+</td>
+
+
+<td class="spec">
+${product.airflow.toLocaleString()} m³/h
+</td>
+
+
+<td class="spec">
+${product.pressure} Pa
+</td>
+
+
+<td class="spec">
+${product.power} W
+</td>
+
+
+<td class="spec">
+${product.voltage}
+</td>
+
+
+<td class="spec">
+${product.control}
+</td>
+
+
+<td>
+
+<span class="match
+${product.match < 90 ? "medium" : ""}">
+${product.match}%
+</span>
+
+</td>
+
+
+<td>
+
+<span class="view">
+View →
+</span>
+
+</td>
+
+`;
+
+        tbody.appendChild(tr);
+
+    });
+
+}
+
+
+function toggleCompare(event, model) {
+
+    event.stopPropagation();
+
+    if(selected.includes(model)) {
+
+        selected =
+            selected.filter(x => x !== model);
+
+    } else {
+
+        if(selected.length >= 4) {
+
+            alert("You can compare up to 4 products.");
+
+            event.target.checked = false;
+
+            return;
+        }
+
+        selected.push(model);
+
+    }
+
+    updateCompareBar();
+
+}
+
+
+function updateCompareBar() {
+
+    const bar =
+        document.getElementById("compareBar");
+
+    const count =
+        document.getElementById("compareCount");
+
+    if(selected.length === 0) {
+
+        bar.style.display = "none";
+
+        return;
+    }
+
+    bar.style.display = "flex";
+
+    count.innerText =
+        `${selected.length} product${selected.length > 1 ? "s" : ""} selected`;
+
+}
+
+
+function openCompare() {
+
+    if(selected.length < 2) {
+
+        alert("Select at least 2 products to compare.");
+
+        return;
+    }
+
+    document
+        .getElementById("compareOverlay")
+        .style.display = "flex";
+
+}
+
+
+function closeCompare() {
+
+    document
+        .getElementById("compareOverlay")
+        .style.display = "none";
+
+}
+
+
+function openDetail(product) {
+
+    currentProduct = product;
+
+    document
+        .getElementById("results")
+        .style.display = "none";
+
+    document
+        .getElementById("detail")
+        .style.display = "block";
+
+
+    document
+        .getElementById("detailName")
+        .innerText = product.name;
+
+
+    document
+        .getElementById("detailModel")
+        .innerText = product.model;
+
+
+    document
+        .getElementById("dAirflow")
+        .innerText =
+        product.airflow.toLocaleString()
+        + " m³/h";
+
+
+    document
+        .getElementById("dPressure")
+        .innerText =
+        product.pressure + " Pa";
+
+
+    document
+        .getElementById("dVoltage")
+        .innerText =
+        product.voltage;
+
+
+    document
+        .getElementById("dPower")
+        .innerText =
+        product.power + " W";
+
+
+    document
+        .getElementById("dDiameter")
+        .innerText =
+        product.diameter + " mm";
+
+
+    document
+        .getElementById("detail")
+        .scrollIntoView({
+            behavior:"smooth"
+        });
+
+}
+
+
+function closeDetail() {
+
+    document
+        .getElementById("detail")
+        .style.display = "none";
+
+    document
+        .getElementById("results")
+        .style.display = "block";
+
+}
+
+
+function showDetailFromCompare(model) {
+
+    closeCompare();
+
+    const product =
+        products.find(
+            p => p.model === model
+        );
+
+    if(product) {
+
+        openDetail(product);
+
+    }
+
+}
+
+
+function openRFQ(product) {
+
+    currentProduct = product;
+
+    document
+        .getElementById("detail")
+        .style.display = "none";
+
+    document
+        .getElementById("results")
+        .style.display = "none";
+
+    document
+        .getElementById("rfq")
+        .style.display = "block";
+
+
+    const container =
+        document.getElementById("rfqProducts");
+
+    container.innerHTML = `
+
+<div class="rfq-product">
+✓ ${product.model}
+</div>
+
+`;
+
+    document
+        .getElementById("rfqMessage")
+        .value =
+        `Application: Industrial Equipment
+Required airflow: 3,000 m³/h
+Required static pressure: 700 Pa
+Power supply: AC 230V`;
+
+    document
+        .getElementById("rfq")
+        .scrollIntoView({
+            behavior:"smooth"
+        });
+
+}
+
+
+function openRFQFromCompare() {
+
+    closeCompare();
+
+    const selectedProducts =
+        products.filter(
+            p => selected.includes(p.model)
+        );
+
+    document
+        .getElementById("detail")
+        .style.display = "none";
+
+    document
+        .getElementById("results")
+        .style.display = "none";
+
+    document
+        .getElementById("rfq")
+        .style.display = "block";
+
+
+    const container =
+        document.getElementById("rfqProducts");
+
+    container.innerHTML =
+        selectedProducts
+        .map(p => `
+            <div class="rfq-product">
+            ✓ ${p.model}
+            </div>
+        `)
+        .join("");
+
+
+    document
+        .getElementById("rfqMessage")
+        .value =
+        `Application: Industrial Equipment
+Required airflow: 3,000 m³/h
+Required static pressure: 700 Pa
+Power supply: AC 230V
+Selected products: ${selectedProducts.map(p => p.model).join(", ")}`;
+
+
+    document
+        .getElementById("rfq")
+        .scrollIntoView({
+            behavior:"smooth"
+        });
+
+}
+
+
+function closeRFQ() {
+
+    document
+        .getElementById("rfq")
+        .style.display = "none";
+
+    document
+        .getElementById("results")
+        .style.display = "block";
+
+}
+
+
+function submitRFQ() {
+
+    alert(
+        "Demo RFQ submitted.\n\n" +
+        "In production this would create a qualified sales lead " +
+        "with the selected products and technical requirements."
+    );
+
+}
+
+
+function resetSelector() {
+
+    document
+        .querySelectorAll(
+            ".selector input"
+        )
+        .forEach(input => {
+
+            if(input.type === "checkbox")
+                input.checked = false;
+
+        });
+
+    document
+        .getElementById("airflow")
+        .value = 3000;
+
+    document
+        .getElementById("pressure")
+        .value = 700;
+
+}
+
+
+function sortProducts(type) {
+
+    let list =
+        [...products];
+
+    if(type === "match") {
+
+        list.sort(
+            (a,b) => b.match - a.match
+        );
+
+    }
+
+    if(type === "airflow") {
+
+        list.sort(
+            (a,b) => b.airflow - a.airflow
+        );
+
+    }
+
+    if(type === "power") {
+
+        list.sort(
+            (a,b) => a.power - b.power
+        );
+
+    }
+
+    if(type === "diameter") {
+
+        list.sort(
+            (a,b) => a.diameter - b.diameter
+        );
+
+    }
+
+    renderProducts(list);
+
+}
+
+</script>
+
+</body>
+</html>

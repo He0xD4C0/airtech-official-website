@@ -1,0 +1,24 @@
+:root {
+  --airtek-blue: #0c7497;
+  --airtek-blue-dark: #075c79;
+  --airtek-blue-soft: #e7f4f8;
+  --airtek-green: #279757;
+  --airtek-green-dark: #1b7040;
+  --airtek-green-soft: #e8f6ed;
+  --airtek-ink: #17302f;
+  --airtek-dark-gray: #3a4e4d;
+  --airtek-muted: #617574;
+  --airtek-border: #d8e2e1;
+  --airtek-surface: #f4f8f8;
+  --airtek-white: #ffffff;
+  --airtek-danger: #b42318;
+  --airtek-warning: #9a6700;
+  --airtek-font-sans: Helvetica, Arial, "Noto Sans CJK SC", "Microsoft YaHei", system-ui, sans-serif;
+  --airtek-radius-sm: 0.4rem;
+  --airtek-radius-md: 0.75rem;
+  --airtek-radius-lg: 1.25rem;
+  --airtek-shadow-sm: 0 1px 3px rgb(23 48 47 / 10%);
+  --airtek-shadow-md: 0 14px 36px rgb(23 48 47 / 12%);
+  --airtek-content-width: 76rem;
+  --airtek-focus: 0 0 0 3px rgb(12 116 151 / 28%);
+}

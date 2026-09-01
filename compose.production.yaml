@@ -1,0 +1,122 @@
+name: airtekpower-production
+
+# Provider-neutral production process boundary. The image references and
+# browser-visible origins are deliberately mandatory: a release must promote
+# immutable, independently versioned Public, Admin, Platform and Gateway
+# artifacts instead of rebuilding from the production checkout.
+services:
+  platform-migrate:
+    image: ${AIRTEK_PLATFORM_IMAGE:?set AIRTEK_PLATFORM_IMAGE to an immutable image reference}
+    entrypoint: ["/usr/local/bin/airtek-migrate"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
+    restart: "no"
+
+  platform-api:
+    image: ${AIRTEK_PLATFORM_IMAGE:?set AIRTEK_PLATFORM_IMAGE to an immutable image reference}
+    environment:
+      AIRTEK_API_HOST: 0.0.0.0
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
+      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:?set AIRTEK_PUBLIC_ORIGIN}
+      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:?set AIRTEK_ADMIN_ORIGIN}
+      AIRTEK_ADMIN_BOOTSTRAP_TOKEN: ${AIRTEK_ADMIN_BOOTSTRAP_TOKEN:-}
+      AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:?set AIRTEK_TOTP_ENCRYPTION_KEY from the secret manager}
+      AIRTEK_PREVIEW_SIGNING_KEY: ${AIRTEK_PREVIEW_SIGNING_KEY:?set AIRTEK_PREVIEW_SIGNING_KEY from the secret manager}
+      AIRTEK_TRUSTED_PROXY_CIDRS: ${AIRTEK_TRUSTED_PROXY_CIDRS:-172.29.0.10/32}
+      RUST_LOG: ${RUST_LOG:-airtek_platform=info,tower_http=info}
+    expose:
+      - "8080"
+    depends_on:
+      platform-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  platform-worker:
+    image: ${AIRTEK_PLATFORM_IMAGE:?set AIRTEK_PLATFORM_IMAGE to an immutable image reference}
+    entrypoint: ["/usr/local/bin/airtek-worker"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
+      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:?set AIRTEK_PUBLIC_ORIGIN}
+      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:?set AIRTEK_ADMIN_ORIGIN}
+      AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:?set AIRTEK_TOTP_ENCRYPTION_KEY from the secret manager}
+      AIRTEK_PREVIEW_SIGNING_KEY: ${AIRTEK_PREVIEW_SIGNING_KEY:?set AIRTEK_PREVIEW_SIGNING_KEY from the secret manager}
+      RUST_LOG: ${RUST_LOG:-airtek_platform=info}
+    depends_on:
+      platform-migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  public-web:
+    image: ${AIRTEK_PUBLIC_WEB_IMAGE:?set AIRTEK_PUBLIC_WEB_IMAGE to an immutable image reference}
+    environment:
+      PUBLIC_API_INTERNAL_URL: http://platform-api:8080/api/public/v1
+      PUBLIC_API_BROWSER_ORIGIN: ${AIRTEK_API_ORIGIN:?set AIRTEK_API_ORIGIN}
+      PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:?set AIRTEK_PUBLIC_ORIGIN}
+    expose:
+      - "3000"
+    depends_on:
+      platform-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/en').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  admin-web:
+    image: ${AIRTEK_ADMIN_WEB_IMAGE:?set AIRTEK_ADMIN_WEB_IMAGE to an immutable image reference}
+    environment:
+      ADMIN_API_ORIGIN: ${AIRTEK_API_ORIGIN:?set AIRTEK_API_ORIGIN}
+    expose:
+      - "3100"
+    depends_on:
+      platform-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3100/robots.txt"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  gateway:
+    image: ${AIRTEK_GATEWAY_IMAGE:?set AIRTEK_GATEWAY_IMAGE to an immutable image reference}
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?set PUBLIC_HOST}
+      ADMIN_HOST: ${ADMIN_HOST:?set ADMIN_HOST}
+      API_HOST: ${API_HOST:?set API_HOST}
+      API_BROWSER_ORIGIN: ${AIRTEK_API_ORIGIN:?set AIRTEK_API_ORIGIN}
+    ports:
+      - "${AIRTEK_INGRESS_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_INGRESS_HTTP_PORT:-8088}:8088"
+    depends_on:
+      public-web:
+        condition: service_healthy
+      admin-web:
+        condition: service_healthy
+      platform-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8088/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    networks:
+      default:
+        ipv4_address: ${AIRTEK_GATEWAY_INTERNAL_IP:-172.29.0.10}
+    restart: unless-stopped
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${AIRTEK_COMPOSE_SUBNET:-172.29.0.0/24}

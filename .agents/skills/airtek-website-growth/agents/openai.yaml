@@ -1,0 +1,7 @@
+interface:
+  display_name: "AIRTEKPOWER Website Growth"
+  short_description: "B2B site, SEO, RFQ, data, and delivery guidance"
+  brand_color: "#0C7497"
+  default_prompt: "Use $airtek-website-growth to plan or review this AIRTEKPOWER website, SEO, RFQ, data, or delivery task."
+policy:
+  allow_implicit_invocation: true

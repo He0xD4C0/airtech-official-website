@@ -1,0 +1,7 @@
+interface:
+  display_name: "AIRTEK Knowledge Governance"
+  short_description: "Reconcile sources and maintain project knowledge"
+  brand_color: "#0C7497"
+  default_prompt: "Use $airtek-knowledge-governance to reconcile these AIRTEKPOWER sources and update the canonical project knowledge safely."
+policy:
+  allow_implicit_invocation: true

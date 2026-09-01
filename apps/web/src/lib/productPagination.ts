@@ -1,0 +1,1 @@
+export const PUBLIC_PRODUCT_PAGE_SIZE = 24

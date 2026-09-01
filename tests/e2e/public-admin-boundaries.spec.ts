@@ -1,0 +1,109 @@
+import AxeBuilder from '@axe-core/playwright'
+import { expect, test } from '@playwright/test'
+
+const configuredBindAddress = process.env.AIRTEK_BIND_ADDRESS ?? '127.0.0.1'
+const diagnosticHost = configuredBindAddress === '0.0.0.0' || configuredBindAddress === '::'
+  ? '127.0.0.1'
+  : configuredBindAddress
+const urlHost = diagnosticHost.includes(':') ? `[${diagnosticHost}]` : diagnosticHost
+const publicOrigin = process.env.E2E_PUBLIC_ORIGIN
+  ?? `http://${urlHost}:${process.env.AIRTEK_PUBLIC_HOST_PORT ?? '3000'}`
+const adminOrigin = process.env.E2E_ADMIN_ORIGIN
+  ?? `http://${urlHost}:${process.env.AIRTEK_ADMIN_HOST_PORT ?? '3100'}`
+
+function absolute(origin: string, pathname: string): string {
+  return new URL(pathname, `${origin.replace(/\/$/u, '')}/`).toString()
+}
+
+function severeAccessibilityViolations(
+  violations: Awaited<ReturnType<AxeBuilder['analyze']>>['violations'],
+) {
+  return violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')
+}
+
+test.describe('Public SSR contract', () => {
+  test('redirects the root permanently to the English canonical prefix', async ({ request }) => {
+    const response = await request.get(absolute(publicOrigin, '/'), { maxRedirects: 0 })
+
+    expect(response.status()).toBe(308)
+    expect(response.headers().location).toBe('/en')
+  })
+
+  test('renders title, navigation, canonical link and body without JavaScript', async ({ browser }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false })
+    const page = await context.newPage()
+
+    try {
+      const response = await page.goto(absolute(publicOrigin, '/en'))
+
+      expect(response?.status()).toBe(200)
+      await expect(page).toHaveTitle(/AIRTEKPOWER/u)
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/en$/u)
+      await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible()
+      await expect(page.getByRole('heading', { level: 1 })).toContainText(/airflow|engineering/iu)
+      await expect(page.locator('main#main-content')).toContainText('Explore products')
+      await expect(page.locator('main#main-content a[href="/en/request-a-quote"]').first()).toBeVisible()
+    } finally {
+      await context.close()
+    }
+  })
+
+  test('does not expose the Admin route on the Public origin', async ({ request }) => {
+    for (const pathname of ['/admin', '/admin/users']) {
+      const response = await request.get(absolute(publicOrigin, pathname))
+      expect(response.status(), pathname).toBe(404)
+    }
+  })
+
+  test('has no serious or critical automated accessibility violations on the SSR home page', async ({ page }) => {
+    const response = await page.goto(absolute(publicOrigin, '/en'))
+    expect(response?.status()).toBe(200)
+    await expect(page.locator('main#main-content')).toBeVisible()
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze()
+
+    expect(severeAccessibilityViolations(results.violations)).toEqual([])
+  })
+})
+
+test.describe('Admin crawl isolation contract', () => {
+  test('serves crawler denial and noindex on every checked response', async ({ request }) => {
+    const robots = await request.get(absolute(adminOrigin, '/robots.txt'))
+    expect(robots.status()).toBe(200)
+    expect(await robots.text()).toMatch(/User-agent:\s*\*[\s\S]*Disallow:\s*\//iu)
+    expect(robots.headers()['x-robots-tag']).toMatch(/noindex,\s*nofollow,\s*noarchive/iu)
+
+    const login = await request.get(absolute(adminOrigin, '/login'))
+    expect(login.status()).toBe(200)
+    expect(login.headers()['x-robots-tag']).toMatch(/noindex,\s*nofollow,\s*noarchive/iu)
+    expect(await login.text()).toMatch(/<meta\s+name=["']robots["']\s+content=["']noindex, nofollow, noarchive["']/iu)
+  })
+
+  test('returns 404 for sitemap variants and Public routes', async ({ request }) => {
+    for (const pathname of [
+      '/sitemap.xml',
+      '/sitemap-pages.xml',
+      '/sitemap-products.xml',
+      '/en',
+      '/en/products',
+    ]) {
+      const response = await request.get(absolute(adminOrigin, pathname))
+      expect(response.status(), pathname).toBe(404)
+      expect(response.headers()['x-robots-tag'], pathname).toMatch(/noindex/iu)
+    }
+  })
+
+  test('has no serious or critical automated accessibility violations on login', async ({ page }) => {
+    const response = await page.goto(absolute(adminOrigin, '/login'))
+    expect(response?.status()).toBe(200)
+    await expect(page.locator('main.auth-layout')).toBeVisible()
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze()
+
+    expect(severeAccessibilityViolations(results.violations)).toEqual([])
+  })
+})

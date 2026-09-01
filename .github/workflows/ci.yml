@@ -1,0 +1,174 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: services/platform
+      - run: pnpm install --frozen-lockfile
+      - name: Check production OpenAPI snapshot and generated TypeScript
+        run: pnpm check:contracts
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build generated TypeScript contract package
+        run: pnpm --filter @airtek/contracts build
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - name: Run frontend and public API contract tests
+        run: pnpm test
+      - run: pnpm check:production
+      - run: pnpm check:deployment
+
+  browser-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      E2E_PUBLIC_ORIGIN: http://127.0.0.1:3000
+      E2E_ADMIN_ORIGIN: http://127.0.0.1:3100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Generate an ephemeral CI-only TOTP encryption key
+        run: echo "AIRTEK_TOTP_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+      - run: pnpm install --frozen-lockfile
+      - name: Install the Playwright Chromium runtime
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Build and start the production-shaped Compose stack
+        run: docker compose up --build --detach --wait --wait-timeout 300
+      - name: Run SSR, origin-isolation, and axe browser contracts
+        run: pnpm test:e2e
+      - name: Show service logs after a failure
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Upload Playwright diagnostics after a failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-browser-contracts
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Stop the integration stack
+        if: always()
+        run: docker compose down
+
+  rust:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: airtek
+          POSTGRES_USER: airtek
+          POSTGRES_PASSWORD: airtek
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U airtek -d airtek"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://airtek:airtek@127.0.0.1:5432/airtek
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.98.0
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: services/platform
+      - run: cargo fmt --manifest-path services/platform/Cargo.toml --all -- --check
+      - run: cargo clippy --manifest-path services/platform/Cargo.toml --all-targets --features production -- -D warnings
+      - name: Apply migrations twice to verify a clean and idempotent bootstrap
+        run: |
+          cargo run --manifest-path services/platform/Cargo.toml --bin airtek-migrate
+          cargo run --manifest-path services/platform/Cargo.toml --bin airtek-migrate
+      - name: Run Rust unit and HTTP contract tests
+        run: cargo test --manifest-path services/platform/Cargo.toml
+      - run: cargo check --manifest-path services/platform/Cargo.toml --features production
+      - run: cargo check --manifest-path services/platform/Cargo.toml --features devtools
+      - name: Assert production and DevTools are mutually exclusive
+        run: |
+          if cargo check --manifest-path services/platform/Cargo.toml --features production,devtools; then
+            echo "production+devtools unexpectedly compiled"
+            exit 1
+          fi
+      - name: Assert production dependency tree excludes CLI, PTY, and WebSocket packages
+        run: |
+          if cargo tree --manifest-path services/platform/Cargo.toml --features production | grep -E '(^| )((clap|portable-pty|tokio-tungstenite|tungstenite) v)'; then
+            echo "production dependency tree contains a CLI, PTY, or WebSocket package"
+            exit 1
+          fi
+
+  deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/assert-deployment-config.mjs
+      - run: docker compose config --quiet
+      - name: Validate opt-in debug port override
+        run: docker compose -f compose.yaml -f compose.debug.yaml --profile object-storage config --quiet
+      - name: Validate provider-neutral production Compose
+        run: docker compose --env-file infra/deploy/production.env.example -f compose.production.yaml config --quiet
+      - name: Validate Admin Nginx template
+        run: >-
+          docker run --rm
+          -e ADMIN_API_ORIGIN=http://api.localhost:8088
+          -v "$PWD/apps/admin/deploy/nginx.conf:/etc/nginx/templates/default.conf.template:ro"
+          nginx:1.27-alpine nginx -t
+      - name: Validate gateway Nginx template
+        run: |
+          docker build --file infra/docker/Dockerfile.gateway --tag airtek-gateway:ci .
+          docker run --rm \
+            --add-host public-web:127.0.0.1 \
+            --add-host admin-web:127.0.0.1 \
+            --add-host platform-api:127.0.0.1 \
+            -e PUBLIC_HOST=www.localhost \
+            -e ADMIN_HOST=admin.localhost \
+            -e API_HOST=api.localhost \
+            -e API_BROWSER_ORIGIN=http://api.localhost:8088 \
+            airtek-gateway:ci nginx -t

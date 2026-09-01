@@ -1,0 +1,33 @@
+{
+  "name": "airtekpower-platform",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @airtek/web --filter @airtek/admin dev",
+    "dev:web": "pnpm --filter @airtek/web dev",
+    "dev:admin": "pnpm --filter @airtek/admin dev",
+    "build": "pnpm -r --if-present build",
+    "build:production": "pnpm --filter @airtek/contracts build && pnpm --filter @airtek/ui build && pnpm --filter @airtek/web build && pnpm --filter @airtek/admin build:production",
+    "typecheck": "pnpm --filter @airtek/contracts build && pnpm -r --if-present typecheck && pnpm typecheck:e2e",
+    "typecheck:e2e": "tsc --noEmit -p tsconfig.e2e.json",
+    "lint": "pnpm -r --if-present lint",
+    "test": "pnpm -r --if-present test",
+    "test:e2e": "playwright test",
+    "check:production": "pnpm build:production && node scripts/assert-production-isolation.mjs",
+    "check:deployment": "node scripts/assert-deployment-config.mjs",
+    "check:isolation": "node scripts/smoke-isolation.mjs",
+    "generate:contracts": "node scripts/generate-openapi.mjs",
+    "check:contracts": "node scripts/generate-openapi.mjs --check"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.10.2",
+    "@playwright/test": "1.55.0",
+    "@types/node": "22.20.1",
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3"
+  }
+}

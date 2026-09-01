@@ -1,0 +1,129 @@
+server {
+  listen 8088 default_server;
+  server_name _;
+  server_tokens off;
+
+  add_header Cache-Control "no-store" always;
+  add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header X-Frame-Options "DENY" always;
+  add_header Referrer-Policy "no-referrer" always;
+  add_header Permissions-Policy "camera=(), geolocation=(), microphone=()" always;
+  add_header Cross-Origin-Opener-Policy "same-origin" always;
+  add_header Cross-Origin-Resource-Policy "same-origin" always;
+  add_header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'" always;
+
+  location = /healthz {
+    default_type text/plain;
+    return 200 "ok\n";
+  }
+
+  location / { return 444; }
+}
+
+server {
+  listen 8088;
+  server_name ${PUBLIC_HOST};
+  server_tokens off;
+
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header X-Frame-Options "SAMEORIGIN" always;
+  add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+  add_header Permissions-Policy "camera=(), geolocation=(), microphone=()" always;
+  add_header Cross-Origin-Opener-Policy "same-origin" always;
+  add_header Cross-Origin-Resource-Policy "same-origin" always;
+  add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ${API_BROWSER_ORIGIN}; worker-src 'none'" always;
+
+  location = /admin { return 404; }
+  location ^~ /admin/ { return 404; }
+
+  # The query string contains the short-lived preview bearer capability. Do
+  # not copy it into the default Nginx access log.
+  location = /en/preview {
+    access_log off;
+    proxy_pass http://public-web:3000;
+    proxy_http_version 1.1;
+    proxy_hide_header Content-Security-Policy;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  }
+
+  location / {
+    proxy_pass http://public-web:3000;
+    proxy_http_version 1.1;
+    # The SSR process also protects direct-port diagnostics. At the public
+    # gateway boundary a single host-aware CSP must win; two CSP fields are
+    # intersected by browsers and would otherwise block the configured API Host.
+    proxy_hide_header Content-Security-Policy;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  }
+}
+
+server {
+  listen 8088;
+  server_name ${ADMIN_HOST};
+  server_tokens off;
+
+  add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header X-Frame-Options "DENY" always;
+  add_header Referrer-Policy "same-origin" always;
+  add_header Permissions-Policy "camera=(), geolocation=(), microphone=()" always;
+  add_header Cross-Origin-Opener-Policy "same-origin" always;
+  add_header Cross-Origin-Resource-Policy "same-origin" always;
+  add_header Content-Security-Policy "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ${API_BROWSER_ORIGIN}; worker-src 'none'; manifest-src 'none'" always;
+
+  location ~* ^/sitemap(?:-[^/]+)?\.xml$ { return 404; }
+  location ~* ^/(?:site\.webmanifest|manifest(?:\.webmanifest|\.json)|browserconfig\.xml|favicon(?:-[^/]*)?\.(?:ico|png|svg)|apple-touch-icon(?:-[^/]*)?\.png)$ { return 404; }
+  location ~* ^/(?:google[^/]+\.html|bingsiteauth\.xml|baidu_verify[^/]*\.html|yandex_[^/]+\.html)$ { return 404; }
+  location ^~ /.vite/ { return 404; }
+  location = /en { return 404; }
+  location ^~ /en/ { return 404; }
+
+  location / {
+    proxy_pass http://admin-web:3100;
+    proxy_http_version 1.1;
+    proxy_hide_header Content-Security-Policy;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  }
+}
+
+server {
+  listen 8088;
+  server_name ${API_HOST};
+  server_tokens off;
+
+  add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header X-Frame-Options "DENY" always;
+  add_header Referrer-Policy "no-referrer" always;
+  add_header Permissions-Policy "camera=(), geolocation=(), microphone=()" always;
+  add_header Cross-Origin-Opener-Policy "same-origin" always;
+  add_header Cross-Origin-Resource-Policy "same-site" always;
+  add_header Content-Security-Policy "default-src 'none'; frame-ancestors 'none'" always;
+
+  location = /robots.txt {
+    default_type text/plain;
+    return 200 "User-agent: *\nDisallow: /\n";
+  }
+
+  location ~* ^/sitemap(?:-[^/]+)?\.xml$ { return 404; }
+  location ^~ /api/devtools/ { return 404; }
+
+  location / {
+    proxy_pass http://platform-api:8080;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  }
+}

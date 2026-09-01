@@ -1,0 +1,7 @@
+interface:
+  display_name: "AIRTEKPOWER Brand"
+  short_description: "Canonical identity, messaging, and visual rules"
+  brand_color: "#0C7497"
+  default_prompt: "Use $airtek-brand to review this AIRTEKPOWER copy or interface for brand accuracy and consistency."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,173 @@
+name: ${COMPOSE_PROJECT_NAME:-airtekpower}
+
+services:
+  postgres:
+    image: ${AIRTEK_POSTGRES_IMAGE:-postgres:17-alpine}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-airtek}
+      POSTGRES_USER: ${POSTGRES_USER:-airtek}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-airtek}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  minio:
+    image: ${AIRTEK_MINIO_IMAGE:-quay.io/minio/minio:latest}
+    profiles: ["object-storage"]
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-airtek}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-local-development-only}
+    expose:
+      - "9000"
+      - "9001"
+    volumes:
+      - object-data:/data
+    restart: unless-stopped
+
+  platform-migrate:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.platform
+    entrypoint: ["/usr/local/bin/airtek-migrate"]
+    environment:
+      DATABASE_URL: ${AIRTEK_DATABASE_URL_INTERNAL:-postgres://airtek:airtek@postgres:5432/airtek}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  platform-api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.platform
+    environment:
+      AIRTEK_API_HOST: ${AIRTEK_API_HOST:-0.0.0.0}
+      DATABASE_URL: ${AIRTEK_DATABASE_URL_INTERNAL:-postgres://airtek:airtek@postgres:5432/airtek}
+      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:-http://www.localhost:8088}
+      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:-http://admin.localhost:8088}
+      AIRTEK_ADMIN_BOOTSTRAP_TOKEN: ${AIRTEK_ADMIN_BOOTSTRAP_TOKEN:-local-development-bootstrap-change-me}
+      AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:-}
+      AIRTEK_PREVIEW_SIGNING_KEY: ${AIRTEK_PREVIEW_SIGNING_KEY:-}
+      # Only this fixed gateway address may supply X-Forwarded-For to the API.
+      AIRTEK_TRUSTED_PROXY_CIDRS: ${AIRTEK_TRUSTED_PROXY_CIDRS:-172.28.0.10/32}
+      RUST_LOG: ${RUST_LOG:-airtek_platform=info,tower_http=info}
+    ports:
+      - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_API_HOST_PORT:-8080}:8080"
+    depends_on:
+      platform-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  platform-worker:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.platform
+    entrypoint: ["/usr/local/bin/airtek-worker"]
+    environment:
+      AIRTEK_API_HOST: ${AIRTEK_API_HOST:-0.0.0.0}
+      DATABASE_URL: ${AIRTEK_DATABASE_URL_INTERNAL:-postgres://airtek:airtek@postgres:5432/airtek}
+      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:-http://www.localhost:8088}
+      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:-http://admin.localhost:8088}
+      AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:-}
+      AIRTEK_PREVIEW_SIGNING_KEY: ${AIRTEK_PREVIEW_SIGNING_KEY:-}
+      RUST_LOG: ${RUST_LOG:-airtek_platform=info}
+    depends_on:
+      platform-migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  public-web:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.web
+      args:
+        VITE_PUBLIC_API_BASE_URL: ${VITE_PUBLIC_API_BASE_URL:-http://api.localhost:8088/api/public/v1}
+        VITE_PUBLIC_ORIGIN: ${VITE_PUBLIC_ORIGIN:-http://www.localhost:8088}
+    environment:
+      PUBLIC_API_INTERNAL_URL: ${PUBLIC_API_INTERNAL_URL:-http://platform-api:8080/api/public/v1}
+      PUBLIC_API_BROWSER_ORIGIN: ${PUBLIC_API_BROWSER_ORIGIN:-http://api.localhost:8088}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://www.localhost:8088}
+    ports:
+      - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_PUBLIC_HOST_PORT:-3000}:3000"
+    depends_on:
+      platform-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/en').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  admin-web:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.admin
+      args:
+        VITE_ADMIN_API_BASE_URL: ${VITE_ADMIN_API_BASE_URL:-http://api.localhost:8088/api/admin/v1}
+    environment:
+      ADMIN_API_ORIGIN: ${API_BROWSER_ORIGIN:-http://api.localhost:8088}
+    ports:
+      - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_ADMIN_HOST_PORT:-3100}:3100"
+    depends_on:
+      platform-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3100/robots.txt"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.gateway
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:-www.localhost}
+      ADMIN_HOST: ${ADMIN_HOST:-admin.localhost}
+      API_HOST: ${API_HOST:-api.localhost}
+      API_BROWSER_ORIGIN: ${API_BROWSER_ORIGIN:-http://api.localhost:8088}
+    ports:
+      - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_GATEWAY_HOST_PORT:-8088}:8088"
+    depends_on:
+      public-web:
+        condition: service_healthy
+      admin-web:
+        condition: service_healthy
+      platform-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8088/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    networks:
+      default:
+        ipv4_address: ${AIRTEK_GATEWAY_INTERNAL_IP:-172.28.0.10}
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  object-data:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${AIRTEK_COMPOSE_SUBNET:-172.28.0.0/24}
