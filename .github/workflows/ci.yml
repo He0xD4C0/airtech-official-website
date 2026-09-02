@@ -54,8 +54,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      E2E_PUBLIC_ORIGIN: http://127.0.0.1:3000
-      E2E_ADMIN_ORIGIN: http://127.0.0.1:3100
+      E2E_PUBLIC_ORIGIN: http://www.airtek.test:8088
+      E2E_ADMIN_ORIGIN: http://admin.airtek.test:8088
+      E2E_API_ORIGIN: http://api.airtek.test:8088
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -65,18 +66,18 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - name: Generate an ephemeral CI-only TOTP encryption key
-        run: echo "AIRTEK_TOTP_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+      - name: Generate independent ephemeral CI-only platform keys
+        run: |
+          echo "AIRTEK_TOTP_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+          echo "AIRTEK_PREVIEW_SIGNING_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+          echo "AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+          echo "AIRTEK_ANALYTICS_TOKEN_HMAC_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+          echo "AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
       - run: pnpm install --frozen-lockfile
       - name: Install the Playwright Chromium runtime
         run: pnpm exec playwright install --with-deps chromium
-      - name: Build and start the production-shaped Compose stack
-        run: docker compose up --build --detach --wait --wait-timeout 300
-      - name: Run SSR, origin-isolation, and axe browser contracts
-        run: pnpm test:e2e
-      - name: Show service logs after a failure
-        if: failure()
-        run: docker compose logs --no-color
+      - name: Run SSR, origin-isolation, Admin workflows, and axe contracts through the gateway
+        run: pnpm test:e2e:stack
       - name: Upload Playwright diagnostics after a failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -87,9 +88,6 @@ jobs:
             test-results/
           if-no-files-found: ignore
           retention-days: 7
-      - name: Stop the integration stack
-        if: always()
-        run: docker compose down
 
   rust:
     runs-on: ubuntu-latest
@@ -126,6 +124,16 @@ jobs:
           cargo run --manifest-path services/platform/Cargo.toml --bin airtek-migrate
       - name: Run Rust unit and HTTP contract tests
         run: cargo test --manifest-path services/platform/Cargo.toml
+      - name: Run PostgreSQL integration contracts serially
+        env:
+          AIRTEK_TEST_DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: |
+          cargo test --manifest-path services/platform/Cargo.toml --features devtools --test postgres_contract -- --ignored --test-threads=1
+          cargo test --manifest-path services/platform/Cargo.toml --test retention_contract -- --ignored --test-threads=1
+          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract expired_private_staging_requires_atomic_cryptographic_erasure -- --ignored --exact --test-threads=1
+          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract synthetic_product_master_scale_is_private_promoted_draft_and_idempotent -- --ignored --exact --test-threads=1
+          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract feishu_takes_over_verified_csv_stable_id_and_projects_all_facts_atomically -- --ignored --exact --test-threads=1
+          cargo test --manifest-path services/platform/Cargo.toml --test migration_contract -- --ignored --test-threads=1
       - run: cargo check --manifest-path services/platform/Cargo.toml --features production
       - run: cargo check --manifest-path services/platform/Cargo.toml --features devtools
       - name: Assert production and DevTools are mutually exclusive

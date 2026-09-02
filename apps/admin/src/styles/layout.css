@@ -123,10 +123,10 @@
 .auth-card__lead { margin-bottom: 1.5rem; color: var(--admin-muted); font-size: 0.79rem; }
 .auth-card > .field { margin-top: 0.95rem; }
 .auth-card > .button { margin-top: 1.2rem; }
-.demo-notice { display: flex; gap: 0.65rem; margin-bottom: 1.2rem; padding: 0.65rem; border: 1px solid #e8daab; border-radius: 9px; background: #fffaea; }
-.demo-notice > span { align-self: flex-start; padding: 0.25rem; border-radius: 4px; background: #f0dd99; color: #785a06; font-size: 0.57rem; font-weight: 800; }
-.demo-notice p { margin: 0; color: #7d681f; font-size: 0.65rem; }
-.demo-notice strong { display: block; color: #665313; }
+.token-notice { display: flex; gap: 0.65rem; margin-bottom: 1.2rem; padding: 0.65rem; border: 1px solid #e8daab; border-radius: 9px; background: #fffaea; }
+.token-notice > span { align-self: flex-start; padding: 0.25rem; border-radius: 4px; background: #f0dd99; color: #785a06; font-size: 0.57rem; font-weight: 800; }
+.token-notice p { margin: 0; color: #7d681f; font-size: 0.65rem; }
+.token-notice strong { display: block; color: #665313; }
 .auth-card__footer { display: flex; justify-content: center; gap: 0.35rem; margin-top: 1.2rem; color: var(--admin-muted); font-size: 0.68rem; }
 .auth-card__footer a { font-weight: 700; }
 

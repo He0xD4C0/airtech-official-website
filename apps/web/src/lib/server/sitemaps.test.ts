@@ -44,16 +44,18 @@ describe('published sitemap rendering', () => {
       canonicalOrigin: origin,
       fetchImpl: vi.fn<typeof fetch>().mockRejectedValue(new Error('offline')),
     })
-    const xml = await response.text()
-    expect(xml).toContain('<urlset')
-    expect(xml).not.toContain('<url>')
+    expect(response.status).toBe(503)
+    expect(response.headers.get('cache-control')).toContain('no-store')
+    expect(response.headers.get('retry-after')).toBe('60')
+    expect(response.headers.get('x-robots-tag')).toContain('noindex')
   })
 
-  it('exposes catalog parents only when a valid published product is discoverable', async () => {
+  it('emits only product and tool URLs explicitly present in discovery', async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({
       generatedAt: '2026-09-01T00:00:00Z',
       entries: [
         { entityType: 'product', entityId: crypto.randomUUID(), path: '/en/products/axial/verified-model', locale: 'en', updatedAt: '2026-09-01T00:00:00Z' },
+        { entityType: 'content', entityId: crypto.randomUUID(), path: '/en/products/selector', locale: 'en', updatedAt: '2026-09-01T00:00:00Z' },
         { entityType: 'product', entityId: crypto.randomUUID(), path: '/en/products/not-a-family/unsafe', locale: 'en', updatedAt: '2026-09-01T00:00:00Z' },
       ],
     }), { status: 200 }))
@@ -62,10 +64,18 @@ describe('published sitemap rendering', () => {
       fetchImpl,
     })).text()
     expect(xml).toContain(`${origin}/en/products/axial/verified-model`)
-    expect(xml).toContain(`${origin}/en/products/axial`)
-    expect(xml).toContain(`${origin}/en/products</loc>`)
     expect(xml).toContain(`${origin}/en/products/selector`)
+    expect(xml).not.toContain(`${origin}/en/products/axial</loc>`)
+    expect(xml).not.toContain(`${origin}/en/products</loc>`)
     expect(xml).not.toContain('not-a-family')
+  })
+
+  it('does not add selector or RFQ routes when discovery is empty', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({
+      generatedAt: '2026-09-01T00:00:00Z', entries: [],
+    }), { status: 200 }))
+    expect(await (await renderUrlSitemap('sitemap-products.xml', { canonicalOrigin: origin, fetchImpl })).text()).not.toContain('/en/products/selector')
+    expect(await (await renderUrlSitemap('sitemap-pages.xml', { canonicalOrigin: origin, fetchImpl })).text()).not.toContain('/en/request-a-quote')
   })
 
   it('generates robots from the same canonical origin', async () => {

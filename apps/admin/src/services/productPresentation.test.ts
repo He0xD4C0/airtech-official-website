@@ -31,7 +31,23 @@ function product(overrides: Partial<BackendProduct> = {}): BackendProduct {
     currentRevision: 2,
     publishedRevision: 1,
     indexable: false,
+    seo: { title: null, description: null, canonicalPath: null, indexable: false },
+    sortOrder: 0,
+    relatedContentIds: [],
     updatedAt: '2026-08-31T00:00:00Z',
+    presentation: {
+      locale: 'en',
+      slug: 'validated-api-record',
+      title: 'Validated API record',
+      summary: null,
+      seo: { title: null, description: null, canonicalPath: null, indexable: false },
+      indexable: false,
+      sortOrder: 0,
+      relatedContentIds: [],
+      revision: 1,
+      publishedRevision: null,
+      updatedAt: '2026-08-31T00:00:00Z',
+    },
     ...overrides,
   }
 }
@@ -62,7 +78,16 @@ describe('product detail presentation', () => {
       key: 'airflow', label: 'Airflow', value: null, unit: null, operatingCondition: null,
       state: 'pendingVerification', sourceReference: null,
     }] }), [], true).reason).toContain('pendingVerification')
-    expect(productPublishReadiness(product({ status: 'published', publishedRevision: 2 }), [], true).reason).toContain('已发布')
+    expect(productPublishReadiness(product({
+      status: 'published',
+      publishedRevision: 2,
+      presentation: { ...product().presentation!, publishedRevision: 1 },
+    }), [], true).reason).toContain('已发布')
+    expect(productPublishReadiness(product({
+      status: 'published',
+      publishedRevision: 2,
+      presentation: { ...product().presentation!, revision: 2, publishedRevision: 1 },
+    }), [], true).allowed).toBe(true)
   })
 
   it('treats either the server flag or elapsed expiry as an expired override', () => {

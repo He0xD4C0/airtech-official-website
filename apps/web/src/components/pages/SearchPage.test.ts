@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { trackAnalyticsEvent } from '@/lib/analytics'
-import { resolvePublicRoute } from '@/content/routes'
+import { publicPageFixture } from '@/test/publicPageFixture'
 import SearchPage from './SearchPage.vue'
 
 vi.mock('@/lib/analytics', () => ({ trackAnalyticsEvent: vi.fn().mockResolvedValue(true) }))
@@ -12,7 +12,7 @@ describe('public search analytics', () => {
   })
 
   it('reports only query length and result count for an internal search', async () => {
-    const wrapper = mount(SearchPage, { props: { page: resolvePublicRoute('/en/search') } })
+    const wrapper = mount(SearchPage, { props: { page: publicPageFixture('/en/search', { kind: 'search', indexable: false }) } })
     const privateQuery = 'buyer@example.com confidential requirement'
     const input = wrapper.get('input[type="search"]')
     await input.setValue(privateQuery)
@@ -27,7 +27,7 @@ describe('public search analytics', () => {
 
   it('reports the bounded content-type facet without search text', async () => {
     const page = {
-      ...resolvePublicRoute('/en/search'),
+      ...publicPageFixture('/en/search', { kind: 'search', indexable: false }),
       entries: [{ slug: 'published-faq', title: 'Published FAQ', summary: 'Approved summary.', eyebrow: 'FAQ', href: '/en/resources/faqs/published-faq' }],
     }
     const wrapper = mount(SearchPage, { props: { page } })
@@ -36,7 +36,6 @@ describe('public search analytics', () => {
 
     expect(trackAnalyticsEvent).toHaveBeenCalledWith('filterApplied', {
       filterName: 'contentType',
-      filterValue: 'FAQ',
       resultCount,
     })
   })

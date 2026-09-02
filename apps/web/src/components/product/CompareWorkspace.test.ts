@@ -22,6 +22,9 @@ function product(slug: string, family: Product['family'], value: number): Produc
     motorTechnology: null,
     title: `Published ${slug}`,
     summary: 'Published comparison record.',
+    seo: { title: `Published ${slug}`, description: 'Published comparison record.', canonicalPath: `/en/products/${family}/${slug}`, indexable: true },
+    sortOrder: 0,
+    relatedContentIds: [],
     specifications: [{
       key: 'capacity',
       label: 'Capacity',
@@ -43,6 +46,11 @@ function product(slug: string, family: Product['family'], value: number): Produc
 }
 
 describe('published product comparison', () => {
+  const productFamilies = [
+    { code: 'axial' as const, slug: 'axial', name: 'Database axial', description: '', sortOrder: 1 },
+    { code: 'centrifugal' as const, slug: 'centrifugal', name: 'Database centrifugal', description: '', sortOrder: 2 },
+  ]
+
   beforeEach(() => {
     window.sessionStorage.clear()
     window.history.replaceState({}, '', '/en/products/compare?products=first-record,second-record')
@@ -54,23 +62,44 @@ describe('published product comparison', () => {
   })
 
   it('hydrates a share URL from live published records and highlights differences', async () => {
-    const wrapper = mount(CompareWorkspace, { global: { plugins: [createPinia()] } })
+    const wrapper = mount(CompareWorkspace, {
+      props: { productFamilies },
+      global: { plugins: [createPinia()] },
+    })
     await flushPromises()
 
     expect(getPublishedProduct).toHaveBeenCalledTimes(2)
     expect(wrapper.text()).toContain('Published first-record')
     expect(wrapper.text()).toContain('Published second-record')
+    expect(wrapper.text()).toContain('Database centrifugal')
     expect(wrapper.findAll('tbody tr.is-different').length).toBeGreaterThan(0)
-    expect(new URL(window.location.href).searchParams.get('products')).toBe('first-record,second-record')
+    expect(new URL(window.location.href).searchParams.get('products')).toBe('axial~first-record,centrifugal~second-record')
   })
 
   it('accepts at most four safe slugs from a shared URL', async () => {
     window.history.replaceState({}, '', '/en/products/compare?products=one,two,three,four,five,../admin')
     vi.mocked(getPublishedProduct).mockImplementation(async (slug) => product(slug, 'axial', 10))
-    mount(CompareWorkspace, { global: { plugins: [createPinia()] } })
+    mount(CompareWorkspace, {
+      props: { productFamilies },
+      global: { plugins: [createPinia()] },
+    })
     await flushPromises()
 
     expect(getPublishedProduct).toHaveBeenCalledTimes(4)
-    expect(new URL(window.location.href).searchParams.get('products')).toBe('one,two,three,four')
+    expect(new URL(window.location.href).searchParams.get('products')).toBe('axial~one,axial~two,axial~three,axial~four')
+  })
+
+  it('keeps reusable slugs bound to their product family in a share URL', async () => {
+    window.history.replaceState({}, '', '/en/products/compare?products=axial~shared-slug,centrifugal~shared-slug')
+    vi.mocked(getPublishedProduct).mockImplementation(async (slug, family) => product(slug, family ?? 'axial', family === 'centrifugal' ? 20 : 10))
+    mount(CompareWorkspace, {
+      props: { productFamilies },
+      global: { plugins: [createPinia()] },
+    })
+    await flushPromises()
+
+    expect(getPublishedProduct).toHaveBeenNthCalledWith(1, 'shared-slug', 'axial')
+    expect(getPublishedProduct).toHaveBeenNthCalledWith(2, 'shared-slug', 'centrifugal')
+    expect(new URL(window.location.href).searchParams.get('products')).toBe('axial~shared-slug,centrifugal~shared-slug')
   })
 })

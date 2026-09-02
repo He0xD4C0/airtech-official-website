@@ -1,6 +1,7 @@
 import { computed, shallowRef } from 'vue'
 import {
   apiErrorMessage,
+  apiProblemStatus,
   DEFAULT_ADMIN_PAGE_SIZE,
   type CursorPage,
   type CursorPageRequest,
@@ -27,12 +28,14 @@ export function useCursorPagination<T>(
   const pageIndex = shallowRef(0)
   const loading = shallowRef(false)
   const error = shallowRef<string | null>(null)
+  const errorStatus = shallowRef<number | null>(null)
   let requestSequence = 0
 
   async function load(cursor: string | null, targetIndex: number): Promise<boolean> {
     const requestId = ++requestSequence
     loading.value = true
     error.value = null
+    errorStatus.value = null
     try {
       const page = await fetchPage({ cursor, limit: pageSize })
       if (requestId !== requestSequence) return false
@@ -50,6 +53,7 @@ export function useCursorPagination<T>(
       if (requestId !== requestSequence) return false
       const message = apiErrorMessage(cause, options.errorMessage ?? '列表读取失败。')
       error.value = message
+      errorStatus.value = apiProblemStatus(cause) ?? null
       options.onError?.(message)
       return false
     } finally {
@@ -84,6 +88,7 @@ export function useCursorPagination<T>(
     canNext: computed(() => !loading.value && Boolean(nextCursor.value)),
     loading,
     error,
+    errorStatus,
     first,
     next,
     previous,

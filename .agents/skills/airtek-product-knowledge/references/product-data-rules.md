@@ -12,7 +12,7 @@ Use this order for a specific model:
 4. Family-level company deck for broad capability context only.
 5. Demo HTML for interaction reference only; never for facts.
 
-No validated Product Master or controlled per-model datasheets are currently present in the repository. Therefore exact SKU specifications are not yet safe to publish from the supplied files.
+On 2026-09-02 the owner explicitly approved the CSV registered as `Product Master CSV e3b944d5…` in the knowledge-governance source register as the validated Product Master for the initial database import. Exact SKU values are publishable only from the audited database source snapshot with that full checksum and the approved `airtek-basic-v1` mapping—not from copied CSV fragments, demos, or family-level material. A future source with a different checksum must enter staging and be approved independently.
 
 ## Family-level reported ranges
 
@@ -71,4 +71,4 @@ The two demos assign model `B23E280H128-102-B0` different values:
 - Selector demo: 3,800 m³/h, 900 Pa, 350 W (`docs/Plan & Solution/SelectionToolDemo.html`, lines 1769–1775).
 - Product-detail demo: 3,290 m³/h, 715 Pa, 0.75 kW (`docs/Plan & Solution/ProductDetailDemo.html`, model at line 741 and values at lines 807–833).
 
-Status: `CONFLICTED`. Use neither. The same rule applies to all other hard-coded demo products, curves, downloads, and match scores until authoritative records exist.
+Status: `DEPRECATED` as a live conflict after the 2026-09-02 owner decision. The validated Product Master source snapshot is authoritative for this model; both demo value sets remain prohibited. The same rule applies to every other hard-coded demo product, curve, download, and match score.

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import {
   Bell,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-vue-next'
 import BrandMark from '@/components/BrandMark.vue'
 import { navigation, quickActions } from '@/config/navigation'
+import { adminApi } from '@/services/adminApi'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 
@@ -21,6 +22,7 @@ const auth = useAuthStore()
 const ui = useUiStore()
 const route = useRoute()
 const router = useRouter()
+const navigationBadges = ref<Record<string, string>>({})
 
 const visibleNavigation = computed(() => navigation
   .map((group) => ({
@@ -31,6 +33,37 @@ const visibleNavigation = computed(() => navigation
 
 const pageTitle = computed(() => String(route.meta.title ?? '管理平台'))
 const userInitials = computed(() => auth.user?.displayName.slice(0, 2).toUpperCase() ?? 'AT')
+const visibleQuickActions = computed(() => quickActions.filter((action) => auth.hasPermission(action.permission)))
+
+async function loadNavigationBadges(): Promise<void> {
+  const badges: Record<string, string> = {}
+  const requests: Array<Promise<void>> = []
+
+  if (auth.hasPermission('integration.run')) {
+    requests.push(adminApi.listConflicts({ limit: 100 }).then((page) => {
+      if (page.items.length) badges['/integrations/feishu'] = `${page.items.length}${page.nextCursor ? '+' : ''}`
+    }))
+  }
+  if (auth.hasPermission('analytics.read') && auth.hasPermission('rfq.read')) {
+    requests.push(adminApi.analyticsSummary().then((summary) => {
+      if (summary.rfqCount) badges['/rfqs'] = String(summary.rfqCount)
+    }))
+  }
+  if (auth.hasPermission('operations.run')) {
+    requests.push(adminApi.listOperations({ limit: 100 }).then((page) => {
+      const active = page.items.filter((item) => item.status === 'queued' || item.status === 'running').length
+      if (active) badges['/operations'] = `${active}${page.nextCursor ? '+' : ''}`
+    }))
+  }
+  if (auth.hasPermission('content.read')) {
+    requests.push(adminApi.listNews({ limit: 100 }).then((page) => {
+      if (page.items.length) badges['/news'] = `${page.items.length}${page.nextCursor ? '+' : ''}`
+    }))
+  }
+
+  await Promise.allSettled(requests)
+  navigationBadges.value = badges
+}
 
 async function signOut(): Promise<void> {
   await auth.logout()
@@ -52,7 +85,10 @@ function handleKeydown(event: KeyboardEvent): void {
   }
 }
 
-onMounted(() => window.addEventListener('keydown', handleKeydown))
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+  void loadNavigationBadges()
+})
 onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 </script>
 
@@ -90,7 +126,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
           >
             <component :is="item.icon" :size="18" aria-hidden="true" />
             <span>{{ item.label }}</span>
-            <em v-if="item.badge">{{ item.badge }}</em>
+            <em v-if="navigationBadges[item.to]">{{ navigationBadges[item.to] }}</em>
           </RouterLink>
         </section>
       </nav>
@@ -132,7 +168,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
       <section class="command-panel" role="dialog" aria-modal="true" aria-label="快捷操作">
         <header><Search :size="20" /><input autofocus aria-label="搜索快捷操作" placeholder="搜索页面或操作…" /><kbd>Esc</kbd></header>
         <p>快捷操作</p>
-        <RouterLink v-for="action in quickActions" :key="action.to" :to="action.to" @click="ui.commandOpen = false">
+        <RouterLink v-for="action in visibleQuickActions" :key="action.to" :to="action.to" @click="ui.commandOpen = false">
           <span><component :is="action.icon" :size="18" /></span>{{ action.label }}<small>打开</small>
         </RouterLink>
       </section>

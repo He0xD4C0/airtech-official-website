@@ -2,7 +2,7 @@ import { createSSRApp, h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { describe, expect, it } from 'vitest'
 import type { ContentEntry } from '@airtek/contracts'
-import { resolvePublicRoute } from '@/content/routes'
+import { publicPageFixture } from '@/test/publicPageFixture'
 import PublishedContentPage from './PublishedContentPage.vue'
 
 function publishedArticle(attrs?: Record<string, unknown>): ContentEntry {
@@ -22,7 +22,7 @@ function publishedArticle(attrs?: Record<string, unknown>): ContentEntry {
 
 async function render(content: ContentEntry): Promise<string> {
   const page = {
-    ...resolvePublicRoute('/en/resources/articles/visible-metadata'),
+    ...publicPageFixture('/en/resources/articles/visible-metadata'),
     publishedContent: content, dataState: 'published' as const, indexable: true,
   }
   return renderToString(createSSRApp({ render: () => h(PublishedContentPage, { page }) }))

@@ -2,8 +2,10 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Check, Cookie, Copy, Globe2, KeyRound, LockKeyhole, LogOut, Save, Server, Settings, ShieldCheck, TimerReset } from 'lucide-vue-next'
+import DataStatePanel from '@/components/DataStatePanel.vue'
 import PageHeader from '@/components/PageHeader.vue'
-import { adminApi, mockApiEnabled, type AdminSession, type PlatformSettings, type TotpEnrollment, type UpdatePlatformSettings } from '@/services/adminApi'
+import { adminApi, type AdminSession, type PlatformSettings, type TotpEnrollment, type UpdatePlatformSettings } from '@/services/adminApi'
+import { apiErrorMessage, apiProblemStatus } from '@/services/cursorPagination'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import type { ApiProblem } from '@/types/domain'
@@ -14,17 +16,17 @@ const auth = useAuthStore()
 const ui = useUiStore()
 const accountSecurityOnly = route.name === 'account-security'
 const active = ref(accountSecurityOnly ? 'security' : String(route.params.section ?? 'general'))
-const consentMode = ref<'strict' | 'necessary'>('strict')
-const gaEnabled = ref(false)
-const retentionDays = ref(365)
-const deletionGraceDays = ref(30)
-const overrideDefaultDays = ref(30)
+const retentionDays = ref<number | null>(null)
+const deletionGraceDays = ref<number | null>(null)
+const overrideDefaultDays = ref<number | null>(null)
 const changeReason = ref('')
 const settingsRevision = ref(0)
 const settingsEtag = ref('')
 const loadedSettings = ref<PlatformSettings | null>(null)
 const settingsLoading = ref(false)
 const settingsSaving = ref(false)
+const settingsState = ref<'loading' | 'ready' | 'error' | 'forbidden'>(accountSecurityOnly ? 'ready' : 'loading')
+const settingsError = ref('')
 const enrollment = ref<TotpEnrollment | null>(null)
 const confirmationCode = ref('')
 const recoveryCodes = ref<string[]>([])
@@ -55,11 +57,21 @@ function applySettings(settings: PlatformSettings, etag: string): void {
 async function loadSettings(): Promise<void> {
   if (accountSecurityOnly) return
   settingsLoading.value = true
+  settingsState.value = 'loading'
+  settingsError.value = ''
+  loadedSettings.value = null
+  retentionDays.value = null
+  deletionGraceDays.value = null
+  overrideDefaultDays.value = null
+  settingsEtag.value = ''
   try {
     const result = await adminApi.getSettings()
     applySettings(result.settings, result.etag)
+    settingsState.value = 'ready'
   } catch (error) {
-    ui.toast('设置读取失败', problemMessage(error), 'danger')
+    settingsState.value = apiProblemStatus(error) === 403 ? 'forbidden' : 'error'
+    settingsError.value = apiErrorMessage(error, '请检查 Settings API 后重试。')
+    ui.toast('设置读取失败', settingsError.value, 'danger')
   } finally {
     settingsLoading.value = false
   }
@@ -67,13 +79,16 @@ async function loadSettings(): Promise<void> {
 
 async function save(): Promise<void> {
   const baseline = loadedSettings.value
-  if (!baseline) {
+  const retention = retentionDays.value
+  const deletionGrace = deletionGraceDays.value
+  const overrideDefault = overrideDefaultDays.value
+  if (!baseline || settingsState.value !== 'ready') {
     ui.toast('尚未读取设置', '请先等待设置载入后再保存。', 'warning')
     return
   }
-  if (!Number.isInteger(retentionDays.value) || retentionDays.value < 30 || retentionDays.value > 3650
-    || !Number.isInteger(deletionGraceDays.value) || deletionGraceDays.value < 1 || deletionGraceDays.value > 365
-    || !Number.isInteger(overrideDefaultDays.value) || overrideDefaultDays.value < 1 || overrideDefaultDays.value > 365) {
+  if (retention === null || !Number.isInteger(retention) || retention < 30 || retention > 3650
+    || deletionGrace === null || !Number.isInteger(deletionGrace) || deletionGrace < 1 || deletionGrace > 365
+    || overrideDefault === null || !Number.isInteger(overrideDefault) || overrideDefault < 1 || overrideDefault > 365) {
     ui.toast('设置值无效', '请按各字段标示的范围输入整数。', 'danger')
     return
   }
@@ -82,9 +97,9 @@ async function save(): Promise<void> {
     return
   }
   const payload: UpdatePlatformSettings = { reason: changeReason.value.trim() }
-  if (retentionDays.value !== baseline.rfqRetentionDays) payload.rfqRetentionDays = retentionDays.value
-  if (deletionGraceDays.value !== baseline.retentionDeletionGraceDays) payload.retentionDeletionGraceDays = deletionGraceDays.value
-  if (overrideDefaultDays.value !== baseline.temporaryOverrideDefaultDays) payload.temporaryOverrideDefaultDays = overrideDefaultDays.value
+  if (retention !== baseline.rfqRetentionDays) payload.rfqRetentionDays = retention
+  if (deletionGrace !== baseline.retentionDeletionGraceDays) payload.retentionDeletionGraceDays = deletionGrace
+  if (overrideDefault !== baseline.temporaryOverrideDefaultDays) payload.temporaryOverrideDefaultDays = overrideDefault
   if (Object.keys(payload).length === 1) {
     ui.toast('没有可保存的变更', '三个业务策略值均与当前 revision 相同。', 'info')
     return
@@ -111,7 +126,6 @@ function problemMessage(error: unknown): string {
 }
 
 async function loadSessions(): Promise<void> {
-  if (mockApiEnabled) return
   try {
     sessions.value = await adminApi.listSessions()
   } catch (error) {
@@ -196,21 +210,28 @@ void loadSettings()
 <template>
   <div class="page-stack">
     <PageHeader eyebrow="PLATFORM CONFIGURATION" :title="accountSecurityOnly ? '账号安全' : '系统设置'" :description="accountSecurityOnly ? '管理本账号的 TOTP、恢复码与活动会话。' : '管理平台级配置；敏感凭据只由后端 Secret Provider 引用，不回显原值。'">
-      <template #actions><button v-if="active === 'retention'" class="button button--primary" type="button" :disabled="settingsLoading || settingsSaving || !loadedSettings" @click="save"><Save :size="16" />{{ settingsSaving ? '保存中…' : '保存业务设置' }}</button></template>
+      <template #actions><button v-if="active === 'retention' && settingsState === 'ready'" class="button button--primary" type="button" :disabled="settingsLoading || settingsSaving || !loadedSettings" @click="save"><Save :size="16" />{{ settingsSaving ? '保存中…' : '保存业务设置' }}</button></template>
     </PageHeader>
 
-    <div class="demo-banner"><span>{{ mockApiEnabled ? '开发演示' : active === 'security' ? '实时身份服务' : '实时业务设置' }}</span><p>{{ mockApiEnabled ? '以下业务设置只验证界面流程，不写入生产配置。' : active === 'security' ? 'TOTP、恢复码与会话操作直接调用受认证、CSRF 保护且可审计的 API。' : `三个业务策略值由 Settings API 管理；当前 ${settingsEtag || 'revision 读取中'}。部署凭据与 origin 始终只读。` }}</p></div>
+    <div v-if="accountSecurityOnly || settingsState === 'ready'" class="status-banner"><span>{{ active === 'security' ? '实时身份服务' : '实时业务设置' }}</span><p>{{ active === 'security' ? 'TOTP、恢复码与会话操作直接调用受认证、CSRF 保护且可审计的 API。' : `三个业务策略值由 Settings API 管理；当前 ${settingsEtag}。部署凭据与 origin 始终只读。` }}</p></div>
 
     <section class="settings-layout">
       <nav class="settings-nav panel" aria-label="设置导航"><button v-for="tab in visibleTabs" :key="tab.id" type="button" :class="{ 'is-active': active === tab.id }" @click="active = tab.id"><component :is="tab.icon" :size="17" />{{ tab.label }}</button></nav>
 
-      <article class="panel settings-panel">
+      <DataStatePanel
+        v-if="!accountSecurityOnly && settingsState !== 'ready'"
+        :state="settingsState"
+        :description="settingsState === 'error' ? settingsError : ''"
+        @retry="loadSettings"
+      />
+
+      <article v-else class="panel settings-panel">
         <header><p class="eyebrow">CONFIGURATION</p><h2>{{ activeTitle }}</h2></header>
         <fieldset class="settings-form" :disabled="!accountSecurityOnly && (settingsLoading || settingsSaving)">
 
         <template v-if="active === 'general'">
           <div class="settings-section"><h3>站点身份</h3><p>名称与后台语言属于发布基线，不通过业务 Settings API 修改。</p><div class="form-grid"><label class="field"><span>管理平台名称</span><input value="AIRTEKPOWER 管理平台" readonly /></label><label class="field"><span>默认后台语言</span><input value="简体中文" readonly /></label></div></div>
-          <div class="settings-section"><h3>内容语言</h3><p>公开站首发为英文；publicLocale 会由 API 返回，但当前固定且不可变。</p><label class="toggle-row"><span><strong>English ({{ loadedSettings?.publicLocale ?? 'en' }})</strong><small>首发语言与唯一活动 locale · 只读</small></span><input type="checkbox" checked disabled /></label></div>
+          <div class="settings-section"><h3>内容语言</h3><p>公开站活动 locale 只显示 Settings API 返回值，不使用本地业务默认。</p><label class="toggle-row"><span><strong>{{ loadedSettings?.publicLocale || '未配置' }}</strong><small>服务端配置 · 只读</small></span><input type="checkbox" :checked="Boolean(loadedSettings?.publicLocale)" disabled /></label></div>
         </template>
 
         <template v-else-if="active === 'security'">
@@ -222,14 +243,14 @@ void loadSettings()
                 <span><strong>{{ session.current ? '当前会话' : '其他会话' }}</strong><small>最近活动 {{ formatTime(session.lastSeenAt) }} · 到期 {{ formatTime(session.expiresAt) }}</small></span>
                 <button class="button button--secondary" type="button" @click="revokeSession(session)"><LogOut :size="15" />撤销</button>
               </div>
-              <p v-if="!sessions.length" class="inline-note">{{ mockApiEnabled ? 'Mock 模式不创建真实会话。' : '没有可显示的活动会话。' }}</p>
+              <p v-if="!sessions.length" class="inline-note">没有可显示的活动会话。</p>
             </div>
           </div>
           <div class="settings-section">
             <h3>多因素验证</h3>
             <p>标准 TOTP 为 SHA-1、6 位、30 秒，并允许前后一个时间步。高风险数据库任务只接受当前 TOTP，不接受恢复码。</p>
             <div v-if="auth.user?.totpEnabled" class="settings-section--success security-status"><ShieldCheck :size="18" /><div><strong>TOTP 已启用</strong><p>登录可使用 TOTP；恢复码只能使用一次。</p></div></div>
-            <button v-else-if="!enrollment" class="button button--primary" type="button" :disabled="mockApiEnabled || securityLoading" @click="startEnrollment"><KeyRound :size="16" />开始绑定 TOTP</button>
+            <button v-else-if="!enrollment" class="button button--primary" type="button" :disabled="securityLoading" @click="startEnrollment"><KeyRound :size="16" />开始绑定 TOTP</button>
             <div v-if="enrollment" class="security-enrollment">
               <label class="field"><span>验证器密钥</span><input :value="enrollment.secret" readonly autocomplete="off" /></label>
               <label class="field"><span>OTPAuth URI</span><textarea :value="enrollment.otpAuthUri" readonly rows="3" autocomplete="off" /></label>
@@ -249,8 +270,8 @@ void loadSettings()
         </template>
 
         <template v-else-if="active === 'consent'">
-          <div class="settings-section"><h3>生产 Consent 模式</h3><p>生产环境固定为严格 opt-in。该部署策略只读，不属于业务 Settings API。</p><div class="choice-cards"><label :class="{ 'is-active': consentMode === 'strict' }"><input v-model="consentMode" type="radio" value="strict" disabled /><span><ShieldCheck :size="18" /><strong>严格 opt-in</strong><small>行为事件与 GA4 等待同意 · 只读</small></span></label><label :class="{ 'is-active': consentMode === 'necessary' }"><input v-model="consentMode" type="radio" value="necessary" disabled /><span><Cookie :size="18" /><strong>仅必要数据</strong><small>停止全部非必要分析</small></span></label></div></div>
-          <div class="settings-section"><h3>Google Analytics 4</h3><p>启用状态、Measurement ID 与 provider 凭据由部署环境或 Secret Provider 注入，后台不回显也不可写。</p><label class="toggle-row"><span><strong>部署级配置</strong><small>只读；当前界面不推断 Secret 是否存在</small></span><input v-model="gaEnabled" type="checkbox" disabled /></label></div>
+          <div class="settings-section"><h3>生产 Consent 模式</h3><p>生产配置要求严格 opt-in；当前接口未返回运行时 Consent 状态，因此本页不显示推测的开关值。</p><div class="settings-section--success security-status"><ShieldCheck :size="18" /><div><strong>部署规则</strong><p>行为事件与 GA4 必须等待用户同意。</p></div></div></div>
+          <div class="settings-section"><h3>Google Analytics 4</h3><p>启用状态、Measurement ID 与 provider 凭据由部署环境或 Secret Provider 注入，后台不回显也不可写。</p><div class="inline-note"><Cookie :size="16" />当前界面不推断 Secret 是否存在或 GA4 是否启用。</div></div>
           <div class="settings-section settings-section--success"><Check :size="18" /><div><strong>PII 白名单规则已启用</strong><p>姓名、邮箱、电话、表单正文与文件名不能进入 Analytics 属性。</p></div></div>
         </template>
 

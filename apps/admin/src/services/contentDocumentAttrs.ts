@@ -74,7 +74,10 @@ export function safePublicDownloadUrl(value: unknown): string | undefined {
       const parsed = new URL(trimmed, 'https://public.airtek.invalid')
       if (parsed.origin !== 'https://public.airtek.invalid') return undefined
       const decodedPath = decodeURIComponent(parsed.pathname)
-      if (/^\/(?:admin|api\/admin|api\/devtools)(?:\/|$)/u.test(decodedPath)) return undefined
+      const [, rootNamespace, apiNamespace] = decodedPath.split('/')
+      if (rootNamespace === 'admin' || (rootNamespace === 'api' && apiNamespace !== 'public')) {
+        return undefined
+      }
       return `${parsed.pathname}${parsed.search}${parsed.hash}`
     } catch {
       return undefined

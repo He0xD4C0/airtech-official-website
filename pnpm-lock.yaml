@@ -26,6 +26,9 @@ importers:
 
   apps/admin:
     dependencies:
+      '@airtek/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@airtek/ui':
         specifier: workspace:*
         version: link:../../packages/ui

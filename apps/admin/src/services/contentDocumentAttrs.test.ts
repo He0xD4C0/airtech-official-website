@@ -50,6 +50,7 @@ describe('content document root attributes', () => {
     '/admin/export.pdf',
     '/api/admin/v1/media/file.pdf',
     '/api/devtools/v1/file',
+    '/api/internal/file.pdf',
     '/%61dmin/export.pdf',
   ])('rejects an unsafe download URL: %s', (url) => {
     expect(safePublicDownloadUrl(url)).toBeUndefined()
@@ -57,6 +58,7 @@ describe('content document root attributes', () => {
 
   it('accepts only the two public URL forms', () => {
     expect(safePublicDownloadUrl('/media/public/file.pdf#v2')).toBe('/media/public/file.pdf#v2')
+    expect(safePublicDownloadUrl('/api/public/v1/downloads/file.pdf')).toBe('/api/public/v1/downloads/file.pdf')
     expect(safePublicDownloadUrl('https://downloads.example/file.pdf')).toBe('https://downloads.example/file.pdf')
   })
 

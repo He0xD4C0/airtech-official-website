@@ -32,6 +32,12 @@ export function withPublicSecurityHeaders(response: Response, pathname = ''): Re
     headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive')
     headers.set('Referrer-Policy', 'no-referrer')
   }
+  if (response.status >= 500) {
+    headers.set('Cache-Control', 'no-store, max-age=0')
+    headers.set('Pragma', 'no-cache')
+    headers.set('Retry-After', '60')
+    headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive')
+  }
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,

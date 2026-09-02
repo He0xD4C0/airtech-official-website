@@ -2,29 +2,22 @@
 import { computed, onMounted, ref } from 'vue'
 import { BookOpenText, ChevronDown, FilePlus2, Filter, MoreHorizontal, Search, SlidersHorizontal } from 'lucide-vue-next'
 import CursorPaginationControls from '@/components/CursorPaginationControls.vue'
+import DataStatePanel from '@/components/DataStatePanel.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useCursorPagination } from '@/composables/useCursorPagination'
-import { adminApi, mockApiEnabled } from '@/services/adminApi'
+import { adminApi } from '@/services/adminApi'
+import { isGenericContentKind } from '@/services/contentManagement'
 import type { ContentEntry } from '@/types/domain'
 
 const query = ref('')
 const status = ref('all')
 
-const demoEntries: ContentEntry[] = [
-  { id: 'home', type: 'Home', title: 'Homepage', locale: 'EN', status: 'draft', updatedAt: '今天 09:42', updatedBy: 'Demo Editor', isPlaceholder: true },
-  { id: 'products', type: 'Index', title: 'Products', locale: 'EN', status: 'draft', updatedAt: '昨天 17:08', updatedBy: 'Demo Editor', isPlaceholder: true },
-  { id: 'solutions', type: 'Index', title: 'Solutions', locale: 'EN', status: 'scheduled', updatedAt: '昨天 15:21', updatedBy: 'Demo Publisher', isPlaceholder: true },
-  { id: 'technology', type: 'Index', title: 'Technology', locale: 'EN', status: 'draft', updatedAt: '8 月 29 日', updatedBy: 'Demo Editor', isPlaceholder: true },
-  { id: 'about', type: 'Company', title: 'About AIRTEKPOWER', locale: 'EN', status: 'draft', updatedAt: '8 月 28 日', updatedBy: 'Demo Editor', isPlaceholder: true },
-  { id: 'contact', type: 'Company', title: 'Contact', locale: 'EN', status: 'archived', updatedAt: '8 月 26 日', updatedBy: 'Demo Publisher', isPlaceholder: true },
-]
-
 const contentPager = useCursorPagination(async (pagination) => {
   const page = await adminApi.listContent(pagination)
   return {
     ...page,
-    items: page.items.map((entry): ContentEntry => ({
+    items: page.items.filter((entry) => isGenericContentKind(entry.kind)).map((entry): ContentEntry => ({
       id: entry.id,
       type: entry.kind,
       title: entry.title,
@@ -40,7 +33,13 @@ const contentPager = useCursorPagination(async (pagination) => {
   errorMessage: '无法读取内容记录。',
 })
 const loadError = computed(() => contentPager.error.value ?? '')
-const entries = computed(() => mockApiEnabled ? demoEntries : contentPager.items.value)
+const entries = computed(() => contentPager.items.value)
+const dataState = computed<'loading' | 'ready' | 'empty' | 'error' | 'forbidden'>(() => {
+  if (contentPager.loading.value && !entries.value.length) return 'loading'
+  if (contentPager.errorStatus.value === 403) return 'forbidden'
+  if (contentPager.error.value) return 'error'
+  return entries.value.length ? 'ready' : 'empty'
+})
 
 const filteredEntries = computed(() => entries.value.filter((entry) => {
   const matchesQuery = `${entry.title} ${entry.type}`.toLowerCase().includes(query.value.toLowerCase())
@@ -57,7 +56,6 @@ const typeCounts = computed(() => ({
 }))
 
 onMounted(async () => {
-  if (mockApiEnabled) return
   await contentPager.first()
 })
 
@@ -78,9 +76,7 @@ const badge = (entryStatus: ContentEntry['status']) => ({
       </template>
     </PageHeader>
 
-    <div v-if="loadError" class="demo-banner"><span>API 错误</span><p>{{ loadError }}</p></div>
-
-    <section class="content-type-strip" aria-label="内容类型">
+    <section v-if="dataState === 'ready'" class="content-type-strip" aria-label="内容类型">
       <button class="is-active" type="button"><BookOpenText :size="17" /><span>全部内容<strong>{{ typeCounts.all }}</strong></span></button>
       <button type="button"><span>页面<strong>{{ typeCounts.pages }}</strong></span></button>
       <button type="button"><span>Articles<strong>{{ typeCounts.articles }}</strong></span></button>
@@ -89,7 +85,14 @@ const badge = (entryStatus: ContentEntry['status']) => ({
       <button type="button"><span>Downloads<strong>{{ typeCounts.downloads }}</strong></span></button>
     </section>
 
-    <section class="panel table-panel">
+    <DataStatePanel
+      v-if="dataState !== 'ready'"
+      :state="dataState"
+      :title="dataState === 'empty' ? '数据库中暂无内容记录' : dataState === 'error' ? loadError : ''"
+      @retry="contentPager.refresh"
+    />
+
+    <section v-else class="panel table-panel">
       <div class="table-toolbar">
         <label class="search-field"><Search :size="17" /><input v-model="query" placeholder="搜索标题或类型" /></label>
         <div class="table-toolbar__filters">
@@ -117,10 +120,10 @@ const badge = (entryStatus: ContentEntry['status']) => ({
       <CursorPaginationControls
         :item-count="filteredEntries.length"
         :page-number="contentPager.pageNumber.value"
-        :can-previous="!mockApiEnabled && contentPager.canPrevious.value"
-        :can-next="!mockApiEnabled && contentPager.canNext.value"
+        :can-previous="contentPager.canPrevious.value"
+        :can-next="contentPager.canNext.value"
         :loading="contentPager.loading.value"
-        :label="mockApiEnabled ? '条开发演示记录' : '条数据库记录（筛选作用于当前页）'"
+        label="条数据库记录（筛选作用于当前页）"
         @previous="contentPager.previous"
         @next="contentPager.next"
       />

@@ -5,6 +5,7 @@ import type { Product } from '@airtek/contracts'
 import { getPublishedProduct } from '@/lib/api'
 import { useCompareStore } from '@/stores/compare'
 import DataNotice from '@/components/common/DataNotice.vue'
+import type { ProductFamilyProjection } from '@/types/content'
 
 interface ComparisonRow {
   key: string
@@ -12,6 +13,15 @@ interface ComparisonRow {
   values: string[]
   different: boolean
 }
+
+interface ProductLookup {
+  slug: string
+  family?: Product['family']
+}
+
+const validProductFamilies = new Set<Product['family']>(['centrifugal', 'axial', 'crossFlow', 'inlineDuct', 'motors'])
+
+const props = defineProps<{ productFamilies: ProductFamilyProjection[] }>()
 
 const compare = useCompareStore()
 const { items } = storeToRefs(compare)
@@ -21,12 +31,8 @@ const loadError = ref('')
 const shareStatus = ref('')
 const hydrating = ref(true)
 
-const familyLabels: Record<Product['family'], string> = {
-  centrifugal: 'Centrifugal',
-  axial: 'Axial',
-  crossFlow: 'Cross-flow',
-  inlineDuct: 'Inline duct',
-  motors: 'Motors',
+function familyLabel(code: Product['family']): string {
+  return props.productFamilies.find((family) => family.code === code)?.name ?? '—'
 }
 
 const displayedProducts = computed(() => items.value.flatMap((item) => {
@@ -57,7 +63,7 @@ const rows = computed<ComparisonRow[]>(() => {
   const base = [
     row('stableId', 'Stable ID', selected.map((product) => product.stableId)),
     row('model', 'Model', selected.map((product) => product.model || 'Not published')),
-    row('family', 'Fan form', selected.map((product) => familyLabels[product.family])),
+    row('family', 'Fan form', selected.map((product) => familyLabel(product.family))),
     row('motorTechnology', 'Motor technology', selected.map((product) => product.motorTechnology || 'Not published')),
     row('revision', 'Published revision', selected.map((product) => String(product.publishedRevision))),
     row('curve', 'Verified PQ curve', selected.map((product) => {
@@ -75,22 +81,34 @@ const rows = computed<ComparisonRow[]>(() => {
   return [...base, ...specificationRows]
 })
 
-function sharedSlugs(): string[] {
+function sharedProductLookups(): ProductLookup[] {
   const raw = new URL(window.location.href).searchParams.get('products') || ''
   if (raw.length > 800) return []
-  return [...new Set(raw.split(',').filter((slug) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(slug)))].slice(0, 4)
+  const seen = new Set<string>()
+  return raw.split(',').flatMap((token): ProductLookup[] => {
+    const [familyValue, familySlug, extra] = token.split('~')
+    const family = familySlug && !extra && validProductFamilies.has(familyValue as Product['family'])
+      ? familyValue as Product['family']
+      : undefined
+    const slug = family ? familySlug : (familySlug === undefined ? familyValue : undefined)
+    if (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(slug)) return []
+    const key = `${family ?? ''}:${slug}`
+    if (seen.has(key)) return []
+    seen.add(key)
+    return [{ slug, family }]
+  }).slice(0, 4)
 }
 
 function syncUrl(): void {
   const url = new URL(window.location.href)
-  const slugs = items.value.map((item) => item.slug).slice(0, 4)
-  if (slugs.length) url.searchParams.set('products', slugs.join(','))
+  const productKeys = items.value.map((item) => item.familyCode ? `${item.familyCode}~${item.slug}` : item.slug).slice(0, 4)
+  if (productKeys.length) url.searchParams.set('products', productKeys.join(','))
   else url.searchParams.delete('products')
   window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
 }
 
-async function fetchProducts(slugs: string[]): Promise<Product[]> {
-  const settled = await Promise.allSettled(slugs.map((slug) => getPublishedProduct(slug)))
+async function fetchProducts(lookups: ProductLookup[]): Promise<Product[]> {
+  const settled = await Promise.allSettled(lookups.map(({ slug, family }) => getPublishedProduct(slug, family)))
   const rejected = settled.filter((result) => result.status === 'rejected').length
   loadError.value = rejected ? `${rejected} selected published record${rejected === 1 ? '' : 's'} could not be loaded.` : ''
   return settled.flatMap((result) => result.status === 'fulfilled' ? [result.value] : [])
@@ -98,29 +116,30 @@ async function fetchProducts(slugs: string[]): Promise<Product[]> {
 
 async function loadSelected(): Promise<void> {
   loading.value = true
-  products.value = await fetchProducts(items.value.map((item) => item.slug))
+  products.value = await fetchProducts(items.value.map((item) => ({ slug: item.slug, family: item.familyCode })))
   loading.value = false
 }
 
 async function initialize(): Promise<void> {
   compare.hydrate()
-  const urlSlugs = sharedSlugs()
-  if (urlSlugs.length) {
+  const sharedLookups = sharedProductLookups()
+  if (sharedLookups.length) {
     compare.clear()
-    const sharedProducts = await fetchProducts(urlSlugs)
+    const sharedProducts = await fetchProducts(sharedLookups)
     for (const product of sharedProducts) {
       compare.add({
         id: product.id,
         slug: product.slug,
         label: product.title,
-        family: familyLabels[product.family],
+        family: familyLabel(product.family),
+        familyCode: product.family,
         dataState: 'published',
         publishedRevision: product.publishedRevision ?? undefined,
       })
     }
     products.value = sharedProducts
   } else {
-    products.value = await fetchProducts(items.value.map((item) => item.slug))
+    products.value = await fetchProducts(items.value.map((item) => ({ slug: item.slug, family: item.familyCode })))
   }
   hydrating.value = false
   loading.value = false
@@ -159,7 +178,7 @@ function printComparison(): void {
 }
 
 watch(
-  () => items.value.map((item) => `${item.id}:${item.slug}:${item.publishedRevision ?? ''}`).join('|'),
+  () => items.value.map((item) => `${item.id}:${item.familyCode ?? ''}:${item.slug}:${item.publishedRevision ?? ''}`).join('|'),
   () => {
     if (hydrating.value) return
     syncUrl()

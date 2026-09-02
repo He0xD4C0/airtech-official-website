@@ -1,15 +1,26 @@
+import type { ProductFamily } from '@airtek/contracts'
 import type { PageContextServer } from 'vike/types'
-import { resolvePublicRoute } from '@/content/routes'
-import { loadPublishedProjection } from '@/lib/server/publicProjection'
+import { render } from 'vike/abort'
+import { loadPublicPageData, PublicPageDataError } from '@/lib/server/publicPageData'
 import { normalizePublicOrigin } from '@/lib/publicOrigin'
 
 export async function data(pageContext: PageContextServer) {
-  const route = resolvePublicRoute(pageContext.urlPathname)
-  return {
-    page: await loadPublishedProjection(route, {
+  try {
+    const productFamily = pageContext.urlParsed.search.family
+    const supportedFamilies: ProductFamily[] = ['centrifugal', 'axial', 'crossFlow', 'inlineDuct', 'motors']
+    const projection = await loadPublicPageData(pageContext.urlPathname, {
       productSlug: pageContext.urlParsed.search.product,
-    }),
-    publicOrigin: normalizePublicOrigin(process.env.PUBLIC_ORIGIN || import.meta.env.VITE_PUBLIC_ORIGIN),
+      productFamily: supportedFamilies.find((family) => family === productFamily),
+    })
+    return {
+      ...projection,
+      publicOrigin: normalizePublicOrigin(process.env.PUBLIC_ORIGIN || import.meta.env.VITE_PUBLIC_ORIGIN),
+    }
+  } catch (cause) {
+    if (cause instanceof PublicPageDataError) {
+      throw render(cause.status, cause.message)
+    }
+    throw render(503, 'The public site projection is temporarily unavailable.')
   }
 }
 

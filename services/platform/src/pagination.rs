@@ -1,4 +1,5 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -17,10 +18,41 @@ pub struct CursorQuery {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Cursor {
+struct ScopedCursor<T> {
     version: u8,
     scope: String,
-    after_id: Uuid,
+    position: T,
+}
+
+pub fn cursor_limit(query: &CursorQuery) -> Result<usize, ApiError> {
+    let limit = query.limit.unwrap_or(DEFAULT_LIMIT);
+    if !(1..=MAX_LIMIT).contains(&limit) {
+        return Err(ApiError::bad_request("limit must be between 1 and 100."));
+    }
+    Ok(limit)
+}
+
+pub fn encode_scoped_cursor<T: Serialize>(scope: &str, position: &T) -> Result<String, ApiError> {
+    serde_json::to_vec(&ScopedCursor {
+        version: 1,
+        scope: scope.into(),
+        position,
+    })
+    .map(|value| URL_SAFE_NO_PAD.encode(value))
+    .map_err(|_| ApiError::internal("Cursor serialization failed."))
+}
+
+pub fn decode_scoped_cursor<T: DeserializeOwned>(scope: &str, value: &str) -> Result<T, ApiError> {
+    if value.is_empty() || value.len() > MAX_CURSOR_BYTES {
+        return Err(ApiError::bad_request("cursor is invalid."));
+    }
+    URL_SAFE_NO_PAD
+        .decode(value)
+        .ok()
+        .and_then(|value| serde_json::from_slice::<ScopedCursor<T>>(&value).ok())
+        .filter(|cursor| cursor.version == 1 && cursor.scope == scope)
+        .map(|cursor| cursor.position)
+        .ok_or_else(|| ApiError::bad_request("cursor is invalid or belongs to another list."))
 }
 
 pub fn paginate_by_id<T>(
@@ -29,12 +61,9 @@ pub fn paginate_by_id<T>(
     query: CursorQuery,
     id: impl Fn(&T) -> Uuid,
 ) -> Result<CursorPage<T>, ApiError> {
-    let limit = query.limit.unwrap_or(DEFAULT_LIMIT);
-    if !(1..=MAX_LIMIT).contains(&limit) {
-        return Err(ApiError::bad_request("limit must be between 1 and 100."));
-    }
+    let limit = cursor_limit(&query)?;
     let start = if let Some(value) = query.cursor.as_deref() {
-        let after_id = decode_cursor(scope, value)?;
+        let after_id = decode_scoped_cursor::<Uuid>(scope, value)?;
         values
             .iter()
             .position(|item| id(item) == after_id)
@@ -49,35 +78,12 @@ pub fn paginate_by_id<T>(
     let next_cursor = if has_more {
         items
             .last()
-            .map(|item| encode_cursor(scope, id(item)))
+            .map(|item| encode_scoped_cursor(scope, &id(item)))
             .transpose()?
     } else {
         None
     };
     Ok(CursorPage { items, next_cursor })
-}
-
-fn encode_cursor(scope: &str, after_id: Uuid) -> Result<String, ApiError> {
-    serde_json::to_vec(&Cursor {
-        version: 1,
-        scope: scope.into(),
-        after_id,
-    })
-    .map(|value| URL_SAFE_NO_PAD.encode(value))
-    .map_err(|_| ApiError::internal("Cursor serialization failed."))
-}
-
-fn decode_cursor(scope: &str, value: &str) -> Result<Uuid, ApiError> {
-    if value.is_empty() || value.len() > MAX_CURSOR_BYTES {
-        return Err(ApiError::bad_request("cursor is invalid."));
-    }
-    URL_SAFE_NO_PAD
-        .decode(value)
-        .ok()
-        .and_then(|value| serde_json::from_slice::<Cursor>(&value).ok())
-        .filter(|cursor| cursor.version == 1 && cursor.scope == scope)
-        .map(|cursor| cursor.after_id)
-        .ok_or_else(|| ApiError::bad_request("cursor is invalid or belongs to another list."))
 }
 
 #[cfg(test)]
@@ -144,6 +150,30 @@ mod tests {
                 limit: Some(0),
             },
             |value| *value,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn generic_cursor_round_trips_keysets_and_rejects_changed_scope() {
+        #[derive(Debug, PartialEq, Serialize, Deserialize)]
+        struct Position {
+            date: String,
+            hash: String,
+        }
+
+        let position = Position {
+            date: "2026-09-02".into(),
+            hash: "opaque-dimension-hash".into(),
+        };
+        let cursor = encode_scoped_cursor("analytics|from=*|to=*", &position).unwrap();
+        assert_eq!(
+            decode_scoped_cursor::<Position>("analytics|from=*|to=*", &cursor).unwrap(),
+            position
+        );
+        assert!(decode_scoped_cursor::<Position>(
+            "analytics|from=2026-09-01T00:00:00Z|to=*",
+            &cursor
         )
         .is_err());
     }

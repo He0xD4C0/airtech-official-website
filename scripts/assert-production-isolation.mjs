@@ -15,6 +15,14 @@ const adminMockRecordMarkers = [
   'demo@localhost.invalid',
   'demo organization',
 ]
+const adminDevtoolsBundleMarkers = [
+  '/api/devtools',
+  'devtools.shell',
+  '/developer-tools',
+  'terminal-shell',
+  'airtekctl',
+  'xterm',
+]
 
 function walk(directory) {
   if (!existsSync(directory)) return []
@@ -37,8 +45,8 @@ for (const path of walk(adminDist)) {
     failures.push(`Admin bundle exposes a webmaster verification file: ${name}`)
   }
   if (/\.(?:js|mjs|cjs|css|html|json|map|txt)$/u.test(path)) {
-    const body = readFileSync(path, 'utf8').toLowerCase()
-    if (body.includes('/api/devtools') || body.includes('devtools.shell') || body.includes('xterm')) {
+    const body = readFileSync(path, 'utf8').toLowerCase().replaceAll('\\/', '/')
+    if (adminDevtoolsBundleMarkers.some((marker) => body.includes(marker))) {
       failures.push(`Admin production bundle contains a DevTools marker: ${name}`)
     }
     if (adminMockRecordMarkers.some((marker) => body.includes(marker))) {

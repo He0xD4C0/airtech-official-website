@@ -1,9 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { adminApi, mockApiEnabled } from '@/services/adminApi'
+import { adminApi } from '@/services/adminApi'
 import type { Permission, SessionUser } from '@/types/domain'
-
-const DEMO_SESSION_KEY = 'airtek.admin.demo-session'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<SessionUser | null>(null)
@@ -12,6 +10,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => Boolean(user.value))
   const isDevelopment = computed(() => user.value?.environment === 'development')
+  const requiresTotpEnrollment = computed(() => Boolean(user.value && !user.value.totpEnabled))
 
   function hasPermission(permission?: Permission): boolean {
     if (!permission) return true
@@ -22,11 +21,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (initialized.value) return
     loading.value = true
     try {
-      if (mockApiEnabled && sessionStorage.getItem(DEMO_SESSION_KEY) === 'active') {
-        user.value = await adminApi.login('demo@localhost.invalid', 'development-only')
-      } else {
-        user.value = await adminApi.session()
-      }
+      user.value = await adminApi.session()
     } finally {
       initialized.value = true
       loading.value = false
@@ -37,7 +32,6 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     try {
       user.value = await adminApi.login(email, password, otp)
-      if (mockApiEnabled) sessionStorage.setItem(DEMO_SESSION_KEY, 'active')
     } finally {
       loading.value = false
     }
@@ -51,7 +45,6 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     try {
       user.value = await adminApi.setup(displayName, email, password, bootstrapToken)
-      if (mockApiEnabled) sessionStorage.setItem(DEMO_SESSION_KEY, 'active')
     } finally {
       loading.value = false
     }
@@ -60,7 +53,6 @@ export const useAuthStore = defineStore('auth', () => {
   async function logout(): Promise<void> {
     await adminApi.logout()
     user.value = null
-    sessionStorage.removeItem(DEMO_SESSION_KEY)
   }
 
   return {
@@ -69,6 +61,7 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     isAuthenticated,
     isDevelopment,
+    requiresTotpEnrollment,
     hasPermission,
     initialize,
     refresh,

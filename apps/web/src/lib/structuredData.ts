@@ -1,6 +1,6 @@
 import { canonicalUrl, isIndexablePage } from '@/lib/seo'
 import { extractPublishedArticleMetadata, extractPublishedFaqContent } from '@/lib/publishedContent'
-import type { PublicPageModel } from '@/types/content'
+import type { PublicPageModel, PublicSiteBootstrap } from '@/types/content'
 
 type SchemaNode = Record<string, unknown>
 
@@ -17,7 +17,7 @@ function breadcrumbSchema(page: PublicPageModel, origin: string): SchemaNode | u
   }
 }
 
-function faqPageSchema(page: PublicPageModel, origin: string): SchemaNode | undefined {
+function faqPageSchema(page: PublicPageModel, origin: string, hasSite: boolean): SchemaNode | undefined {
   const content = page.publishedContent
   if (page.kind !== 'faq'
     || page.dataState !== 'published'
@@ -31,10 +31,10 @@ function faqPageSchema(page: PublicPageModel, origin: string): SchemaNode | unde
   return {
     '@type': 'FAQPage',
     name: page.title,
-    description: page.description,
+    ...(page.description ? { description: page.description } : {}),
     url: canonicalUrl(origin, page),
     inLanguage: content.locale,
-    isPartOf: { '@id': `${origin}/#website` },
+    ...(hasSite ? { isPartOf: { '@id': `${origin}/#website` } } : {}),
     mainEntity: faq.items.map((item) => ({
       '@type': 'Question',
       name: item.question,
@@ -46,23 +46,24 @@ function faqPageSchema(page: PublicPageModel, origin: string): SchemaNode | unde
   }
 }
 
-function entitySchema(page: PublicPageModel, origin: string): SchemaNode {
+function entitySchema(page: PublicPageModel, origin: string, hasSite: boolean): SchemaNode {
   const canonical = canonicalUrl(origin, page)
   const product = page.publishedProduct
   if (product) {
+    const description = product.summary?.trim() || page.description
     return {
       '@type': 'Product',
       name: product.title,
-      description: product.summary || page.description,
+      ...(description ? { description } : {}),
       productID: product.stableId,
       ...(product.model ? { sku: product.model } : {}),
       category: product.family,
-      brand: { '@id': `${origin}/#organization` },
+      ...(hasSite ? { brand: { '@id': `${origin}/#organization` } } : {}),
       url: canonical,
     }
   }
 
-  const faq = faqPageSchema(page, origin)
+  const faq = faqPageSchema(page, origin, hasSite)
   if (faq) return faq
 
   const content = page.publishedContent
@@ -71,7 +72,7 @@ function entitySchema(page: PublicPageModel, origin: string): SchemaNode {
     return {
       '@type': 'Article',
       headline: content.title,
-      description: content.summary || page.description,
+      ...((content.summary?.trim() || page.description) ? { description: content.summary?.trim() || page.description } : {}),
       inLanguage: content.locale,
       dateModified: content.updatedAt,
       ...(metadata.publishedAt ? { datePublished: metadata.publishedAt } : {}),
@@ -79,7 +80,7 @@ function entitySchema(page: PublicPageModel, origin: string): SchemaNode {
       ...(metadata.author && metadata.authorType ? {
         author: { '@type': metadata.authorType, name: metadata.author },
       } : {}),
-      publisher: { '@id': `${origin}/#organization` },
+      ...(hasSite ? { publisher: { '@id': `${origin}/#organization` } } : {}),
       mainEntityOfPage: canonical,
     }
   }
@@ -87,34 +88,40 @@ function entitySchema(page: PublicPageModel, origin: string): SchemaNode {
   return {
     '@type': 'WebPage',
     name: page.title,
-    description: page.description,
+    ...(page.description ? { description: page.description } : {}),
     url: canonical,
     inLanguage: 'en',
-    isPartOf: { '@id': `${origin}/#website` },
+    ...(hasSite ? { isPartOf: { '@id': `${origin}/#website` } } : {}),
   }
 }
 
-export function buildPublicStructuredData(page: PublicPageModel, origin: string): SchemaNode {
+export function buildPublicStructuredData(page: PublicPageModel, origin: string, site?: PublicSiteBootstrap): SchemaNode {
   const breadcrumb = breadcrumbSchema(page, origin)
+  const organizationUrl = site?.organization.url
+    ? (site.organization.url.startsWith('/') ? `${origin}${site.organization.url}` : site.organization.url)
+    : (site ? `${origin}${site.homePath}` : undefined)
+  const organizationLogo = site?.organization.logoUrl
+    ? (site.organization.logoUrl.startsWith('/') ? `${origin}${site.organization.logoUrl}` : site.organization.logoUrl)
+    : undefined
   return {
     '@context': 'https://schema.org',
     '@graph': [
-      {
+      ...(site ? [{
         '@type': 'Organization',
         '@id': `${origin}/#organization`,
-        name: 'AIRTEKPOWER',
-        url: `${origin}/en`,
-      },
-      {
+        name: site.organization.name,
+        ...(organizationUrl ? { url: organizationUrl } : {}),
+        ...(organizationLogo ? { logo: organizationLogo } : {}),
+      }, {
         '@type': 'WebSite',
         '@id': `${origin}/#website`,
-        name: 'AIRTEKPOWER',
-        url: `${origin}/en`,
+        name: site.brandName,
+        url: `${origin}${site.homePath}`,
         inLanguage: 'en',
         publisher: { '@id': `${origin}/#organization` },
-      },
+      }] : []),
       ...(breadcrumb ? [breadcrumb] : []),
-      entitySchema(page, origin),
+      entitySchema(page, origin, Boolean(site)),
     ],
   }
 }

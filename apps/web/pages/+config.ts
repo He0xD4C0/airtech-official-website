@@ -3,7 +3,7 @@ import type { Config } from 'vike/types'
 
 export default {
   extends: [vikeVue],
-  title: 'AIRTEKPOWER | Industrial Airflow Engineering',
-  description: 'Product discovery and engineering resources built around verified industrial airflow data.',
+  title: 'Public website',
+  description: 'Public website',
   lang: 'en',
 } satisfies Config

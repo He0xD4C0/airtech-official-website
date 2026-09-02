@@ -11,6 +11,7 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::{
@@ -43,6 +44,7 @@ pub fn router() -> Router<AppState> {
         .route("/rfqs", post(create_rfq))
         .route("/analytics/consents", post(create_analytics_consent))
         .route("/analytics/events", post(create_analytics_event))
+        .merge(super::public_data::router())
 }
 
 pub const ANALYTICS_POLICY_VERSION: &str = "analytics-v1";
@@ -93,6 +95,15 @@ async fn load_content_preview(
         }
         Err(PreviewTokenError::Invalid) => return Err(content_preview_not_found()),
     };
+    if !crate::auth::preview_session_is_authorized(
+        state,
+        verified.admin_user_id,
+        verified.admin_session_id,
+    )
+    .await?
+    {
+        return Err(content_preview_not_found());
+    }
     let content = state
         .load_content_revision(verified.content_id, verified.revision)
         .await?
@@ -129,10 +140,81 @@ struct DiscoveryEntry {
     updated_at: chrono::DateTime<Utc>,
 }
 
-async fn discovery(State(state): State<AppState>) -> Json<DiscoveryDocument> {
-    let data = state.data.read().await;
+async fn discovery(State(state): State<AppState>) -> Result<Json<DiscoveryDocument>, ApiError> {
+    if super::public_data::published_site_shell_has_placeholder(&state, "en").await? {
+        return Ok(Json(DiscoveryDocument {
+            generated_at: Utc::now(),
+            entries: Vec::new(),
+        }));
+    }
+    if let Some(pool) = &state.pool {
+        let rows = sqlx::query(
+            r#"SELECT route.entity_type,route.entity_id,route.canonical_path,route.locale,
+                      COALESCE(content_revision.payload->>'title',product_localization.title) AS title,
+                      COALESCE(content_revision.payload->>'summary',product_localization.summary) AS summary,
+                      COALESCE(content_revision.created_at,product_revision.created_at,route.updated_at) AS updated_at
+               FROM public_routes route
+               LEFT JOIN content_entries content_entry
+                 ON route.entity_type='content' AND content_entry.id=route.entity_id
+                AND content_entry.published_revision IS NOT NULL
+               LEFT JOIN content_revisions content_revision
+                 ON content_revision.content_id=content_entry.id
+                AND content_revision.revision=content_entry.published_revision
+               LEFT JOIN products product
+                 ON route.entity_type='product' AND product.id=route.entity_id
+                AND product.published_revision IS NOT NULL
+               LEFT JOIN product_revisions product_revision
+                 ON product_revision.product_id=product.id
+                AND product_revision.revision=product.published_revision
+               LEFT JOIN product_localizations product_localization
+                 ON product_localization.product_id=product.id
+                AND product_localization.product_revision=product.published_revision
+                AND product_localization.locale=route.locale
+               WHERE route.indexable=true
+                 AND ((route.entity_type='content' AND content_entry.id IS NOT NULL
+                       AND COALESCE((content_revision.payload->>'isPlaceholder')::boolean,false)=false)
+                   OR (route.entity_type='product' AND product.id IS NOT NULL
+                       AND product_localization.translation_state='verified'))
+               ORDER BY route.canonical_path"#,
+        )
+        .fetch_all(pool)
+        .await?;
+        let entries = rows
+            .into_iter()
+            .map(|row| {
+                Ok(DiscoveryEntry {
+                    entity_type: match row.try_get::<String, _>("entity_type")?.as_str() {
+                        "product" => "product",
+                        _ => "content",
+                    },
+                    entity_id: row.try_get("entity_id")?,
+                    path: row.try_get("canonical_path")?,
+                    locale: row.try_get("locale")?,
+                    title: row.try_get("title")?,
+                    summary: row.try_get("summary")?,
+                    updated_at: row.try_get("updated_at")?,
+                })
+            })
+            .collect::<Result<Vec<_>, ApiError>>()?;
+        return Ok(Json(DiscoveryDocument {
+            generated_at: Utc::now(),
+            entries,
+        }));
+    }
+    let (content_values, product_values) = if let Some(pool) = &state.pool {
+        (
+            load_published_content_rows(pool, None, None, None).await?,
+            load_published_product_rows(pool, None, None, None).await?,
+        )
+    } else {
+        let data = state.data.read().await;
+        (
+            data.published_content.values().cloned().collect(),
+            data.published_products.values().cloned().collect(),
+        )
+    };
     let mut entries = Vec::new();
-    entries.extend(data.published_content.values().filter_map(|content| {
+    entries.extend(content_values.iter().filter_map(|content| {
         let path = content.seo.canonical_path.as_ref()?;
         if content.is_placeholder || !content.seo.indexable || !valid_public_path(path) {
             return None;
@@ -147,7 +229,7 @@ async fn discovery(State(state): State<AppState>) -> Json<DiscoveryDocument> {
             updated_at: content.updated_at,
         })
     }));
-    entries.extend(data.published_products.values().filter_map(|product| {
+    entries.extend(product_values.iter().filter_map(|product| {
         if !product.indexable || product.locale != "en" || !valid_slug_segment(&product.slug) {
             return None;
         }
@@ -166,10 +248,10 @@ async fn discovery(State(state): State<AppState>) -> Json<DiscoveryDocument> {
         })
     }));
     entries.sort_by(|left, right| left.path.cmp(&right.path));
-    Json(DiscoveryDocument {
+    Ok(Json(DiscoveryDocument {
         generated_at: Utc::now(),
         entries,
-    })
+    }))
 }
 
 fn valid_public_path(path: &str) -> bool {
@@ -205,19 +287,33 @@ struct ContentQuery {
     locale: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct ProductDetailQuery {
+    family: Option<ProductFamily>,
+}
+
 async fn get_content(
     State(state): State<AppState>,
     Path((kind, slug)): Path<(String, String)>,
     Query(query): Query<ContentQuery>,
 ) -> Result<Response, ApiError> {
     let kind = parse_content_kind(&kind)?;
-    let data = state.data.read().await;
-    let entry = data
-        .published_content
-        .values()
-        .find(|entry| entry.kind == kind && entry.slug == slug && entry.locale == query.locale)
-        .cloned()
-        .ok_or_else(|| ApiError::not_found("Published content was not found."))?;
+    let entry = if let Some(pool) = &state.pool {
+        load_published_content_rows(pool, Some(kind), Some(&slug), Some(&query.locale))
+            .await?
+            .into_iter()
+            .next()
+    } else {
+        state
+            .data
+            .read()
+            .await
+            .published_content
+            .values()
+            .find(|entry| entry.kind == kind && entry.slug == slug && entry.locale == query.locale)
+            .cloned()
+    }
+    .ok_or_else(|| ApiError::not_found("Published content was not found."))?;
     let revision = entry.published_revision.unwrap_or(entry.current_revision);
     Ok(with_etag(entry, revision))
 }
@@ -235,25 +331,30 @@ async fn list_products(
         .as_deref()
         .map(|value| decode_product_cursor(value, &query))
         .transpose()?;
-    let mut products: Vec<_> = state
-        .data
-        .read()
-        .await
-        .published_products
-        .values()
-        .filter(|product| {
-            query
-                .family
-                .map(|family| family == product.family)
-                .unwrap_or(true)
-                && query
-                    .motor_technology
-                    .as_ref()
-                    .map(|technology| product.motor_technology.as_ref() == Some(technology))
+    let mut products: Vec<_> = if let Some(pool) = &state.pool {
+        load_published_product_rows(pool, query.family, query.motor_technology.as_deref(), None)
+            .await?
+    } else {
+        state
+            .data
+            .read()
+            .await
+            .published_products
+            .values()
+            .filter(|product| {
+                query
+                    .family
+                    .map(|family| family == product.family)
                     .unwrap_or(true)
-        })
-        .cloned()
-        .collect();
+                    && query
+                        .motor_technology
+                        .as_ref()
+                        .map(|technology| product.motor_technology.as_ref() == Some(technology))
+                        .unwrap_or(true)
+            })
+            .cloned()
+            .collect()
+    };
     products.sort_by(|left, right| left.stable_id.cmp(&right.stable_id));
     if let Some(after) = after {
         products.retain(|product| product.stable_id > after);
@@ -316,18 +417,42 @@ fn decode_product_cursor(value: &str, query: &ProductQuery) -> Result<String, Ap
 async fn get_product(
     State(state): State<AppState>,
     Path(slug): Path<String>,
+    Query(query): Query<ProductDetailQuery>,
 ) -> Result<Response, ApiError> {
-    let data = state.data.read().await;
-    let product = data
-        .published_products
-        .values()
-        .find(|product| product.slug == slug)
-        .cloned()
-        .ok_or_else(|| ApiError::not_found("Published product was not found."))?;
+    let products = if let Some(pool) = &state.pool {
+        load_published_product_rows(pool, query.family, None, Some(&slug)).await?
+    } else {
+        state
+            .data
+            .read()
+            .await
+            .published_products
+            .values()
+            .filter(|product| {
+                product.slug == slug
+                    && query
+                        .family
+                        .map(|family| product.family == family)
+                        .unwrap_or(true)
+            })
+            .cloned()
+            .collect()
+    };
+    let product = require_unique_published_product(products)?;
     let revision = product
         .published_revision
         .unwrap_or(product.current_revision);
     Ok(with_etag(product, revision))
+}
+
+fn require_unique_published_product<T>(mut products: Vec<T>) -> Result<T, ApiError> {
+    match products.len() {
+        0 => Err(ApiError::not_found("Published product was not found.")),
+        1 => Ok(products.pop().expect("one product remains")),
+        _ => Err(ApiError::conflict(
+            "The product slug is shared by more than one family; include the family query parameter.",
+        )),
+    }
 }
 
 async fn select_products(
@@ -335,20 +460,35 @@ async fn select_products(
     Json(request): Json<SelectorRequest>,
 ) -> Result<Json<SelectorResponse>, ApiError> {
     validate_selector(&request)?;
-    let products: Vec<Product> = state
-        .data
-        .read()
-        .await
-        .published_products
-        .values()
-        .filter(|product| {
-            request
-                .preferred_family
-                .map(|family| family == product.family)
-                .unwrap_or(true)
-        })
-        .cloned()
-        .collect();
+    let products: Vec<Product> = if let Some(pool) = &state.pool {
+        load_published_product_rows(
+            pool,
+            request.preferred_family,
+            request.motor_technology.as_deref(),
+            None,
+        )
+        .await?
+    } else {
+        state
+            .data
+            .read()
+            .await
+            .published_products
+            .values()
+            .filter(|product| {
+                request
+                    .preferred_family
+                    .map(|family| family == product.family)
+                    .unwrap_or(true)
+                    && request
+                        .motor_technology
+                        .as_ref()
+                        .map(|technology| product.motor_technology.as_ref() == Some(technology))
+                        .unwrap_or(true)
+            })
+            .cloned()
+            .collect()
+    };
 
     Ok(Json(crate::services::selector::evaluate(
         &request, &products,
@@ -393,7 +533,9 @@ async fn create_rfq(
         retention_until: submitted_at + Duration::days(retention_days),
     };
     state.persist_rfq(&submission).await?;
-    state.data.write().await.rfqs.insert(id, submission.clone());
+    if state.pool.is_none() {
+        state.data.write().await.rfqs.insert(id, submission.clone());
+    }
     let accepted = AcceptedResponse {
         id,
         reference: submission.reference,
@@ -416,15 +558,25 @@ async fn validate_product_rfq_context(
         .product_context
         .as_ref()
         .expect("structural RFQ validation requires product context");
-    let data = state.data.read().await;
-    let published = data
-        .published_products
-        .get(&context.product_id)
-        .ok_or_else(|| {
-            ApiError::conflict(
-                "The referenced product is not currently published; use Selection RFQ instead.",
-            )
-        })?;
+    let published = if let Some(pool) = &state.pool {
+        load_published_product_rows(pool, None, None, None)
+            .await?
+            .into_iter()
+            .find(|product| product.id == context.product_id)
+    } else {
+        state
+            .data
+            .read()
+            .await
+            .published_products
+            .get(&context.product_id)
+            .cloned()
+    }
+    .ok_or_else(|| {
+        ApiError::conflict(
+            "The referenced product is not currently published; use Selection RFQ instead.",
+        )
+    })?;
     if published.stable_id != context.stable_id
         || published.model != context.model
         || published.published_revision != Some(context.published_revision)
@@ -473,12 +625,14 @@ async fn create_contact(
         retention_until: submitted_at + Duration::days(retention_days),
     };
     state.persist_contact(&contact).await?;
-    state
-        .data
-        .write()
-        .await
-        .contacts
-        .insert(id, contact.clone());
+    if state.pool.is_none() {
+        state
+            .data
+            .write()
+            .await
+            .contacts
+            .insert(id, contact.clone());
+    }
     let accepted = AcceptedResponse {
         id,
         reference: contact.reference,
@@ -520,12 +674,14 @@ async fn create_analytics_consent(
         expires_at: granted_at + Duration::days(ANALYTICS_CONSENT_LIFETIME_DAYS),
     };
     state.persist_analytics_consent(&receipt).await?;
-    state
-        .data
-        .write()
-        .await
-        .analytics_consents
-        .insert(receipt.consent_receipt, receipt.clone());
+    if state.pool.is_none() {
+        state
+            .data
+            .write()
+            .await
+            .analytics_consents
+            .insert(receipt.consent_receipt, receipt.clone());
+    }
 
     let mut response = (StatusCode::CREATED, Json(receipt)).into_response();
     response.headers_mut().insert(
@@ -570,12 +726,14 @@ async fn create_analytics_event(
         accepted: true,
         event_id: Some(event_id),
     };
-    state
-        .data
-        .write()
-        .await
-        .analytics_receipts
-        .insert(event_id, receipt.clone());
+    if state.pool.is_none() {
+        state
+            .data
+            .write()
+            .await
+            .analytics_receipts
+            .insert(event_id, receipt.clone());
+    }
     Ok((StatusCode::ACCEPTED, Json(receipt)).into_response())
 }
 
@@ -607,7 +765,9 @@ async fn validate_analytics_consent(
         .filter(|receipt| {
             receipt.analytics_allowed
                 && receipt.expires_at > Utc::now()
-                && receipt.anonymous_session_id == anonymous_session_id
+                && state
+                    .analytics_storage_session_id(anonymous_session_id)
+                    .is_ok_and(|storage_id| receipt.anonymous_session_id == storage_id)
                 && receipt.policy_version == policy_version
                 && policy_version == ANALYTICS_POLICY_VERSION
         });
@@ -629,12 +789,141 @@ fn with_etag<T: serde::Serialize>(value: T, revision: i64) -> Response {
     response
 }
 
+async fn load_published_content_rows(
+    pool: &sqlx::PgPool,
+    kind: Option<ContentKind>,
+    slug: Option<&str>,
+    locale: Option<&str>,
+) -> Result<Vec<crate::models::ContentEntry>, ApiError> {
+    let kind = kind.map(|value| {
+        serde_json::to_value(value)
+            .ok()
+            .and_then(|value| value.as_str().map(str::to_owned))
+            .unwrap_or_default()
+    });
+    let rows = sqlx::query(
+        r#"SELECT payload,published_revision FROM published_content
+           WHERE ($1::text IS NULL OR kind=$1)
+             AND ($2::text IS NULL OR slug=$2)
+             AND ($3::text IS NULL OR locale=$3)
+           ORDER BY updated_at DESC,id"#,
+    )
+    .bind(kind)
+    .bind(slug)
+    .bind(locale)
+    .fetch_all(pool)
+    .await?;
+    rows.into_iter()
+        .map(|row| {
+            let mut entry: crate::models::ContentEntry =
+                serde_json::from_value(row.try_get("payload")?).map_err(|error| {
+                    tracing::error!(%error, "published content payload is invalid");
+                    ApiError::service_unavailable("Stored published content is invalid.")
+                })?;
+            let revision: i64 = row.try_get("published_revision")?;
+            entry.status = crate::models::PublicationStatus::Published;
+            entry.current_revision = revision;
+            entry.published_revision = Some(revision);
+            if entry.is_placeholder {
+                entry.seo.indexable = false;
+            }
+            Ok(entry)
+        })
+        .collect()
+}
+
+async fn load_published_product_rows(
+    pool: &sqlx::PgPool,
+    family: Option<ProductFamily>,
+    motor_technology: Option<&str>,
+    slug: Option<&str>,
+) -> Result<Vec<Product>, ApiError> {
+    let family = family.map(|value| {
+        serde_json::to_value(value)
+            .ok()
+            .and_then(|value| value.as_str().map(str::to_owned))
+            .unwrap_or_default()
+    });
+    let rows = sqlx::query(
+        r#"SELECT published.payload,published.published_revision,
+                  localization.slug AS localized_slug,localization.title AS localized_title,
+                  localization.summary AS localized_summary,
+                  localization.content AS localized_content,
+                  localization.seo_metadata AS localized_seo,
+                  localization.indexable AS localized_indexable
+           FROM published_products published
+           JOIN product_localizations localization
+             ON localization.product_id=published.id
+            AND localization.product_revision=published.published_revision
+            AND localization.locale=published.locale
+           JOIN public_routes route
+             ON route.entity_type='product'
+            AND route.entity_id=published.id
+            AND route.locale=published.locale
+            AND route.canonical_path=localization.seo_metadata->>'canonicalPath'
+           WHERE localization.translation_state='verified'
+             AND ($1::text IS NULL OR published.family=$1)
+             AND ($2::text IS NULL OR published.payload->>'motorTechnology'=$2)
+             AND ($3::text IS NULL OR localization.slug=$3)
+           ORDER BY published.stable_id,published.id"#,
+    )
+    .bind(family)
+    .bind(motor_technology)
+    .bind(slug)
+    .fetch_all(pool)
+    .await?;
+    rows.into_iter()
+        .map(|row| {
+            let mut product: Product =
+                serde_json::from_value(row.try_get("payload")?).map_err(|error| {
+                    tracing::error!(%error, "published product payload is invalid");
+                    ApiError::service_unavailable("Stored published product is invalid.")
+                })?;
+            let revision: i64 = row.try_get("published_revision")?;
+            product.status = crate::models::PublicationStatus::Published;
+            product.current_revision = revision;
+            product.published_revision = Some(revision);
+            product.slug = row.try_get("localized_slug")?;
+            product.title = row.try_get("localized_title")?;
+            product.summary = row.try_get("localized_summary")?;
+            let content: Value = row.try_get("localized_content")?;
+            product.seo =
+                serde_json::from_value(row.try_get("localized_seo")?).map_err(|error| {
+                    tracing::error!(%error, "published product SEO is invalid");
+                    ApiError::service_unavailable("Stored published product SEO is invalid.")
+                })?;
+            product.sort_order = content
+                .get("sortOrder")
+                .and_then(Value::as_i64)
+                .and_then(|value| i32::try_from(value).ok())
+                .unwrap_or_default();
+            product.related_content_ids = content
+                .get("relatedContentIds")
+                .cloned()
+                .map(serde_json::from_value)
+                .transpose()
+                .map_err(|error| {
+                    tracing::error!(%error, "published product related content is invalid");
+                    ApiError::service_unavailable(
+                        "Stored published product related content is invalid.",
+                    )
+                })?
+                .unwrap_or_default();
+            // The immutable published presentation controls public indexing.
+            // A later working-draft edit must not hide the prior projection.
+            product.indexable = row.try_get::<bool, _>("localized_indexable")?;
+            Ok(product)
+        })
+        .collect()
+}
+
 fn parse_content_kind(value: &str) -> Result<ContentKind, ApiError> {
     match value {
         "home" => Ok(ContentKind::Home),
         "solutions" => Ok(ContentKind::Solution),
         "technology" => Ok(ContentKind::Technology),
         "articles" => Ok(ContentKind::Article),
+        "news" => Ok(ContentKind::News),
         "faqs" => Ok(ContentKind::Faq),
         "case-studies" => Ok(ContentKind::CaseStudy),
         "downloads" => Ok(ContentKind::Download),
@@ -668,6 +957,16 @@ fn validate_selector(request: &SelectorRequest) -> Result<(), ApiError> {
         errors.insert(
             "pressureUnit".into(),
             vec!["Unsupported pressure unit.".into()],
+        );
+    }
+    if request.motor_technology.as_ref().is_some_and(|value| {
+        value.trim().is_empty()
+            || value.len() > 80
+            || value.chars().any(|character| character.is_control())
+    }) {
+        errors.insert(
+            "motorTechnology".into(),
+            vec!["Must contain 1 to 80 printable characters.".into()],
         );
     }
     if errors.is_empty() {
@@ -1284,16 +1583,8 @@ fn validate_analytics_event(event: &CreateAnalyticsEvent) -> Result<(), ApiError
         );
         return Err(ApiError::validation(errors));
     };
-    if event.source_path.len() > 2_048
-        || !event.source_path.starts_with("/en")
-        || (event.source_path.len() > 3
-            && !event
-                .source_path
-                .as_bytes()
-                .get(3)
-                .is_some_and(|byte| *byte == b'/'))
-        || event.source_path.contains(['?', '#'])
-        || event.source_path.chars().any(char::is_control)
+    if !(event.source_path == "/en" || event.source_path.starts_with("/en/"))
+        || !super::public_data::valid_guest_landing_path(&event.source_path)
     {
         errors.insert(
             "sourcePath".into(),
@@ -1339,14 +1630,18 @@ fn analytics_property_dictionary(event_name: &str) -> Option<&'static [&'static 
     match event_name {
         "pageView" => Some(&["contentKind", "contentId", "publishedRevision"]),
         "internalSearch" => Some(&["queryLength", "resultCount"]),
-        "filterApplied" => Some(&["filterName", "filterValue", "resultCount"]),
+        // Filter values and FAQ categories originate in editable content and
+        // are intentionally not persisted as event properties. The event,
+        // stable filter/FAQ identifier and aggregate count are sufficient for
+        // funnel reporting without creating a free-text PII channel.
+        "filterApplied" => Some(&["filterName", "resultCount"]),
         "selectorStarted" => Some(&["constraintCount", "preferredFamily", "priority"]),
         "selectorStepCompleted" => Some(&["step", "constraintCount"]),
         "selectorResult" => Some(&["outcome", "candidateCount"]),
         "compareChanged" => Some(&["action", "itemCount", "productId", "productRevision"]),
         "downloadStarted" => Some(&["downloadId", "productId", "productRevision"]),
-        "faqExpanded" => Some(&["faqId", "category"]),
-        "ctaClicked" => Some(&["ctaId", "destinationPath", "placement"]),
+        "faqExpanded" => Some(&["faqId"]),
+        "ctaClicked" => Some(&["ctaId", "placement"]),
         "rfqRouteSelected" => Some(&["journey"]),
         "rfqStarted" => Some(&["journey", "productId", "productRevision"]),
         "rfqStepCompleted" => Some(&["journey", "step"]),
@@ -1365,11 +1660,6 @@ fn analytics_scalar_is_valid(event_name: &str, key: &str, value: &Value) -> bool
             }
             match key {
                 "contentId" | "productId" | "downloadId" => Uuid::parse_str(value).is_ok(),
-                "destinationPath" => {
-                    value.len() <= 512
-                        && (value == "/en" || value.starts_with("/en/"))
-                        && !value.contains(['?', '#'])
-                }
                 "journey" => {
                     ["product", "selection", "project", "replacement"].contains(&value.as_str())
                 }
@@ -1392,9 +1682,27 @@ fn analytics_scalar_is_valid(event_name: &str, key: &str, value: &Value) -> bool
                 "action" if event_name == "compareChanged" => {
                     ["add", "remove", "clear"].contains(&value.as_str())
                 }
-                "contentKind" | "filterName" | "faqId" | "ctaId" | "placement" | "fieldName"
-                | "errorCode" => valid_analytics_identifier(value),
-                "filterValue" | "category" => true,
+                "contentKind" => ["content", "news", "product"].contains(&value.as_str()),
+                "filterName" => [
+                    "resourceType",
+                    "applicableModel",
+                    "contentType",
+                    "catalogSearch",
+                    "family",
+                    "motorTechnology",
+                    "catalogFilters",
+                    "catalogPagination",
+                ]
+                .contains(&value.as_str()),
+                "faqId" => valid_faq_analytics_id(value),
+                "ctaId" => ["content-primary", "download-record-open", "request-quote"]
+                    .contains(&value.as_str()),
+                "placement" => ["content-panel", "downloads-list", "product-detail", "hero"]
+                    .contains(&value.as_str()),
+                "fieldName" => ["productContext"].contains(&value.as_str()),
+                "errorCode" => {
+                    ["publishedContextRequired", "apiRejected"].contains(&value.as_str())
+                }
                 _ => false,
             }
         }
@@ -1418,12 +1726,13 @@ fn analytics_scalar_is_valid(event_name: &str, key: &str, value: &Value) -> bool
     }
 }
 
-fn valid_analytics_identifier(value: &str) -> bool {
-    !value.is_empty()
-        && value.len() <= 120
-        && value
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':'))
+fn valid_faq_analytics_id(value: &str) -> bool {
+    Uuid::parse_str(value).is_ok()
+        || value.strip_prefix("faq-").is_some_and(|ordinal| {
+            !ordinal.starts_with('0')
+                && (1..=6).contains(&ordinal.len())
+                && ordinal.bytes().all(|byte| byte.is_ascii_digit())
+        })
 }
 
 fn valid_analytics_string(value: &str, maximum_length: usize) -> bool {
@@ -1473,4 +1782,128 @@ fn reference(prefix: &str, id: Uuid, at: chrono::DateTime<Utc>) -> String {
 
 fn default_locale() -> String {
     "en".into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn analytics_event(event_name: &str, source_path: &str) -> CreateAnalyticsEvent {
+        CreateAnalyticsEvent {
+            event_name: event_name.into(),
+            anonymous_session_id: Some(Uuid::new_v4()),
+            source_path: source_path.into(),
+            locale: "en".into(),
+            consent_granted: true,
+            policy_version: Some(ANALYTICS_POLICY_VERSION.into()),
+            consent_receipt: Some(Uuid::new_v4()),
+            properties: BTreeMap::new(),
+        }
+    }
+
+    #[test]
+    fn analytics_source_path_rejects_direct_and_encoded_identifiers() {
+        for source_path in [
+            "/en/ref/person@example.com",
+            "/en/ref/person%40example.com",
+            "/en/ref/%31%33%38%30%30%31%33%38%30%30%30",
+            "/en/ref/192.0.2.10",
+            "/en/ref/550e8400-e29b-41d4-a716-446655440000",
+            "/en/ref/%2540",
+            "/en/ref/%0aheader",
+            "/en/ref\\private",
+            "/en/ref/line\nbreak",
+        ] {
+            assert!(
+                validate_analytics_event(&analytics_event("pageView", source_path)).is_err(),
+                "source path {source_path:?} must be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn analytics_accepts_only_controlled_cta_dimensions() {
+        let mut event = analytics_event("ctaClicked", "/en/products");
+        event.properties = BTreeMap::from([
+            ("ctaId".into(), json!("request-quote")),
+            ("placement".into(), json!("product-detail")),
+        ]);
+        validate_analytics_event(&event).expect("controlled CTA dimensions are valid");
+    }
+
+    #[test]
+    fn analytics_controlled_dimensions_reject_arbitrary_identifiers() {
+        for (event_name, properties) in [
+            (
+                "pageView",
+                BTreeMap::from([("contentKind".into(), json!("Jane Doe"))]),
+            ),
+            (
+                "filterApplied",
+                BTreeMap::from([("filterName".into(), json!("jane-doe"))]),
+            ),
+            (
+                "faqExpanded",
+                BTreeMap::from([("faqId".into(), json!("jane-doe"))]),
+            ),
+            (
+                "ctaClicked",
+                BTreeMap::from([
+                    ("ctaId".into(), json!("private-note")),
+                    ("placement".into(), json!("hero")),
+                ]),
+            ),
+            (
+                "ctaClicked",
+                BTreeMap::from([
+                    ("ctaId".into(), json!("request-quote")),
+                    ("placement".into(), json!("jane-doe")),
+                ]),
+            ),
+            (
+                "rfqValidationError",
+                BTreeMap::from([
+                    ("journey".into(), json!("product")),
+                    ("step".into(), json!(1)),
+                    ("fieldName".into(), json!("jane-doe")),
+                    ("errorCode".into(), json!("publishedContextRequired")),
+                ]),
+            ),
+            (
+                "rfqSubmitFailed",
+                BTreeMap::from([
+                    ("journey".into(), json!("product")),
+                    ("errorCode".into(), json!("jane-doe")),
+                ]),
+            ),
+        ] {
+            let mut event = analytics_event(event_name, "/en/products");
+            event.properties = properties;
+            assert!(
+                validate_analytics_event(&event).is_err(),
+                "{event_name} must reject arbitrary controlled-dimension values"
+            );
+        }
+
+        let mut removed_destination = analytics_event("ctaClicked", "/en/products");
+        removed_destination.properties = BTreeMap::from([
+            ("ctaId".into(), json!("request-quote")),
+            ("placement".into(), json!("hero")),
+            ("destinationPath".into(), json!("/en/jane-doe")),
+        ]);
+        assert!(validate_analytics_event(&removed_destination).is_err());
+    }
+
+    #[test]
+    fn product_detail_lookup_never_selects_an_arbitrary_slug_collision() {
+        let error = require_unique_published_product(vec!["axial", "centrifugal"])
+            .expect_err("a cross-family slug collision must be disambiguated");
+        assert_eq!(error.status(), StatusCode::CONFLICT);
+        assert_eq!(
+            require_unique_published_product(vec!["axial"])
+                .expect("a family-bound lookup is unique"),
+            "axial"
+        );
+    }
 }

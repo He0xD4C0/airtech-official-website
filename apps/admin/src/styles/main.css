@@ -427,12 +427,10 @@ input[type='radio'] {
 .table-footer button { padding: 0.35rem 0.55rem; border: 1px solid var(--admin-line); border-radius: 6px; background: white; color: var(--admin-muted); font-size: 0.65rem; }
 .locale-chip { display: inline-grid; place-items: center; min-width: 2rem; padding: 0.25rem; border-radius: 5px; background: #edf3f2; color: #536765; font-size: 0.62rem; font-weight: 800; }
 
-.demo-banner,
-.safe-demo-label,
+.status-banner,
 .pii-banner,
 .security-baseline,
-.operations-warning,
-.dev-warning {
+.operations-warning {
   display: flex;
   align-items: center;
   gap: 0.7rem;
@@ -443,11 +441,10 @@ input[type='radio'] {
   font-size: 0.72rem;
 }
 
-.demo-banner { padding: 0.62rem 0.75rem; }
-.demo-banner > span { padding: 0.26rem 0.42rem; border-radius: 5px; background: var(--admin-soft-amber); color: #866100; font-size: 0.62rem; font-weight: 800; }
-.demo-banner p { flex: 1; margin: 0; }
-.demo-banner button { border: 0; background: none; color: var(--airtek-blue); font-size: 0.68rem; font-weight: 700; }
-.safe-demo-label { margin: 0.8rem 1rem 0; padding: 0.5rem 0.65rem; border-color: #eadfb9; background: #fffaf0; color: #7f691d; }
+.status-banner { padding: 0.62rem 0.75rem; }
+.status-banner > span { padding: 0.26rem 0.42rem; border-radius: 5px; background: var(--admin-soft-amber); color: #866100; font-size: 0.62rem; font-weight: 800; }
+.status-banner p { flex: 1; margin: 0; }
+.status-banner button { border: 0; background: none; color: var(--airtek-blue); font-size: 0.68rem; font-weight: 700; }
 
 .modal-overlay {
   position: fixed;

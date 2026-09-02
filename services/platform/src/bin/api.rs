@@ -19,6 +19,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map_err(|error| format!("development mode refused to start: {error:?}"))?;
 
     let config = Config::from_env()?;
+    if config.database_url.is_none() {
+        return Err(
+            "DATABASE_URL is required for the running API; the in-memory repository is test-only."
+                .into(),
+        );
+    }
     let address = SocketAddr::from(config.bind_address());
     let state = AppState::new(config)?;
     state.hydrate().await?;

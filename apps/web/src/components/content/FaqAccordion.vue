@@ -4,7 +4,7 @@ import StructuredContentRenderer from './StructuredContentRenderer'
 import { trackAnalyticsEvent } from '@/lib/analytics'
 import type { PublishedFaqItem } from '@/lib/publishedContent'
 
-const props = defineProps<{ items: PublishedFaqItem[]; category?: string }>()
+const props = defineProps<{ items: PublishedFaqItem[] }>()
 const query = ref('')
 
 const visibleItems = computed(() => props.items.filter((item) => {
@@ -14,7 +14,7 @@ const visibleItems = computed(() => props.items.filter((item) => {
 
 function trackExpanded(event: Event, item: PublishedFaqItem): void {
   if (!(event.currentTarget instanceof HTMLDetailsElement) || !event.currentTarget.open) return
-  void trackAnalyticsEvent('faqExpanded', { faqId: item.id, category: props.category ?? 'all' })
+  void trackAnalyticsEvent('faqExpanded', { faqId: item.id })
 }
 </script>
 

@@ -12,6 +12,25 @@ use super::feishu::validate_staging_payload;
 /// evidence about the accepted source payload, but it must never become a way
 /// to bypass the current validator after mappings or validation rules change.
 pub fn validate_product_master(product: &Product) -> Vec<ValidationIssue> {
+    let mut issues = validate_product_core(product);
+
+    if product.source_snapshot_id.is_nil() {
+        issues.push(issue(
+            "sourceSnapshotId",
+            "sourceSnapshotRequired",
+            "A traceable Feishu source snapshot is required.",
+        ));
+    }
+    deduplicate(issues)
+}
+
+/// Verified CSV products are traceable through their import run and normalized
+/// record rather than a Feishu source snapshot.
+pub fn validate_verified_csv_product_master(product: &Product) -> Vec<ValidationIssue> {
+    deduplicate(validate_product_core(product))
+}
+
+fn validate_product_core(product: &Product) -> Vec<ValidationIssue> {
     let mut issues = match serde_json::to_value(product) {
         Ok(payload) => validate_staging_payload(&payload),
         Err(_) => vec![issue(
@@ -21,13 +40,6 @@ pub fn validate_product_master(product: &Product) -> Vec<ValidationIssue> {
         )],
     };
 
-    if product.source_snapshot_id.is_nil() {
-        issues.push(issue(
-            "sourceSnapshotId",
-            "sourceSnapshotRequired",
-            "A traceable Feishu source snapshot is required.",
-        ));
-    }
     if product.current_revision < 1 {
         issues.push(issue(
             "currentRevision",
@@ -46,7 +58,7 @@ pub fn validate_product_master(product: &Product) -> Vec<ValidationIssue> {
     validate_route_text("locale", &product.locale, 35, is_locale, &mut issues);
     validate_text("title", &product.title, 300, &mut issues);
 
-    deduplicate(issues)
+    issues
 }
 
 /// Revalidates the exact normalized source record referenced by a Product and
@@ -254,6 +266,9 @@ mod tests {
             motor_technology: None,
             title: "Traceable product".into(),
             summary: None,
+            seo: Default::default(),
+            sort_order: 0,
+            related_content_ids: Vec::new(),
             specifications: vec![SpecValue {
                 key: "ratedVoltage".into(),
                 label: "Rated voltage".into(),

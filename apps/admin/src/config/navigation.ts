@@ -1,21 +1,25 @@
 import type { Component } from 'vue'
 import {
   Activity,
+  Building2,
   Boxes,
   Cable,
   ChartNoAxesCombined,
   CircleGauge,
   ContactRound,
   FileText,
+  FileUp,
   FolderKanban,
   History,
   Inbox,
   KeyRound,
   Library,
+  Newspaper,
   Settings,
   ShieldCheck,
   SlidersHorizontal,
   UsersRound,
+  Waypoints,
   Wrench,
 } from 'lucide-vue-next'
 import { devtoolsNavigation } from 'virtual:devtools-routes'
@@ -26,7 +30,6 @@ export interface NavItem {
   to: string
   icon: Component
   permission?: Permission
-  badge?: string
   devOnly?: boolean
 }
 
@@ -41,20 +44,29 @@ export const navigation: NavGroup[] = [
     items: [{ label: '工作台', to: '/', icon: CircleGauge, permission: 'dashboard.read' }],
   },
   {
-    label: '内容与产品',
+    label: '网站数据',
     items: [
+      { label: 'General Information', to: '/general-information', icon: Building2, permission: 'content.write' },
+      { label: '新闻中心', to: '/news', icon: Newspaper, permission: 'content.read' },
       { label: '内容中心', to: '/content', icon: FileText, permission: 'content.read' },
-      { label: '产品中心', to: '/products', icon: Boxes, permission: 'product.read' },
-      { label: 'Feishu 同步', to: '/integrations/feishu', icon: Cable, permission: 'integration.run', badge: '2' },
       { label: '媒体中心', to: '/media', icon: Library, permission: 'media.write' },
+    ],
+  },
+  {
+    label: '产品',
+    items: [
+      { label: '产品中心', to: '/products', icon: Boxes, permission: 'product.read' },
+      { label: 'Product Master 导入', to: '/products/imports', icon: FileUp, permission: 'product.write' },
+      { label: 'Feishu 同步', to: '/integrations/feishu', icon: Cable, permission: 'integration.run' },
     ],
   },
   {
     label: '业务',
     items: [
-      { label: 'RFQ 收件箱', to: '/rfqs', icon: Inbox, permission: 'rfq.read', badge: '4' },
+      { label: '访问概览', to: '/analytics', icon: ChartNoAxesCombined, permission: 'analytics.read' },
+      { label: '站外来源', to: '/analytics/sources', icon: Waypoints, permission: 'analytics.read' },
+      { label: 'RFQ 收件箱', to: '/rfqs', icon: Inbox, permission: 'rfq.read' },
       { label: 'Contact', to: '/contacts', icon: ContactRound, permission: 'rfq.read' },
-      { label: 'Analytics', to: '/analytics', icon: ChartNoAxesCombined, permission: 'analytics.read' },
     ],
   },
   {
@@ -70,10 +82,11 @@ export const navigation: NavGroup[] = [
   },
 ]
 
-export const quickActions = [
-  { label: '新建文章', to: '/content/new/edit', icon: FileText },
-  { label: '查看同步差异', to: '/integrations/feishu', icon: SlidersHorizontal },
-  { label: '处理新 RFQ', to: '/rfqs', icon: FolderKanban },
-  { label: '检查任务', to: '/operations', icon: Activity },
+export const quickActions: Array<{ label: string; to: string; icon: Component; permission?: Permission }> = [
+  { label: '新建 News', to: '/news/new', icon: Newspaper, permission: 'content.write' },
+  { label: '导入 Product Master', to: '/products/imports', icon: FileUp, permission: 'product.write' },
+  { label: '查看同步差异', to: '/integrations/feishu', icon: SlidersHorizontal, permission: 'integration.run' },
+  { label: '处理新 RFQ', to: '/rfqs', icon: FolderKanban, permission: 'rfq.read' },
+  { label: '检查任务', to: '/operations', icon: Activity, permission: 'operations.run' },
   { label: '安全设置', to: '/account/security', icon: ShieldCheck },
 ]

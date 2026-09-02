@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ContentEntry } from '@airtek/contracts'
-import { resolvePublicRoute } from '@/content/routes'
+import { publicPageFixture } from '@/test/publicPageFixture'
 import { buildPublicStructuredData } from './structuredData'
 
 function content(kind: ContentEntry['kind'], bodyContent: unknown[], attrs?: Record<string, unknown>): ContentEntry {
@@ -28,7 +28,7 @@ describe('public structured data', () => {
 
   it('emits FAQPage only for a complete, indexable, non-placeholder published FAQ', () => {
     const page = {
-      ...resolvePublicRoute('/en/resources/faqs/technical'),
+      ...publicPageFixture('/en/resources/faqs/technical'),
       publishedContent: content('faq', faqBody), dataState: 'published' as const, indexable: true,
     }
     const schema = buildPublicStructuredData(page, 'https://www.example.test')
@@ -44,14 +44,14 @@ describe('public structured data', () => {
     ['placeholder', { dataState: 'placeholder' as const, indexable: true }],
     ['non-indexable', { dataState: 'published' as const, indexable: false }],
   ])('does not emit FAQPage for a %s page', (_label, policy) => {
-    const page = { ...resolvePublicRoute('/en/resources/faqs/technical'), ...policy, publishedContent: content('faq', faqBody) }
+    const page = { ...publicPageFixture('/en/resources/faqs/technical'), ...policy, publishedContent: content('faq', faqBody) }
     expect(graphTypes(buildPublicStructuredData(page, 'https://www.example.test'))).not.toContain('FAQPage')
   })
 
   it('does not emit FAQPage when one question is incomplete', () => {
     const incomplete = [...faqBody, { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Missing answer?' }] }]
     const page = {
-      ...resolvePublicRoute('/en/resources/faqs/technical'), dataState: 'published' as const, indexable: true,
+      ...publicPageFixture('/en/resources/faqs/technical'), dataState: 'published' as const, indexable: true,
       publishedContent: content('faq', incomplete),
     }
     expect(graphTypes(buildPublicStructuredData(page, 'https://www.example.test'))).not.toContain('FAQPage')
@@ -59,7 +59,7 @@ describe('public structured data', () => {
 
   it('does not emit FAQPage for content explicitly marked as placeholder', () => {
     const page = {
-      ...resolvePublicRoute('/en/resources/faqs/technical'), dataState: 'published' as const, indexable: true,
+      ...publicPageFixture('/en/resources/faqs/technical'), dataState: 'published' as const, indexable: true,
       publishedContent: { ...content('faq', faqBody), isPlaceholder: true },
     }
     expect(graphTypes(buildPublicStructuredData(page, 'https://www.example.test'))).not.toContain('FAQPage')
@@ -67,7 +67,7 @@ describe('public structured data', () => {
 
   it('adds only explicit safe article publication metadata', () => {
     const page = {
-      ...resolvePublicRoute('/en/resources/articles/published-article'), dataState: 'published' as const, indexable: true,
+      ...publicPageFixture('/en/resources/articles/published-article'), dataState: 'published' as const, indexable: true,
       publishedContent: content('article', [
         { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Evidence' }] },
       ], { author: 'Engineering Team', authorType: 'Organization', publishedAt: '2026-08-30', category: 'Engineering notes' }),
@@ -82,7 +82,7 @@ describe('public structured data', () => {
 
   it('does not invent a structured author type when only an author label is present', () => {
     const page = {
-      ...resolvePublicRoute('/en/resources/articles/published-article'), dataState: 'published' as const, indexable: true,
+      ...publicPageFixture('/en/resources/articles/published-article'), dataState: 'published' as const, indexable: true,
       publishedContent: content('article', [], { author: 'Unclassified editorial byline' }),
     }
     const graph = buildPublicStructuredData(page, 'https://www.example.test')['@graph'] as Array<Record<string, unknown>>

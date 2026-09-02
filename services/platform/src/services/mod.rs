@@ -1,3 +1,7 @@
+#[cfg(feature = "devtools")]
+pub mod development_seed;
 pub mod feishu;
+pub mod product_facts;
+pub mod product_import;
 pub mod product_publication;
 pub mod selector;

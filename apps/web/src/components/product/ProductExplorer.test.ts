@@ -22,6 +22,9 @@ const product: Product = {
   motorTechnology: 'EC',
   title: 'Published axial product',
   summary: 'Summary from the published Product Master projection.',
+  seo: { title: 'Published axial product', description: 'Summary from the published Product Master projection.', canonicalPath: '/en/products/axial/published-axial-product', indexable: true },
+  sortOrder: 0,
+  relatedContentIds: [],
   specifications: [],
   performanceCurves: [],
   sourceSnapshotId: 'c44656ad-fc7a-41c0-909e-930466096b37',
@@ -33,6 +36,11 @@ const product: Product = {
   updatedAt: '2026-09-01T08:00:00Z',
 }
 
+const families = [
+  { code: 'axial' as const, slug: 'axial', name: 'Axial', description: 'Published family', sortOrder: 1 },
+  { code: 'centrifugal' as const, slug: 'centrifugal', name: 'Centrifugal', description: 'Published family', sortOrder: 2 },
+]
+
 describe('published product explorer', () => {
   beforeEach(() => {
     vi.mocked(trackAnalyticsEvent).mockClear()
@@ -41,7 +49,7 @@ describe('published product explorer', () => {
   })
 
   it('SSR-renders only provided published Product Master records', async () => {
-    const app = createSSRApp({ render: () => h(ProductExplorer, { products: [product] }) })
+    const app = createSSRApp({ render: () => h(ProductExplorer, { products: [product], families }) })
     app.use(createPinia())
     const html = await renderToString(app)
     expect(html).toContain('Published axial product')
@@ -51,7 +59,7 @@ describe('published product explorer', () => {
   })
 
   it('uses an explicit safe empty state when no product is published', async () => {
-    const app = createSSRApp({ render: () => h(ProductExplorer, { products: [] }) })
+    const app = createSSRApp({ render: () => h(ProductExplorer, { products: [], families }) })
     app.use(createPinia())
     const html = await renderToString(app)
     expect(html).toContain('No validated products are available')
@@ -59,7 +67,7 @@ describe('published product explorer', () => {
   })
 
   it('filters the published projection on the client', async () => {
-    const wrapper = mount(ProductExplorer, { props: { products: [product] }, global: { plugins: [createPinia()] } })
+    const wrapper = mount(ProductExplorer, { props: { products: [product], families }, global: { plugins: [createPinia()] } })
     expect(wrapper.text()).toContain('Published axial product')
     await wrapper.get('input[type="search"]').setValue('not-present')
     expect(wrapper.text()).toContain('No matching published product')
@@ -67,7 +75,7 @@ describe('published product explorer', () => {
   })
 
   it('tracks only structured filter state and never the catalog query text', async () => {
-    const wrapper = mount(ProductExplorer, { props: { products: [product] }, global: { plugins: [createPinia()] } })
+    const wrapper = mount(ProductExplorer, { props: { products: [product], families }, global: { plugins: [createPinia()] } })
     const privateQuery = 'buyer@example.com confidential requirement'
     const search = wrapper.get('input[type="search"]')
     await search.setValue(privateQuery)
@@ -76,7 +84,6 @@ describe('published product explorer', () => {
 
     expect(trackAnalyticsEvent).toHaveBeenCalledWith('filterApplied', {
       filterName: 'catalogSearch',
-      filterValue: 'queryPresent',
       resultCount: 0,
     })
     expect(JSON.stringify(vi.mocked(trackAnalyticsEvent).mock.calls)).not.toContain(privateQuery)
@@ -86,7 +93,6 @@ describe('published product explorer', () => {
     await flushPromises()
     expect(trackAnalyticsEvent).toHaveBeenCalledWith('filterApplied', {
       filterName: 'family',
-      filterValue: 'axial',
       resultCount: 0,
     })
   })
@@ -104,7 +110,7 @@ describe('published product explorer', () => {
       .mockResolvedValueOnce({ items: [product], nextCursor: 'cGFnZS0y' })
 
     const wrapper = mount(ProductExplorer, {
-      props: { products: [product], nextCursor: 'cGFnZS0y' },
+      props: { products: [product], families, nextCursor: 'cGFnZS0y' },
       global: { plugins: [createPinia()] },
     })
     expect(wrapper.text()).toContain('1 matching record on page 1')
@@ -118,7 +124,7 @@ describe('published product explorer', () => {
     expect(wrapper.text()).toContain('Published second product')
     expect(wrapper.text()).toContain('Page 2')
     expect(trackAnalyticsEvent).toHaveBeenCalledWith('filterApplied', {
-      filterName: 'catalogPagination', filterValue: 'next', resultCount: 1,
+      filterName: 'catalogPagination', resultCount: 1,
     })
 
     const previous = wrapper.findAll('button').find((button) => button.text() === 'Previous page')
@@ -135,7 +141,7 @@ describe('published product explorer', () => {
       .mockRejectedValueOnce(new Error('Published catalog temporarily unavailable.'))
 
     const wrapper = mount(ProductExplorer, {
-      props: { products: [product], nextCursor: 'cGFnZS0y' },
+      props: { products: [product], families, nextCursor: 'cGFnZS0y' },
       global: { plugins: [createPinia()] },
     })
     const next = wrapper.findAll('button').find((button) => button.text() === 'Next page')

@@ -3,7 +3,6 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft, Check, KeyRound, LockKeyhole, ShieldCheck, UserRound } from 'lucide-vue-next'
 import BrandMark from '@/components/BrandMark.vue'
-import { mockApiEnabled } from '@/services/adminApi'
 import { useAuthStore } from '@/stores/auth'
 import type { ApiProblem } from '@/types/domain'
 
@@ -13,7 +12,7 @@ const displayName = ref('')
 const email = ref('')
 const password = ref('')
 const confirmation = ref('')
-const bootstrapToken = ref(mockApiEnabled ? 'development-bootstrap' : '')
+const bootstrapToken = ref('')
 const errorMessage = ref('')
 
 const passwordChecks = computed(() => [
@@ -31,7 +30,7 @@ async function submit(): Promise<void> {
 
   try {
     await auth.setup(displayName.value.trim(), email.value.trim(), password.value, bootstrapToken.value.trim())
-    await router.replace('/')
+    await router.replace('/account/security')
   } catch (error) {
     errorMessage.value = (error as ApiProblem).detail ?? (error as ApiProblem).title ?? '初始化失败。'
   }
@@ -51,7 +50,7 @@ async function submit(): Promise<void> {
         <p>此入口只在用户表为空时有效。初始化完成后，Bootstrap Token 将立即失效。</p>
         <ol>
           <li><span>1</span><div><strong>创建本地管理员</strong><p>邀请制账号，不依赖外部身份供应商。</p></div></li>
-          <li><span>2</span><div><strong>启用多因素验证</strong><p>创建账号后可在安全设置中绑定 TOTP，并下载一次性恢复码。</p></div></li>
+          <li><span>2</span><div><strong>启用多因素验证</strong><p>创建账号后必须绑定 TOTP 并保存一次性恢复码，之后才能访问业务功能。</p></div></li>
           <li><span>3</span><div><strong>留下审计记录</strong><p>首次初始化也会写入不可变审计日志。</p></div></li>
         </ol>
       </div>
@@ -66,7 +65,6 @@ async function submit(): Promise<void> {
           <span v-for="check in passwordChecks" :key="check.label" :class="{ 'is-pass': check.pass }"><Check :size="13" />{{ check.label }}</span>
         </div>
         <label class="field"><span>一次性 Bootstrap Token</span><div class="field__control"><KeyRound :size="17" /><input v-model="bootstrapToken" required type="password" autocomplete="off" /></div></label>
-        <p v-if="mockApiEnabled" class="inline-note">当前为开发演示，Token 仅用于界面验证。</p>
         <p v-if="errorMessage" class="form-error" role="alert">{{ errorMessage }}</p>
         <button class="button button--primary button--wide" type="submit" :disabled="auth.loading">{{ auth.loading ? '正在初始化…' : '创建管理员' }}</button>
       </form>

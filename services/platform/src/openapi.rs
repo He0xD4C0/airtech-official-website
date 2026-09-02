@@ -88,7 +88,7 @@ pub fn document() -> Value {
     );
     let mut preview_operation = op(
         "getContentPreview",
-        "Get one exact content revision using a short-lived signed bearer token",
+        "Get one exact content revision with a short-lived token bound to a currently authorized Admin session",
         "publicPreview",
         [(
             "200",
@@ -149,7 +149,16 @@ pub fn document() -> Value {
                     ),
                 )],
             ),
-            vec![path_param("slug", slug())],
+            vec![
+                path_param("slug", slug()),
+                json!({
+                    "name": "family",
+                    "in": "query",
+                    "required": false,
+                    "description": "Product family used to disambiguate presentation slugs that are reusable across families.",
+                    "schema": r("ProductFamily")
+                }),
+            ],
         ),
     );
     add(
@@ -266,6 +275,7 @@ pub fn document() -> Value {
             r("CreateAnalyticsEvent"),
         ),
     );
+    add_public_data_paths(&mut paths);
 
     add(
         &mut paths,
@@ -293,6 +303,26 @@ pub fn document() -> Value {
                 [("200", session_response("Authenticated admin session"))],
             ),
             r("LoginRequest"),
+        ),
+    );
+    add(
+        &mut paths,
+        "/api/admin/v1/auth/invitations/accept",
+        "post",
+        body(
+            op(
+                "acceptAdministratorInvitation",
+                "Activate an invited administrator with a one-time token and strong password",
+                "adminAuth",
+                [(
+                    "201",
+                    json_response(
+                        "Administrator invitation accepted",
+                        r("InvitationAcceptance"),
+                    ),
+                )],
+            ),
+            r("AcceptInvitationRequest"),
         ),
     );
     add(
@@ -423,7 +453,7 @@ pub fn document() -> Value {
             params(
                 op(
                     "listAdminContent",
-                    "List content working records",
+                    "List non-News content working records; News uses the dedicated Admin News API",
                     "adminContent",
                     [("200", json_response("Content records", r("ContentPage")))],
                 ),
@@ -441,7 +471,7 @@ pub fn document() -> Value {
                 body(
                     op(
                         "createContentDraft",
-                        "Create a content draft",
+                        "Create a non-News content draft; kind=news is rejected in favor of the dedicated Admin News API",
                         "adminContent",
                         [(
                             "201",
@@ -468,12 +498,12 @@ pub fn document() -> Value {
                 body(
                     entity_op(
                         "updateContentDraft",
-                        "Update a content draft",
+                        "Update a non-News content draft; existing or requested News is rejected",
                         "Draft updated",
                     ),
                     r("ContentDraftInput"),
                 ),
-                entity_params(),
+                idempotent_entity_params(),
             ),
             true,
         ),
@@ -487,7 +517,7 @@ pub fn document() -> Value {
                 body(
                     op(
                         "createContentPreview",
-                        "Create a short-lived URL for one immutable content revision",
+                        "Create a short-lived URL bound to the issuing Admin user and session for one immutable content revision",
                         "adminContent",
                         [(
                             "201",
@@ -517,7 +547,7 @@ pub fn document() -> Value {
             params(
                 entity_op(
                     "publishContentRevision",
-                    "Publish an immutable content revision",
+                    "Publish an immutable non-News content revision; News uses its dedicated publish operation",
                     "Content published",
                 ),
                 idempotent_entity_params(),
@@ -534,7 +564,7 @@ pub fn document() -> Value {
                 body(
                     entity_op(
                         "rollbackContentRevision",
-                        "Republish a historical snapshot as a new immutable revision",
+                        "Republish a historical non-News snapshot as a new immutable revision; News uses its dedicated rollback operation",
                         "Content republished",
                     ),
                     r("RollbackContentRequest"),
@@ -713,6 +743,7 @@ pub fn document() -> Value {
             false,
         ),
     );
+    add_admin_data_paths(&mut paths);
 
     add(
         &mut paths,
@@ -874,7 +905,7 @@ pub fn document() -> Value {
             "securitySchemes": {
                 "adminSession": {"type": "apiKey", "in": "cookie", "name": "airtek_admin_session", "description": "Host-only HttpOnly cookie scoped to /api."},
                 "csrfToken": {"type": "apiKey", "in": "header", "name": "X-CSRF-Token", "description": "Required with the admin session on protected mutations."},
-                "previewToken": {"type": "http", "scheme": "bearer", "bearerFormat": "AIRTEK preview v1", "description": "Short-lived signed capability for exactly one content revision. Never send it in a query parameter to the API."}
+                "previewToken": {"type": "http", "scheme": "bearer", "bearerFormat": "AIRTEK preview v1", "description": "Short-lived signed capability for exactly one content revision, bound to its issuing Admin user and session. Every read revalidates the active user, unrevoked and unexpired session, confirmed TOTP, and current content.read permission in PostgreSQL. Never send it in a query parameter to the API."}
             },
             "schemas": schemas()
         },
@@ -891,12 +922,921 @@ pub fn document() -> Value {
     })
 }
 
+fn add_public_data_paths(paths: &mut Map<String, Value>) {
+    add(
+        paths,
+        "/api/public/v1/site-bootstrap",
+        "get",
+        params(
+            op(
+                "getSiteBootstrap",
+                "Get the published site shell and default company information",
+                "publicSite",
+                [(
+                    "200",
+                    json_response("Published site bootstrap", r("SiteBootstrap")),
+                )],
+            ),
+            vec![locale_param(false)],
+        ),
+    );
+    add(
+        paths,
+        "/api/public/v1/routes/resolve",
+        "get",
+        params(
+            op(
+                "resolvePublishedRoute",
+                "Resolve one canonical published public route",
+                "publicSite",
+                [(
+                    "200",
+                    json_response("Resolved public route", r("RouteResolution")),
+                )],
+            ),
+            vec![
+                query_param(
+                    "path",
+                    true,
+                    json!({
+                        "type": "string",
+                        "minLength": 3,
+                        "maxLength": 2048,
+                        "pattern": "^/en(?:/|$)[^?#]*$"
+                    }),
+                ),
+                locale_param(false),
+            ],
+        ),
+    );
+    add(
+        paths,
+        "/api/public/v1/news",
+        "get",
+        params(
+            op(
+                "listPublishedNews",
+                "List published News records",
+                "publicNews",
+                [(
+                    "200",
+                    json_response("Published News records", r("NewsPage")),
+                )],
+            ),
+            vec![
+                locale_param(false),
+                query_param(
+                    "category",
+                    false,
+                    json!({"type": "string", "minLength": 1, "maxLength": 120}),
+                ),
+                json!({
+                    "name": "cursor", "in": "query", "required": false,
+                    "description": "UUID cursor of the last News record returned by the previous page.",
+                    "schema": {"type": "string", "format": "uuid"}
+                }),
+                json!({
+                    "name": "limit", "in": "query", "required": false,
+                    "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20}
+                }),
+            ],
+        ),
+    );
+    add(
+        paths,
+        "/api/public/v1/news/{slug}",
+        "get",
+        params(
+            op(
+                "getPublishedNews",
+                "Get one published News record",
+                "publicNews",
+                [(
+                    "200",
+                    response_header(
+                        json_response("Published News record", r("NewsEntry")),
+                        "ETag",
+                        "Immutable published revision tag",
+                    ),
+                )],
+            ),
+            vec![path_param("slug", slug()), locale_param(false)],
+        ),
+    );
+    add(
+        paths,
+        "/api/public/v1/guest-visits",
+        "post",
+        body(
+            op(
+                "createGuestVisit",
+                "Create or refresh a consented anonymous first-party visit",
+                "publicAnalytics",
+                [
+                    (
+                        "200",
+                        response_header(
+                            json_response("Existing visit refreshed", r("GuestVisit")),
+                            "Cache-Control",
+                            "private, no-store, max-age=0",
+                        ),
+                    ),
+                    (
+                        "201",
+                        response_header(
+                            json_response("Anonymous visit created", r("GuestVisit")),
+                            "Cache-Control",
+                            "private, no-store, max-age=0",
+                        ),
+                    ),
+                ],
+            ),
+            r("CreateGuestVisit"),
+        ),
+    );
+}
+
+fn add_admin_data_paths(paths: &mut Map<String, Value>) {
+    add(
+        paths,
+        "/api/admin/v1/news",
+        "get",
+        admin(
+            params(
+                op(
+                    "listAdminNews",
+                    "List News working records",
+                    "adminNews",
+                    [("200", json_response("News records", r("NewsPage")))],
+                ),
+                admin_pagination_params(),
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/news",
+        "post",
+        admin(
+            params(
+                body(
+                    op(
+                        "createNewsDraft",
+                        "Create a News draft",
+                        "adminNews",
+                        [(
+                            "201",
+                            response_header(
+                                json_response("News draft created", r("NewsEntry")),
+                                "ETag",
+                                "Current working revision tag",
+                            ),
+                        )],
+                    ),
+                    r("NewsDraftInput"),
+                ),
+                vec![idempotency_param()],
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/news/{id}",
+        "get",
+        admin(
+            params(
+                op(
+                    "getAdminNews",
+                    "Get one News working record",
+                    "adminNews",
+                    [(
+                        "200",
+                        response_header(
+                            json_response("News working record", r("NewsEntry")),
+                            "ETag",
+                            "Current working revision tag",
+                        ),
+                    )],
+                ),
+                vec![path_param("id", uuid())],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/news/{id}",
+        "patch",
+        admin(
+            params(
+                body(
+                    op(
+                        "updateNewsDraft",
+                        "Update a News draft",
+                        "adminNews",
+                        [(
+                            "200",
+                            response_header(
+                                json_response("News draft updated", r("NewsEntry")),
+                                "ETag",
+                                "New working revision tag",
+                            ),
+                        )],
+                    ),
+                    r("NewsDraftInput"),
+                ),
+                idempotent_entity_params(),
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/news/{id}/revisions",
+        "get",
+        admin(
+            params(
+                op(
+                    "listNewsRevisions",
+                    "List immutable News revision snapshots",
+                    "adminNews",
+                    [(
+                        "200",
+                        json_response("News revision snapshots", r("NewsRevisionPage")),
+                    )],
+                ),
+                vec![path_param("id", uuid())],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/news/{id}/publish",
+        "post",
+        admin(
+            params(
+                op(
+                    "publishNewsRevision",
+                    "Publish the current immutable News revision",
+                    "adminNews",
+                    [(
+                        "200",
+                        response_header(
+                            json_response("News revision published", r("NewsEntry")),
+                            "ETag",
+                            "Published revision tag",
+                        ),
+                    )],
+                ),
+                idempotent_entity_params(),
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/news/{id}/rollback",
+        "post",
+        admin(
+            params(
+                body(
+                    op(
+                        "rollbackNewsRevision",
+                        "Republish a historical News revision as a new revision",
+                        "adminNews",
+                        [(
+                            "200",
+                            response_header(
+                                json_response("News revision republished", r("NewsEntry")),
+                                "ETag",
+                                "New published revision tag",
+                            ),
+                        )],
+                    ),
+                    r("RevisionRequest"),
+                ),
+                idempotent_entity_params(),
+            ),
+            true,
+        ),
+    );
+
+    add(
+        paths,
+        "/api/admin/v1/general-information",
+        "get",
+        admin(
+            params(
+                op(
+                    "getGeneralInformation",
+                    "Get the locale-aware General Information working record",
+                    "adminGeneralInformation",
+                    [(
+                        "200",
+                        response_header(
+                            json_response("General Information", r("GeneralInformation")),
+                            "ETag",
+                            "Current working revision tag",
+                        ),
+                    )],
+                ),
+                vec![locale_param(false)],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/general-information",
+        "post",
+        admin(
+            params(
+                body(
+                    op(
+                        "createGeneralInformation",
+                        "Create a locale-aware General Information draft",
+                        "adminGeneralInformation",
+                        [(
+                            "201",
+                            response_header(
+                                json_response(
+                                    "General Information draft created",
+                                    r("GeneralInformation"),
+                                ),
+                                "ETag",
+                                "Current working revision tag",
+                            ),
+                        )],
+                    ),
+                    r("GeneralInformationDraftInput"),
+                ),
+                vec![idempotency_param()],
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/general-information/{id}",
+        "get",
+        admin(
+            params(
+                op(
+                    "getGeneralInformationById",
+                    "Get one General Information working record",
+                    "adminGeneralInformation",
+                    [(
+                        "200",
+                        response_header(
+                            json_response("General Information", r("GeneralInformation")),
+                            "ETag",
+                            "Current working revision tag",
+                        ),
+                    )],
+                ),
+                vec![path_param("id", uuid())],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/general-information/{id}",
+        "patch",
+        admin(
+            params(
+                body(
+                    op(
+                        "updateGeneralInformation",
+                        "Update a General Information draft",
+                        "adminGeneralInformation",
+                        [(
+                            "200",
+                            response_header(
+                                json_response(
+                                    "General Information draft updated",
+                                    r("GeneralInformation"),
+                                ),
+                                "ETag",
+                                "New working revision tag",
+                            ),
+                        )],
+                    ),
+                    r("GeneralInformationDraftInput"),
+                ),
+                idempotent_entity_params(),
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/general-information/{id}/revisions",
+        "get",
+        admin(
+            params(
+                op(
+                    "listGeneralInformationRevisions",
+                    "List immutable General Information revision snapshots",
+                    "adminGeneralInformation",
+                    [(
+                        "200",
+                        json_response(
+                            "General Information revision snapshots",
+                            r("GeneralInformationRevisionPage"),
+                        ),
+                    )],
+                ),
+                vec![path_param("id", uuid())],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/general-information/{id}/publish",
+        "post",
+        admin(
+            params(
+                op(
+                    "publishGeneralInformationRevision",
+                    "Publish the current General Information revision",
+                    "adminGeneralInformation",
+                    [(
+                        "200",
+                        response_header(
+                            json_response("General Information published", r("GeneralInformation")),
+                            "ETag",
+                            "Published revision tag",
+                        ),
+                    )],
+                ),
+                idempotent_entity_params(),
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/general-information/{id}/rollback",
+        "post",
+        admin(
+            params(
+                body(
+                    op(
+                        "rollbackGeneralInformationRevision",
+                        "Republish a historical General Information revision",
+                        "adminGeneralInformation",
+                        [(
+                            "200",
+                            response_header(
+                                json_response(
+                                    "General Information revision republished",
+                                    r("GeneralInformation"),
+                                ),
+                                "ETag",
+                                "New published revision tag",
+                            ),
+                        )],
+                    ),
+                    r("RevisionRequest"),
+                ),
+                idempotent_entity_params(),
+            ),
+            true,
+        ),
+    );
+
+    add(
+        paths,
+        "/api/admin/v1/products/imports",
+        "get",
+        admin(
+            params(
+                op(
+                    "listProductImportRuns",
+                    "List Product Master import reports",
+                    "adminProductImports",
+                    [(
+                        "200",
+                        json_response("Product import reports", r("ProductImportResultPage")),
+                    )],
+                ),
+                admin_pagination_params(),
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/products/imports",
+        "post",
+        admin(
+            params(
+                body(
+                    op(
+                        "importProductMaster",
+                        "Validate and import an authoritative Product Master CSV",
+                        "adminProductImports",
+                        [(
+                            "202",
+                            response_header(
+                                json_response(
+                                    "Product import operation accepted",
+                                    r("ProductImportAccepted"),
+                                ),
+                                "Location",
+                                "Background operation status URL",
+                            ),
+                        )],
+                    ),
+                    r("ProductImportRequest"),
+                ),
+                vec![idempotency_param()],
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/products/imports/{id}",
+        "get",
+        admin(
+            params(
+                op(
+                    "getProductImportRun",
+                    "Get one Product Master import report",
+                    "adminProductImports",
+                    [(
+                        "200",
+                        json_response("Product import report", r("ProductImportResult")),
+                    )],
+                ),
+                vec![path_param("id", uuid())],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/products/{id}",
+        "get",
+        admin(
+            params(
+                op(
+                    "getAdminProduct",
+                    "Get product facts, source authority and website presentation",
+                    "adminCatalog",
+                    [(
+                        "200",
+                        response_header(
+                            json_response("Admin product detail", r("AdminProductDetail")),
+                            "ETag",
+                            "Current independent website presentation revision tag",
+                        ),
+                    )],
+                ),
+                vec![path_param("id", uuid())],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/products/{id}/private-pricing",
+        "get",
+        admin(
+            params(
+                op(
+                    "getProductPrivatePricing",
+                    "Decrypt allowlisted Product Master pricing fields for an authorized user",
+                    "adminCatalog",
+                    [(
+                        "200",
+                        json_response("Private Product Master pricing", r("ProductPrivatePricing")),
+                    )],
+                ),
+                vec![path_param("id", uuid())],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/products/{id}/presentation",
+        "patch",
+        admin(
+            params(
+                body(
+                    op(
+                        "updateProductPresentation",
+                        "Update product website presentation and SEO fields",
+                        "adminCatalog",
+                        [(
+                            "200",
+                            response_header(
+                                json_response(
+                                    "Admin product detail updated",
+                                    r("AdminProductDetail"),
+                                ),
+                                "ETag",
+                                "New independent product presentation revision tag",
+                            ),
+                        )],
+                    ),
+                    r("UpdateProductPresentation"),
+                ),
+                idempotent_entity_params(),
+            ),
+            true,
+        ),
+    );
+
+    let analytics_parameters = || {
+        let mut parameters = vec![
+            query_param("from", false, timestamp()),
+            query_param("to", false, timestamp()),
+        ];
+        parameters.extend(admin_pagination_params());
+        parameters
+    };
+    add(
+        paths,
+        "/api/admin/v1/analytics/visits",
+        "get",
+        admin(
+            params(
+                op(
+                    "listGuestVisits",
+                    "List privacy-minimized daily landing-page aggregates",
+                    "adminAnalytics",
+                    [(
+                        "200",
+                        json_response("Guest visit aggregates", r("GuestVisitAggregatePage")),
+                    )],
+                ),
+                analytics_parameters(),
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/analytics/sources",
+        "get",
+        admin(
+            params(
+                op(
+                    "listGuestSources",
+                    "List daily source and campaign aggregates",
+                    "adminAnalytics",
+                    [(
+                        "200",
+                        json_response("Guest source aggregates", r("GuestSourceDailyPage")),
+                    )],
+                ),
+                analytics_parameters(),
+            ),
+            false,
+        ),
+    );
+
+    add(
+        paths,
+        "/api/admin/v1/users",
+        "get",
+        admin(
+            params(
+                op(
+                    "listAdminUsers",
+                    "List management users and role assignments",
+                    "adminIdentity",
+                    [(
+                        "200",
+                        json_response("Management users", r("AdminUserRecordPage")),
+                    )],
+                ),
+                admin_pagination_params(),
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/users/{id}",
+        "get",
+        admin(
+            params(
+                op(
+                    "getAdminUser",
+                    "Get one management user",
+                    "adminIdentity",
+                    [(
+                        "200",
+                        response_header(
+                            json_response("Management user", r("AdminUserRecord")),
+                            "ETag",
+                            "Current user revision tag",
+                        ),
+                    )],
+                ),
+                vec![path_param("id", uuid())],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/users/{id}",
+        "patch",
+        admin(
+            params(
+                body(
+                    op(
+                        "updateAdminUser",
+                        "Update a management user, status or role assignments",
+                        "adminIdentity",
+                        [(
+                            "200",
+                            response_header(
+                                json_response("Management user updated", r("AdminUserRecord")),
+                                "ETag",
+                                "New user revision tag",
+                            ),
+                        )],
+                    ),
+                    r("UpdateAdminUser"),
+                ),
+                vec![
+                    path_param("id", uuid()),
+                    if_match_param(),
+                    idempotency_param(),
+                ],
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/users/{id}/sessions",
+        "delete",
+        admin(
+            params(
+                op(
+                    "revokeAdminUserSessions",
+                    "Revoke all active sessions for one management user",
+                    "adminIdentity",
+                    [("204", empty_response("User sessions revoked"))],
+                ),
+                vec![path_param("id", uuid())],
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/user-invitations",
+        "get",
+        admin(
+            op(
+                "listUserInvitations",
+                "List management user invitations",
+                "adminIdentity",
+                [(
+                    "200",
+                    json_response("User invitations", r("UserInvitationPage")),
+                )],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/user-invitations",
+        "post",
+        admin(
+            params(
+                body(
+                    op(
+                        "inviteAdminUser",
+                        "Create a time-bounded management user invitation",
+                        "adminIdentity",
+                        [(
+                            "201",
+                            json_response("User invitation created", r("UserInvitation")),
+                        )],
+                    ),
+                    r("InviteAdminUser"),
+                ),
+                vec![idempotency_param()],
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/user-invitations/{id}/revoke",
+        "post",
+        admin(
+            params(
+                body(
+                    op(
+                        "revokeUserInvitation",
+                        "Revoke a pending management user invitation",
+                        "adminIdentity",
+                        [("204", empty_response("User invitation revoked"))],
+                    ),
+                    r("ReasonRequest"),
+                ),
+                vec![path_param("id", uuid()), idempotency_param()],
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/roles",
+        "get",
+        admin(
+            op(
+                "listAdminRoles",
+                "List role definitions and their permission matrices",
+                "adminIdentity",
+                [(
+                    "200",
+                    json_response("Role definitions", r("AdminRoleRecordPage")),
+                )],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/roles/{id}",
+        "get",
+        admin(
+            params(
+                op(
+                    "getAdminRole",
+                    "Get one role definition and permission matrix",
+                    "adminIdentity",
+                    [(
+                        "200",
+                        response_header(
+                            json_response("Role definition", r("AdminRoleRecord")),
+                            "ETag",
+                            "Current role revision tag",
+                        ),
+                    )],
+                ),
+                vec![path_param("id", uuid())],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/roles/{id}",
+        "patch",
+        admin(
+            params(
+                body(
+                    op(
+                        "updateAdminRole",
+                        "Update a role display name or permission matrix",
+                        "adminIdentity",
+                        [(
+                            "200",
+                            response_header(
+                                json_response("Role definition updated", r("AdminRoleRecord")),
+                                "ETag",
+                                "New role revision tag",
+                            ),
+                        )],
+                    ),
+                    r("UpdateAdminRole"),
+                ),
+                vec![
+                    path_param("id", uuid()),
+                    if_match_param(),
+                    idempotency_param(),
+                ],
+            ),
+            true,
+        ),
+    );
+}
+
 fn schemas() -> Value {
     let mut schemas = Map::new();
     add_common_schemas(&mut schemas);
     add_content_schemas(&mut schemas);
     add_product_schemas(&mut schemas);
     add_submission_schemas(&mut schemas);
+    add_operational_data_schemas(&mut schemas);
     add_admin_schemas(&mut schemas);
     Value::Object(schemas)
 }
@@ -932,6 +1872,7 @@ fn add_content_schemas(s: &mut Map<String, Value>) {
             "solution",
             "technology",
             "article",
+            "news",
             "faq",
             "caseStudy",
             "download",
@@ -1054,11 +1995,13 @@ fn add_product_schemas(s: &mut Map<String, Value>) {
         })
     ));
     s.insert("Product".into(), object(
-        &["id", "stableId", "model", "slug", "locale", "family", "subtype", "motorTechnology", "title", "summary", "specifications", "performanceCurves", "sourceSnapshotId", "sourceRevision", "currentRevision", "publishedRevision", "status", "indexable", "updatedAt"],
+        &["id", "stableId", "model", "slug", "locale", "family", "subtype", "motorTechnology", "title", "summary", "seo", "sortOrder", "relatedContentIds", "specifications", "performanceCurves", "sourceSnapshotId", "sourceRevision", "currentRevision", "publishedRevision", "status", "indexable", "updatedAt"],
         json!({
             "id": uuid(), "stableId": {"type": "string"}, "model": nullable(json!({"type": "string"})), "slug": slug(), "locale": {"type": "string"},
             "family": r("ProductFamily"), "subtype": nullable(json!({"type": "string"})), "motorTechnology": nullable(json!({"type": "string"})),
-            "title": {"type": "string"}, "summary": nullable(json!({"type": "string"})), "specifications": array(r("SpecValue")), "performanceCurves": array(r("PerformanceCurve")),
+            "title": {"type": "string"}, "summary": nullable(json!({"type": "string"})), "seo": r("SeoMetadata"),
+            "sortOrder": {"type": "integer"}, "relatedContentIds": array(uuid()),
+            "specifications": array(r("SpecValue")), "performanceCurves": array(r("PerformanceCurve")),
             "sourceSnapshotId": uuid(), "sourceRevision": {"type": "string"}, "currentRevision": revision(), "publishedRevision": nullable(revision()),
             "status": r("PublicationStatus"), "indexable": {"type": "boolean"}, "updatedAt": timestamp()
         })
@@ -1074,6 +2017,7 @@ fn add_product_schemas(s: &mut Map<String, Value>) {
             "airflow": {"type": "number", "exclusiveMinimum": 0}, "airflowUnit": {"type": "string"}, "pressure": {"type": "number", "exclusiveMinimum": 0}, "pressureUnit": {"type": "string"},
             "ambientTemperatureC": nullable(json!({"type": "number"})), "maximumDiameterMm": nullable(json!({"type": "number", "exclusiveMinimum": 0})),
             "voltage": nullable(json!({"type": "string"})), "frequencyHz": nullable(json!({"type": "number", "exclusiveMinimum": 0})),
+            "motorTechnology": nullable(json!({"type": "string", "minLength": 1, "maxLength": 120})),
             "requiredCertifications": array(json!({"type": "string"})), "preferredFamily": nullable(r("ProductFamily")), "priority": nullable(r("SelectorPriority"))
         }
     }));
@@ -1399,36 +2343,741 @@ fn rfq_request_schema(journey: &str, context: &str, product_context: bool) -> Va
 }
 
 fn analytics_properties_schema() -> Value {
-    let identifier = || json!({"type": "string", "minLength": 1, "maxLength": 120, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"});
-    let controlled_text = || json!({"type": "string", "minLength": 1, "maxLength": 160});
     let bounded_count = || json!({"type": "integer", "minimum": 0, "maximum": 1000000});
+    let faq_id = || {
+        json!({
+            "oneOf": [
+                uuid(),
+                {"type": "string", "pattern": "^faq-[1-9][0-9]{0,5}$"}
+            ]
+        })
+    };
     json!({
-        "description": "A scalar-only property object. The server selects the matching strict allowlist from eventName and rejects every unknown key or PII-like value.",
+        "description": "A scalar-only property object. Every string is a UUID, a numeric FAQ identifier, or a server-controlled enum; the server also selects the matching property keys from eventName.",
         "anyOf": [
-            object(&[], json!({"contentKind": identifier(), "contentId": uuid(), "publishedRevision": revision()})),
+            object(&[], json!({"contentKind": string_enum(&["content", "news", "product"]), "contentId": uuid(), "publishedRevision": revision()})),
             object(&[], json!({"queryLength": {"type": "integer", "minimum": 1, "maximum": 500}, "resultCount": bounded_count()})),
-            object(&[], json!({"filterName": identifier(), "filterValue": controlled_text(), "resultCount": bounded_count()})),
+            object(&[], json!({"filterName": string_enum(&["resourceType", "applicableModel", "contentType", "catalogSearch", "family", "motorTechnology", "catalogFilters", "catalogPagination"]), "resultCount": bounded_count()})),
             object(&[], json!({"constraintCount": bounded_count(), "preferredFamily": string_enum(&["open", "centrifugal", "axial", "crossFlow", "inlineDuct", "motors"]), "priority": string_enum(&["efficiency", "noise", "size", "headroom"])})),
             object(&[], json!({"step": {"type": "integer", "minimum": 1, "maximum": 20}, "constraintCount": bounded_count()})),
             object(&[], json!({"outcome": string_enum(&["matched", "noValidatedCandidates", "engineeringReviewRequired"]), "candidateCount": bounded_count()})),
             object(&[], json!({"action": string_enum(&["add", "remove", "clear"]), "itemCount": {"type": "integer", "minimum": 0, "maximum": 4}, "productId": uuid(), "productRevision": revision()})),
             object(&[], json!({"downloadId": uuid(), "productId": uuid(), "productRevision": revision()})),
-            object(&[], json!({"faqId": identifier(), "category": controlled_text()})),
-            object(&[], json!({"ctaId": identifier(), "destinationPath": {"type": "string", "minLength": 3, "maxLength": 512, "pattern": "^/en(?:/|$)[^?#]*$"}, "placement": identifier()})),
-            object(&[], json!({"journey": string_enum(&["product", "selection", "project", "replacement"]), "productId": uuid(), "productRevision": revision(), "step": {"type": "integer", "minimum": 1, "maximum": 20}, "fieldName": identifier(), "errorCode": identifier()}))
+            object(&[], json!({"faqId": faq_id()})),
+            object(&[], json!({"ctaId": string_enum(&["content-primary", "download-record-open", "request-quote"]), "placement": string_enum(&["content-panel", "downloads-list", "product-detail", "hero"])})),
+            object(&[], json!({"journey": string_enum(&["product", "selection", "project", "replacement"]), "productId": uuid(), "productRevision": revision(), "step": {"type": "integer", "minimum": 1, "maximum": 20}, "fieldName": string_enum(&["productContext"]), "errorCode": string_enum(&["publishedContextRequired", "apiRejected"])}))
         ]
     })
+}
+
+fn add_operational_data_schemas(s: &mut Map<String, Value>) {
+    s.insert(
+        "DataClass".into(),
+        string_enum(&["editorial", "feishu", "verifiedCsv", "developmentFixture"]),
+    );
+    s.insert(
+        "NewsDraftInput".into(),
+        json!({
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["content", "category", "authorDisplayName"],
+            "properties": {
+                "content": r("ContentDraftInput"),
+                "category": {"type": "string", "minLength": 1, "maxLength": 120},
+                "authorDisplayName": {"type": "string", "minLength": 1, "maxLength": 200},
+                "coverMediaId": nullable(uuid()),
+                "publishedAt": nullable(timestamp()),
+                "featured": {"type": "boolean", "default": false},
+                "dataClass": {"allOf": [r("DataClass")], "default": "editorial"}
+            }
+        }),
+    );
+    s.insert(
+        "NewsEntry".into(),
+        object(
+            &[
+                "content",
+                "category",
+                "authorDisplayName",
+                "coverMediaId",
+                "publishedAt",
+                "featured",
+                "dataClass",
+            ],
+            json!({
+                "content": r("ContentEntry"),
+                "category": {"type": "string"},
+                "authorDisplayName": nullable(json!({"type": "string"})),
+                "coverMediaId": nullable(uuid()),
+                "publishedAt": nullable(timestamp()),
+                "featured": {"type": "boolean"},
+                "dataClass": r("DataClass")
+            }),
+        ),
+    );
+    s.insert(
+        "NewsRevision".into(),
+        json!({
+            "description": "Immutable News revision payload.",
+            "allOf": [r("NewsEntry")]
+        }),
+    );
+    s.insert("NewsRevisionPage".into(), page("NewsRevision"));
+    s.insert("NewsPage".into(), page("NewsEntry"));
+
+    s.insert(
+        "GeneralInformationPayload".into(),
+        json!({
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+                "brandName",
+                "brandLine",
+                "homePath",
+                "footerStatement",
+                "copyrightText",
+                "defaultSeo",
+                "organization"
+            ],
+            "properties": {
+                "brandName": {"type": "string"},
+                "brandLine": nullable(json!({"type": "string"})),
+                "homePath": {"type": "string", "pattern": "^/en(?:/|$)"},
+                "footerStatement": nullable(json!({"type": "string"})),
+                "copyrightText": nullable(json!({"type": "string"})),
+                "defaultSeo": {"type": "object", "additionalProperties": true},
+                "organization": {"type": "object", "additionalProperties": true},
+                "navigationCta": nullable(json!({
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "label": {"type": "string"},
+                        "href": {"type": "string", "pattern": "^/en(?:/|$)"}
+                    }
+                })),
+                "productCategories": {"type": "array", "items": r("ProductFamilyPresentation")}
+            }
+        }),
+    );
+    s.insert(
+        "GeneralInformationDraftInput".into(),
+        json!({
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["payload"],
+            "properties": {
+                "locale": {"type": "string", "default": "en"},
+                "payload": r("GeneralInformationPayload"),
+                "isPlaceholder": {"type": "boolean", "default": false}
+            }
+        }),
+    );
+    s.insert(
+        "GeneralInformation".into(),
+        object(
+            &[
+                "id",
+                "locale",
+                "payload",
+                "status",
+                "currentRevision",
+                "publishedRevision",
+                "isPlaceholder",
+                "updatedAt",
+            ],
+            json!({
+                "id": uuid(),
+                "locale": {"type": "string"},
+                "payload": r("GeneralInformationPayload"),
+                "status": r("PublicationStatus"),
+                "currentRevision": revision(),
+                "publishedRevision": nullable(revision()),
+                "isPlaceholder": {"type": "boolean"},
+                "updatedAt": timestamp()
+            }),
+        ),
+    );
+    s.insert(
+        "GeneralInformationRevision".into(),
+        json!({
+            "description": "Immutable General Information revision payload.",
+            "allOf": [r("GeneralInformation")]
+        }),
+    );
+    s.insert(
+        "GeneralInformationRevisionPage".into(),
+        page("GeneralInformationRevision"),
+    );
+    s.insert(
+        "ProductFamilyPresentation".into(),
+        object(
+            &["code", "slug", "name", "description", "sortOrder"],
+            json!({
+                "code": r("ProductFamily"),
+                "slug": slug(),
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "sortOrder": {"type": "integer"}
+            }),
+        ),
+    );
+    s.insert(
+        "SiteBootstrap".into(),
+        object(
+            &[
+                "generalInformation",
+                "navigation",
+                "footer",
+                "productFamilies",
+                "motorTechnologies",
+                "generatedAt",
+            ],
+            json!({
+                "generalInformation": nullable(r("GeneralInformation")),
+                "navigation": nullable(r("ContentEntry")),
+                "footer": nullable(r("ContentEntry")),
+                "productFamilies": array(r("ProductFamilyPresentation")),
+                "motorTechnologies": array(json!({"type": "string"})),
+                "generatedAt": timestamp()
+            }),
+        ),
+    );
+    s.insert(
+        "RouteResolution".into(),
+        object(
+            &[
+                "path",
+                "templateKey",
+                "entityType",
+                "entityId",
+                "locale",
+                "publishedRevision",
+                "indexable",
+                "dataClass",
+                "page",
+            ],
+            json!({
+                "path": {"type": "string"},
+                "templateKey": {"type": "string"},
+                "entityType": {"type": "string"},
+                "entityId": nullable(uuid()),
+                "locale": {"type": "string"},
+                "publishedRevision": nullable(revision()),
+                "indexable": {"type": "boolean"},
+                "dataClass": r("DataClass"),
+                "page": nullable(r("ContentEntry"))
+            }),
+        ),
+    );
+
+    s.insert(
+        "CreateGuestVisit".into(),
+        object(
+            &[
+                "anonymousSessionId",
+                "consentReceipt",
+                "policyVersion",
+                "landingPath",
+            ],
+            json!({
+                "anonymousSessionId": uuid(),
+                "consentReceipt": uuid(),
+                "policyVersion": r("AnalyticsPolicyVersion"),
+                "landingPath": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2048,
+                    "pattern": "^/en(?:/[^?#]*)?$"
+                },
+                "referrerDomain": nullable(json!({
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 253,
+                    "pattern": "^[^/\\\\?#@]+$"
+                })),
+                "source": nullable(json!({
+                    "type": "string", "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+                    "description": "Accepted only when registered in the deployment UTM source allowlist."
+                })),
+                "medium": nullable(json!({
+                    "type": "string", "maxLength": 128,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+                    "description": "Accepted only when registered in the deployment UTM medium allowlist."
+                })),
+                "campaign": nullable(json!({
+                    "type": "string", "maxLength": 200,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+                    "description": "Accepted only when registered in the deployment UTM campaign allowlist."
+                }))
+            }),
+        ),
+    );
+    s.insert(
+        "GuestVisit".into(),
+        object(
+            &[
+                "id",
+                "anonymousSessionId",
+                "landingPath",
+                "referrerDomain",
+                "source",
+                "medium",
+                "campaign",
+                "firstSeenAt",
+                "lastSeenAt",
+                "retentionUntil",
+            ],
+            json!({
+                "id": uuid(),
+                "anonymousSessionId": uuid(),
+                "landingPath": {"type": "string"},
+                "referrerDomain": nullable(json!({"type": "string"})),
+                "source": {"type": "string"},
+                "medium": nullable(json!({"type": "string"})),
+                "campaign": nullable(json!({"type": "string"})),
+                "firstSeenAt": timestamp(),
+                "lastSeenAt": timestamp(),
+                "retentionUntil": timestamp()
+            }),
+        ),
+    );
+    s.insert("GuestVisitPage".into(), page("GuestVisit"));
+    s.insert(
+        "GuestVisitAggregate".into(),
+        object(
+            &[
+                "bucketDate",
+                "landingPath",
+                "locale",
+                "visits",
+                "pageViews",
+                "rfqStarts",
+                "rfqSubmissions",
+            ],
+            json!({
+                "bucketDate": {"type": "string", "format": "date"},
+                "landingPath": {"type": "string", "pattern": "^/en(?:/|$)[^?#]*$"},
+                "locale": {"type": "string"},
+                "visits": counter(),
+                "pageViews": counter(),
+                "rfqStarts": counter(),
+                "rfqSubmissions": counter()
+            }),
+        ),
+    );
+    s.insert(
+        "GuestVisitAggregatePage".into(),
+        page("GuestVisitAggregate"),
+    );
+    s.insert(
+        "GuestSourceDaily".into(),
+        object(
+            &[
+                "bucketDate",
+                "source",
+                "sourceName",
+                "referrerDomain",
+                "utmSource",
+                "medium",
+                "campaign",
+                "landingPath",
+                "locale",
+                "visits",
+                "pageViews",
+                "rfqStarts",
+                "rfqSubmissions",
+            ],
+            json!({
+                "bucketDate": {"type": "string", "format": "date"},
+                "source": {"type": "string"},
+                "sourceName": nullable(json!({"type": "string"})),
+                "referrerDomain": nullable(json!({"type": "string"})),
+                "utmSource": nullable(json!({"type": "string"})),
+                "medium": nullable(json!({"type": "string"})),
+                "campaign": nullable(json!({"type": "string"})),
+                "landingPath": {"type": "string", "pattern": "^/en(?:/|$)[^?#]*$"},
+                "locale": {"type": "string"},
+                "visits": counter(),
+                "pageViews": counter(),
+                "rfqStarts": counter(),
+                "rfqSubmissions": counter()
+            }),
+        ),
+    );
+    s.insert(
+        "GuestSourceSummary".into(),
+        json!({"allOf": [r("GuestSourceDaily")]}),
+    );
+    s.insert("GuestSourceDailyPage".into(), page("GuestSourceDaily"));
+
+    s.insert(
+        "RevisionRequest".into(),
+        object(
+            &["revision", "reason"],
+            json!({
+                "revision": revision(),
+                "reason": {"type": "string", "minLength": 10}
+            }),
+        ),
+    );
+    s.insert(
+        "ReasonRequest".into(),
+        object(
+            &["reason"],
+            json!({"reason": {"type": "string", "minLength": 10}}),
+        ),
+    );
+
+    s.insert(
+        "ProductImportRequest".into(),
+        object(
+            &["csv"],
+            json!({
+                "csv": {"type": "string", "minLength": 1, "maxLength": 16777216, "writeOnly": true},
+                "mappingVersion": nullable(json!({"type": "string", "minLength": 1, "maxLength": 120}))
+            }),
+        ),
+    );
+    s.insert(
+        "ProductImportAccepted".into(),
+        object(
+            &["operationId", "status", "operationUrl", "eventsUrl"],
+            json!({
+                "operationId": uuid(),
+                "status": string_enum(&["queued", "running", "completed", "failed", "cancelled"]),
+                "operationUrl": {"type": "string", "pattern": "^/api/admin/v1/operations/"},
+                "eventsUrl": {"type": "string", "pattern": "^/api/admin/v1/operations/"}
+            }),
+        ),
+    );
+    let product_import_row_error = object(
+        &[
+            "rowNumber",
+            "stableId",
+            "fieldName",
+            "severity",
+            "code",
+            "detail",
+        ],
+        json!({
+            "rowNumber": {"type": "integer", "minimum": 1},
+            "stableId": nullable(json!({"type": "string"})),
+            "fieldName": nullable(json!({"type": "string"})),
+            "severity": string_enum(&["warning", "error"]),
+            "code": {"type": "string"},
+            "detail": {"type": "string"}
+        }),
+    );
+    s.insert(
+        "ProductImportRowError".into(),
+        product_import_row_error.clone(),
+    );
+    // Compatibility name retained for existing Admin imports while new
+    // consumers use the plan's explicit row-error contract name.
+    s.insert("ProductImportError".into(), product_import_row_error);
+    s.insert(
+        "MissingAssetReference".into(),
+        object(
+            &["stableId", "assetType", "sourceReference"],
+            json!({
+                "stableId": {"type": "string"},
+                "assetType": {"type": "string"},
+                "sourceReference": {"type": "string"}
+            }),
+        ),
+    );
+    s.insert(
+        "ProductImportResult".into(),
+        object(
+            &[
+                "id",
+                "checksum",
+                "mappingVersion",
+                "status",
+                "totalRows",
+                "validRows",
+                "malformedRows",
+                "errors",
+                "missingAssets",
+                "reused",
+                "createdAt",
+            ],
+            json!({
+                "id": uuid(),
+                "checksum": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+                "mappingVersion": {"type": "string"},
+                "status": {"type": "string"},
+                "totalRows": counter(),
+                "validRows": counter(),
+                "malformedRows": counter(),
+                "errors": array(r("ProductImportRowError")),
+                "missingAssets": array(r("MissingAssetReference")),
+                "reused": {"type": "boolean"},
+                "createdAt": timestamp()
+            }),
+        ),
+    );
+    s.insert(
+        "ProductImportRun".into(),
+        json!({"allOf": [r("ProductImportResult")]}),
+    );
+    s.insert(
+        "ProductImportResultPage".into(),
+        page("ProductImportResult"),
+    );
+
+    s.insert(
+        "ProductPresentation".into(),
+        object(
+            &[
+                "locale",
+                "slug",
+                "title",
+                "summary",
+                "seo",
+                "indexable",
+                "sortOrder",
+                "relatedContentIds",
+                "revision",
+                "publishedRevision",
+                "updatedAt",
+            ],
+            json!({
+                "locale": {"type": "string"},
+                "slug": slug(),
+                "title": {"type": "string"},
+                "summary": nullable(json!({"type": "string"})),
+                "seo": r("SeoMetadata"),
+                "indexable": {"type": "boolean"},
+                "sortOrder": {"type": "integer"},
+                "relatedContentIds": array(uuid()),
+                "revision": revision(),
+                "publishedRevision": nullable(revision()),
+                "updatedAt": timestamp()
+            }),
+        ),
+    );
+    s.insert(
+        "UpdateProductPresentation".into(),
+        object(
+            &["locale", "slug", "title", "seo", "indexable", "sortOrder", "relatedContentIds", "reason"],
+            json!({
+                "locale": {"type": "string"},
+                "slug": slug(),
+                "title": {"type": "string", "minLength": 1, "maxLength": 300},
+                "summary": nullable(json!({"type": "string"})),
+                "seo": r("SeoMetadataInput"),
+                "indexable": {"type": "boolean"},
+                "sortOrder": {"type": "integer", "default": 0},
+                "relatedContentIds": {"type": "array", "maxItems": 100, "uniqueItems": true, "items": uuid(), "default": []},
+                "reason": {"type": "string", "minLength": 10}
+            }),
+        ),
+    );
+    s.insert(
+        "ProductPrivatePricing".into(),
+        object(
+            &["productId", "stableId", "sourceRowNumber", "pricingFields"],
+            json!({
+                "productId": uuid(),
+                "stableId": {"type": "string"},
+                "sourceRowNumber": {"type": "integer", "minimum": 1},
+                "pricingFields": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string"},
+                    "readOnly": true
+                }
+            }),
+        ),
+    );
+    s.insert(
+        "AdminProductDetail".into(),
+        json!({
+            "allOf": [
+                r("Product"),
+                object(
+                    &["sourceKind", "missingAssets", "presentation"],
+                    json!({
+                        "sourceKind": r("DataClass"),
+                        "missingAssets": array(r("MissingAssetReference")),
+                        "presentation": nullable(r("ProductPresentation"))
+                    })
+                )
+            ]
+        }),
+    );
+
+    s.insert(
+        "AdminUserRecord".into(),
+        object(
+            &[
+                "id",
+                "email",
+                "displayName",
+                "locale",
+                "status",
+                "revision",
+                "roles",
+                "totpEnabled",
+                "invitedAt",
+                "lastLoginAt",
+                "createdAt",
+                "updatedAt",
+            ],
+            json!({
+                "id": uuid(),
+                "email": {"type": "string", "format": "email"},
+                "displayName": {"type": "string"},
+                "locale": {"type": "string"},
+                "status": string_enum(&["invited", "active", "disabled"]),
+                "revision": revision(),
+                "roles": array(json!({"type": "string"})),
+                "totpEnabled": {"type": "boolean"},
+                "invitedAt": nullable(timestamp()),
+                "lastLoginAt": nullable(timestamp()),
+                "createdAt": timestamp(),
+                "updatedAt": timestamp()
+            }),
+        ),
+    );
+    s.insert(
+        "UserAdminSummary".into(),
+        json!({"allOf": [r("AdminUserRecord")]}),
+    );
+    s.insert("AdminUserRecordPage".into(), page("AdminUserRecord"));
+    s.insert(
+        "UpdateAdminUser".into(),
+        object(
+            &["reason"],
+            json!({
+                "displayName": {"type": "string", "minLength": 1, "maxLength": 120},
+                "locale": {"type": "string"},
+                "status": string_enum(&["invited", "active", "disabled"]),
+                "roleKeys": array(json!({"type": "string"})),
+                "reason": {"type": "string", "minLength": 10}
+            }),
+        ),
+    );
+    s.insert(
+        "AdminRoleRecord".into(),
+        object(
+            &[
+                "id",
+                "key",
+                "displayName",
+                "systemRole",
+                "revision",
+                "permissions",
+            ],
+            json!({
+                "id": uuid(),
+                "key": {"type": "string"},
+                "displayName": {"type": "string"},
+                "systemRole": {"type": "boolean"},
+                "revision": revision(),
+                "permissions": array(json!({"type": "string"}))
+            }),
+        ),
+    );
+    s.insert(
+        "RoleDefinition".into(),
+        json!({"allOf": [r("AdminRoleRecord")]}),
+    );
+    s.insert("AdminRoleRecordPage".into(), page("AdminRoleRecord"));
+    s.insert(
+        "UpdateAdminRole".into(),
+        object(
+            &["reason"],
+            json!({
+                "displayName": {"type": "string", "minLength": 1, "maxLength": 120},
+                "permissions": array(json!({"type": "string"})),
+                "reason": {"type": "string", "minLength": 10}
+            }),
+        ),
+    );
+    s.insert(
+        "InviteAdminUser".into(),
+        object(
+            &["email", "displayName", "roleKeys"],
+            json!({
+                "email": {"type": "string", "format": "email"},
+                "displayName": {"type": "string", "minLength": 1, "maxLength": 120},
+                "roleKeys": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+            }),
+        ),
+    );
+    s.insert(
+        "UserInvitation".into(),
+        object(
+            &[
+                "id",
+                "email",
+                "displayName",
+                "locale",
+                "roleKeys",
+                "status",
+                "invitedAt",
+                "expiresAt",
+            ],
+            json!({
+                "id": uuid(),
+                "email": {"type": "string", "format": "email"},
+                "displayName": {"type": "string"},
+                "locale": {"type": "string"},
+                "roleKeys": array(json!({"type": "string"})),
+                "status": string_enum(&["pending", "accepted", "revoked", "expired"]),
+                "invitedAt": timestamp(),
+                "expiresAt": timestamp(),
+                "invitationToken": {"type": "string", "readOnly": true}
+            }),
+        ),
+    );
+    s.insert("UserInvitationPage".into(), page("UserInvitation"));
 }
 
 fn add_admin_schemas(s: &mut Map<String, Value>) {
     s.insert("SetupRequest".into(), object(
         &["displayName", "email", "password", "bootstrapToken"],
-        json!({"displayName": {"type": "string", "minLength": 1, "maxLength": 120}, "email": {"type": "string", "format": "email"}, "password": {"type": "string", "format": "password", "minLength": 12, "writeOnly": true}, "bootstrapToken": {"type": "string", "writeOnly": true}})
+        json!({"displayName": {"type": "string", "minLength": 1, "maxLength": 120}, "email": {"type": "string", "format": "email"}, "password": {"type": "string", "format": "password", "minLength": 12, "maxLength": 256, "writeOnly": true}, "bootstrapToken": {"type": "string", "writeOnly": true}})
     ));
     s.insert("LoginRequest".into(), json!({
         "type": "object", "additionalProperties": false, "required": ["email", "password"],
         "properties": {"email": {"type": "string", "format": "email"}, "password": {"type": "string", "format": "password", "writeOnly": true}, "otp": nullable(json!({"type": "string", "description": "A six-digit TOTP or one unused recovery code.", "pattern": "^(?:[0-9]{6}|[A-HJ-NP-Za-hj-np-z2-9]{4}(?:-[A-HJ-NP-Za-hj-np-z2-9]{4}){3})$", "writeOnly": true}))}
     }));
+    s.insert(
+        "AcceptInvitationRequest".into(),
+        object(
+            &["token", "password"],
+            json!({
+                "token": {"type": "string", "minLength": 43, "maxLength": 43, "pattern": "^[A-Za-z0-9_-]{43}$", "writeOnly": true},
+                "password": {"type": "string", "format": "password", "minLength": 12, "maxLength": 256, "writeOnly": true}
+            }),
+        ),
+    );
+    s.insert(
+        "InvitationAcceptance".into(),
+        object(
+            &[
+                "userId",
+                "email",
+                "displayName",
+                "locale",
+                "roleKeys",
+                "status",
+                "acceptedAt",
+            ],
+            json!({
+                "userId": uuid(),
+                "email": {"type": "string", "format": "email"},
+                "displayName": {"type": "string"},
+                "locale": {"type": "string"},
+                "roleKeys": array(json!({"type": "string"})),
+                "status": {"type": "string", "const": "active"},
+                "acceptedAt": timestamp()
+            }),
+        ),
+    );
     s.insert("SessionUser".into(), object(
         &["id", "displayName", "email", "role", "permissions", "environment", "totpEnabled"],
         json!({"id": uuid(), "displayName": {"type": "string"}, "email": {"type": "string", "format": "email"}, "role": {"type": "string"}, "permissions": array(json!({"type": "string"})), "environment": {"type": "string"}, "totpEnabled": {"type": "boolean"}})
@@ -1524,6 +3173,7 @@ fn add_admin_schemas(s: &mut Map<String, Value>) {
             "searchReindex",
             "cacheInvalidate",
             "feishuSync",
+            "productImport",
         ]),
     );
     s.insert(
@@ -1761,10 +3411,6 @@ fn product_entity_op(operation_id: &str, summary: &str) -> Value {
     )
 }
 
-fn entity_params() -> Vec<Value> {
-    vec![path_param("id", uuid()), if_match_param()]
-}
-
 fn idempotent_entity_params() -> Vec<Value> {
     vec![
         path_param("id", uuid()),
@@ -1809,6 +3455,14 @@ fn path_param(name: &str, schema: Value) -> Value {
 
 fn query_param(name: &str, required: bool, schema: Value) -> Value {
     json!({"name": name, "in": "query", "required": required, "schema": schema})
+}
+
+fn locale_param(required: bool) -> Value {
+    query_param(
+        "locale",
+        required,
+        json!({"type": "string", "enum": ["en"], "default": "en"}),
+    )
 }
 
 fn idempotency_param() -> Value {
@@ -1917,8 +3571,11 @@ mod tests {
         let document = document();
         let paths = document["paths"].as_object().expect("paths object");
         let expected = [
+            "/api/admin/v1/analytics/sources",
             "/api/admin/v1/analytics/summary",
+            "/api/admin/v1/analytics/visits",
             "/api/admin/v1/audit",
+            "/api/admin/v1/auth/invitations/accept",
             "/api/admin/v1/auth/login",
             "/api/admin/v1/auth/logout",
             "/api/admin/v1/auth/recovery-codes/regenerate",
@@ -1936,24 +3593,51 @@ mod tests {
             "/api/admin/v1/content/{id}/rollback",
             "/api/admin/v1/feishu/conflicts",
             "/api/admin/v1/feishu/sync-runs",
+            "/api/admin/v1/general-information",
+            "/api/admin/v1/general-information/{id}",
+            "/api/admin/v1/general-information/{id}/publish",
+            "/api/admin/v1/general-information/{id}/revisions",
+            "/api/admin/v1/general-information/{id}/rollback",
+            "/api/admin/v1/news",
+            "/api/admin/v1/news/{id}",
+            "/api/admin/v1/news/{id}/publish",
+            "/api/admin/v1/news/{id}/revisions",
+            "/api/admin/v1/news/{id}/rollback",
             "/api/admin/v1/operations",
             "/api/admin/v1/operations/{id}",
             "/api/admin/v1/operations/{id}/events",
             "/api/admin/v1/products",
+            "/api/admin/v1/products/imports",
+            "/api/admin/v1/products/imports/{id}",
+            "/api/admin/v1/products/{id}",
+            "/api/admin/v1/products/{id}/presentation",
+            "/api/admin/v1/products/{id}/private-pricing",
             "/api/admin/v1/products/{id}/publish",
             "/api/admin/v1/products/{id}/temporary-overrides",
             "/api/admin/v1/rfqs",
+            "/api/admin/v1/roles",
+            "/api/admin/v1/roles/{id}",
             "/api/admin/v1/settings",
+            "/api/admin/v1/user-invitations",
+            "/api/admin/v1/user-invitations/{id}/revoke",
+            "/api/admin/v1/users",
+            "/api/admin/v1/users/{id}",
+            "/api/admin/v1/users/{id}/sessions",
             "/api/public/v1/analytics/consents",
             "/api/public/v1/analytics/events",
             "/api/public/v1/contact",
             "/api/public/v1/content-preview",
             "/api/public/v1/content/{kind}/{slug}",
             "/api/public/v1/discovery",
+            "/api/public/v1/guest-visits",
+            "/api/public/v1/news",
+            "/api/public/v1/news/{slug}",
             "/api/public/v1/products",
             "/api/public/v1/products/{slug}",
             "/api/public/v1/rfqs",
+            "/api/public/v1/routes/resolve",
             "/api/public/v1/selector",
+            "/api/public/v1/site-bootstrap",
             "/healthz",
             "/openapi.json",
             "/readyz",
@@ -1970,6 +3654,23 @@ mod tests {
             assert!(!serialized.to_ascii_lowercase().contains("devtools"));
             assert!(!serialized.to_ascii_lowercase().contains("terminaltoken"));
         }
+    }
+
+    #[test]
+    fn invitation_acceptance_is_public_auth_surface_with_write_only_secrets() {
+        let document = document();
+        let operation = &document["paths"]["/api/admin/v1/auth/invitations/accept"]["post"];
+        assert_eq!(operation["operationId"], "acceptAdministratorInvitation");
+        assert!(operation.get("security").is_none());
+        let schema = &document["components"]["schemas"]["AcceptInvitationRequest"];
+        assert_eq!(schema["additionalProperties"], false);
+        assert_eq!(schema["properties"]["token"]["writeOnly"], true);
+        assert_eq!(schema["properties"]["password"]["writeOnly"], true);
+        assert_eq!(
+            document["components"]["schemas"]["InvitationAcceptance"]["properties"]["status"]
+                ["const"],
+            "active"
+        );
     }
 
     #[test]
@@ -2005,16 +3706,59 @@ mod tests {
     }
 
     #[test]
+    fn database_driven_site_and_selector_facets_are_typed_without_fixed_values() {
+        let document = document();
+        let schemas = &document["components"]["schemas"];
+        assert_eq!(
+            schemas["SiteBootstrap"]["properties"]["motorTechnologies"]["type"],
+            "array"
+        );
+        assert_eq!(
+            schemas["SiteBootstrap"]["properties"]["motorTechnologies"]["items"]["type"],
+            "string"
+        );
+        assert!(schemas["SiteBootstrap"]["properties"]["motorTechnologies"]
+            .get("enum")
+            .is_none());
+        assert!(schemas["SelectorRequest"]["properties"]
+            .get("motorTechnology")
+            .is_some());
+        assert_eq!(
+            schemas["ProductImportResult"]["properties"]["errors"]["items"]["$ref"],
+            "#/components/schemas/ProductImportRowError"
+        );
+        assert_eq!(
+            schemas["ProductImportRowError"],
+            schemas["ProductImportError"]
+        );
+    }
+
+    #[test]
     fn admin_submit_publish_and_job_mutations_require_a_bounded_idempotency_key() {
         let document = document();
         for (path, method) in [
             ("/api/admin/v1/content", "post"),
+            ("/api/admin/v1/content/{id}", "patch"),
             ("/api/admin/v1/content/{id}/publish", "post"),
             ("/api/admin/v1/content/{id}/rollback", "post"),
             ("/api/admin/v1/products/{id}/publish", "post"),
             ("/api/admin/v1/products/{id}/temporary-overrides", "post"),
             ("/api/admin/v1/feishu/sync-runs", "post"),
             ("/api/admin/v1/operations", "post"),
+            ("/api/admin/v1/news", "post"),
+            ("/api/admin/v1/news/{id}", "patch"),
+            ("/api/admin/v1/news/{id}/publish", "post"),
+            ("/api/admin/v1/news/{id}/rollback", "post"),
+            ("/api/admin/v1/general-information", "post"),
+            ("/api/admin/v1/general-information/{id}", "patch"),
+            ("/api/admin/v1/general-information/{id}/publish", "post"),
+            ("/api/admin/v1/general-information/{id}/rollback", "post"),
+            ("/api/admin/v1/products/imports", "post"),
+            ("/api/admin/v1/products/{id}/presentation", "patch"),
+            ("/api/admin/v1/user-invitations", "post"),
+            ("/api/admin/v1/user-invitations/{id}/revoke", "post"),
+            ("/api/admin/v1/users/{id}", "patch"),
+            ("/api/admin/v1/roles/{id}", "patch"),
         ] {
             let parameters = document["paths"][path][method]["parameters"]
                 .as_array()

@@ -7,6 +7,7 @@ import StructuredContentRenderer from '@/components/content/StructuredContentRen
 import { hasRenderableRichText } from '@/lib/richText'
 import { extractPublishedFaqContent } from '@/lib/publishedContent'
 import type { PublicPageModel } from '@/types/content'
+import PageSlotSections from './PageSlotSections.vue'
 const props = defineProps<{ page: PublicPageModel }>()
 const faqContent = computed(() => {
   const content = props.page.publishedContent
@@ -22,7 +23,7 @@ const hasEditorialContent = computed(() => hasRenderableRichText(faqContent.valu
     <section v-if="hasEditorialContent && faqContent.editorialDocument" class="section shell published-editorial" aria-label="Published editorial content">
       <StructuredContentRenderer :document="faqContent.editorialDocument" />
     </section>
-    <FaqAccordion v-if="faqContent.items.length" :items="faqContent.items" :category="page.slug" />
+    <FaqAccordion v-if="faqContent.items.length" :items="faqContent.items" />
     <section v-else class="section shell">
       <div class="empty-state large">
         <p class="eyebrow">Published FAQ content</p>
@@ -30,6 +31,14 @@ const hasEditorialContent = computed(() => hasRenderableRichText(faqContent.valu
         <p>Only question-and-answer pairs from the published CMS record are shown. Draft, incomplete and demonstration copy is excluded.</p>
       </div>
     </section>
-    <CallToAction title="Still working through a technical question?" description="Use the inquiry route that carries the right product or project context." />
+    <PageSlotSections :sections="page.sections" />
+    <CallToAction
+      v-if="page.primaryCta"
+      :eyebrow="page.primaryCta.eyebrow"
+      :title="page.primaryCta.title"
+      :description="page.primaryCta.description"
+      :href="page.primaryCta.href"
+      :label="page.primaryCta.label"
+    />
   </main>
 </template>

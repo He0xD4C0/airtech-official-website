@@ -2,12 +2,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { AlertTriangle, CheckCircle2, Clock3, Database, HardDriveDownload, History, Play, RefreshCw, SearchCheck, ShieldAlert, X } from 'lucide-vue-next'
 import CursorPaginationControls from '@/components/CursorPaginationControls.vue'
+import DataStatePanel from '@/components/DataStatePanel.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useCursorPagination } from '@/composables/useCursorPagination'
-import { adminApi, mockApiEnabled, type BackendOperation } from '@/services/adminApi'
+import { adminApi, type BackendOperation } from '@/services/adminApi'
 import { useUiStore } from '@/stores/ui'
-import { demoOperationRows } from 'virtual:admin-mock-data'
 
 const ui = useUiStore()
 const selectedTask = ref<string | null>(null)
@@ -18,6 +18,12 @@ const operationPager = useCursorPagination<BackendOperation>(adminApi.listOperat
   onError: (message) => ui.toast('任务记录读取失败', message, 'danger'),
 })
 const operationRuns = computed(() => operationPager.items.value)
+const runsState = computed<'loading' | 'ready' | 'empty' | 'error' | 'forbidden'>(() => {
+  if (operationPager.loading.value && !operationRuns.value.length) return 'loading'
+  if (operationPager.errorStatus.value === 403) return 'forbidden'
+  if (operationPager.error.value) return 'error'
+  return operationRuns.value.length ? 'ready' : 'empty'
+})
 
 const tasks = [
   { id: 'migrationPreflight', name: 'Migration 预检', detail: '检查待执行的预编译 migration 与数据库兼容性', icon: Database, risk: 'medium', confirmation: 'PREFLIGHT MIGRATION' },
@@ -38,11 +44,6 @@ function openTask(id: string): void {
 
 async function runTask(): Promise<void> {
   if (!ready.value) return
-  if (mockApiEnabled) {
-    ui.toast('任务已加入演示队列', '正式 Worker 将记录 operationId、进度、结果和审计。', 'info')
-    selectedTask.value = null
-    return
-  }
   try {
     const run = await adminApi.createOperation(operation.value!.id, `${operation.value!.name} requested through the controlled Admin Web workflow.`, operation.value!.confirmation, otp.value)
     operationPager.items.value = [run, ...operationPager.items.value]
@@ -54,7 +55,6 @@ async function runTask(): Promise<void> {
 }
 
 onMounted(async () => {
-  if (mockApiEnabled) return
   await operationPager.first()
 })
 </script>
@@ -74,13 +74,20 @@ onMounted(async () => {
     </section>
 
     <section class="panel table-panel">
-      <header class="panel__header"><div><p class="eyebrow">RECENT OPERATIONS</p><h2>运行记录</h2></div><StatusBadge :label="mockApiEnabled ? '演示队列' : '平台任务'" :tone="mockApiEnabled ? 'neutral' : 'info'" /></header>
-      <div class="data-table-wrap"><table class="data-table"><thead><tr><th>Operation ID</th><th>任务</th><th>状态</th><th>来源</th><th>开始时间</th><th>结果</th></tr></thead><tbody><template v-if="mockApiEnabled"><tr v-for="run in demoOperationRows" :key="run[0]"><td><code>{{ run[0] }}</code></td><td>{{ run[1] }}</td><td><StatusBadge :label="run[2] === 'completed' ? '已完成' : '排队中'" :tone="run[2] === 'completed' ? 'success' : 'info'" /></td><td>{{ run[3] }}</td><td>{{ run[4] }}</td><td><CheckCircle2 v-if="run[2] === 'completed'" :size="15" /><Clock3 v-else :size="15" />{{ run[5] }}</td></tr></template><template v-else><tr v-for="run in operationRuns" :key="run.id"><td><code>{{ run.id }}</code></td><td>{{ run.kind }}</td><td><StatusBadge :label="run.status" :tone="run.status === 'completed' ? 'success' : run.status === 'failed' ? 'danger' : 'info'" /></td><td>Admin API</td><td>{{ new Intl.DateTimeFormat('zh-CN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(run.createdAt)) }}</td><td>{{ run.result ? '有结果' : '等待 Worker' }}</td></tr></template></tbody></table></div>
+      <header class="panel__header"><div><p class="eyebrow">RECENT OPERATIONS</p><h2>运行记录</h2></div><StatusBadge label="平台任务" tone="info" /></header>
+      <DataStatePanel
+        v-if="runsState !== 'ready'"
+        :state="runsState"
+        :title="runsState === 'empty' ? '暂无运维任务记录' : runsState === 'error' ? operationPager.error.value || '' : ''"
+        @retry="operationPager.refresh"
+      />
+      <div v-else class="data-table-wrap"><table class="data-table"><thead><tr><th>Operation ID</th><th>任务</th><th>状态</th><th>来源</th><th>开始时间</th><th>结果</th></tr></thead><tbody><tr v-for="run in operationRuns" :key="run.id"><td><code>{{ run.id }}</code></td><td>{{ run.kind }}</td><td><StatusBadge :label="run.status" :tone="run.status === 'completed' ? 'success' : run.status === 'failed' ? 'danger' : 'info'" /></td><td>Admin API</td><td>{{ new Intl.DateTimeFormat('zh-CN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(run.createdAt)) }}</td><td><CheckCircle2 v-if="run.status === 'completed'" :size="15" /><Clock3 v-else :size="15" />{{ run.result ? '有结果' : '等待 Worker' }}</td></tr></tbody></table></div>
       <CursorPaginationControls
-        :item-count="mockApiEnabled ? 2 : operationRuns.length"
+        v-if="runsState === 'ready'"
+        :item-count="operationRuns.length"
         :page-number="operationPager.pageNumber.value"
-        :can-previous="!mockApiEnabled && operationPager.canPrevious.value"
-        :can-next="!mockApiEnabled && operationPager.canNext.value"
+        :can-previous="operationPager.canPrevious.value"
+        :can-next="operationPager.canNext.value"
         :loading="operationPager.loading.value"
         label="条运行记录"
         @previous="operationPager.previous"

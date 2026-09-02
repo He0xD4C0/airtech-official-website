@@ -20,7 +20,7 @@ This is a cross-domain index of known traps. The linked domain reference is the 
 
 | Issue | Status | Canonical record |
 |---|---|---|
-| The two HTML demos give mutually inconsistent specifications for the same model | `CONFLICTED` | [Product data rules](../../airtek-product-knowledge/references/product-data-rules.md#known-demo-conflict) |
+| The two HTML demos give mutually inconsistent specifications for the same model | `DEPRECATED` as a live conflict after the 2026-09-02 owner-approved Product Master snapshot; both demo sets remain prohibited | [Product data rules](../../airtek-product-knowledge/references/product-data-rules.md#known-demo-conflict) |
 | Selector, match score, comparison, download, curve, and RFQ behaviors are hard-coded or placeholders | `DEPRECATED` as production behavior | [Product data rules](../../airtek-product-knowledge/references/product-data-rules.md) and [conversion experience](../../airtek-website-growth/references/conversion-and-product-experience.md) |
 | A flat category list mixes fan form with motor technology and other facets | `PROVISIONAL` | [Product taxonomy](../../airtek-product-knowledge/references/taxonomy-and-capabilities.md) |
 | Product/application labels contain spelling errors, and `BLEC Motor` is ambiguous | `DEPRECATED` or `CONFLICTED` | [Product source terminology corrections](../../airtek-product-knowledge/references/taxonomy-and-capabilities.md#source-terminology-corrections) |

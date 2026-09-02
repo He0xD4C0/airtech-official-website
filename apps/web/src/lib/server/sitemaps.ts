@@ -22,15 +22,6 @@ const sitemapNames: SitemapName[] = [
   'sitemap-resources.xml',
 ]
 
-// These routes are release-controlled application pages rather than CMS
-// records. Everything else must arrive through the published discovery feed.
-const releaseControlled: Record<SitemapName, SitemapUrl[]> = {
-  'sitemap-pages.xml': [{ path: '/en/request-a-quote' }],
-  'sitemap-products.xml': [{ path: '/en/products/selector' }],
-  'sitemap-solutions.xml': [],
-  'sitemap-resources.xml': [],
-}
-
 const excludedPaths = new Set([
   '/en/search',
   '/en/products/compare',
@@ -82,7 +73,7 @@ function upsertLatest(urls: Map<string, SitemapUrl>, candidate: SitemapUrl): voi
   }
 }
 
-async function discovery(options: SitemapOptions): Promise<PublicDiscoveryEntry[]> {
+async function discovery(options: SitemapOptions): Promise<PublicDiscoveryEntry[] | null> {
   const fetchImpl = options.fetchImpl ?? fetch
   const apiBaseUrl = (options.apiBaseUrl ?? internalApiBaseUrl()).replace(/\/$/, '')
   try {
@@ -90,11 +81,11 @@ async function discovery(options: SitemapOptions): Promise<PublicDiscoveryEntry[
       headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(3_000),
     })
-    if (!response.ok) return []
+    if (!response.ok) return null
     const body = await response.json() as Partial<PublicDiscoveryDocument>
-    return Array.isArray(body.entries) ? body.entries.filter(validDiscoveryEntry) : []
+    return Array.isArray(body.entries) ? body.entries.filter(validDiscoveryEntry) : null
   } catch {
-    return []
+    return null
   }
 }
 
@@ -117,16 +108,21 @@ export function renderSitemapIndex(originValue = publicOrigin()): Response {
 export async function renderUrlSitemap(name: SitemapName, options: SitemapOptions = {}): Promise<Response> {
   const origin = normalizePublicOrigin(options.canonicalOrigin ?? publicOrigin())
   const discovered = await discovery(options)
+  if (discovered === null) {
+    return new Response('Sitemap projection temporarily unavailable.\n', {
+      status: 503,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-store, max-age=0',
+        'Retry-After': '60',
+        'X-Robots-Tag': 'noindex, nofollow, noarchive',
+      },
+    })
+  }
   const urls = new Map<string, SitemapUrl>()
-  for (const entry of releaseControlled[name]) upsertLatest(urls, entry)
   for (const entry of discovered) {
     if (sitemapFor(entry.path) !== name) continue
     upsertLatest(urls, { path: entry.path, updatedAt: entry.updatedAt })
-    if (name === 'sitemap-products.xml' && entry.entityType === 'product') {
-      const familyPath = entry.path.split('/').slice(0, 4).join('/')
-      upsertLatest(urls, { path: '/en/products', updatedAt: entry.updatedAt })
-      upsertLatest(urls, { path: familyPath, updatedAt: entry.updatedAt })
-    }
   }
   const items = [...urls.values()]
     .sort((left, right) => left.path.localeCompare(right.path))

@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from '@playwright/test'
+import { expect, test, type APIRequestContext, type APIResponse } from '@playwright/test'
 
 const configuredBindAddress = process.env.AIRTEK_BIND_ADDRESS ?? '127.0.0.1'
 const diagnosticHost = configuredBindAddress === '0.0.0.0' || configuredBindAddress === '::'
@@ -10,9 +10,23 @@ const publicOrigin = process.env.E2E_PUBLIC_ORIGIN
   ?? `http://${urlHost}:${process.env.AIRTEK_PUBLIC_HOST_PORT ?? '3000'}`
 const adminOrigin = process.env.E2E_ADMIN_ORIGIN
   ?? `http://${urlHost}:${process.env.AIRTEK_ADMIN_HOST_PORT ?? '3100'}`
+const gatewayControlOrigin = process.env.E2E_GATEWAY_CONTROL_ORIGIN
 
 function absolute(origin: string, pathname: string): string {
   return new URL(pathname, `${origin.replace(/\/$/u, '')}/`).toString()
+}
+
+function gatewayGet(
+  request: APIRequestContext,
+  origin: string,
+  pathname: string,
+  options: { maxRedirects?: number } = {},
+): Promise<APIResponse> {
+  if (!gatewayControlOrigin) return request.get(absolute(origin, pathname), options)
+  return request.get(absolute(gatewayControlOrigin, pathname), {
+    ...options,
+    headers: { Host: new URL(origin).host },
+  })
 }
 
 function severeAccessibilityViolations(
@@ -23,7 +37,7 @@ function severeAccessibilityViolations(
 
 test.describe('Public SSR contract', () => {
   test('redirects the root permanently to the English canonical prefix', async ({ request }) => {
-    const response = await request.get(absolute(publicOrigin, '/'), { maxRedirects: 0 })
+    const response = await gatewayGet(request, publicOrigin, '/', { maxRedirects: 0 })
 
     expect(response.status()).toBe(308)
     expect(response.headers().location).toBe('/en')
@@ -40,8 +54,9 @@ test.describe('Public SSR contract', () => {
       await expect(page).toHaveTitle(/AIRTEKPOWER/u)
       await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/en$/u)
       await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible()
-      await expect(page.getByRole('heading', { level: 1 })).toContainText(/airflow|engineering/iu)
-      await expect(page.locator('main#main-content')).toContainText('Explore products')
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('AIRTEKPOWER Development Preview')
+      await expect(page.locator('main#main-content')).toContainText('Database-backed content')
+      await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/iu)
       await expect(page.locator('main#main-content a[href="/en/request-a-quote"]').first()).toBeVisible()
     } finally {
       await context.close()
@@ -50,7 +65,7 @@ test.describe('Public SSR contract', () => {
 
   test('does not expose the Admin route on the Public origin', async ({ request }) => {
     for (const pathname of ['/admin', '/admin/users']) {
-      const response = await request.get(absolute(publicOrigin, pathname))
+      const response = await gatewayGet(request, publicOrigin, pathname)
       expect(response.status(), pathname).toBe(404)
     }
   })
@@ -69,13 +84,27 @@ test.describe('Public SSR contract', () => {
 })
 
 test.describe('Admin crawl isolation contract', () => {
+  test('clears invitation tokens from the URL and never persists them in browser storage', async ({ page }) => {
+    const token = 'A'.repeat(43)
+    const response = await page.goto(absolute(adminOrigin, `/accept-invitation?token=${token}`))
+
+    expect(response?.status()).toBe(200)
+    await expect(page).toHaveURL(absolute(adminOrigin, '/accept-invitation'))
+    await expect(page.getByText('一次性邀请令牌已读取')).toBeVisible()
+    const persistedValues = await page.evaluate(() => [
+      ...Object.values(window.localStorage),
+      ...Object.values(window.sessionStorage),
+    ])
+    expect(persistedValues.join('\n')).not.toContain(token)
+  })
+
   test('serves crawler denial and noindex on every checked response', async ({ request }) => {
-    const robots = await request.get(absolute(adminOrigin, '/robots.txt'))
+    const robots = await gatewayGet(request, adminOrigin, '/robots.txt')
     expect(robots.status()).toBe(200)
     expect(await robots.text()).toMatch(/User-agent:\s*\*[\s\S]*Disallow:\s*\//iu)
     expect(robots.headers()['x-robots-tag']).toMatch(/noindex,\s*nofollow,\s*noarchive/iu)
 
-    const login = await request.get(absolute(adminOrigin, '/login'))
+    const login = await gatewayGet(request, adminOrigin, '/login')
     expect(login.status()).toBe(200)
     expect(login.headers()['x-robots-tag']).toMatch(/noindex,\s*nofollow,\s*noarchive/iu)
     expect(await login.text()).toMatch(/<meta\s+name=["']robots["']\s+content=["']noindex, nofollow, noarchive["']/iu)
@@ -89,7 +118,7 @@ test.describe('Admin crawl isolation contract', () => {
       '/en',
       '/en/products',
     ]) {
-      const response = await request.get(absolute(adminOrigin, pathname))
+      const response = await gatewayGet(request, adminOrigin, pathname)
       expect(response.status(), pathname).toBe(404)
       expect(response.headers()['x-robots-tag'], pathname).toMatch(/noindex/iu)
     }

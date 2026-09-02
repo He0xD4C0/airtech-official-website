@@ -39,4 +39,11 @@ describe('public server infrastructure routes', () => {
     }
   })
 
+  it('marks unavailable SSR projections as retryable, uncacheable and unindexable', () => {
+    const response = withPublicSecurityHeaders(new Response('unavailable', { status: 503 }), '/en')
+    expect(response.headers.get('cache-control')).toBe('no-store, max-age=0')
+    expect(response.headers.get('retry-after')).toBe('60')
+    expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow, noarchive')
+  })
+
 })

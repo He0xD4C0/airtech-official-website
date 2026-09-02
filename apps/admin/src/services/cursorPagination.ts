@@ -33,6 +33,16 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
   return fallback
 }
 
+export function apiProblemStatus(error: unknown): number | undefined {
+  if (!error || typeof error !== 'object') return undefined
+  const direct = 'status' in error ? (error as { status?: unknown }).status : undefined
+  const nested = 'problem' in error && error.problem && typeof error.problem === 'object' && 'status' in error.problem
+    ? (error.problem as { status?: unknown }).status
+    : undefined
+  const status = Number(direct ?? nested)
+  return Number.isInteger(status) ? status : undefined
+}
+
 export async function findInCursorPages<T>(
   fetchPage: (request: CursorPageRequest) => Promise<CursorPage<T>>,
   predicate: (item: T) => boolean,

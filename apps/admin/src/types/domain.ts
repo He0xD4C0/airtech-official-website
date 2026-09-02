@@ -6,6 +6,7 @@ export type Permission =
   | 'product.read'
   | 'product.write'
   | 'product.publish'
+  | 'product.pricing.read'
   | 'integration.run'
   | 'media.write'
   | 'rfq.read'
@@ -53,7 +54,7 @@ export interface ProductSummary {
   id: string
   model: string
   family: string
-  sourceState: 'synced' | 'conflict' | 'pending' | 'notImported'
+  sourceState: 'loaded' | 'pending'
   publishState: ContentStatus
   verifiedFields: number
   totalFields: number
@@ -87,11 +88,5 @@ export interface InboxItem {
   }
 }
 
-export interface ApiProblem {
-  type: string
-  title: string
-  status: number
-  detail?: string
-  instance?: string
-  requestId?: string
-}
+export type ApiProblem = ProblemDetails
+import type { ProblemDetails } from '@airtek/contracts'

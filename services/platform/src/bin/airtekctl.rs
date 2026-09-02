@@ -2,7 +2,14 @@ use airtek_platform::{
     devtools,
     models::{ContentEntry, FactState, Product, SyncRun, SyncRunStatus},
     openapi,
-    services::feishu::validate_staging_payload,
+    services::{
+        development_seed,
+        feishu::validate_staging_payload,
+        product_import::{
+            parse_product_master, reset_staged_product_import_for_retry,
+            stage_and_queue_product_import,
+        },
+    },
     Config,
 };
 use chrono::Utc;
@@ -10,6 +17,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use serde::Serialize;
 use serde_json::{json, Value};
 use sqlx::{postgres::PgPoolOptions, PgPool, Postgres, Row, Transaction};
+use std::path::PathBuf;
 use uuid::Uuid;
 
 #[derive(Parser)]
@@ -29,12 +37,19 @@ enum Command {
     Diagnose,
     /// Apply the embedded SQLx migration set to the development database.
     Migrate,
+    /// Idempotently load non-indexable development CMS fixtures (never products).
+    Seed,
     /// Print the development OpenAPI document.
     Openapi,
     /// Queue Feishu synchronization work for the development worker.
     Sync {
         #[command(subcommand)]
         action: SyncAction,
+    },
+    /// Import the confirmed Product Master into encrypted staging and queue promotion.
+    Product {
+        #[command(subcommand)]
+        action: ProductAction,
     },
     /// Validate stored CMS, catalog and source-staging records.
     Validate {
@@ -73,6 +88,17 @@ enum SyncAction {
         mapping_version: String,
         #[arg(long)]
         cursor: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+enum ProductAction {
+    /// Validate and securely stage a CSV; product revisions are promoted by the worker.
+    Import {
+        #[arg(long)]
+        file: PathBuf,
+        #[arg(long)]
+        mapping_version: Option<String>,
     },
 }
 
@@ -144,6 +170,14 @@ struct ValidationReport {
     truncated: bool,
 }
 
+struct ProductSourceIdentity {
+    data_origin: String,
+    source_snapshot_id: Option<Uuid>,
+    source_revision: String,
+    product_import_run_id: Option<Uuid>,
+    verified_import_exists: bool,
+}
+
 impl ValidationReport {
     fn push(&mut self, finding: ValidationFinding) {
         if self.findings.len() < 100 {
@@ -157,6 +191,7 @@ impl ValidationReport {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = dotenvy::dotenv();
+    ensure_development_runtime()?;
     devtools::ensure_non_root().map_err(|error| format!("refused to run: {error}"))?;
     let cli = Cli::parse();
     if matches!(cli.command, Command::Openapi) {
@@ -188,6 +223,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .await?;
             print_json(json!({"status": "completed", "operation": "migrate"}))?;
         }
+        Command::Seed => {
+            if config.production {
+                return Err("refused to seed: production runtime is not allowed".into());
+            }
+            let report = development_seed::seed(&pool, &cli_actor()).await?;
+            print_json(serde_json::to_value(report)?)?;
+        }
         Command::Sync { action } => match action {
             SyncAction::DryRun {
                 mapping_version,
@@ -206,6 +248,69 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 queue_feishu_sync(&pool, false, mapping_version, cursor).await?;
             }
         },
+        Command::Product {
+            action:
+                ProductAction::Import {
+                    file,
+                    mapping_version,
+                },
+        } => {
+            let mapping_version =
+                mapping_version.unwrap_or_else(|| config.product_import_mapping_version.clone());
+            validate_mapping_version(&mapping_version)?;
+            let metadata = std::fs::metadata(&file)
+                .map_err(|error| format!("unable to inspect Product Master CSV: {error}"))?;
+            if !metadata.is_file() || metadata.len() == 0 || metadata.len() > 16 * 1024 * 1024 {
+                return Err(
+                    "Product Master CSV must be a regular file between 1 byte and 16 MiB".into(),
+                );
+            }
+            let csv = std::fs::read_to_string(&file)
+                .map_err(|error| format!("unable to read Product Master CSV: {error}"))?;
+            let parsed = parse_product_master(
+                &csv,
+                &mapping_version,
+                config.product_staging_encryption_key.as_ref(),
+            )?;
+            let environment = if config.production {
+                "production"
+            } else {
+                "development"
+            };
+            let staged = stage_and_queue_product_import(
+                &pool,
+                parsed,
+                environment,
+                config.approved_product_master.as_ref(),
+                None,
+                &cli_actor(),
+            )
+            .await?;
+            let warning_count = staged
+                .result
+                .errors
+                .iter()
+                .filter(|error| error.severity == "warning")
+                .count();
+            let status = if staged.queued {
+                "queued"
+            } else {
+                staged.result.status.as_str()
+            };
+            print_json(json!({
+                "operationId": staged.operation_id,
+                "importRunId": staged.result.id,
+                "status": status,
+                "reused": staged.result.reused,
+                "checksum": staged.result.checksum,
+                "mappingVersion": staged.result.mapping_version,
+                "totalRows": staged.result.total_rows,
+                "validRows": staged.result.valid_rows,
+                "malformedRows": staged.result.malformed_rows,
+                "warningCount": warning_count,
+                "missingAssetCount": staged.result.missing_assets.len()
+            }))?;
+        }
         Command::Validate { target } => validate(&pool, target).await?,
         Command::Index {
             action: IndexAction::Rebuild,
@@ -436,16 +541,18 @@ async fn list_jobs(pool: &PgPool, limit: u16) -> Result<(), Box<dyn std::error::
 async fn retry_job(pool: &PgPool, id: Uuid) -> Result<(), Box<dyn std::error::Error>> {
     let mut transaction = pool.begin().await?;
     let job_type = sqlx::query_scalar::<_, String>(
-        "UPDATE jobs SET status='queued', attempts=0, available_at=now(), last_error=NULL, updated_at=now() WHERE id=$1 AND status='failed' RETURNING job_type",
+        "UPDATE jobs SET status='queued', attempts=0, result=NULL, available_at=now(), last_error=NULL, updated_at=now() WHERE id=$1 AND status='failed' RETURNING job_type",
     )
     .bind(id)
     .fetch_optional(&mut *transaction)
     .await?
     .ok_or("Only a failed job can be retried")?;
-    sqlx::query("UPDATE operation_runs SET status='queued', updated_at=now() WHERE id=$1")
-        .bind(id)
-        .execute(&mut *transaction)
-        .await?;
+    sqlx::query(
+        "UPDATE operation_runs SET status='queued', result=NULL, updated_at=now() WHERE id=$1",
+    )
+    .bind(id)
+    .execute(&mut *transaction)
+    .await?;
     if job_type == "feishuSync" {
         sqlx::query(
             "UPDATE sync_runs SET status='queued', completed_at=NULL, payload=(jsonb_set(payload, '{status}', '\"queued\"', true) - 'error' - 'completedAt') WHERE id=$1",
@@ -453,6 +560,9 @@ async fn retry_job(pool: &PgPool, id: Uuid) -> Result<(), Box<dyn std::error::Er
         .bind(id)
         .execute(&mut *transaction)
         .await?;
+    }
+    if job_type == "productImport" {
+        reset_staged_product_import_for_retry(&mut transaction, id).await?;
     }
     insert_cli_audit(
         &mut transaction,
@@ -533,26 +643,68 @@ async fn validate_products(
     pool: &PgPool,
     report: &mut ValidationReport,
 ) -> Result<(), sqlx::Error> {
-    for row in sqlx::query("SELECT id, payload FROM products ORDER BY id")
-        .fetch_all(pool)
-        .await?
+    for row in sqlx::query(
+        r#"SELECT product.id,product.payload,product.data_origin,
+                  product.source_snapshot_id,product.source_revision,
+                  product.product_import_run_id,
+                  EXISTS (
+                      SELECT 1 FROM product_import_runs AS import
+                      WHERE import.id=product.product_import_run_id
+                        AND import.data_origin='verifiedCsv'
+                  ) AS verified_import_exists
+           FROM products AS product ORDER BY product.id"#,
+    )
+    .fetch_all(pool)
+    .await?
     {
         let id: Uuid = row.try_get("id")?;
         let payload: Value = row.try_get("payload")?;
+        let source_identity = ProductSourceIdentity {
+            data_origin: row.try_get("data_origin")?,
+            source_snapshot_id: row.try_get("source_snapshot_id")?,
+            source_revision: row.try_get("source_revision")?,
+            product_import_run_id: row.try_get("product_import_run_id")?,
+            verified_import_exists: row.try_get("verified_import_exists")?,
+        };
         report.records_checked += 1;
         match serde_json::from_value::<Product>(payload) {
-            Ok(product) => validate_product(id, &product, report),
+            Ok(product) => validate_product(id, &product, &source_identity, report),
             Err(_) => report.push(finding("product", id, "$", "invalidStoredPayload")),
         }
     }
     Ok(())
 }
 
-fn validate_product(id: Uuid, product: &Product, report: &mut ValidationReport) {
-    if product.stable_id.trim().is_empty()
-        || product.source_snapshot_id.is_nil()
-        || product.source_revision.trim().is_empty()
-    {
+fn validate_product(
+    id: Uuid,
+    product: &Product,
+    source: &ProductSourceIdentity,
+    report: &mut ValidationReport,
+) {
+    let valid_source_identity = match source.data_origin.as_str() {
+        "feishu" => {
+            source
+                .source_snapshot_id
+                .is_some_and(|value| !value.is_nil())
+                && !product.source_snapshot_id.is_nil()
+                && !source.source_revision.trim().is_empty()
+        }
+        "verifiedCsv" => {
+            source.source_snapshot_id.is_none()
+                && product.source_snapshot_id.is_nil()
+                && source.source_revision.starts_with("csv:")
+                && product.source_revision == source.source_revision
+                && source.product_import_run_id.is_some()
+                && source.verified_import_exists
+        }
+        "developmentFixture" => {
+            source.source_snapshot_id.is_none()
+                && source.product_import_run_id.is_none()
+                && !source.source_revision.trim().is_empty()
+        }
+        _ => false,
+    };
+    if product.stable_id.trim().is_empty() || !valid_source_identity {
         report.push(finding(
             "product",
             id,
@@ -728,4 +880,71 @@ fn cli_actor() -> String {
 fn print_json(value: Value) -> Result<(), serde_json::Error> {
     println!("{}", serde_json::to_string_pretty(&value)?);
     Ok(())
+}
+
+fn ensure_development_runtime() -> Result<(), Box<dyn std::error::Error>> {
+    if cfg!(feature = "production") {
+        return Err("airtekctl is unavailable in production builds".into());
+    }
+    for key in [
+        "AIRTEK_RUNTIME_ENV",
+        "AIRTEK_ENVIRONMENT",
+        "AIRTEK_ENV",
+        "APP_ENV",
+        "NODE_ENV",
+    ] {
+        if std::env::var(key)
+            .ok()
+            .as_deref()
+            .is_some_and(is_production_marker)
+        {
+            return Err(format!(
+                "airtekctl refused to run because {key} marks a production runtime"
+            )
+            .into());
+        }
+    }
+    if std::env::var("AIRTEK_PRODUCTION")
+        .ok()
+        .as_deref()
+        .is_some_and(is_true_marker)
+    {
+        return Err("airtekctl refused to run because AIRTEK_PRODUCTION is enabled".into());
+    }
+    Ok(())
+}
+
+fn is_production_marker(value: &str) -> bool {
+    matches!(
+        value.trim().to_ascii_lowercase().as_str(),
+        "production" | "prod" | "live"
+    )
+}
+
+fn is_true_marker(value: &str) -> bool {
+    matches!(
+        value.trim().to_ascii_lowercase().as_str(),
+        "1" | "true" | "yes" | "on"
+    )
+}
+
+#[cfg(test)]
+mod runtime_tests {
+    use super::{is_production_marker, is_true_marker};
+
+    #[test]
+    fn production_runtime_markers_are_strict_and_case_insensitive() {
+        for value in ["production", "PROD", " live "] {
+            assert!(is_production_marker(value));
+        }
+        for value in ["development", "test", "staging", ""] {
+            assert!(!is_production_marker(value));
+        }
+        for value in ["1", "TRUE", " yes ", "on"] {
+            assert!(is_true_marker(value));
+        }
+        for value in ["0", "false", "off", ""] {
+            assert!(!is_true_marker(value));
+        }
+    }
 }

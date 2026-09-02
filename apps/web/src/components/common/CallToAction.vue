@@ -1,22 +1,17 @@
 <script setup lang="ts">
 import { trackAnalyticsEvent } from '@/lib/analytics'
 
-const props = withDefaults(defineProps<{
+defineProps<{
   eyebrow?: string
   title: string
   description: string
-  href?: string
-  label?: string
-}>(), {
-  eyebrow: 'Engineering handoff',
-  href: '/en/request-a-quote',
-  label: 'Start a request',
-})
+  href: string
+  label: string
+}>()
 
 function trackClick(): void {
   void trackAnalyticsEvent('ctaClicked', {
-    ctaId: props.label.toLowerCase().replace(/[^a-z0-9]+/gu, '-').replace(/(^-|-$)/gu, ''),
-    destinationPath: props.href,
+    ctaId: 'content-primary',
     placement: 'content-panel',
   })
 }
@@ -25,7 +20,7 @@ function trackClick(): void {
 <template>
   <section class="cta-panel shell">
     <div>
-      <p class="eyebrow light">{{ eyebrow }}</p>
+      <p v-if="eyebrow" class="eyebrow light">{{ eyebrow }}</p>
       <h2>{{ title }}</h2>
       <p>{{ description }}</p>
     </div>

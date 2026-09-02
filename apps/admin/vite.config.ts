@@ -5,8 +5,6 @@ import { defineConfig, loadEnv, type Connect, type Plugin } from 'vite'
 
 const DEVTOOLS_MODULE = 'virtual:devtools-routes'
 const RESOLVED_DEVTOOLS_MODULE = `\0${DEVTOOLS_MODULE}`
-const MOCK_DATA_MODULE = 'virtual:admin-mock-data'
-const RESOLVED_MOCK_DATA_MODULE = `\0${MOCK_DATA_MODULE}`
 const WORKSPACE_ROOT = fileURLToPath(new URL('../..', import.meta.url))
 
 function setIsolationHeaders(
@@ -16,7 +14,7 @@ function setIsolationHeaders(
 ): void {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive')
   res.setHeader('X-Content-Type-Options', 'nosniff')
-  res.setHeader('Referrer-Policy', 'same-origin')
+  res.setHeader('Referrer-Policy', 'no-referrer')
   res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), microphone=()')
   res.setHeader(
     'Content-Security-Policy',
@@ -58,12 +56,12 @@ function adminIsolationPlugin(connectSources: string): Plugin {
 
 function apiConnectSources(value: string | undefined): string {
   try {
-    const url = new URL(value || 'http://localhost:8080/api/admin/v1', 'http://localhost:3100')
+    const url = new URL(value || 'http://localhost:8080/api/admin/v1')
     if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('unsupported protocol')
     const websocketProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
     return `${url.origin} ${websocketProtocol}//${url.host}`
   } catch {
-    throw new Error('VITE_ADMIN_API_BASE_URL must be an absolute or root-relative HTTP(S) URL.')
+    throw new Error('VITE_ADMIN_API_BASE_URL must be an absolute HTTP(S) URL.')
   }
 }
 
@@ -99,30 +97,11 @@ function devtoolsRoutesPlugin(enabled: boolean): Plugin {
   }
 }
 
-function adminMockDataPlugin(enabled: boolean): Plugin {
-  return {
-    name: 'airtek-admin-mock-data-boundary',
-    resolveId(id) {
-      if (id === MOCK_DATA_MODULE) return RESOLVED_MOCK_DATA_MODULE
-      return null
-    },
-    load(id) {
-      if (id !== RESOLVED_MOCK_DATA_MODULE) return null
-      if (!enabled) return 'export const demoOperationRows = []'
-      return `export const demoOperationRows = [
-        ['op-demo-a21', 'backup.preflight', 'completed', 'Demo Super Admin', '昨天 18:42', '无写入'],
-        ['op-demo-b08', 'search.reindex', 'queued', 'Demo Operator', '今天 09:18', '等待 Worker']
-      ]`
-    },
-  }
-}
-
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, WORKSPACE_ROOT, '')
   const productionBuild = command === 'build' && mode === 'production'
   const requestedDevtools = env.VITE_ENABLE_DEVTOOLS === 'true'
   const devtoolsEnabled = mode === 'development' && requestedDevtools
-  const mockDataEnabled = mode === 'development' && env.VITE_USE_MOCK_API === 'true'
   const connectSources = apiConnectSources(env.VITE_ADMIN_API_BASE_URL)
 
   if (productionBuild && env.VITE_ENABLE_DEVTOOLS === 'true') {
@@ -131,7 +110,7 @@ export default defineConfig(({ command, mode }) => {
 
   return {
     envDir: WORKSPACE_ROOT,
-    plugins: [vue(), adminIsolationPlugin(connectSources), devtoolsRoutesPlugin(devtoolsEnabled), adminMockDataPlugin(mockDataEnabled)],
+    plugins: [vue(), adminIsolationPlugin(connectSources), devtoolsRoutesPlugin(devtoolsEnabled)],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),

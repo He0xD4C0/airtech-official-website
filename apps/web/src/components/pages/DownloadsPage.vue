@@ -2,6 +2,8 @@
 import { computed, ref } from 'vue'
 import PageHero from '@/components/common/PageHero.vue'
 import PublishedEditorialSection from '@/components/content/PublishedEditorialSection.vue'
+import CallToAction from '@/components/common/CallToAction.vue'
+import PageSlotSections from './PageSlotSections.vue'
 import { trackAnalyticsEvent } from '@/lib/analytics'
 import type { PublicPageModel } from '@/types/content'
 
@@ -33,8 +35,8 @@ function trackSearch(): void {
   })
 }
 
-function trackFilter(filterName: 'resourceType' | 'applicableModel', filterValue: string): void {
-  void trackAnalyticsEvent('filterApplied', { filterName, filterValue, resultCount: results.value.length })
+function trackFilter(filterName: 'resourceType' | 'applicableModel'): void {
+  void trackAnalyticsEvent('filterApplied', { filterName, resultCount: results.value.length })
 }
 
 function clearFilters(): void {
@@ -43,28 +45,14 @@ function clearFilters(): void {
   selectedModel.value = 'all'
 }
 
-function safeDownloadRecordPath(href: string): string {
-  return /^\/en\/resources\/downloads\/[a-z0-9-]+$/u.test(href)
-    ? href
-    : '/en/resources/downloads'
-}
-
-function trackRecordOpen(href: string): void {
+function trackRecordOpen(): void {
   // This opens a controlled-resource record; it is not evidence that a file download started.
   void trackAnalyticsEvent('ctaClicked', {
     ctaId: 'download-record-open',
-    destinationPath: safeDownloadRecordPath(href),
     placement: 'downloads-list',
   })
 }
 
-function trackDocumentRequest(): void {
-  void trackAnalyticsEvent('ctaClicked', {
-    ctaId: 'controlled-document-request',
-    destinationPath: '/en/company/contact',
-    placement: 'downloads-empty-state',
-  })
-}
 </script>
 
 <template>
@@ -74,21 +62,21 @@ function trackDocumentRequest(): void {
     <section class="section shell">
       <div class="filter-panel downloads-filter-panel">
         <label><span>Published resource</span><input v-model="query" type="search" placeholder="Search title, description, type or model" @change="trackSearch"></label>
-        <label><span>Resource type</span><select v-model="selectedType" @change="trackFilter('resourceType', selectedType)"><option value="all">All published types</option><option v-for="type in resourceTypes" :key="type" :value="type">{{ type }}</option></select></label>
-        <label><span>Applicable model</span><select v-model="selectedModel" @change="trackFilter('applicableModel', selectedModel)"><option value="all">All published models</option><option v-for="model in applicableModels" :key="model" :value="model">{{ model }}</option></select></label>
+        <label><span>Resource type</span><select v-model="selectedType" @change="trackFilter('resourceType')"><option value="all">All published types</option><option v-for="type in resourceTypes" :key="type" :value="type">{{ type }}</option></select></label>
+        <label><span>Applicable model</span><select v-model="selectedModel" @change="trackFilter('applicableModel')"><option value="all">All published models</option><option v-for="model in applicableModels" :key="model" :value="model">{{ model }}</option></select></label>
         <p class="result-count" role="status">{{ results.length }} published {{ results.length === 1 ? 'record' : 'records' }}</p>
       </div>
       <div v-if="results.length" class="card-grid collection-grid">
         <article v-for="entry in results" :key="entry.href" class="card collection-card">
           <p class="eyebrow">Controlled resource</p>
-          <h2><a :href="entry.href" @click="trackRecordOpen(entry.href)">{{ entry.title }}</a></h2>
+          <h2><a :href="entry.href" @click="trackRecordOpen">{{ entry.title }}</a></h2>
           <p v-if="entry.summary">{{ entry.summary }}</p>
           <dl v-if="entry.download?.resourceType || entry.download?.version || entry.download?.applicableModels.length" class="download-card-meta">
             <div v-if="entry.download.resourceType"><dt>Type</dt><dd>{{ entry.download.resourceType }}</dd></div>
             <div v-if="entry.download.version"><dt>Version</dt><dd>{{ entry.download.version }}</dd></div>
             <div v-if="entry.download.applicableModels.length"><dt>Models</dt><dd>{{ entry.download.applicableModels.join(', ') }}</dd></div>
           </dl>
-          <a class="text-link" :href="entry.href" @click="trackRecordOpen(entry.href)">View published record <span aria-hidden="true">→</span></a>
+          <a class="text-link" :href="entry.href" @click="trackRecordOpen">View published record <span aria-hidden="true">→</span></a>
         </article>
       </div>
       <div v-else-if="page.entries?.length" class="empty-state">
@@ -100,8 +88,16 @@ function trackDocumentRequest(): void {
         <p class="eyebrow">No approved resources</p>
         <h2>No controlled files are published.</h2>
         <p>Drafts, placeholders and files without a current indexable record are not exposed.</p>
-        <a class="button" href="/en/company/contact" @click="trackDocumentRequest">Request a controlled document</a>
       </div>
     </section>
+    <PageSlotSections :sections="page.sections" />
+    <CallToAction
+      v-if="page.primaryCta"
+      :eyebrow="page.primaryCta.eyebrow"
+      :title="page.primaryCta.title"
+      :description="page.primaryCta.description"
+      :href="page.primaryCta.href"
+      :label="page.primaryCta.label"
+    />
   </main>
 </template>

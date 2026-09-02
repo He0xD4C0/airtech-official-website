@@ -55,7 +55,6 @@ describe('downloads analytics', () => {
 
     expect(trackAnalyticsEvent).toHaveBeenCalledWith('ctaClicked', {
       ctaId: 'download-record-open',
-      destinationPath: '/en/resources/downloads/approved-record',
       placement: 'downloads-list',
     })
     expect(trackAnalyticsEvent).not.toHaveBeenCalledWith('downloadStarted', expect.anything())
@@ -68,7 +67,7 @@ describe('downloads analytics', () => {
     expect(wrapper.text()).toContain('Manual record')
     expect(wrapper.text()).not.toContain('Approved record')
     expect(trackAnalyticsEvent).toHaveBeenLastCalledWith('filterApplied', {
-      filterName: 'resourceType', filterValue: 'Manual', resultCount: 1,
+      filterName: 'resourceType', resultCount: 1,
     })
 
     await selects[0].setValue('all')
@@ -76,7 +75,7 @@ describe('downloads analytics', () => {
     expect(wrapper.text()).toContain('Approved record')
     expect(wrapper.text()).not.toContain('Manual record')
     expect(trackAnalyticsEvent).toHaveBeenLastCalledWith('filterApplied', {
-      filterName: 'applicableModel', filterValue: 'MODEL-A', resultCount: 1,
+      filterName: 'applicableModel', resultCount: 1,
     })
   })
 })

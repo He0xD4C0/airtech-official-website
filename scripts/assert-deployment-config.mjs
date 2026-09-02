@@ -78,6 +78,8 @@ forbidMatch(adminVite, /connect-src 'self' http:\/\/localhost:8080 ws:\/\/localh
 
 const platformConfig = read('services/platform/src/config.rs')
 requireMatch(platformConfig, /pub const API_PORT:\s*u16\s*=\s*8080;/u, 'Rust API must use the fixed application port 8080.')
+const platformApi = read('services/platform/src/bin/api.rs')
+requireMatch(platformApi, /config\.database_url\.is_none\(\)/u, 'The running Rust API must reject the test-only in-memory repository.')
 
 const gatewayDockerfile = read('infra/docker/Dockerfile.gateway')
 requireMatch(gatewayDockerfile, /infra\/gateway\/nginx\.conf\.template/u, 'Gateway image must package the checked-in Host router.')
@@ -112,6 +114,10 @@ for (const variable of ['POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'AI
 requireMatch(compose, /AIRTEK_TOTP_ENCRYPTION_KEY:\s*\$\{AIRTEK_TOTP_ENCRYPTION_KEY:-\}/u, 'Local API must receive the optional TOTP encryption key from .env.')
 requireMatch(serviceBlock(compose, 'platform-api'), /AIRTEK_PREVIEW_SIGNING_KEY:\s*\$\{AIRTEK_PREVIEW_SIGNING_KEY:-\}/u, 'Local API must receive the optional preview signing key from .env.')
 requireMatch(serviceBlock(compose, 'platform-worker'), /AIRTEK_PREVIEW_SIGNING_KEY:\s*\$\{AIRTEK_PREVIEW_SIGNING_KEY:-\}/u, 'Local Worker must receive the optional preview signing key from .env.')
+for (const variable of ['AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY', 'AIRTEK_ANALYTICS_TOKEN_HMAC_KEY', 'AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY', 'AIRTEK_GUEST_RAW_RETENTION_DAYS', 'AIRTEK_GUEST_AGGREGATE_RETENTION_MONTHS', 'AIRTEK_PRODUCT_IMPORT_MAPPING_VERSION', 'AIRTEK_APPROVED_PRODUCT_MASTER_SHA256', 'AIRTEK_APPROVED_PRODUCT_MASTER_MAPPING_VERSION', 'AIRTEK_APPROVED_PRODUCT_MASTER_VALID_ROWS', 'AIRTEK_APPROVED_PRODUCT_MASTER_ERROR_ROWS', 'AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES', 'AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS', 'AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS']) {
+  requireMatch(serviceBlock(compose, 'platform-api'), new RegExp(`${variable}:\\s*\\$\\{${variable}`, 'u'), `Local API must receive ${variable} from .env.`)
+  requireMatch(serviceBlock(compose, 'platform-worker'), new RegExp(`${variable}:\\s*\\$\\{${variable}`, 'u'), `Local Worker must receive ${variable} from .env.`)
+}
 forbidMatch(serviceBlock(compose, 'postgres'), /^\s+ports:/mu, 'Base Compose must not publish PostgreSQL to the host.')
 forbidMatch(serviceBlock(compose, 'minio'), /^\s+ports:/mu, 'Base Compose must not publish MinIO API or console ports to the host.')
 requireMatch(serviceBlock(compose, 'minio'), /profiles:\s*\["object-storage"\]/u, 'Unused local object storage must remain opt-in.')
@@ -169,6 +175,20 @@ for (const service of ['platform-api', 'platform-worker']) {
   requireMatch(serviceBlock(productionCompose, service), /AIRTEK_PREVIEW_SIGNING_KEY:\s*\$\{AIRTEK_PREVIEW_SIGNING_KEY:\?/u, `Production ${service} must require a secret-manager preview signing key.`)
 }
 requireMatch(productionEnv, /^AIRTEK_PREVIEW_SIGNING_KEY=REPLACE_/mu, 'Production environment example must declare the preview signing key placeholder.')
+for (const variable of ['AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY', 'AIRTEK_ANALYTICS_TOKEN_HMAC_KEY', 'AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY']) {
+  requireMatch(productionCompose, new RegExp(`${variable}:\\s*\\$\\{${variable}:\\?`, 'u'), `Production must require ${variable} from the secret manager.`)
+  requireMatch(productionEnv, new RegExp(`^${variable}=REPLACE_`, 'mu'), `Production environment example must declare ${variable}.`)
+}
+for (const variable of ['AIRTEK_PRODUCT_IMPORT_MAPPING_VERSION', 'AIRTEK_APPROVED_PRODUCT_MASTER_SHA256', 'AIRTEK_APPROVED_PRODUCT_MASTER_MAPPING_VERSION', 'AIRTEK_APPROVED_PRODUCT_MASTER_VALID_ROWS', 'AIRTEK_APPROVED_PRODUCT_MASTER_ERROR_ROWS']) {
+  for (const service of ['platform-api', 'platform-worker']) {
+    requireMatch(serviceBlock(productionCompose, service), new RegExp(`${variable}:\\s*\\$\\{${variable}:\\?`, 'u'), `Production ${service} must require ${variable}.`)
+  }
+  requireMatch(productionEnv, new RegExp(`^${variable}=`, 'mu'), `Production environment example must declare ${variable}.`)
+}
+for (const variable of ['AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES', 'AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS', 'AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS']) {
+  requireMatch(serviceBlock(productionCompose, 'platform-api'), new RegExp(`${variable}:\\s*\\$\\{${variable}`, 'u'), `Production API must receive ${variable}.`)
+  requireMatch(productionEnv, new RegExp(`^${variable}=`, 'mu'), `Production environment example must declare ${variable}.`)
+}
 
 const localEnvExample = read('.env.example')
 for (const variable of [
@@ -184,6 +204,19 @@ for (const variable of [
   'DATABASE_URL',
   'AIRTEK_TOTP_ENCRYPTION_KEY',
   'AIRTEK_PREVIEW_SIGNING_KEY',
+  'AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY',
+  'AIRTEK_ANALYTICS_TOKEN_HMAC_KEY',
+  'AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY',
+  'AIRTEK_GUEST_RAW_RETENTION_DAYS',
+  'AIRTEK_GUEST_AGGREGATE_RETENTION_MONTHS',
+  'AIRTEK_PRODUCT_IMPORT_MAPPING_VERSION',
+  'AIRTEK_APPROVED_PRODUCT_MASTER_SHA256',
+  'AIRTEK_APPROVED_PRODUCT_MASTER_MAPPING_VERSION',
+  'AIRTEK_APPROVED_PRODUCT_MASTER_VALID_ROWS',
+  'AIRTEK_APPROVED_PRODUCT_MASTER_ERROR_ROWS',
+  'AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES',
+  'AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS',
+  'AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS',
   'AIRTEK_TRUSTED_PROXY_CIDRS',
   'RUST_LOG',
 ]) {

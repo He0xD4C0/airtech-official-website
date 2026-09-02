@@ -2,34 +2,40 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, CalendarClock, Check, ChevronDown, Eye, FileJson2, Globe2, Link2, Save, Send, Settings2 } from 'lucide-vue-next'
+import DataStatePanel from '@/components/DataStatePanel.vue'
 import StructuredEditor from '@/components/StructuredEditor.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { adminApi, mockApiEnabled, type BackendContentEntry, type ContentDraftPayload } from '@/services/adminApi'
+import { adminApi, type BackendContentEntry, type ContentDraftPayload } from '@/services/adminApi'
 import {
   sanitizeContentDocumentAttrs,
   type ArticleAuthorType,
   type DownloadAccessStatus,
   type DownloadScanStatus,
 } from '@/services/contentDocumentAttrs'
+import { apiErrorMessage, apiProblemStatus } from '@/services/cursorPagination'
+import { canPersistEditorRecord, editorFailureState, type EditorRecordState } from '@/services/editorRecordState'
+import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 
 interface EditorDocument { type: 'doc'; attrs?: Record<string, unknown>; content?: Array<Record<string, unknown>>; schemaVersion?: number }
 
 const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
 const ui = useUiStore()
+const isNew = route.params.id === 'new'
 const activePanel = ref<'document' | 'seo' | 'relations'>('document')
 const saving = ref(false)
 const previewing = ref(false)
 const savedAt = ref('尚未保存')
-const title = ref(route.params.id === 'new' ? '' : route.params.id === 'home' ? 'Homepage' : 'Untitled content')
-const slug = ref(route.params.id === 'home' ? 'home' : String(route.params.id ?? ''))
+const title = ref('')
+const slug = ref(route.params.id === 'new' ? '' : String(route.params.id ?? ''))
 const summary = ref('')
 const seoTitle = ref('')
 const seoDescription = ref('')
 const indexable = ref(false)
 const isPlaceholder = ref(true)
-const contentKind = ref('article')
+const contentKind = ref<ContentDraftPayload['kind']>('article')
 const articleAuthor = ref('')
 const articleAuthorType = ref<ArticleAuthorType | ''>('')
 const articlePublishedAt = ref('')
@@ -44,13 +50,12 @@ const downloadAccessStatus = ref<DownloadAccessStatus | ''>('')
 const entryId = ref<string>()
 const revision = ref<number>()
 const hydrating = ref(true)
+const state = ref<EditorRecordState>(isNew ? 'ready' : 'loading')
+const loadError = ref('')
 const documentJson = ref<EditorDocument>({
   type: 'doc' as const,
   schemaVersion: 1,
-  content: [
-    { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Start with a clear customer need' }] },
-    { type: 'paragraph', content: [{ type: 'text', text: 'This is safe placeholder copy. Replace it with owner-approved English content before publishing.' }] },
-  ],
+  content: [],
 })
 let autosaveTimer: number | undefined
 
@@ -68,8 +73,11 @@ const contentKindLabel = computed(() => ({
   faq: 'FAQ',
   caseStudy: 'Case Study',
   download: 'Download',
+  news: 'News',
   company: 'Company',
   legal: 'Legal',
+  navigation: 'Navigation',
+  footer: 'Footer',
 })[contentKind.value] ?? contentKind.value)
 
 function modelsFromInput(value: string): string[] {
@@ -117,6 +125,10 @@ function hydrateDocumentAttrs(kind: string, value: unknown): Record<string, unkn
   return attrs
 }
 
+function documentRecord(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null ? value as Record<string, unknown> : {}
+}
+
 function payload(): ContentDraftPayload {
   const attrs = currentDocumentAttrs()
   return {
@@ -155,7 +167,7 @@ function applyEntry(entry: BackendContentEntry, hydrateDocument = true): void {
     contentKind.value = entry.kind
     indexable.value = entry.seo.indexable
     isPlaceholder.value = entry.isPlaceholder
-    const doc = entry.body.doc
+    const doc = documentRecord(entry.body.doc)
     const attrs = hydrateDocumentAttrs(entry.kind, doc.attrs)
     documentJson.value = {
       type: 'doc',
@@ -167,16 +179,13 @@ function applyEntry(entry: BackendContentEntry, hydrateDocument = true): void {
 }
 
 async function save(silent = false): Promise<boolean> {
+  if (!canPersistEditorRecord(state.value, isNew, entryId.value)) return false
   saving.value = true
   try {
-    if (mockApiEnabled) {
-      await new Promise((resolve) => window.setTimeout(resolve, 480))
-    } else {
-      const result = await adminApi.saveContent(payload(), entryId.value, revision.value)
-      applyEntry(result.entry, false)
-    }
+    const result = await adminApi.saveContent(payload(), entryId.value, revision.value)
+    applyEntry(result.entry, false)
     savedAt.value = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit' }).format(new Date())
-    if (!silent) ui.toast('草稿已保存', mockApiEnabled ? '开发演示不会写入生产数据库。' : '已写入 working draft，并保留当前公开 revision。')
+    if (!silent) ui.toast('草稿已保存', '已写入 working draft，并保留当前公开 revision。')
     return true
   } catch (error) {
     ui.toast('草稿保存失败', error instanceof Error ? error.message : '请检查字段和并发版本。', 'danger')
@@ -187,11 +196,6 @@ async function save(silent = false): Promise<boolean> {
 }
 
 async function preview(): Promise<void> {
-  if (mockApiEnabled) {
-    ui.toast('开发演示不签发预览', '关闭 Mock API 并登录真实管理服务后，才能创建短效 SSR 预览。', 'warning')
-    return
-  }
-
   previewing.value = true
   const previewWindow = window.open('about:blank', '_blank')
   if (previewWindow) previewWindow.opener = null
@@ -218,15 +222,16 @@ async function preview(): Promise<void> {
 }
 
 async function publish(): Promise<void> {
+  if (!auth.hasPermission('content.publish')) {
+    ui.toast('没有发布权限', '当前账号可以编辑草稿，但不能发布内容。', 'warning')
+    return
+  }
   if (isPlaceholder.value) {
     ui.toast('占位内容将保持 noindex', '可以发布占位页用于受控展示，但它不会进入 Sitemap 或结构化数据。', 'warning')
   }
   const saved = await save(true)
   if (!saved) return
-  if (mockApiEnabled || !entryId.value || !revision.value) {
-    ui.toast('开发演示不执行发布', '真实发布只通过 Rust Admin API 完成。', 'warning')
-    return
-  }
+  if (!entryId.value || !revision.value) return
   try {
     const result = await adminApi.publishContent(entryId.value, revision.value)
     applyEntry(result.entry, false)
@@ -258,34 +263,60 @@ watch([
   downloadScanStatus,
   downloadAccessStatus,
 ], () => {
-  if (hydrating.value) return
+  if (hydrating.value || state.value !== 'ready') return
   window.clearTimeout(autosaveTimer)
   autosaveTimer = window.setTimeout(() => {
-    if (mockApiEnabled) savedAt.value = '自动保存于刚刚'
-    else void save(true)
+    void save(true)
   }, 900)
 }, { deep: true })
 
-onMounted(async () => {
-  if (!mockApiEnabled && route.params.id !== 'new') {
-    try {
-      const key = String(route.params.id)
-      const entry = await adminApi.findContent(key)
-      if (entry) applyEntry(entry)
-      else ui.toast('内容不存在', '未在 working draft 列表中找到该记录。', 'warning')
-    } catch (error) {
-      ui.toast('内容读取失败', error instanceof Error ? error.message : '请检查 API 会话。', 'danger')
-    }
+async function loadEntry(): Promise<void> {
+  if (isNew) {
+    state.value = 'ready'
+    await nextTick()
+    hydrating.value = false
+    return
   }
-  await nextTick()
-  hydrating.value = false
+
+  hydrating.value = true
+  state.value = 'loading'
+  loadError.value = ''
+  entryId.value = undefined
+  revision.value = undefined
+  try {
+    const entry = await adminApi.findContent(String(route.params.id))
+    if (!entry) {
+      state.value = 'empty'
+      return
+    }
+    applyEntry(entry)
+    state.value = 'ready'
+  } catch (error) {
+    state.value = editorFailureState(apiProblemStatus(error))
+    loadError.value = apiErrorMessage(error, '请检查 API 会话后重试。')
+  } finally {
+    await nextTick()
+    hydrating.value = false
+  }
+}
+
+onMounted(async () => {
+  await loadEntry()
 })
 
 onBeforeUnmount(() => window.clearTimeout(autosaveTimer))
 </script>
 
 <template>
-  <div class="editor-page">
+  <div v-if="state !== 'ready'" class="page-stack">
+    <DataStatePanel
+      :state="state"
+      :title="state === 'empty' ? '内容记录不存在' : ''"
+      :description="state === 'empty' ? '该编辑地址没有对应的 working draft；请返回内容中心创建记录。' : state === 'error' ? loadError : ''"
+      @retry="loadEntry"
+    />
+  </div>
+  <div v-else class="editor-page">
     <header class="editor-topbar">
       <div class="editor-topbar__left">
         <button type="button" class="icon-button" aria-label="返回内容中心" @click="router.push('/content')"><ArrowLeft :size="19" /></button>
@@ -296,7 +327,7 @@ onBeforeUnmount(() => window.clearTimeout(autosaveTimer))
         <span class="save-state"><Check :size="14" />{{ saving ? '正在保存…' : savedAt }}</span>
         <button class="button button--quiet" type="button" @click="save(false)"><Save :size="16" />保存</button>
         <button class="button button--secondary" type="button" :disabled="previewing || saving" @click="preview"><Eye :size="16" />{{ previewing ? '正在生成…' : '预览' }}</button>
-        <button class="button button--primary" type="button" @click="publish"><Send :size="16" />发布<ChevronDown :size="14" /></button>
+        <button v-if="auth.hasPermission('content.publish')" class="button button--primary" type="button" @click="publish"><Send :size="16" />发布<ChevronDown :size="14" /></button>
       </div>
     </header>
 

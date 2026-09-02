@@ -1,5 +1,7 @@
 pub mod admin;
+pub mod admin_data;
 pub mod public;
+pub mod public_data;
 pub mod system;
 
 use axum::{
@@ -113,6 +115,11 @@ async fn require_admin(
         .ok_or_else(|| {
             ApiError::forbidden("This admin route has no RBAC policy and is denied by default.")
         })?;
+    if !principal.totp_enabled {
+        return Err(ApiError::forbidden(
+            "This account must enable TOTP before accessing Admin business data.",
+        ));
+    }
     if !principal.has_permission(permission) {
         return Err(ApiError::forbidden(format!(
             "The `{permission}` permission is required."

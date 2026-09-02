@@ -49,16 +49,30 @@ internal hand-off, but provider-specific CDN invalidation and external search
 indexing are not connected; an internal hook completion does not mean an
 external provider was refreshed.
 
-The required product-master path is:
+PostgreSQL is the only supported runtime repository for the API. The in-memory
+adapter is retained solely for isolated unit tests and cannot be selected by
+the API executable. Administrator password sessions are limited to TOTP setup
+until enrollment is confirmed. Invitation source records contain only a token
+hash; the 24-hour idempotency response is encrypted with its own deployment
+key so a network retry can safely recover the original one-time token.
+
+The required product-master paths are:
 
 ```text
-Feishu snapshot -> staging -> schema/unit/reference validation -> three-way diff
-                -> conflict resolution or accepted change -> revision -> publish
+Owner-approved CSV -> checksum/idempotent staging -> schema/unit/reference validation
+                   -> immutable source snapshot -> revision -> explicit publish
+
+Future Feishu snapshot -> staging -> schema/unit/reference validation -> three-way diff
+                       -> conflict resolution or accepted change -> revision -> publish
 ```
 
-The staging, validation, diff, conflict, and revision boundaries exist in the
-platform contract. The Feishu transport adapter is not currently connected, so
-reserved credentials do not cause remote synchronization.
+The initial CSV snapshot is authoritative only for its registered environment,
+checksum and mapping version. Product facts and portal-owned localized
+presentation advance on independent immutable revision clocks; a publish binds
+the selected presentation to an exact fact revision. Private commercial columns
+remain encrypted outside public product revisions, and unresolved asset filenames do not become downloads. The
+Feishu transport adapter is not currently connected, so reserved credentials do
+not cause remote synchronization.
 
 Temporary local overrides retain the Feishu source value, require a reason and expiry, do not write back to Feishu, and cannot be republished after expiry until resolved.
 

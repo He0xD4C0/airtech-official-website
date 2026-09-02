@@ -17,6 +17,30 @@ const workspaceChildren: RouteRecordRaw[] = [
     meta: { title: '内容中心', requiresAuth: true, permission: 'content.read' },
   },
   {
+    path: 'news',
+    name: 'news',
+    component: () => import('@/views/NewsListView.vue'),
+    meta: { title: '新闻中心', requiresAuth: true, permission: 'content.read' },
+  },
+  {
+    path: 'news/new',
+    name: 'news-new',
+    component: () => import('@/views/NewsEditorView.vue'),
+    meta: { title: '新建 News', requiresAuth: true, permission: 'content.write' },
+  },
+  {
+    path: 'news/:id/edit',
+    name: 'news-editor',
+    component: () => import('@/views/NewsEditorView.vue'),
+    meta: { title: 'News 编辑器', requiresAuth: true, permission: 'content.write' },
+  },
+  {
+    path: 'general-information',
+    name: 'general-information',
+    component: () => import('@/views/GeneralInformationView.vue'),
+    meta: { title: 'General Information', requiresAuth: true, permission: 'content.write' },
+  },
+  {
     path: 'content/:id/edit',
     name: 'content-editor',
     component: () => import('@/views/ContentEditorView.vue'),
@@ -27,6 +51,12 @@ const workspaceChildren: RouteRecordRaw[] = [
     name: 'products',
     component: () => import('@/views/ProductsView.vue'),
     meta: { title: '产品中心', requiresAuth: true, permission: 'product.read' },
+  },
+  {
+    path: 'products/imports',
+    name: 'product-imports',
+    component: () => import('@/views/ProductImportsView.vue'),
+    meta: { title: '产品数据导入', requiresAuth: true, permission: 'product.write' },
   },
   {
     path: 'products/:id',
@@ -67,6 +97,20 @@ const workspaceChildren: RouteRecordRaw[] = [
     meta: { title: 'Analytics', requiresAuth: true, permission: 'analytics.read' },
   },
   {
+    path: 'analytics/visits',
+    name: 'analytics-visits',
+    component: () => import('@/views/GuestAnalyticsView.vue'),
+    props: { mode: 'visits' },
+    meta: { title: '访问趋势', requiresAuth: true, permission: 'analytics.read' },
+  },
+  {
+    path: 'analytics/sources',
+    name: 'analytics-sources',
+    component: () => import('@/views/GuestAnalyticsView.vue'),
+    props: { mode: 'sources' },
+    meta: { title: '站外来源', requiresAuth: true, permission: 'analytics.read' },
+  },
+  {
     path: 'users',
     name: 'users',
     component: () => import('@/views/AccessControlView.vue'),
@@ -74,11 +118,23 @@ const workspaceChildren: RouteRecordRaw[] = [
     meta: { title: '用户', requiresAuth: true, permission: 'identity.manage' },
   },
   {
+    path: 'users/:id',
+    name: 'user-detail',
+    component: () => import('@/views/UserDetailView.vue'),
+    meta: { title: '用户详情', requiresAuth: true, permission: 'identity.manage' },
+  },
+  {
     path: 'roles',
     name: 'roles',
     component: () => import('@/views/AccessControlView.vue'),
     props: { section: 'roles' },
     meta: { title: '角色与权限', requiresAuth: true, permission: 'identity.manage' },
+  },
+  {
+    path: 'roles/:id',
+    name: 'role-detail',
+    component: () => import('@/views/RoleDetailView.vue'),
+    meta: { title: '角色详情', requiresAuth: true, permission: 'identity.manage' },
   },
   {
     path: 'audit',
@@ -130,6 +186,18 @@ const router = createRouter({
       meta: { title: '初始化平台' },
     },
     {
+      path: '/accept-invitation',
+      name: 'accept-invitation',
+      component: () => import('@/views/AcceptInvitationView.vue'),
+      meta: { title: '接受邀请' },
+    },
+    {
+      path: '/forbidden',
+      name: 'forbidden',
+      component: () => import('@/views/ForbiddenView.vue'),
+      meta: { title: '没有访问权限', requiresAuth: true },
+    },
+    {
       path: '/',
       component: () => import('@/layouts/AdminShell.vue'),
       children: workspaceChildren,
@@ -140,6 +208,12 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   document.title = `${String(to.meta.title ?? '管理平台')} · AIRTEKPOWER`
   const auth = useAuthStore()
+
+  // Mount the invitation page before any session request so its component can
+  // replace the token-bearing URL immediately. The token is never persisted.
+  if (to.name === 'accept-invitation') {
+    return auth.initialized && auth.isAuthenticated ? { name: 'dashboard' } : true
+  }
 
   if (!auth.initialized) {
     try {
@@ -153,13 +227,17 @@ router.beforeEach(async (to) => {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
 
+  if (auth.requiresTotpEnrollment && to.name !== 'account-security') {
+    return { name: 'account-security' }
+  }
+
   if ((to.name === 'login' || to.name === 'setup') && auth.isAuthenticated) {
     return { name: 'dashboard' }
   }
 
   const permission = to.meta.permission as Permission | undefined
   if (permission && !auth.hasPermission(permission)) {
-    return { name: 'dashboard', query: { denied: permission } }
+    return { name: 'forbidden', query: { permission, from: to.fullPath } }
   }
 
   return true

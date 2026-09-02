@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { useCursorPagination } from './useCursorPagination'
-import { buildCursorPagePath, collectCursorPages, findInCursorPages } from '@/services/cursorPagination'
+import { apiProblemStatus, buildCursorPagePath, collectCursorPages, findInCursorPages } from '@/services/cursorPagination'
 
 describe('cursor pagination', () => {
   it('encodes opaque cursors and validates the server limit contract', () => {
@@ -46,6 +46,7 @@ describe('cursor pagination', () => {
     expect(pager.items.value).toEqual(['first'])
     expect(pager.pageNumber.value).toBe(1)
     expect(pager.error.value).toBe('游标已失效')
+    expect(pager.errorStatus.value).toBe(400)
     expect(onError).toHaveBeenCalledWith('游标已失效')
   })
 
@@ -66,5 +67,10 @@ describe('cursor pagination', () => {
 
     const repeated = vi.fn(async () => ({ items: [] as number[], nextCursor: 'same-cursor' }))
     await expect(collectCursorPages(repeated)).rejects.toThrow('重复游标')
+  })
+
+  it('reads status from generated contract client errors', () => {
+    expect(apiProblemStatus({ problem: { status: 403 } })).toBe(403)
+    expect(apiProblemStatus({ status: 409 })).toBe(409)
   })
 })

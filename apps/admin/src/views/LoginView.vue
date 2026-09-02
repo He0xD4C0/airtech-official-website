@@ -3,15 +3,14 @@ import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, Eye, EyeOff, KeyRound, LockKeyhole, ShieldCheck } from 'lucide-vue-next'
 import BrandMark from '@/components/BrandMark.vue'
-import { mockApiEnabled } from '@/services/adminApi'
 import { useAuthStore } from '@/stores/auth'
 import type { ApiProblem } from '@/types/domain'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const email = ref(mockApiEnabled ? 'demo@localhost.invalid' : '')
-const password = ref(mockApiEnabled ? 'development-only' : '')
+const email = ref('')
+const password = ref('')
 const otp = ref('')
 const passwordVisible = ref(false)
 const errorMessage = ref('')
@@ -20,6 +19,10 @@ async function submit(): Promise<void> {
   errorMessage.value = ''
   try {
     await auth.login(email.value.trim(), password.value, otp.value || undefined)
+    if (auth.requiresTotpEnrollment) {
+      await router.replace('/account/security')
+      return
+    }
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
     await router.replace(redirect)
   } catch (error) {
@@ -49,11 +52,6 @@ async function submit(): Promise<void> {
         <p class="eyebrow">安全登录</p>
         <h2>欢迎回来</h2>
         <p class="auth-card__lead">使用受邀账号登录 AIRTEKPOWER 管理平台。</p>
-
-        <div v-if="mockApiEnabled" class="demo-notice">
-          <span>DEV</span>
-          <p><strong>开发演示会话</strong>当前登录不会调用生产身份服务。</p>
-        </div>
 
         <label class="field">
           <span>工作邮箱</span>

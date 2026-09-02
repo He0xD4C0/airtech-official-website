@@ -21,6 +21,11 @@ pub fn evaluate(request: &SelectorRequest, products: &[Product]) -> SelectorResp
                     .preferred_family
                     .map(|family| family == product.family)
                     .unwrap_or(true)
+                && request
+                    .motor_technology
+                    .as_ref()
+                    .map(|technology| product.motor_technology.as_ref() == Some(technology))
+                    .unwrap_or(true)
         })
         .collect();
 
@@ -123,6 +128,12 @@ pub fn evaluate(request: &SelectorRequest, products: &[Product]) -> SelectorResp
             if request.preferred_family.is_some() {
                 matched_constraints.push("The published fan family matches the requested family.".into());
             }
+            if request.motor_technology.is_some() {
+                matched_constraints.push(
+                    "The published motor technology matches the requested technology exactly."
+                        .into(),
+                );
+            }
             if request.voltage.is_some() {
                 matched_constraints.push("The curve voltage matches the requested voltage exactly.".into());
             }
@@ -223,6 +234,7 @@ mod tests {
             frequency_hz: None,
             required_certifications: vec![],
             preferred_family: Some(ProductFamily::Axial),
+            motor_technology: None,
             priority: Some(SelectorPriority::Efficiency),
         }
     }
@@ -239,6 +251,9 @@ mod tests {
             motor_technology: None,
             title: "Published verified product".into(),
             summary: None,
+            seo: Default::default(),
+            sort_order: 0,
+            related_content_ids: Vec::new(),
             specifications: vec![],
             performance_curves: vec![PerformanceCurve {
                 airflow_unit: "m3/h".into(),

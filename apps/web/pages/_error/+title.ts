@@ -1,1 +1,1 @@
-export default 'Page not found | AIRTEKPOWER'
+export default 'Page unavailable'

@@ -1,8 +1,17 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createPublicApiClient } from './api'
+import { createPublicApiClient, PublicApiError } from './api'
 
 function jsonResponse(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } })
+}
+
+const publishedContent = {
+  id: '792406a9-2f19-425e-8508-78a205c0c764', kind: 'article', slug: 'database-news', locale: 'en',
+  title: 'Database News', summary: 'Published from PostgreSQL.',
+  body: { schemaVersion: 1, doc: { type: 'doc', content: [] } },
+  seo: { title: 'Database News', description: 'Published from PostgreSQL.', canonicalPath: '/en/resources/news/database-news', indexable: true },
+  status: 'published', isPlaceholder: false, currentRevision: 2, publishedRevision: 1, scheduledFor: null,
+  updatedAt: '2026-09-01T08:00:00Z',
 }
 
 describe('public API client', () => {
@@ -20,6 +29,8 @@ describe('public API client', () => {
     expect(receipt.reference).toBe('CONTACT-20260901-77935CEF')
     const [url, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0]
     expect(url).toBe('http://api:8080/api/public/v1/contact')
+    expect(init.method).toBe('POST')
+    expect(init.credentials).toBe('omit')
     expect(JSON.parse(String(init.body))).toEqual(payload)
     expect(new Headers(init.headers).get('Idempotency-Key')).toBe('contact-test-0001')
   })
@@ -93,10 +104,10 @@ describe('public API client', () => {
       publishedRevision: 7, status: 'published', indexable: true, updatedAt: '2026-09-01T08:00:00Z',
     }
     const fetchImpl = vi.fn(async () => jsonResponse(product)) as unknown as typeof fetch
-    const result = await createPublicApiClient({ baseUrl: 'http://api:8080/api/public/v1', fetchImpl }).getProduct('validated-model')
+    const result = await createPublicApiClient({ baseUrl: 'http://api:8080/api/public/v1', fetchImpl }).getProduct('validated-model', 'axial')
     expect(result.stableId).toBe('AT-P-001')
     expect(fetchImpl).toHaveBeenCalledWith(
-      'http://api:8080/api/public/v1/products/validated-model',
+      'http://api:8080/api/public/v1/products/validated-model?family=axial',
       expect.objectContaining({ credentials: 'omit' }),
     )
   })
@@ -127,5 +138,96 @@ describe('public API client', () => {
     })
     await expect(client.listProducts({ cursor: '../admin' })).rejects.toThrow(/cursor is invalid/i)
     await expect(client.listProducts()).rejects.toThrow(/invalid published product page/i)
+  })
+
+  it('loads the bootstrap, route and News projections through their canonical public endpoints', async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('/site-bootstrap?')) return jsonResponse({
+        generalInformation: {
+          id: crypto.randomUUID(), locale: 'en', payload: {}, status: 'published', currentRevision: 1,
+          publishedRevision: 1, isPlaceholder: false, updatedAt: '2026-09-01T08:00:00Z',
+        },
+        navigation: { ...publishedContent, kind: 'navigation', slug: 'primary-navigation' },
+        footer: { ...publishedContent, kind: 'footer', slug: 'global-footer' },
+        productFamilies: [{ code: 'axial', slug: 'axial', name: 'Axial', description: 'Published family.', sortOrder: 1 }],
+        motorTechnologies: ['EC'],
+        generatedAt: '2026-09-01T08:00:00Z',
+      })
+      if (url.includes('/routes/resolve?')) return jsonResponse({
+        path: '/en/resources/news', templateKey: 'news-index', entityType: 'content', entityId: publishedContent.id,
+        locale: 'en', publishedRevision: 1, indexable: true, dataClass: 'editorial', page: publishedContent,
+      })
+      return jsonResponse({
+        items: [{ content: publishedContent, category: 'Company', authorDisplayName: 'Editorial', coverMediaId: null, publishedAt: '2026-09-01T08:00:00Z', featured: true, dataClass: 'editorial' }],
+        nextCursor: null,
+      })
+    }) as unknown as typeof fetch
+    const client = createPublicApiClient({ baseUrl: 'http://api:8080/api/public/v1', fetchImpl })
+
+    const bootstrap = await client.getSiteBootstrap()
+    expect(bootstrap.productFamilies[0]?.name).toBe('Axial')
+    expect(bootstrap.motorTechnologies).toEqual(['EC'])
+    expect((await client.resolveRoute('/en/resources/news')).templateKey).toBe('news-index')
+    expect((await client.listNews()).items[0]?.content.title).toBe('Database News')
+  })
+
+  it('records a consent-bound Guest visit without using the legacy analytics path', async () => {
+    const response = {
+      id: crypto.randomUUID(), anonymousSessionId: crypto.randomUUID(), landingPath: '/en',
+      referrerDomain: 'example.test', source: 'search', medium: null, campaign: null,
+      firstSeenAt: '2026-09-01T08:00:00Z', lastSeenAt: '2026-09-01T08:00:00Z', retentionUntil: '2027-09-01T08:00:00Z',
+    }
+    const fetchImpl = vi.fn(async () => jsonResponse(response, 201)) as unknown as typeof fetch
+    const client = createPublicApiClient({ baseUrl: 'http://api:8080/api/public/v1', fetchImpl })
+    await client.recordGuestVisit({
+      anonymousSessionId: response.anonymousSessionId,
+      consentReceipt: crypto.randomUUID(),
+      policyVersion: 'analytics-v1',
+      landingPath: '/en',
+      referrerDomain: 'example.test',
+      source: 'search',
+    })
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://api:8080/api/public/v1/guest-visits',
+      expect.objectContaining({ method: 'POST', credentials: 'omit' }),
+    )
+  })
+
+  it.each([
+    { status: 404, operation: 'news' as const, detail: 'Published News was not found.' },
+    { status: 409, operation: 'product' as const, detail: 'The product slug is shared by more than one family.' },
+    { status: 503, operation: 'discovery' as const, detail: 'The public site shell projection is incomplete.' },
+  ])('preserves Problem Details and HTTP status for $status contract failures', async ({ status, operation, detail }) => {
+    const problem = {
+      type: `https://api.example.test/problems/${status}`,
+      title: status === 404 ? 'Not found' : status === 409 ? 'Conflict' : 'Service unavailable',
+      status,
+      detail,
+      instance: '/api/public/v1/test',
+      requestId: '792406a9-2f19-425e-8508-78a205c0c764',
+      errors: { projection: ['Published contract failure.'] },
+    }
+    const fetchImpl = vi.fn(async () => jsonResponse(problem, status)) as unknown as typeof fetch
+    const client = createPublicApiClient({ baseUrl: 'http://api:8080/api/public/v1', fetchImpl })
+    const request = operation === 'news'
+      ? client.getNews('missing-news')
+      : operation === 'product'
+        ? client.getProduct('shared-slug')
+        : client.getDiscovery()
+
+    const error = await request.catch((cause: unknown) => cause)
+    expect(error).toBeInstanceOf(PublicApiError)
+    expect(error).toMatchObject({
+      type: problem.type,
+      title: problem.title,
+      status,
+      detail,
+      instance: problem.instance,
+      requestId: problem.requestId,
+      errors: problem.errors,
+      problem,
+    })
+    expect((error as PublicApiError).response?.status).toBe(status)
   })
 })

@@ -9,6 +9,14 @@ export const PRODUCT_FAMILY_LABELS: Record<BackendProduct['family'], string> = {
   motors: 'Motors',
 }
 
+export const PRODUCT_FAMILY_SLUGS: Record<BackendProduct['family'], string> = {
+  centrifugal: 'centrifugal',
+  axial: 'axial',
+  crossFlow: 'cross-flow',
+  inlineDuct: 'inline-duct',
+  motors: 'motors',
+}
+
 export function factStatePresentation(state: FactState): {
   label: string
   tone: 'neutral' | 'success' | 'warning' | 'danger' | 'info'
@@ -72,6 +80,7 @@ export function productPublishReadiness(
 ): ProductPublishReadiness {
   if (!hasPublishPermission) return { allowed: false, reason: '当前账号没有 product.publish 权限。' }
   if (product.status === 'archived') return { allowed: false, reason: '已归档产品不能从此页面发布。' }
+  if (!product.presentation) return { allowed: false, reason: '请先保存独立的网站展示草稿。' }
   if (overrides.some((override) => isTemporaryOverrideExpired(override, now))) {
     return { allowed: false, reason: '存在已到期临时覆盖；按数据治理规则必须先处理。' }
   }
@@ -85,8 +94,10 @@ export function productPublishReadiness(
   if (!factStates.includes('verified')) {
     return { allowed: false, reason: '当前记录没有任何已验证规格或曲线。' }
   }
-  if (product.status === 'published' && product.publishedRevision === product.currentRevision) {
-    return { allowed: false, reason: '当前 revision 已发布。' }
+  const factsPublished = product.status === 'published' && product.publishedRevision === product.currentRevision
+  const presentationPublished = product.presentation.publishedRevision === product.presentation.revision
+  if (factsPublished && presentationPublished) {
+    return { allowed: false, reason: '当前事实与网站展示 revision 均已发布。' }
   }
   return { allowed: true, reason: '可提交给 Rust API 执行最终发布校验。' }
 }

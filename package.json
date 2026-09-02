@@ -17,11 +17,12 @@
     "lint": "pnpm -r --if-present lint",
     "test": "pnpm -r --if-present test",
     "test:e2e": "playwright test",
+    "test:e2e:stack": "node scripts/run-e2e-stack.mjs",
     "check:production": "pnpm build:production && node scripts/assert-production-isolation.mjs",
     "check:deployment": "node scripts/assert-deployment-config.mjs",
     "check:isolation": "node scripts/smoke-isolation.mjs",
-    "generate:contracts": "node scripts/generate-openapi.mjs",
-    "check:contracts": "node scripts/generate-openapi.mjs --check"
+    "generate:contracts": "node scripts/generate-openapi.mjs && pnpm --filter @airtek/contracts typecheck",
+    "check:contracts": "node scripts/generate-openapi.mjs --check && pnpm --filter @airtek/contracts typecheck"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.10.2",

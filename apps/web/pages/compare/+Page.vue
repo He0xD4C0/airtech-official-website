@@ -1,20 +1,11 @@
 <script setup lang="ts">
-import CompareWorkspace from '@/components/product/CompareWorkspace.vue'
-import PageHero from '@/components/common/PageHero.vue'
+import { useData } from 'vike-vue/useData'
+import PageRenderer from '@/components/pages/PageRenderer.vue'
+import type { Data } from './+data'
+
+const data = useData<Data>()
 </script>
 
 <template>
-  <main id="main-content">
-    <PageHero
-      eyebrow="Product workspace"
-      title="Compare products"
-      description="Compare selected, published records. Missing and incomparable values remain explicit."
-      :breadcrumbs="[
-        { label: 'Home', href: '/en' },
-        { label: 'Products', href: '/en/products' },
-        { label: 'Compare products' },
-      ]"
-    />
-    <CompareWorkspace />
-  </main>
+  <PageRenderer :page="data.page" />
 </template>

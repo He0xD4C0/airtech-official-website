@@ -1,5 +1,7 @@
 use axum::http::{HeaderMap, StatusCode};
 use serde::{de::DeserializeOwned, Serialize};
+use sha2::{Digest, Sha256};
+use sqlx::{Postgres, Transaction};
 
 use crate::{
     error::{json_hash, ApiError},
@@ -15,6 +17,10 @@ pub struct IdempotencyContext {
     scope: &'static str,
     key: String,
     request_hash: String,
+    guard: IdempotencyGuard,
+}
+
+pub struct StagedIdempotency {
     guard: IdempotencyGuard,
 }
 
@@ -36,6 +42,51 @@ impl IdempotencyContext {
                 status.as_u16(),
             )
             .await?;
+        self.guard.finish().await
+    }
+
+    /// Store the replay record in the caller's business transaction. The
+    /// returned guard must be finished only after that transaction commits, so
+    /// another request cannot pass the advisory lock before the replay row is
+    /// visible.
+    pub async fn stage_in_transaction<T: Serialize>(
+        self,
+        transaction: &mut Transaction<'_, Postgres>,
+        response: &T,
+        status: StatusCode,
+    ) -> Result<StagedIdempotency, ApiError> {
+        let response = serde_json::to_value(response)
+            .map_err(|_| ApiError::internal("Idempotency response serialization failed."))?;
+        let key_hash = format!("{:x}", Sha256::digest(self.key.as_bytes()));
+        let result = sqlx::query(
+            r#"INSERT INTO idempotency_keys
+               (scope,key_hash,request_hash,response_status,response_body)
+               VALUES ($1,$2,$3,$4,$5)
+               ON CONFLICT (scope,key_hash) DO UPDATE SET
+                 request_hash=EXCLUDED.request_hash,
+                 response_status=EXCLUDED.response_status,
+                 response_body=EXCLUDED.response_body,
+                 created_at=now(),expires_at=now() + interval '24 hours'
+               WHERE idempotency_keys.expires_at <= now()"#,
+        )
+        .bind(self.scope)
+        .bind(key_hash)
+        .bind(self.request_hash)
+        .bind(i32::from(status.as_u16()))
+        .bind(response)
+        .execute(&mut **transaction)
+        .await?;
+        if result.rows_affected() != 1 {
+            return Err(ApiError::conflict(
+                "This Idempotency-Key is already active for another request.",
+            ));
+        }
+        Ok(StagedIdempotency { guard: self.guard })
+    }
+}
+
+impl StagedIdempotency {
+    pub async fn finish(self) -> Result<(), ApiError> {
         self.guard.finish().await
     }
 }

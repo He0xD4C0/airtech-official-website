@@ -15,7 +15,8 @@ COPY packages packages
 ARG VITE_ADMIN_API_BASE_URL=http://localhost:8080/api/admin/v1
 ENV VITE_ADMIN_API_BASE_URL=$VITE_ADMIN_API_BASE_URL
 ENV VITE_ENABLE_DEVTOOLS=false
-RUN pnpm --filter @airtek/admin build:production
+RUN pnpm --filter @airtek/contracts build \
+    && pnpm --filter @airtek/admin build:production
 
 FROM nginx:1.27-alpine
 ENV ADMIN_API_ORIGIN=http://localhost:8080

@@ -15,9 +15,10 @@ cargo run --bin airtek-api
 cargo run --bin airtek-worker
 ```
 
-When `DATABASE_URL` is absent, the API starts with an intentionally empty in-memory
-catalog. This mode is suitable for contract tests and UI development only; it never
-seeds product specifications or values from the HTML demos.
+`DATABASE_URL` is required by the API, worker, and migration binaries. The
+in-memory repository is available only to isolated Rust tests; it is not a
+server runtime mode and never seeds product specifications or values from the
+HTML demos.
 
 With PostgreSQL configured:
 
@@ -42,10 +43,21 @@ digits, 30-second steps and a one-step clock tolerance. Recovery codes contain
 are consumed atomically once. Active sessions have a 30-minute idle timeout and
 a 12-hour absolute timeout; users can list and revoke their own sessions.
 
+Content preview tokens are limited to one immutable revision and carry the
+issuing Admin user and session identifiers inside the signature. The Public
+preview endpoint performs a live PostgreSQL authorization check on every read:
+the user must remain active with confirmed TOTP and current `content.read`, and
+the issuing session must remain unrevoked and within both idle and absolute
+expiry. Preview responses remain private, `no-store`, and `noindex`.
+
 Public Contact, RFQ and Analytics writes use fixed-window source limits. With
-PostgreSQL the counters are durable; the in-memory development store expires
+PostgreSQL the counters are durable; the isolated in-memory test store expires
 old counters and refuses new keys at a hard capacity. Raw client addresses are
 not stored in the rate-limit table. The TCP peer is authoritative by default.
+UTM source, medium and campaign values are persisted only when their normalized
+identifier appears in the corresponding deployment allowlist. Unknown text,
+including names or copied form values, is rejected. Filter values and editable
+FAQ category labels are not accepted as analytics event properties.
 `X-Forwarded-For` is considered only when that direct peer is inside an explicit
 `AIRTEK_TRUSTED_PROXY_CIDRS` entry, and the chain is walked from the nearest hop.
 The Compose profile assigns its gateway `172.28.0.10` and trusts only
@@ -63,6 +75,14 @@ cargo run --features devtools --bin airtekctl -- index rebuild
 cargo run --features devtools --bin airtekctl -- cache invalidate
 cargo run --features devtools --bin airtekctl -- jobs list
 ```
+
+The development seed is the only writer allowed to establish
+`developmentFixture` ownership. When an editor clears a seeded record's
+placeholder flag, the content/News/General Information transaction changes its
+origin to `editorial`; that transition is one-way, and later seed runs use the
+retained ledger only to recognize and skip the taken-over record. News is
+excluded from generic Content mutations and is managed only through the
+dedicated News API so revision-specific metadata cannot drift from content.
 
 A devtools build refuses to start unless either PostgreSQL is configured for
 existing admin sessions or a sufficiently long setup bootstrap token is

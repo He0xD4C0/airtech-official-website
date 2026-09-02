@@ -24,6 +24,8 @@ struct PreviewClaims {
     expires_at: i64,
     content_id: Uuid,
     revision: i64,
+    admin_user_id: Uuid,
+    admin_session_id: Uuid,
     nonce: String,
 }
 
@@ -38,6 +40,8 @@ pub struct IssuedPreviewToken {
 pub struct VerifiedPreviewToken {
     pub content_id: Uuid,
     pub revision: i64,
+    pub admin_user_id: Uuid,
+    pub admin_session_id: Uuid,
     pub expires_at: DateTime<Utc>,
 }
 
@@ -51,21 +55,33 @@ pub fn issue(
     key: &PreviewSigningKey,
     content_id: Uuid,
     revision: i64,
+    admin_user_id: Uuid,
+    admin_session_id: Uuid,
     ttl_seconds: u32,
 ) -> Result<IssuedPreviewToken, ApiError> {
-    issue_at(key, content_id, revision, ttl_seconds, Utc::now())
+    issue_at(
+        key,
+        content_id,
+        revision,
+        admin_user_id,
+        admin_session_id,
+        ttl_seconds,
+        Utc::now(),
+    )
 }
 
 fn issue_at(
     key: &PreviewSigningKey,
     content_id: Uuid,
     revision: i64,
+    admin_user_id: Uuid,
+    admin_session_id: Uuid,
     ttl_seconds: u32,
     now: DateTime<Utc>,
 ) -> Result<IssuedPreviewToken, ApiError> {
-    if content_id.is_nil() || revision < 1 {
+    if content_id.is_nil() || revision < 1 || admin_user_id.is_nil() || admin_session_id.is_nil() {
         return Err(ApiError::bad_request(
-            "A valid content id and revision are required for preview.",
+            "A valid content id, revision, admin user and admin session are required for preview.",
         ));
     }
     if !(1..=MAX_PREVIEW_TTL_SECONDS).contains(&ttl_seconds) {
@@ -84,6 +100,8 @@ fn issue_at(
         expires_at: expires_at.timestamp(),
         content_id,
         revision,
+        admin_user_id,
+        admin_session_id,
         nonce: URL_SAFE_NO_PAD.encode(nonce),
     };
     let payload = serde_json::to_vec(&claims)
@@ -157,6 +175,8 @@ fn verify_at(
     if claims.version != TOKEN_VERSION
         || claims.content_id.is_nil()
         || claims.revision < 1
+        || claims.admin_user_id.is_nil()
+        || claims.admin_session_id.is_nil()
         || !(1..=i64::from(MAX_PREVIEW_TTL_SECONDS)).contains(&lifetime)
         || claims.issued_at > now.timestamp() + MAX_CLOCK_SKEW_SECONDS
     {
@@ -176,6 +196,8 @@ fn verify_at(
     Ok(VerifiedPreviewToken {
         content_id: claims.content_id,
         revision: claims.revision,
+        admin_user_id: claims.admin_user_id,
+        admin_session_id: claims.admin_session_id,
         expires_at,
     })
 }
@@ -193,12 +215,34 @@ mod tests {
     fn signed_preview_round_trips_with_exact_revision_and_unique_nonce() {
         let now = DateTime::from_timestamp(1_800_000_000, 0).unwrap();
         let content_id = Uuid::new_v4();
-        let first = issue_at(&key(), content_id, 7, 600, now).unwrap();
-        let second = issue_at(&key(), content_id, 7, 600, now).unwrap();
+        let admin_user_id = Uuid::new_v4();
+        let admin_session_id = Uuid::new_v4();
+        let first = issue_at(
+            &key(),
+            content_id,
+            7,
+            admin_user_id,
+            admin_session_id,
+            600,
+            now,
+        )
+        .unwrap();
+        let second = issue_at(
+            &key(),
+            content_id,
+            7,
+            admin_user_id,
+            admin_session_id,
+            600,
+            now,
+        )
+        .unwrap();
         assert_ne!(first.token, second.token);
         let verified = verify_at(&key(), &first.token, now).unwrap();
         assert_eq!(verified.content_id, content_id);
         assert_eq!(verified.revision, 7);
+        assert_eq!(verified.admin_user_id, admin_user_id);
+        assert_eq!(verified.admin_session_id, admin_session_id);
         assert_eq!(verified.expires_at, first.expires_at);
         assert_eq!(first.issued_at, now);
     }
@@ -206,7 +250,16 @@ mod tests {
     #[test]
     fn tampered_and_overlong_tokens_fail_closed() {
         let now = DateTime::from_timestamp(1_800_000_000, 0).unwrap();
-        let issued = issue_at(&key(), Uuid::new_v4(), 1, 600, now).unwrap();
+        let issued = issue_at(
+            &key(),
+            Uuid::new_v4(),
+            1,
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            600,
+            now,
+        )
+        .unwrap();
         let mut tampered = issued.token.clone().into_bytes();
         let index = tampered.len() / 2;
         tampered[index] = if tampered[index] == b'A' { b'B' } else { b'A' };
@@ -224,12 +277,30 @@ mod tests {
     #[test]
     fn expired_token_is_distinct_from_invalid_and_ttl_is_capped() {
         let now = DateTime::from_timestamp(1_800_000_000, 0).unwrap();
-        let issued = issue_at(&key(), Uuid::new_v4(), 3, 10, now).unwrap();
+        let issued = issue_at(
+            &key(),
+            Uuid::new_v4(),
+            3,
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            10,
+            now,
+        )
+        .unwrap();
         let after_expiry = now + chrono::Duration::seconds(10);
         assert_eq!(
             verify_at(&key(), &issued.token, after_expiry),
             Err(PreviewTokenError::Expired)
         );
-        assert!(issue_at(&key(), Uuid::new_v4(), 1, MAX_PREVIEW_TTL_SECONDS + 1, now).is_err());
+        assert!(issue_at(
+            &key(),
+            Uuid::new_v4(),
+            1,
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            MAX_PREVIEW_TTL_SECONDS + 1,
+            now,
+        )
+        .is_err());
     }
 }

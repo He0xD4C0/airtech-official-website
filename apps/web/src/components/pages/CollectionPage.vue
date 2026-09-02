@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import PageHero from '@/components/common/PageHero.vue'
 import CallToAction from '@/components/common/CallToAction.vue'
 import PublishedEditorialSection from '@/components/content/PublishedEditorialSection.vue'
+import PageSlotSections from './PageSlotSections.vue'
 import { trackAnalyticsEvent } from '@/lib/analytics'
 import type { PublicPageModel } from '@/types/content'
 
@@ -61,9 +62,14 @@ function trackArticleSearch(): void {
         <button class="button secondary" type="button" @click="query = ''">Clear search</button>
       </div>
     </section>
+    <PageSlotSections :sections="page.sections" />
     <CallToAction
-      :title="page.collection === 'solutions' ? 'Turn the application context into a structured inquiry' : 'Connect the technical question to a product decision'"
-      description="Use verified data and visible operating context when moving from research to engineering follow-up."
+      v-if="page.primaryCta"
+      :eyebrow="page.primaryCta.eyebrow"
+      :title="page.primaryCta.title"
+      :description="page.primaryCta.description"
+      :href="page.primaryCta.href"
+      :label="page.primaryCta.label"
     />
   </main>
 </template>

@@ -6,7 +6,7 @@ import '@xterm/xterm/css/xterm.css'
 import { Circle, Code2, Plus, ShieldAlert, SquareTerminal, Trash2 } from 'lucide-vue-next'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { createDevtoolsTerminalToken, devtoolsTerminalUrl } from '@/services/adminApi'
+import { createDevtoolsTerminalToken, devtoolsTerminalUrl } from './devtoolsApi'
 
 interface SessionStartedEvent { type: 'sessionStarted'; sessionId: string; idleTimeoutSeconds: number; absoluteTimeoutSeconds: number; maxOutputBytes: number }
 interface SessionEndedEvent { type: 'sessionEnded'; sessionId: string; reason: string; exitCode: number | null }
@@ -205,6 +205,85 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.developer-page {
+  min-height: calc(100vh - 7rem);
+}
+
+.dev-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.72rem 0.8rem;
+  border: 1px solid #e6d8a6;
+  border-radius: 10px;
+  background: #fff9e7;
+  color: var(--admin-muted);
+  font-size: 0.72rem;
+}
+
+.dev-warning > svg {
+  color: #936b00;
+}
+
+.dev-warning > div {
+  flex: 1;
+}
+
+.dev-warning strong {
+  display: block;
+  color: var(--admin-text);
+  font-size: 0.72rem;
+}
+
+.dev-warning p {
+  margin: 0.1rem 0 0;
+  font-size: 0.64rem;
+}
+
+.terminal-shell {
+  overflow: hidden;
+  border: 1px solid #173e48;
+  border-radius: 12px;
+  background: #071b22;
+  box-shadow: 0 14px 36px rgb(0 25 32 / 14%);
+  color: #d7e6e7;
+}
+
+.terminal-shell > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 2.7rem;
+  padding: 0 0.8rem;
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
+  background: #0b252e;
+}
+
+.terminal-shell > header > div {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.terminal-shell header strong {
+  font-family: monospace;
+  font-size: 0.68rem;
+}
+
+.terminal-shell header span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #65cb90;
+  font-size: 0.57rem;
+}
+
+.terminal-shell header button {
+  border: 0;
+  background: none;
+  color: #86a1a5;
+}
+
 .terminal-host {
   height: 26rem;
   padding: 0.75rem 0.4rem 0.6rem 0.75rem;
@@ -217,5 +296,44 @@ onBeforeUnmount(() => {
 
 .terminal-host :deep(.xterm-viewport) {
   scrollbar-color: #355b64 #071b22;
+}
+
+.dev-command-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.dev-command-grid article {
+  padding: 0.85rem;
+}
+
+.dev-command-grid article > svg {
+  color: var(--airtek-blue);
+}
+
+.dev-command-grid h2 {
+  margin: 0.55rem 0 0.2rem;
+  font-size: 0.78rem;
+}
+
+.dev-command-grid p {
+  color: var(--admin-muted);
+  font-size: 0.64rem;
+}
+
+.dev-command-grid code {
+  display: block;
+  padding: 0.45rem;
+  border-radius: 6px;
+  background: #edf2f2;
+  color: #355351;
+  font-size: 0.63rem;
+}
+
+@media (max-width: 760px) {
+  .dev-command-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

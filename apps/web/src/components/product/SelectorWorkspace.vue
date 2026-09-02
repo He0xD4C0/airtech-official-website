@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import type { ProductFamily, SelectorRequest, SelectorResponse } from '@airtek/contracts'
+import type { ProductFamilyProjection } from '@/types/content'
 import { selectProducts } from '@/lib/api'
 import { trackAnalyticsEvent } from '@/lib/analytics'
 
 type Stage = 'input' | 'result'
+const props = defineProps<{
+  productFamilies: ProductFamilyProjection[]
+  motorTechnologies: string[]
+}>()
 const stage = ref<Stage>('input')
 const touched = ref(false)
 const submitting = ref(false)
@@ -31,13 +36,9 @@ const form = reactive<{
 })
 
 const valid = computed(() => Number(form.airflow) > 0 && Number(form.pressure) > 0)
-const familyMap: Record<string, ProductFamily> = {
-  'centrifugal-fans': 'centrifugal',
-  'axial-fans': 'axial',
-  'cross-flow-fans': 'crossFlow',
-  'inline-duct-fans': 'inlineDuct',
-  motors: 'motors',
-}
+const familyMap = computed(() => Object.fromEntries(
+  props.productFamilies.map((family) => [family.slug, family.code]),
+) as Record<string, ProductFamily>)
 const resultTitle = computed(() => ({
   matched: 'Published candidates found',
   noValidatedCandidates: 'No validated candidates',
@@ -51,7 +52,7 @@ async function evaluate() {
   error.value = ''
   void trackAnalyticsEvent('selectorStarted', {
     constraintCount: 2 + (form.family ? 1 : 0),
-    preferredFamily: form.family ? familyMap[form.family] : 'open',
+    preferredFamily: form.family ? familyMap.value[form.family] : 'open',
     priority: form.priority,
   })
   try {
@@ -61,7 +62,8 @@ async function evaluate() {
       pressure: Number(form.pressure),
       pressureUnit: form.pressureUnit,
       requiredCertifications: [],
-      ...(form.family ? { preferredFamily: familyMap[form.family] } : {}),
+      ...(form.family ? { preferredFamily: familyMap.value[form.family] } : {}),
+      ...(form.motorTechnology ? { motorTechnology: form.motorTechnology } : {}),
       priority: form.priority,
     })
     window.sessionStorage.setItem('airtek.public.rfq-context.selection.v1', JSON.stringify({
@@ -116,8 +118,8 @@ function revise() {
           <span>Required pressure</span>
           <div class="input-unit"><input v-model="form.pressure" aria-label="Required pressure" inputmode="decimal" type="number" min="0" step="any" required><select v-model="form.pressureUnit" aria-label="Pressure unit"><option value="Pa">Pa</option></select></div>
         </label>
-        <label><span>Fan form</span><select v-model="form.family"><option value="">Open</option><option value="centrifugal-fans">Centrifugal</option><option value="axial-fans">Axial</option><option value="cross-flow-fans">Cross-flow</option><option value="inline-duct-fans">Inline duct</option></select></label>
-        <label><span>Motor technology</span><select v-model="form.motorTechnology"><option value="">Open</option><option value="AC">AC</option><option value="DC">DC</option><option value="EC">EC</option></select></label>
+        <label v-if="productFamilies.length"><span>Fan form</span><select v-model="form.family"><option value="">Open</option><option v-for="family in productFamilies" :key="family.code" :value="family.slug">{{ family.name }}</option></select></label>
+        <label v-if="motorTechnologies.length"><span>Motor technology</span><select v-model="form.motorTechnology"><option value="">Open</option><option v-for="technology in motorTechnologies" :key="technology" :value="technology">{{ technology }}</option></select></label>
         <label class="wide"><span>Environment or installation constraints</span><textarea v-model="form.environment" rows="3" placeholder="For example: ambient conditions, available envelope, required ingress protection"></textarea></label>
         <fieldset class="wide priority-field">
           <legend>Ranking priority</legend>
@@ -126,7 +128,7 @@ function revise() {
       </div>
       <p v-if="touched && !valid" class="form-error" role="alert">Enter positive airflow and pressure values to continue.</p>
       <p v-if="error" class="form-error" role="alert">{{ error }}</p>
-      <p class="review-note">Motor technology and environment are retained for the Selection RFQ handoff; the current API response only reflects fields present in its published selector contract.</p>
+      <p class="review-note">Environment notes are retained for the Selection RFQ handoff; only constraints present in the published selector contract are evaluated automatically.</p>
       <button class="button" type="submit" :disabled="submitting">{{ submitting ? 'Evaluating…' : 'Evaluate published records' }}</button>
     </form>
 

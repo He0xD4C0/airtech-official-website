@@ -28,6 +28,7 @@ pub enum ContentKind {
     Solution,
     Technology,
     Article,
+    News,
     Faq,
     CaseStudy,
     Download,
@@ -35,6 +36,15 @@ pub enum ContentKind {
     Legal,
     Navigation,
     Footer,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum DataClass {
+    Editorial,
+    Feishu,
+    VerifiedCsv,
+    DevelopmentFixture,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -95,6 +105,90 @@ pub struct ContentDraftInput {
     pub seo: SeoMetadata,
     #[serde(default)]
     pub is_placeholder: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct NewsDraftInput {
+    pub content: ContentDraftInput,
+    pub category: String,
+    pub author_display_name: String,
+    pub cover_media_id: Option<Uuid>,
+    pub published_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    pub featured: bool,
+    #[serde(default = "editorial_data_class")]
+    pub data_class: DataClass,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NewsEntry {
+    pub content: ContentEntry,
+    pub category: String,
+    pub author_display_name: Option<String>,
+    pub cover_media_id: Option<Uuid>,
+    pub published_at: Option<DateTime<Utc>>,
+    pub featured: bool,
+    pub data_class: DataClass,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GeneralInformationDraftInput {
+    #[serde(default = "default_locale")]
+    pub locale: String,
+    pub payload: Value,
+    #[serde(default)]
+    pub is_placeholder: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GeneralInformation {
+    pub id: Uuid,
+    pub locale: String,
+    pub payload: Value,
+    pub status: PublicationStatus,
+    pub current_revision: i64,
+    pub published_revision: Option<i64>,
+    pub is_placeholder: bool,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProductFamilyPresentation {
+    pub code: ProductFamily,
+    pub slug: String,
+    pub name: String,
+    pub description: String,
+    pub sort_order: i32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SiteBootstrap {
+    pub general_information: Option<GeneralInformation>,
+    pub navigation: Option<ContentEntry>,
+    pub footer: Option<ContentEntry>,
+    pub product_families: Vec<ProductFamilyPresentation>,
+    pub motor_technologies: Vec<String>,
+    pub generated_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RouteResolution {
+    pub path: String,
+    pub template_key: String,
+    pub entity_type: String,
+    pub entity_id: Option<Uuid>,
+    pub locale: String,
+    pub published_revision: Option<i64>,
+    pub indexable: bool,
+    pub data_class: DataClass,
+    pub page: Option<ContentEntry>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -188,6 +282,12 @@ pub struct Product {
     pub motor_technology: Option<String>,
     pub title: String,
     pub summary: Option<String>,
+    #[serde(default)]
+    pub seo: SeoMetadata,
+    #[serde(default)]
+    pub sort_order: i32,
+    #[serde(default)]
+    pub related_content_ids: Vec<Uuid>,
     pub specifications: Vec<SpecValue>,
     pub performance_curves: Vec<PerformanceCurve>,
     pub source_snapshot_id: Uuid,
@@ -221,6 +321,7 @@ pub struct SelectorRequest {
     pub frequency_hz: Option<f64>,
     pub required_certifications: Vec<String>,
     pub preferred_family: Option<ProductFamily>,
+    pub motor_technology: Option<String>,
     pub priority: Option<SelectorPriority>,
 }
 
@@ -520,6 +621,232 @@ pub struct AnalyticsEventReceipt {
     pub event_id: Option<Uuid>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CreateGuestVisit {
+    pub anonymous_session_id: Uuid,
+    pub consent_receipt: Uuid,
+    pub policy_version: String,
+    pub landing_path: String,
+    pub referrer_domain: Option<String>,
+    pub source: Option<String>,
+    pub medium: Option<String>,
+    pub campaign: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GuestVisit {
+    pub id: Uuid,
+    pub anonymous_session_id: Uuid,
+    pub landing_path: String,
+    pub referrer_domain: Option<String>,
+    pub source: String,
+    pub medium: Option<String>,
+    pub campaign: Option<String>,
+    pub first_seen_at: DateTime<Utc>,
+    pub last_seen_at: DateTime<Utc>,
+    pub retention_until: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GuestSourceDaily {
+    pub bucket_date: chrono::NaiveDate,
+    pub source: String,
+    pub source_name: Option<String>,
+    pub referrer_domain: Option<String>,
+    pub utm_source: Option<String>,
+    pub medium: Option<String>,
+    pub campaign: Option<String>,
+    pub landing_path: String,
+    pub locale: String,
+    pub visits: i64,
+    pub page_views: i64,
+    pub rfq_starts: i64,
+    pub rfq_submissions: i64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GuestVisitAggregate {
+    pub bucket_date: chrono::NaiveDate,
+    pub landing_path: String,
+    pub locale: String,
+    pub visits: i64,
+    pub page_views: i64,
+    pub rfq_starts: i64,
+    pub rfq_submissions: i64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminUserRecord {
+    pub id: Uuid,
+    pub email: String,
+    pub display_name: String,
+    pub locale: String,
+    pub status: String,
+    pub revision: i64,
+    pub roles: Vec<String>,
+    pub totp_enabled: bool,
+    pub invited_at: Option<DateTime<Utc>>,
+    pub last_login_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminRoleRecord {
+    pub id: Uuid,
+    pub key: String,
+    pub display_name: String,
+    pub system_role: bool,
+    pub revision: i64,
+    pub permissions: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct UpdateAdminRole {
+    pub display_name: Option<String>,
+    pub permissions: Option<Vec<String>>,
+    pub reason: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct InviteAdminUser {
+    pub email: String,
+    pub display_name: String,
+    pub role_keys: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserInvitation {
+    pub id: Uuid,
+    pub email: String,
+    pub display_name: String,
+    pub locale: String,
+    pub role_keys: Vec<String>,
+    pub status: String,
+    pub invited_at: DateTime<Utc>,
+    pub expires_at: DateTime<Utc>,
+    /// Returned only from invitation creation because email delivery is not
+    /// connected in phase one. Only its SHA-256 digest is stored.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub invitation_token: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct UpdateAdminUser {
+    pub display_name: Option<String>,
+    pub locale: Option<String>,
+    pub status: Option<String>,
+    pub role_keys: Option<Vec<String>>,
+    pub reason: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProductImportRequest {
+    pub csv: String,
+    pub mapping_version: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProductImportError {
+    pub row_number: i32,
+    pub stable_id: Option<String>,
+    pub field_name: Option<String>,
+    pub severity: String,
+    pub code: String,
+    pub detail: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MissingAssetReference {
+    pub stable_id: String,
+    pub asset_type: String,
+    pub source_reference: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProductImportResult {
+    pub id: Uuid,
+    pub checksum: String,
+    pub mapping_version: String,
+    pub status: String,
+    pub total_rows: i64,
+    pub valid_rows: i64,
+    pub malformed_rows: i64,
+    pub errors: Vec<ProductImportError>,
+    pub missing_assets: Vec<MissingAssetReference>,
+    pub reused: bool,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProductPresentation {
+    pub locale: String,
+    pub slug: String,
+    pub title: String,
+    pub summary: Option<String>,
+    pub seo: SeoMetadata,
+    pub indexable: bool,
+    pub sort_order: i32,
+    pub related_content_ids: Vec<Uuid>,
+    /// Independent portal-owned presentation revision used by ETag/If-Match.
+    /// This is deliberately unrelated to `Product::current_revision`.
+    pub revision: i64,
+    pub published_revision: Option<i64>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct UpdateProductPresentation {
+    pub locale: String,
+    pub slug: String,
+    pub title: String,
+    pub summary: Option<String>,
+    pub seo: SeoMetadata,
+    pub indexable: bool,
+    #[serde(default)]
+    pub sort_order: i32,
+    #[serde(default)]
+    pub related_content_ids: Vec<Uuid>,
+    pub reason: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminProductDetail {
+    #[serde(flatten)]
+    pub product: Product,
+    pub source_kind: DataClass,
+    pub missing_assets: Vec<MissingAssetReference>,
+    pub presentation: Option<ProductPresentation>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ProductPrivatePricing {
+    pub product_id: Uuid,
+    pub stable_id: String,
+    pub source_row_number: i32,
+    /// Original Product Master pricing column names and raw values. No currency
+    /// or numeric interpretation is inferred by the platform.
+    pub pricing_fields: BTreeMap<String, String>,
+}
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum OperationKind {
@@ -531,6 +858,7 @@ pub enum OperationKind {
     SearchReindex,
     CacheInvalidate,
     FeishuSync,
+    ProductImport,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -631,4 +959,8 @@ pub struct AcceptedResponse {
 
 fn default_locale() -> String {
     "en".into()
+}
+
+fn editorial_data_class() -> DataClass {
+    DataClass::Editorial
 }

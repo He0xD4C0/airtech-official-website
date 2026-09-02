@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import type { ProductFamily } from '@airtek/contracts'
 import { trackAnalyticsEvent } from '@/lib/analytics'
 
 export interface CompareItem {
@@ -6,6 +7,7 @@ export interface CompareItem {
   slug: string
   label: string
   family: string
+  familyCode?: ProductFamily
   dataState: 'published' | 'pendingVerification'
   publishedRevision?: number
 }
@@ -23,6 +25,7 @@ function validItem(value: unknown): value is CompareItem {
     && item.label.length <= 180
     && typeof item.family === 'string'
     && item.family.length <= 80
+    && (item.familyCode === undefined || ['centrifugal', 'axial', 'crossFlow', 'inlineDuct', 'motors'].includes(item.familyCode))
     && (item.dataState === 'published' || item.dataState === 'pendingVerification')
     && (item.publishedRevision === undefined || (Number.isInteger(item.publishedRevision) && item.publishedRevision > 0))
 }

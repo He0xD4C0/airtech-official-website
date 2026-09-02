@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use axum::{
-    http::{header, HeaderValue, StatusCode},
+    http::{header, HeaderName, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
     Json,
 };
@@ -135,6 +135,19 @@ impl IntoResponse for ApiError {
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/problem+json"),
         );
+        if self.status == StatusCode::SERVICE_UNAVAILABLE {
+            response
+                .headers_mut()
+                .insert(header::RETRY_AFTER, HeaderValue::from_static("5"));
+            response.headers_mut().insert(
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("no-store, max-age=0"),
+            );
+            response.headers_mut().insert(
+                HeaderName::from_static("x-robots-tag"),
+                HeaderValue::from_static("noindex, nofollow, noarchive"),
+            );
+        }
         response
     }
 }
@@ -150,4 +163,24 @@ pub fn json_hash(value: &Value) -> String {
     use sha2::{Digest, Sha256};
     let bytes = serde_json::to_vec(value).unwrap_or_default();
     format!("{:x}", Sha256::digest(bytes))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn service_unavailable_is_not_cacheable_or_indexable_and_is_retryable() {
+        let response = ApiError::service_unavailable("database is restarting").into_response();
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(response.headers().get(header::RETRY_AFTER).unwrap(), "5");
+        assert_eq!(
+            response.headers().get(header::CACHE_CONTROL).unwrap(),
+            "no-store, max-age=0"
+        );
+        assert_eq!(
+            response.headers().get("x-robots-tag").unwrap(),
+            "noindex, nofollow, noarchive"
+        );
+    }
 }

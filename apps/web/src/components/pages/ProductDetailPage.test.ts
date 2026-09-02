@@ -17,6 +17,9 @@ const product: Product = {
   motorTechnology: null,
   title: 'Published product',
   summary: 'Published summary.',
+  seo: { title: 'Published product', description: 'Published summary.', canonicalPath: '/en/products/axial/controlled-model', indexable: true },
+  sortOrder: 0,
+  relatedContentIds: [],
   specifications: [],
   performanceCurves: [{
     airflowUnit: 'm3/h',
@@ -53,15 +56,15 @@ const page: PublicPageModel = {
 }
 
 describe('product detail progressive enhancement', () => {
-  it('keeps specifications, PQ data and controlled resources in SSR HTML', async () => {
+  it('keeps verified PQ data in SSR HTML and omits unavailable optional sections', async () => {
     const app = createSSRApp(ProductDetailPage, { page })
     app.use(createPinia())
     const html = await renderToString(app)
 
-    expect(html).toContain('Structured specifications')
+    expect(html).not.toContain('Structured specifications')
     expect(html).toContain('Airflow and pressure')
     expect(html).toContain('Equivalent performance curve data')
-    expect(html).toContain('Controlled resources')
-    expect(html).toContain('/en/resources/downloads')
+    expect(html).not.toContain('Controlled resources')
+    expect(html).not.toContain('/en/resources/downloads')
   })
 })

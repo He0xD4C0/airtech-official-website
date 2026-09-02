@@ -2,7 +2,7 @@ import { createSSRApp, h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { describe, expect, it } from 'vitest'
 import type { ContentEntry } from '@airtek/contracts'
-import { resolvePublicRoute } from '@/content/routes'
+import { publicPageFixture } from '@/test/publicPageFixture'
 import FaqPage from './FaqPage.vue'
 
 function publishedFaq(): ContentEntry {
@@ -22,7 +22,7 @@ function publishedFaq(): ContentEntry {
 describe('published FAQ page', () => {
   it('SSR-renders only published-body questions, answers and editorial introduction', async () => {
     const page = {
-      ...resolvePublicRoute('/en/resources/faqs/technical'), publishedContent: publishedFaq(),
+      ...publicPageFixture('/en/resources/faqs/technical'), publishedContent: publishedFaq(),
       dataState: 'published' as const, indexable: true,
     }
     const html = await renderToString(createSSRApp({ render: () => h(FaqPage, { page }) }))

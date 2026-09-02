@@ -11,6 +11,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -91,7 +92,7 @@ pub struct AdminPrincipal {
 
 impl AdminPrincipal {
     pub fn has_permission(&self, permission: &str) -> bool {
-        self.permissions.iter().any(|value| value == permission)
+        self.totp_enabled && self.permissions.iter().any(|value| value == permission)
     }
 
     pub fn session_user(&self, state: &AppState) -> SessionUser {
@@ -100,7 +101,14 @@ impl AdminPrincipal {
             display_name: self.display_name.clone(),
             email: self.email.clone(),
             role: self.role.clone(),
-            permissions: self.permissions.clone(),
+            // Password-only sessions exist solely to finish first-login TOTP
+            // enrollment. Do not expose or authorize business permissions
+            // until the second factor has been confirmed.
+            permissions: if self.totp_enabled {
+                self.permissions.clone()
+            } else {
+                Vec::new()
+            },
             environment: state.environment_label().into(),
             totp_enabled: self.totp_enabled,
         }
@@ -133,6 +141,25 @@ struct LoginRequest {
     email: String,
     password: String,
     otp: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AcceptInvitationRequest {
+    token: String,
+    password: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct InvitationAcceptance {
+    user_id: Uuid,
+    email: String,
+    display_name: String,
+    locale: String,
+    role_keys: Vec<String>,
+    status: &'static str,
+    accepted_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -192,6 +219,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/auth/setup", post(setup))
         .route("/auth/login", post(login))
+        .route("/auth/invitations/accept", post(accept_invitation))
         .route("/auth/session", get(session))
         .route("/auth/logout", post(logout))
         .route("/auth/totp/enrollment", post(start_totp_enrollment))
@@ -205,6 +233,202 @@ pub fn router() -> Router<AppState> {
             "/auth/sessions/{id}",
             axum::routing::delete(revoke_session_by_id),
         )
+}
+
+async fn accept_invitation(
+    State(state): State<AppState>,
+    peer: Option<Extension<ConnectInfo<SocketAddr>>>,
+    headers: HeaderMap,
+    Json(request): Json<AcceptInvitationRequest>,
+) -> Result<Response, ApiError> {
+    validate_strong_password(&request.password)?;
+    let token_digest = token_hash(&request.token);
+    let account_key = hex_digest(&token_digest);
+    let rate_keys = rate_limit_keys(
+        "invitation-accept",
+        &request_source(&state, &headers, peer),
+        &account_key,
+    );
+    check_auth_rate_limits(&state, &rate_keys).await?;
+    if request.token.len() != 43
+        || URL_SAFE_NO_PAD
+            .decode(request.token.as_bytes())
+            .ok()
+            .is_none_or(|decoded| decoded.len() != 32)
+    {
+        record_auth_failures(&state, &rate_keys).await?;
+        return Err(invalid_invitation());
+    }
+
+    let Some(pool) = &state.pool else {
+        return Err(ApiError::service_unavailable(
+            "Invitation acceptance requires PostgreSQL persistence.",
+        ));
+    };
+    let _hash_slot = state
+        .auth_hash_slots
+        .clone()
+        .try_acquire_owned()
+        .map_err(|_| ApiError::too_many_requests("Authentication capacity is temporarily full."))?;
+    let password_hash = hash_password(&request.password)?;
+    let now = Utc::now();
+    let request_id = request_id(&headers);
+    let mut transaction = pool.begin().await?;
+    let invitation = sqlx::query(
+        r#"SELECT id,email,display_name,locale,status,invited_by,invited_at,expires_at
+           FROM user_invitations WHERE token_hash=$1 FOR UPDATE"#,
+    )
+    .bind(&token_digest)
+    .fetch_optional(&mut *transaction)
+    .await?;
+    let Some(invitation) = invitation else {
+        transaction.rollback().await?;
+        record_auth_failures(&state, &rate_keys).await?;
+        return Err(invalid_invitation());
+    };
+    let invitation_id: Uuid = invitation.try_get("id")?;
+    let status: String = invitation.try_get("status")?;
+    let expires_at: DateTime<Utc> = invitation.try_get("expires_at")?;
+    if status != "pending" || expires_at <= now {
+        if status == "pending" && expires_at <= now {
+            sqlx::query(
+                "UPDATE user_invitations SET status='expired' WHERE id=$1 AND status='pending'",
+            )
+            .bind(invitation_id)
+            .execute(&mut *transaction)
+            .await?;
+            transaction.commit().await?;
+        } else {
+            transaction.rollback().await?;
+        }
+        record_auth_failures(&state, &rate_keys).await?;
+        return Err(invalid_invitation());
+    }
+
+    let email: String = invitation.try_get("email")?;
+    let display_name: String = invitation.try_get("display_name")?;
+    let locale: String = invitation.try_get("locale")?;
+    let invited_by: Uuid = invitation.try_get("invited_by")?;
+    let invited_at: DateTime<Utc> = invitation.try_get("invited_at")?;
+    let email_exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE lower(email)=lower($1))")
+            .bind(&email)
+            .fetch_one(&mut *transaction)
+            .await?;
+    if email_exists {
+        transaction.rollback().await?;
+        record_auth_failures(&state, &rate_keys).await?;
+        return Err(ApiError::conflict(
+            "An administrator account already exists for this invitation email.",
+        ));
+    }
+
+    let role_keys = sqlx::query_scalar::<_, String>(
+        r#"SELECT role.key FROM user_invitation_roles assignment
+           JOIN roles role ON role.id=assignment.role_id
+           WHERE assignment.invitation_id=$1 ORDER BY role.key"#,
+    )
+    .bind(invitation_id)
+    .fetch_all(&mut *transaction)
+    .await?;
+    if role_keys.is_empty() {
+        transaction.rollback().await?;
+        return Err(ApiError::conflict(
+            "The invitation has no assignable administrator role.",
+        ));
+    }
+
+    let user_id = Uuid::new_v4();
+    sqlx::query(
+        r#"INSERT INTO users
+           (id,email,password_hash,display_name,locale,status,invited_by,invited_at,created_at,updated_at)
+           VALUES ($1,$2,$3,$4,$5,'active',$6,$7,$8,$8)"#,
+    )
+    .bind(user_id)
+    .bind(&email)
+    .bind(&password_hash)
+    .bind(&display_name)
+    .bind(&locale)
+    .bind(invited_by)
+    .bind(invited_at)
+    .bind(now)
+    .execute(&mut *transaction)
+    .await?;
+    sqlx::query(
+        r#"INSERT INTO user_roles(user_id,role_id)
+           SELECT $1,role_id FROM user_invitation_roles WHERE invitation_id=$2"#,
+    )
+    .bind(user_id)
+    .bind(invitation_id)
+    .execute(&mut *transaction)
+    .await?;
+    sqlx::query(
+        r#"INSERT INTO user_status_history
+           (id,user_id,from_status,to_status,reason,changed_by,request_id,changed_at)
+           VALUES ($1,$2,'invited','active','Accepted administrator invitation',$3,$4,$5)"#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(user_id)
+    .bind(invited_by)
+    .bind(request_id)
+    .bind(now)
+    .execute(&mut *transaction)
+    .await?;
+    let updated = sqlx::query(
+        r#"UPDATE user_invitations
+           SET status='accepted',accepted_at=$2,accepted_user_id=$3
+           WHERE id=$1 AND status='pending' AND expires_at>$2"#,
+    )
+    .bind(invitation_id)
+    .bind(now)
+    .bind(user_id)
+    .execute(&mut *transaction)
+    .await?;
+    if updated.rows_affected() != 1 {
+        transaction.rollback().await?;
+        record_auth_failures(&state, &rate_keys).await?;
+        return Err(invalid_invitation());
+    }
+    sqlx::query(
+        r#"INSERT INTO audit_log
+           (id,actor,action,entity_type,entity_id,before_value,after_value,reason,request_id,occurred_at)
+           VALUES ($1,'invitation-acceptance','identity.invitation.accept','userInvitation',$2,
+                   $3,$4,'Accept administrator invitation',$5,$6)"#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(invitation_id)
+    .bind(json!({"status": "pending"}))
+    .bind(json!({
+        "status": "accepted",
+        "acceptedUserId": user_id,
+        "roleKeys": role_keys,
+    }))
+    .bind(request_id)
+    .bind(now)
+    .execute(&mut *transaction)
+    .await?;
+    transaction.commit().await?;
+    clear_auth_rate_limits(&state, &rate_keys).await?;
+
+    let mut response = (
+        StatusCode::CREATED,
+        Json(InvitationAcceptance {
+            user_id,
+            email,
+            display_name,
+            locale,
+            role_keys,
+            status: "active",
+            accepted_at: now,
+        }),
+    )
+        .into_response();
+    append_no_store(response.headers_mut());
+    Ok(response)
+}
+
+fn invalid_invitation() -> ApiError {
+    ApiError::unauthorized("The invitation token is invalid, expired, revoked, or already used.")
 }
 
 async fn setup(
@@ -714,6 +938,63 @@ pub async fn authenticate(
     })
 }
 
+/// Revalidate the identity and authorization bound into a signed preview token.
+///
+/// The token is only a short-lived transport credential: disabling the user,
+/// revoking or expiring the issuing session, or removing `content.read` must
+/// invalidate the preview immediately. Production always takes the PostgreSQL
+/// branch because the API binary refuses to start without `DATABASE_URL`.
+pub async fn preview_session_is_authorized(
+    state: &AppState,
+    user_id: Uuid,
+    session_id: Uuid,
+) -> Result<bool, ApiError> {
+    if user_id.is_nil() || session_id.is_nil() {
+        return Ok(false);
+    }
+    if let Some(pool) = &state.pool {
+        return Ok(sqlx::query_scalar::<_, bool>(
+            r#"SELECT EXISTS (
+                   SELECT 1
+                   FROM sessions AS session
+                   JOIN users AS user_account ON user_account.id=session.user_id
+                   JOIN user_roles AS assignment ON assignment.user_id=user_account.id
+                   JOIN role_permissions AS role_permission
+                     ON role_permission.role_id=assignment.role_id
+                   WHERE session.id=$1
+                     AND session.user_id=$2
+                     AND session.revoked_at IS NULL
+                     AND session.expires_at > now()
+                     AND session.last_seen_at + ($3::bigint * interval '1 minute') > now()
+                     AND user_account.status='active'
+                     AND user_account.totp_confirmed_at IS NOT NULL
+                     AND role_permission.permission_key='content.read'
+               )"#,
+        )
+        .bind(session_id)
+        .bind(user_id)
+        .bind(SESSION_IDLE_MINUTES)
+        .fetch_one(pool)
+        .await?);
+    }
+
+    let data = state.data.read().await;
+    let now = Utc::now();
+    let Some(session) = data.admin_sessions.get(&session_id).filter(|session| {
+        session.user_id == user_id
+            && !session.revoked
+            && session.expires_at > now
+            && session.last_seen_at + Duration::minutes(SESSION_IDLE_MINUTES) > now
+    }) else {
+        return Ok(false);
+    };
+    Ok(data.admin_users.get(&session.user_id).is_some_and(|user| {
+        user.active
+            && user.totp_enabled
+            && user.permissions.iter().any(|value| value == "content.read")
+    }))
+}
+
 async fn authenticate_with_csrf(
     state: &AppState,
     headers: &HeaderMap,
@@ -1015,15 +1296,18 @@ fn validate_setup(request: &SetupRequest) -> Result<(), ApiError> {
     if !valid_email(request.email.trim()) {
         return Err(ApiError::bad_request("A valid work email is required."));
     }
-    if request.password.len() < 12
-        || !request
-            .password
-            .chars()
-            .any(|value| value.is_ascii_alphabetic())
-        || !request.password.chars().any(|value| value.is_ascii_digit())
+    validate_strong_password(&request.password)?;
+    Ok(())
+}
+
+fn validate_strong_password(password: &str) -> Result<(), ApiError> {
+    if password.len() < 12
+        || password.len() > 256
+        || !password.chars().any(|value| value.is_ascii_alphabetic())
+        || !password.chars().any(|value| value.is_ascii_digit())
     {
         return Err(ApiError::bad_request(
-            "Password must contain at least 12 characters, including a letter and a digit.",
+            "Password must contain 12 to 256 characters, including a letter and a digit.",
         ));
     }
     Ok(())
@@ -1426,6 +1710,18 @@ fn token_hash(value: &str) -> Vec<u8> {
     Sha256::digest(value.as_bytes()).to_vec()
 }
 
+fn hex_digest(value: &[u8]) -> String {
+    value.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+fn request_id(headers: &HeaderMap) -> Uuid {
+    headers
+        .get("x-request-id")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| Uuid::parse_str(value).ok())
+        .unwrap_or_else(Uuid::new_v4)
+}
+
 fn constant_time_equal(left: &[u8], right: &[u8]) -> bool {
     left.len() == right.len() && bool::from(left.ct_eq(right))
 }
@@ -1635,6 +1931,7 @@ fn super_admin_permissions() -> Vec<String> {
         "content.write",
         "content.publish",
         "product.read",
+        "product.pricing.read",
         "product.write",
         "product.publish",
         "integration.run",
@@ -1661,14 +1958,25 @@ pub fn required_permission(path: &str, method: &axum::http::Method) -> Option<&'
         *method,
         axum::http::Method::GET | axum::http::Method::HEAD | axum::http::Method::OPTIONS
     );
-    if path.contains("/content/") && (path.ends_with("/publish") || path.ends_with("/rollback")) {
+    if (path.contains("/content/")
+        || path.contains("/news/")
+        || path.contains("/general-information/"))
+        && (path.ends_with("/publish") || path.ends_with("/rollback"))
+    {
         Some("content.publish")
-    } else if path.ends_with("/content") || path.contains("/content/") {
+    } else if path.ends_with("/content")
+        || path.contains("/content/")
+        || path.ends_with("/news")
+        || path.contains("/news/")
+        || path.contains("/general-information")
+    {
         Some(if write {
             "content.write"
         } else {
             "content.read"
         })
+    } else if path.contains("/products/") && path.ends_with("/private-pricing") {
+        Some("product.pricing.read")
     } else if path.contains("/products/") && path.ends_with("/publish") {
         Some("product.publish")
     } else if path.ends_with("/products") || path.contains("/products/") {
@@ -1683,6 +1991,13 @@ pub fn required_permission(path: &str, method: &axum::http::Method) -> Option<&'
         Some("rfq.read")
     } else if path.contains("/analytics") {
         Some("analytics.read")
+    } else if path.ends_with("/users")
+        || path.contains("/users/")
+        || path.ends_with("/roles")
+        || path.contains("/roles/")
+        || path.contains("/user-invitations")
+    {
+        Some("identity.manage")
     } else if path.ends_with("/settings") {
         Some("settings.manage")
     } else if path.contains("/operations") {
@@ -1705,6 +2020,15 @@ mod tests {
         assert!(hash.starts_with("$argon2id$"));
         assert!(verify_password(&hash, "a-long-password-123"));
         assert!(!verify_password(&hash, "incorrect-password"));
+    }
+
+    #[test]
+    fn invitation_password_policy_is_bounded_and_requires_letters_and_digits() {
+        assert!(validate_strong_password("correct-horse-123").is_ok());
+        assert!(validate_strong_password("short-1").is_err());
+        assert!(validate_strong_password("onlylettersforever").is_err());
+        assert!(validate_strong_password("1234567890123456").is_err());
+        assert!(validate_strong_password(&format!("A1{}", "x".repeat(255))).is_err());
     }
 
     #[test]
@@ -1734,6 +2058,20 @@ mod tests {
         assert_eq!(
             required_permission("/api/admin/v1/settings", &axum::http::Method::PATCH),
             Some("settings.manage")
+        );
+        assert_eq!(
+            required_permission(
+                "/api/admin/v1/roles/00000000-0000-0000-0000-000000000001",
+                &axum::http::Method::PATCH
+            ),
+            Some("identity.manage")
+        );
+        assert_eq!(
+            required_permission(
+                "/api/admin/v1/products/00000000-0000-0000-0000-000000000001/private-pricing",
+                &axum::http::Method::GET
+            ),
+            Some("product.pricing.read")
         );
     }
 

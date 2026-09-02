@@ -17,13 +17,8 @@ declare module 'virtual:devtools-routes' {
   export const devtoolsPermissions: Array<'devtools.shell'>
 }
 
-declare module 'virtual:admin-mock-data' {
-  export const demoOperationRows: ReadonlyArray<readonly [string, string, string, string, string, string]>
-}
-
 interface ImportMetaEnv {
   readonly VITE_ADMIN_API_BASE_URL?: string
-  readonly VITE_USE_MOCK_API?: string
   readonly VITE_ENABLE_DEVTOOLS?: string
 }
 

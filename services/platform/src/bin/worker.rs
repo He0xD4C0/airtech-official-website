@@ -11,7 +11,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
-    let state = AppState::new(Config::from_env()?)?;
+    let config = Config::from_env()?;
+    if config.database_url.is_none() {
+        return Err(
+            "DATABASE_URL is required for the running worker; durable jobs cannot use the test-only in-memory repository."
+                .into(),
+        );
+    }
+    let state = AppState::new(config)?;
     worker::run(state).await?;
     Ok(())
 }

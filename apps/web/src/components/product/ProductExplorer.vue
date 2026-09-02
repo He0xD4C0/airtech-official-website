@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { Product, ProductFamily as ProductFamilyValue } from '@airtek/contracts'
-import { productFamilies } from '@/content/catalog'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import { trackAnalyticsEvent } from '@/lib/analytics'
 import { getPublishedProducts } from '@/lib/api'
 import { PUBLIC_PRODUCT_PAGE_SIZE } from '@/lib/productPagination'
 import { useCompareStore } from '@/stores/compare'
+import type { ProductFamilyProjection } from '@/types/content'
 
-const props = withDefaults(defineProps<{ category?: string; products: Product[]; nextCursor?: string | null }>(), {
+const props = withDefaults(defineProps<{ category?: string; families: ProductFamilyProjection[]; products: Product[]; nextCursor?: string | null }>(), {
   nextCursor: null,
 })
 const query = ref('')
@@ -27,22 +27,10 @@ const observedMotorTechnologies = ref(new Set(
 let requestGeneration = 0
 const compare = useCompareStore()
 
-const familySlugs: Record<ProductFamilyValue, string> = {
-  centrifugal: 'centrifugal',
-  axial: 'axial',
-  crossFlow: 'cross-flow',
-  inlineDuct: 'inline-duct',
-  motors: 'motors',
-}
-
-const familyNames = new Map(productFamilies.map((family) => [family.slug, family.name]))
-const familyValues: Record<string, ProductFamilyValue> = {
-  centrifugal: 'centrifugal',
-  axial: 'axial',
-  'cross-flow': 'crossFlow',
-  'inline-duct': 'inlineDuct',
-  motors: 'motors',
-}
+const familiesByCode = computed(() => new Map(props.families.map((family) => [family.code, family])))
+const familyValues = computed(() => Object.fromEntries(
+  props.families.map((family) => [family.slug, family.code]),
+) as Record<string, ProductFamilyValue>)
 const motorTechnologies = computed(() => [...observedMotorTechnologies.value].sort())
 
 watch(
@@ -72,11 +60,11 @@ function rememberMotorTechnologies(products: Product[], replace = false): void {
 }
 
 function familySlug(product: Product): string {
-  return familySlugs[product.family]
+  return familiesByCode.value.get(product.family)?.slug ?? ''
 }
 
 function familyName(product: Product): string {
-  return familyNames.get(familySlug(product)) ?? product.family
+  return familiesByCode.value.get(product.family)?.name ?? ''
 }
 
 function productHref(product: Product): string {
@@ -87,6 +75,7 @@ const publishedProducts = computed(() => pageProducts.value.filter((product) => 
   product.status === 'published'
   && typeof product.publishedRevision === 'number'
   && product.locale === 'en'
+  && familiesByCode.value.has(product.family)
 )))
 
 const results = computed(() => publishedProducts.value.filter((product) => {
@@ -106,19 +95,18 @@ function isCompared(product: Product): boolean {
 
 function addToCompare(product: Product): void {
   compare.hydrate()
-  compare.add({ id: product.id, slug: product.slug, label: product.title, family: familyName(product), dataState: 'published', publishedRevision: product.publishedRevision ?? undefined })
+  compare.add({ id: product.id, slug: product.slug, label: product.title, family: familyName(product), familyCode: product.family, dataState: 'published', publishedRevision: product.publishedRevision ?? undefined })
 }
 
-function trackFilter(filterName: string, filterValue: string): void {
+function trackFilter(filterName: 'catalogSearch' | 'family' | 'motorTechnology' | 'catalogFilters'): void {
   void trackAnalyticsEvent('filterApplied', {
     filterName,
-    filterValue,
     resultCount: results.value.length,
   })
 }
 
 function productListQuery(cursor: string | null) {
-  const family = selectedForm.value === 'all' ? undefined : familyValues[selectedForm.value]
+  const family = selectedForm.value === 'all' ? undefined : familyValues.value[selectedForm.value]
   return {
     limit: PUBLIC_PRODUCT_PAGE_SIZE,
     ...(family ? { family } : {}),
@@ -159,18 +147,18 @@ async function resetPagination(): Promise<void> {
 
 async function trackQueryFilter(): Promise<void> {
   await resetPagination()
-  trackFilter('catalogSearch', query.value.trim() ? 'queryPresent' : 'all')
+  trackFilter('catalogSearch')
 }
 
 async function trackFamilyFilter(): Promise<void> {
   await resetPagination()
-  trackFilter('family', selectedForm.value)
+  trackFilter('family')
 }
 
 async function trackMotorFilter(): Promise<void> {
   await resetPagination()
   // Product Master labels are rendered in the UI, but their source text is not copied into analytics.
-  trackFilter('motorTechnology', selectedMotor.value === 'all' ? 'all' : 'selected')
+  trackFilter('motorTechnology')
 }
 
 async function clearFilters(): Promise<void> {
@@ -178,13 +166,12 @@ async function clearFilters(): Promise<void> {
   selectedForm.value = props.category ?? 'all'
   selectedMotor.value = 'all'
   await resetPagination()
-  trackFilter('catalogFilters', 'reset')
+  trackFilter('catalogFilters')
 }
 
-function trackPageChange(direction: 'next' | 'previous'): void {
+function trackPageChange(): void {
   void trackAnalyticsEvent('filterApplied', {
     filterName: 'catalogPagination',
-    filterValue: direction,
     resultCount: pageProducts.value.length,
   })
 }
@@ -195,7 +182,7 @@ async function nextPage(): Promise<void> {
   if (await loadPage(cursor)) {
     cursorHistory.value = [...cursorHistory.value.slice(0, pageIndex.value + 1), cursor]
     pageIndex.value += 1
-    trackPageChange('next')
+    trackPageChange()
   }
 }
 
@@ -205,7 +192,7 @@ async function previousPage(): Promise<void> {
   const cursor = cursorHistory.value[targetIndex] ?? null
   if (await loadPage(cursor)) {
     pageIndex.value = targetIndex
-    trackPageChange('previous')
+    trackPageChange()
   }
 }
 
@@ -215,8 +202,7 @@ async function previousPage(): Promise<void> {
   <section class="section shell">
     <SectionHeading
       eyebrow="Published catalog"
-      title="Find a published product record"
-      description="Search only the current published Product Master projection. Model identity, family and revision stay attached to each result."
+      title="Products"
     />
     <div class="filter-panel product-filter-panel" aria-label="Product filters" :aria-busy="loading">
       <label>
@@ -227,7 +213,7 @@ async function previousPage(): Promise<void> {
         <span>Fan form</span>
         <select v-model="selectedForm" @change="trackFamilyFilter">
           <option value="all">All product families</option>
-          <option v-for="family in productFamilies" :key="family.id" :value="family.slug">{{ family.name }}</option>
+          <option v-for="family in families" :key="family.code" :value="family.slug">{{ family.name }}</option>
         </select>
       </label>
       <label>
@@ -254,18 +240,15 @@ async function previousPage(): Promise<void> {
 
     <div v-if="results.length && view === 'cards'" class="card-grid product-grid">
       <article v-for="product in results" :key="product.id" class="card product-card">
-        <div class="product-card-visual" aria-hidden="true">
-          <span>{{ familyName(product).charAt(0) }}</span>
-        </div>
         <div class="product-card-body">
           <p class="eyebrow">{{ familyName(product) }}</p>
           <h2><a :href="productHref(product)">{{ product.title }}</a></h2>
           <dl class="product-card-meta">
-            <div><dt>Model</dt><dd>{{ product.model || 'Not published' }}</dd></div>
+            <div v-if="product.model"><dt>Model</dt><dd>{{ product.model }}</dd></div>
             <div><dt>Stable ID</dt><dd>{{ product.stableId }}</dd></div>
             <div><dt>Revision</dt><dd>{{ product.publishedRevision }}</dd></div>
           </dl>
-          <p>{{ product.summary || 'No published summary is available for this record.' }}</p>
+          <p v-if="product.summary">{{ product.summary }}</p>
           <ul v-if="product.subtype || product.motorTechnology" class="tag-list" aria-label="Published facets">
             <li v-if="product.subtype">{{ product.subtype }}</li>
             <li v-if="product.motorTechnology">{{ product.motorTechnology }}</li>
@@ -285,9 +268,9 @@ async function previousPage(): Promise<void> {
         <tbody>
           <tr v-for="product in results" :key="product.id">
             <th scope="row"><a :href="productHref(product)">{{ product.title }}</a><small>{{ product.stableId }}</small></th>
-            <td>{{ product.model || 'Not published' }}</td>
+            <td>{{ product.model || '—' }}</td>
             <td>{{ familyName(product) }}</td>
-            <td>{{ product.motorTechnology || 'Not published' }}</td>
+            <td>{{ product.motorTechnology || '—' }}</td>
             <td>{{ product.publishedRevision }}</td>
           </tr>
         </tbody>
@@ -298,7 +281,6 @@ async function previousPage(): Promise<void> {
       <p class="eyebrow">No published records</p>
       <h2>No validated products are available in this catalog view.</h2>
       <p>No model, performance value or compatibility claim has been inferred.</p>
-      <a class="button" href="/en/request-a-quote/selection">Request selection support</a>
     </div>
     <div v-else class="empty-state">
       <h2>No matching published product</h2>

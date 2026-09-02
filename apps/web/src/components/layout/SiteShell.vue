@@ -1,91 +1,84 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { usePageContext } from 'vike-vue/usePageContext'
 import CookieBanner from './CookieBanner.vue'
 import CompareTray from '@/components/product/CompareTray.vue'
+import type { PublicPageModel, PublicSiteBootstrap } from '@/types/content'
+import { setCurrentAnalyticsContext } from '@/lib/analytics'
 
 const pageContext = usePageContext()
 const menuOpen = ref(false)
 const currentPath = computed(() => pageContext.urlPathname)
-const year = new Date().getFullYear()
+const site = computed(() => {
+  const data = pageContext.data as { site?: PublicSiteBootstrap } | undefined
+  return data?.site
+})
+const copyright = computed(() => site.value?.copyrightText?.replace('{year}', String(new Date().getFullYear())))
 
-const nav = [
-  { label: 'Products', href: '/en/products' },
-  { label: 'Solutions', href: '/en/solutions' },
-  { label: 'Technology', href: '/en/technology' },
-  { label: 'Resources', href: '/en/resources/articles' },
-  { label: 'Company', href: '/en/company/about' },
-]
+watch(
+  () => (pageContext.data as { page?: PublicPageModel } | undefined)?.page?.analyticsContext,
+  (context) => setCurrentAnalyticsContext(context),
+  { immediate: true },
+)
 
 function active(href: string) {
-  return currentPath.value === href || currentPath.value.startsWith(`${href}/`)
+  return currentPath.value === href || (href.startsWith('/en/') && currentPath.value.startsWith(`${href}/`))
 }
 </script>
 
 <template>
   <a class="skip-link" href="#main-content">Skip to main content</a>
-  <div class="brand-line">Redefining Airflow with Smart, Green Technology</div>
-  <header class="site-header">
-    <div class="shell header-inner">
-      <a class="wordmark" href="/en" aria-label="AIRTEKPOWER home">AIRTEKPOWER</a>
-      <button
-        class="menu-toggle"
-        type="button"
-        :aria-expanded="menuOpen"
-        :aria-label="menuOpen ? 'Close menu' : 'Open menu'"
-        aria-controls="primary-navigation"
-        @click="menuOpen = !menuOpen"
-      >
-        <span aria-hidden="true">{{ menuOpen ? 'Close' : 'Menu' }}</span>
-      </button>
-      <nav id="primary-navigation" :class="['primary-nav', { open: menuOpen }]" aria-label="Primary navigation">
-        <a
-          v-for="item in nav"
-          :key="item.href"
-          :href="item.href"
-          :aria-current="active(item.href) ? 'page' : undefined"
-          @click="menuOpen = false"
-        >{{ item.label }}</a>
-        <a class="nav-rfq" href="/en/request-a-quote" @click="menuOpen = false">Request a quote</a>
-      </nav>
-    </div>
-  </header>
+  <template v-if="site">
+    <div v-if="site.brandLine" class="brand-line">{{ site.brandLine }}</div>
+    <header class="site-header">
+      <div class="shell header-inner">
+        <a class="wordmark" :href="site.homePath" :aria-label="`${site.brandName} home`">{{ site.brandName }}</a>
+        <button
+          class="menu-toggle"
+          type="button"
+          :aria-expanded="menuOpen"
+          :aria-label="menuOpen ? 'Close menu' : 'Open menu'"
+          aria-controls="primary-navigation"
+          @click="menuOpen = !menuOpen"
+        >
+          <span aria-hidden="true">{{ menuOpen ? 'Close' : 'Menu' }}</span>
+        </button>
+        <nav id="primary-navigation" :class="['primary-nav', { open: menuOpen }]" aria-label="Primary navigation">
+          <a
+            v-for="item in site.navigation"
+            :key="item.href"
+            :href="item.href"
+            :aria-current="active(item.href) ? 'page' : undefined"
+            @click="menuOpen = false"
+          >{{ item.label }}</a>
+          <a
+            v-if="site.navigationCta"
+            class="nav-rfq"
+            :href="site.navigationCta.href"
+            @click="menuOpen = false"
+          >{{ site.navigationCta.label }}</a>
+        </nav>
+      </div>
+    </header>
+  </template>
 
   <slot />
 
-  <footer class="site-footer">
+  <footer v-if="site" class="site-footer">
     <div class="shell footer-grid">
       <div>
-        <p class="wordmark footer-wordmark">AIRTEKPOWER</p>
-        <p class="footer-statement">Clear product data, application context and engineering handoff for industrial airflow decisions.</p>
+        <p class="wordmark footer-wordmark">{{ site.brandName }}</p>
+        <p v-if="site.footerStatement" class="footer-statement">{{ site.footerStatement }}</p>
       </div>
-      <div>
-        <h2>Explore</h2>
-        <a href="/en/products">Products</a>
-        <a href="/en/products/selector">Fan Selector</a>
-        <a href="/en/solutions">Solutions</a>
-        <a href="/en/technology">Technology</a>
-      </div>
-      <div>
-        <h2>Resources</h2>
-        <a href="/en/resources/articles">Technical articles</a>
-        <a href="/en/resources/faqs">FAQ</a>
-        <a href="/en/resources/case-studies">Case studies</a>
-        <a href="/en/resources/downloads">Downloads</a>
-      </div>
-      <div>
-        <h2>Company</h2>
-        <a href="/en/company/about">About</a>
-        <a href="/en/company/contact">Contact</a>
-        <a href="/en/request-a-quote">Request a quote</a>
+      <div v-for="column in site.footerColumns" :key="column.title">
+        <h2>{{ column.title }}</h2>
+        <a v-for="link in column.links" :key="link.href" :href="link.href">{{ link.label }}</a>
       </div>
     </div>
-    <div class="shell footer-bottom">
-      <p>© {{ year }} AIRTEKPOWER. All rights reserved.</p>
-      <nav aria-label="Legal">
-        <a href="/en/privacy">Privacy</a>
-        <a href="/en/terms">Terms</a>
-        <a href="/en/cookie-settings">Cookie settings</a>
+    <div v-if="copyright || site.legalLinks.length" class="shell footer-bottom">
+      <p v-if="copyright">{{ copyright }}</p>
+      <nav v-if="site.legalLinks.length" aria-label="Legal">
+        <a v-for="link in site.legalLinks" :key="link.href" :href="link.href">{{ link.label }}</a>
       </nav>
     </div>
   </footer>

@@ -1,0 +1,67 @@
+import type { APIResponse } from '@playwright/test'
+
+export interface BrowserCookie {
+  name: string
+  value: string
+  domain: string
+  path: string
+  expires: number
+  httpOnly: boolean
+  secure: boolean
+  sameSite: 'Strict' | 'Lax' | 'None'
+}
+
+function parseAttribute(attributes: string[], name: string): string | undefined {
+  const prefix = `${name.toLowerCase()}=`
+  return attributes
+    .map((attribute) => attribute.trim())
+    .find((attribute) => attribute.toLowerCase().startsWith(prefix))
+    ?.slice(prefix.length)
+}
+
+export function secureHostOnlyCookies(response: APIResponse, hostname: string): BrowserCookie[] {
+  const values = response.headersArray()
+    .filter(({ name }) => name.toLowerCase() === 'set-cookie')
+    .map(({ value }) => value)
+
+  if (!values.length) throw new Error('The production API response did not include Set-Cookie.')
+
+  return values.map((value) => {
+    const parts = value.split(';')
+    const pair = parts.shift()
+    if (!pair) throw new Error('The production API returned an invalid Set-Cookie value.')
+    const attributes = parts
+    const separator = pair.indexOf('=')
+    if (separator <= 0) throw new Error('The production API returned an invalid Set-Cookie value.')
+    if (attributes.some((attribute) => attribute.trim().toLowerCase().startsWith('domain='))) {
+      throw new Error('The production API session cookie must remain host-only.')
+    }
+    if (!attributes.some((attribute) => attribute.trim().toLowerCase() === 'secure')) {
+      throw new Error('The production API session cookie must retain Secure in the E2E stack.')
+    }
+    const sameSite = parseAttribute(attributes, 'samesite')
+    if (sameSite?.toLowerCase() !== 'strict') {
+      throw new Error('The production API session cookie must retain SameSite=Strict in the E2E stack.')
+    }
+    const maxAge = Number.parseInt(parseAttribute(attributes, 'max-age') ?? '', 10)
+    return {
+      name: pair.slice(0, separator),
+      value: pair.slice(separator + 1),
+      domain: hostname,
+      path: parseAttribute(attributes, 'path') ?? '/',
+      expires: Number.isFinite(maxAge) ? Math.floor(Date.now() / 1000) + maxAge : -1,
+      httpOnly: attributes.some((attribute) => attribute.trim().toLowerCase() === 'httponly'),
+      secure: true,
+      sameSite: 'Strict' as const,
+    }
+  })
+}
+
+export function cookieRequestHeader(cookies: BrowserCookie[]): string {
+  return cookies.map(({ name, value }) => `${name}=${value}`).join('; ')
+}
+
+export function mergeCookies(current: BrowserCookie[], replacements: BrowserCookie[]): BrowserCookie[] {
+  const replacementNames = new Set(replacements.map(({ name }) => name))
+  return [...current.filter(({ name }) => !replacementNames.has(name)), ...replacements]
+}

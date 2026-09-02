@@ -16,6 +16,9 @@ export type PageKind =
   | 'rfq-form'
   | 'search'
   | 'legal'
+  | 'compare'
+  | 'news'
+  | 'news-detail'
 
 export interface Breadcrumb {
   label: string
@@ -31,6 +34,77 @@ export interface CardEntry {
   status?: string
   tags?: string[]
   download?: PublishedDownloadListMetadata
+  category?: string
+  author?: string
+  publishedAt?: string
+  featured?: boolean
+}
+
+export interface PublicLink {
+  label: string
+  href: string
+}
+
+export interface PublicCallToAction extends PublicLink {
+  eyebrow?: string
+  title: string
+  description: string
+}
+
+export interface PublicPageSection {
+  id: string
+  eyebrow?: string
+  title?: string
+  description?: string
+  links?: PublicLink[]
+}
+
+export interface PublicAnalyticsContext {
+  contentKind: 'content' | 'news' | 'product'
+  contentId: string
+  publishedRevision: number
+}
+
+export interface ProductFamilyProjection {
+  code: 'centrifugal' | 'axial' | 'crossFlow' | 'inlineDuct' | 'motors'
+  slug: string
+  name: string
+  description: string
+  sortOrder: number
+}
+
+export interface PublicSiteBootstrap {
+  brandName: string
+  brandLine?: string
+  homePath: string
+  footerStatement?: string
+  copyrightText?: string
+  defaultSeo: {
+    title?: string
+    description?: string
+  }
+  organization: {
+    name: string
+    url?: string
+    logoUrl?: string
+  }
+  navigation: PublicLink[]
+  navigationCta?: PublicLink
+  footerColumns: Array<{ title: string; links: PublicLink[] }>
+  legalLinks: PublicLink[]
+  productFamilies: ProductFamilyProjection[]
+  motorTechnologies: string[]
+  generatedAt: string
+  publishedRevision: number
+  isPlaceholder: boolean
+}
+
+export interface PublicNewsMetadata {
+  category?: string
+  author?: string
+  coverMediaId?: string
+  publishedAt?: string
+  featured: boolean
 }
 
 export interface PublicPageModel {
@@ -53,17 +127,16 @@ export interface PublicPageModel {
   publishedContent?: ContentEntry
   publishedProducts?: Product[]
   productNextCursor?: string | null
+  newsNextCursor?: string | null
   publishedProduct?: Product
   productContext?: ProductContext
-}
-
-export interface ProductFamily {
-  id: string
-  name: string
-  slug: string
-  description: string
-  form: string
-  subtypes?: string[]
+  primaryCta?: PublicCallToAction
+  sections?: PublicPageSection[]
+  productFamilies?: ProductFamilyProjection[]
+  motorTechnologies?: string[]
+  analyticsContext?: PublicAnalyticsContext
+  newsMetadata?: PublicNewsMetadata
+  dataClass?: 'editorial' | 'feishu' | 'verifiedCsv' | 'developmentFixture'
 }
 
 export type RfqType = NonNullable<PublicPageModel['rfqType']>

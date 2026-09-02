@@ -11,6 +11,7 @@ use chrono::{Duration as ChronoDuration, Utc};
 use futures_util::stream;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::{
@@ -18,10 +19,11 @@ use crate::{
     error::ApiError,
     idempotency::{begin as begin_idempotency, IdempotencyOutcome},
     models::{
-        AuditEvent, BackgroundOperation, ContentDraftInput, ContentEntry, ContentPreviewLink,
-        CreateContentPreviewRequest, CreateOperationRequest, CreateTemporaryOverride, CursorPage,
-        OperationKind, OperationStatus, Product, PublicationStatus, StartSyncRequest, SyncRun,
-        SyncRunStatus, TemporaryOverride, UpdatePlatformSettings,
+        AuditEvent, BackgroundOperation, ContentDraftInput, ContentEntry, ContentKind,
+        ContentPreviewLink, CreateContentPreviewRequest, CreateOperationRequest,
+        CreateTemporaryOverride, CursorPage, OperationKind, OperationStatus, Product,
+        PublicationStatus, StartSyncRequest, SyncRun, SyncRunStatus, TemporaryOverride,
+        UpdatePlatformSettings,
     },
     pagination::{paginate_by_id, CursorQuery},
     routes::{actor, etag, parse_if_match},
@@ -54,6 +56,7 @@ pub fn router() -> Router<AppState> {
         .route("/operations/{id}", get(get_operation))
         .route("/operations/{id}/events", get(operation_events))
         .route("/audit", get(list_audit))
+        .merge(super::admin_data::router())
 }
 
 async fn get_settings(State(state): State<AppState>) -> Result<Response, ApiError> {
@@ -93,6 +96,7 @@ async fn update_settings(
 async fn create_content_preview(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
+    Extension(principal): Extension<AdminPrincipal>,
     headers: HeaderMap,
     Json(request): Json<CreateContentPreviewRequest>,
 ) -> Result<Response, ApiError> {
@@ -110,12 +114,8 @@ async fn create_content_preview(
     }
 
     let current = state
-        .data
-        .read()
-        .await
-        .content
-        .get(&id)
-        .cloned()
+        .load_working_content(id)
+        .await?
         .ok_or_else(|| ApiError::not_found("Content entry was not found."))?;
     if headers.contains_key(header::IF_MATCH) {
         let expected_revision = parse_if_match(&headers)?;
@@ -126,14 +126,27 @@ async fn create_content_preview(
         }
     }
 
-    state
-        .load_content_revision(id, request.revision)
-        .await?
-        .ok_or_else(|| ApiError::not_found("The requested content revision was not found."))?;
+    let existing_snapshot = state.load_content_revision(id, request.revision).await?;
+    if existing_snapshot.is_none() && request.revision == current.current_revision {
+        state
+            .snapshot_working_content(&current, &actor(&headers))
+            .await?;
+    } else if existing_snapshot.is_none() {
+        return Err(ApiError::not_found(
+            "The requested content revision was not found.",
+        ));
+    }
     let key = state.config.preview_signing_key.as_ref().ok_or_else(|| {
         ApiError::service_unavailable("Content preview signing is not configured.")
     })?;
-    let issued = crate::preview_token::issue(key, id, request.revision, expires_in_seconds)?;
+    let issued = crate::preview_token::issue(
+        key,
+        id,
+        request.revision,
+        principal.user_id,
+        principal.session_id,
+        expires_in_seconds,
+    )?;
     let preview = ContentPreviewLink {
         url: format!(
             "{}/en/preview?token={}",
@@ -177,7 +190,10 @@ async fn list_content(
     State(state): State<AppState>,
     Query(query): Query<CursorQuery>,
 ) -> Result<Json<CursorPage<ContentEntry>>, ApiError> {
-    let mut values: Vec<_> = state.data.read().await.content.values().cloned().collect();
+    let mut values = state.list_working_content().await?;
+    // News has metadata and projection invariants that only the dedicated News
+    // service can update transactionally. Keep it out of the generic editor.
+    values.retain(|entry| entry.kind != ContentKind::News);
     values.sort_by_key(|entry| Reverse(entry.updated_at));
     Ok(Json(paginate_by_id(
         "admin.content",
@@ -192,6 +208,8 @@ async fn create_content(
     headers: HeaderMap,
     Json(input): Json<ContentDraftInput>,
 ) -> Result<Response, ApiError> {
+    reject_generic_news_input(input.kind)?;
+    validate_content_input(&input)?;
     let actor = actor(&headers);
     let idempotency = match begin_idempotency(
         &state,
@@ -208,16 +226,13 @@ async fn create_content(
         }
         IdempotencyOutcome::Fresh(context) => context,
     };
-    validate_content_input(&input)?;
+    if state
+        .content_identity_exists(input.kind, &input.slug, &input.locale, None)
+        .await?
     {
-        let data = state.data.read().await;
-        if data.content.values().any(|entry| {
-            entry.kind == input.kind && entry.slug == input.slug && entry.locale == input.locale
-        }) {
-            return Err(ApiError::conflict(
-                "A content entry already uses this kind, slug and locale.",
-            ));
-        }
+        return Err(ApiError::conflict(
+            "A content entry already uses this kind, slug and locale.",
+        ));
     }
     let now = Utc::now();
     let entry = ContentEntry {
@@ -237,12 +252,14 @@ async fn create_content(
         updated_at: now,
     };
     state.persist_content(&entry, &actor).await?;
-    state
-        .data
-        .write()
-        .await
-        .content
-        .insert(entry.id, entry.clone());
+    if state.pool.is_none() {
+        state
+            .data
+            .write()
+            .await
+            .content
+            .insert(entry.id, entry.clone());
+    }
     audit(
         &state,
         &headers,
@@ -271,33 +288,47 @@ async fn update_content(
     headers: HeaderMap,
     Json(input): Json<ContentDraftInput>,
 ) -> Result<Response, ApiError> {
+    reject_generic_news_input(input.kind)?;
     validate_content_input(&input)?;
     let expected_revision = parse_if_match(&headers)?;
+    let actor = actor(&headers);
     let before = state
-        .data
-        .read()
-        .await
-        .content
-        .get(&id)
-        .cloned()
+        .load_working_content(id)
+        .await?
         .ok_or_else(|| ApiError::not_found("Content entry was not found."))?;
+    reject_generic_news_entry(&before)?;
+    let idempotency = match begin_idempotency(
+        &state,
+        "admin.content.update",
+        &headers,
+        &json!({
+            "actor": &actor,
+            "id": id,
+            "ifMatch": expected_revision,
+            "input": &input,
+        }),
+    )
+    .await?
+    {
+        IdempotencyOutcome::Replay(replay) => {
+            let status = replay.status()?;
+            let entry: ContentEntry = replay.decode()?;
+            return Ok(entity_response(status, &entry, entry.current_revision));
+        }
+        IdempotencyOutcome::Fresh(context) => context,
+    };
     if before.current_revision != expected_revision {
         return Err(ApiError::conflict(
             "The content entry changed; reload before saving.",
         ));
     }
+    if state
+        .content_identity_exists(input.kind, &input.slug, &input.locale, Some(id))
+        .await?
     {
-        let data = state.data.read().await;
-        if data.content.values().any(|entry| {
-            entry.id != id
-                && entry.kind == input.kind
-                && entry.slug == input.slug
-                && entry.locale == input.locale
-        }) {
-            return Err(ApiError::conflict(
-                "A content entry already uses this kind, slug and locale.",
-            ));
-        }
+        return Err(ApiError::conflict(
+            "A content entry already uses this kind, slug and locale.",
+        ));
     }
     let mut updated = before.clone();
     updated.kind = input.kind;
@@ -312,11 +343,12 @@ async fn update_content(
     updated.current_revision += 1;
     updated.updated_at = Utc::now();
 
-    let actor = actor(&headers);
     state
         .persist_content_update(&updated, &actor, expected_revision)
         .await?;
-    state.data.write().await.content.insert(id, updated.clone());
+    if state.pool.is_none() {
+        state.data.write().await.content.insert(id, updated.clone());
+    }
     audit(
         &state,
         &headers,
@@ -329,6 +361,9 @@ async fn update_content(
         Some("Update working draft".into()),
     )
     .await?;
+    idempotency
+        .complete(&state, &updated, StatusCode::OK)
+        .await?;
     Ok(entity_response(
         StatusCode::OK,
         &updated,
@@ -343,6 +378,11 @@ async fn publish_content(
 ) -> Result<Response, ApiError> {
     let expected_revision = parse_if_match(&headers)?;
     let actor = actor(&headers);
+    let before = state
+        .load_working_content(id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Content entry was not found."))?;
+    reject_generic_news_entry(&before)?;
     let idempotency = match begin_idempotency(
         &state,
         "admin.content.publish",
@@ -358,14 +398,6 @@ async fn publish_content(
         }
         IdempotencyOutcome::Fresh(context) => context,
     };
-    let before = state
-        .data
-        .read()
-        .await
-        .content
-        .get(&id)
-        .cloned()
-        .ok_or_else(|| ApiError::not_found("Content entry was not found."))?;
     if before.current_revision != expected_revision {
         return Err(ApiError::conflict(
             "The content entry changed; reload before publishing.",
@@ -393,12 +425,14 @@ async fn publish_content(
     state
         .publish_content_projection(&published, &actor, "publish", expected_revision)
         .await?;
-    state
-        .data
-        .write()
-        .await
-        .content
-        .insert(id, published.clone());
+    if state.pool.is_none() {
+        state
+            .data
+            .write()
+            .await
+            .content
+            .insert(id, published.clone());
+    }
     audit(
         &state,
         &headers,
@@ -436,6 +470,11 @@ async fn rollback_content(
 ) -> Result<Response, ApiError> {
     let expected_revision = parse_if_match(&headers)?;
     let actor = actor(&headers);
+    let before = state
+        .load_working_content(id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Content entry was not found."))?;
+    reject_generic_news_entry(&before)?;
     let idempotency = match begin_idempotency(
         &state,
         "admin.content.rollback",
@@ -461,24 +500,15 @@ async fn rollback_content(
             "Rollback reason must contain at least 10 characters.",
         ));
     }
-    let data = state.data.read().await;
-    let before = data
-        .content
-        .get(&id)
-        .cloned()
-        .ok_or_else(|| ApiError::not_found("Content entry was not found."))?;
     if before.current_revision != expected_revision {
         return Err(ApiError::conflict(
             "The content entry changed; reload before rolling back.",
         ));
     }
-    let historic = data
-        .content_revisions
-        .get(&id)
-        .and_then(|revisions| revisions.get(&request.revision))
-        .cloned()
+    let historic = state
+        .load_content_revision(id, request.revision)
+        .await?
         .ok_or_else(|| ApiError::not_found("The requested historical revision was not found."))?;
-    drop(data);
 
     // Rollback means re-publishing historic content as a new immutable
     // revision. The original history is never modified.
@@ -494,12 +524,14 @@ async fn rollback_content(
     state
         .publish_content_projection(&restored, &actor, "rollback", expected_revision)
         .await?;
-    state
-        .data
-        .write()
-        .await
-        .content
-        .insert(id, restored.clone());
+    if state.pool.is_none() {
+        state
+            .data
+            .write()
+            .await
+            .content
+            .insert(id, restored.clone());
+    }
     let rollback_reason = request.reason.clone();
     audit(
         &state,
@@ -527,7 +559,7 @@ async fn list_products(
     State(state): State<AppState>,
     Query(query): Query<CursorQuery>,
 ) -> Result<Json<CursorPage<Product>>, ApiError> {
-    let mut values: Vec<_> = state.data.read().await.products.values().cloned().collect();
+    let mut values = state.list_working_products().await?;
     values.sort_by(|left, right| left.stable_id.cmp(&right.stable_id));
     Ok(Json(paginate_by_id(
         "admin.products",
@@ -560,12 +592,8 @@ async fn publish_product(
         IdempotencyOutcome::Fresh(context) => context,
     };
     let product = state
-        .data
-        .read()
-        .await
-        .products
-        .get(&id)
-        .cloned()
+        .load_working_product(id)
+        .await?
         .ok_or_else(|| ApiError::not_found("Product was not found in validated staging."))?;
     if product.current_revision != expected_revision {
         return Err(ApiError::conflict(
@@ -575,14 +603,18 @@ async fn publish_product(
     state.assert_product_publishable(&product).await?;
     if product.status == PublicationStatus::Published
         && product.published_revision == Some(product.current_revision)
+        && state
+            .product_presentation_is_published(product.id, &product.locale)
+            .await?
     {
+        let response_product = state.present_product(product).await?;
         idempotency
-            .complete(&state, &product, StatusCode::OK)
+            .complete(&state, &response_product, StatusCode::OK)
             .await?;
         return Ok(entity_response(
             StatusCode::OK,
-            &product,
-            product.current_revision,
+            &response_product,
+            response_product.current_revision,
         ));
     }
     let now = Utc::now();
@@ -593,12 +625,14 @@ async fn publish_product(
     state
         .publish_product_projection(&product, &published)
         .await?;
-    state
-        .data
-        .write()
-        .await
-        .products
-        .insert(id, published.clone());
+    if state.pool.is_none() {
+        state
+            .data
+            .write()
+            .await
+            .products
+            .insert(id, published.clone());
+    }
     audit(
         &state,
         &headers,
@@ -611,13 +645,14 @@ async fn publish_product(
         Some("Publish validated Product Master revision".into()),
     )
     .await?;
+    let response_product = state.present_product(published).await?;
     idempotency
-        .complete(&state, &published, StatusCode::OK)
+        .complete(&state, &response_product, StatusCode::OK)
         .await?;
     Ok(entity_response(
         StatusCode::OK,
-        &published,
-        published.current_revision,
+        &response_product,
+        response_product.current_revision,
     ))
 }
 
@@ -626,15 +661,41 @@ async fn list_temporary_overrides(
     Path(id): Path<Uuid>,
     Query(query): Query<CursorQuery>,
 ) -> Result<Json<CursorPage<TemporaryOverride>>, ApiError> {
-    let mut values: Vec<_> = state
-        .data
-        .read()
-        .await
-        .temporary_overrides
-        .values()
-        .filter(|value| value.product_id == id)
-        .cloned()
-        .collect();
+    let mut values: Vec<_> = if let Some(pool) = &state.pool {
+        let rows = sqlx::query(
+            r#"SELECT id,product_id,field_path,value,reason,created_at,expires_at
+               FROM product_temporary_overrides WHERE product_id=$1
+               ORDER BY created_at DESC,id"#,
+        )
+        .bind(id)
+        .fetch_all(pool)
+        .await?;
+        rows.into_iter()
+            .map(|row| {
+                let expires_at = row.try_get("expires_at")?;
+                Ok(TemporaryOverride {
+                    id: row.try_get("id")?,
+                    product_id: row.try_get("product_id")?,
+                    field_path: row.try_get("field_path")?,
+                    value: row.try_get("value")?,
+                    reason: row.try_get("reason")?,
+                    created_at: row.try_get("created_at")?,
+                    expires_at,
+                    expired: expires_at <= Utc::now(),
+                })
+            })
+            .collect::<Result<Vec<_>, ApiError>>()?
+    } else {
+        state
+            .data
+            .read()
+            .await
+            .temporary_overrides
+            .values()
+            .filter(|value| value.product_id == id)
+            .cloned()
+            .collect()
+    };
     values.sort_by_key(|entry| Reverse(entry.created_at));
     Ok(Json(paginate_by_id(
         "admin.productOverrides",
@@ -671,7 +732,7 @@ async fn create_temporary_override(
             "Path product id must match productId.",
         ));
     }
-    if !state.data.read().await.products.contains_key(&id) {
+    if state.load_working_product(id).await?.is_none() {
         return Err(ApiError::not_found("Product was not found."));
     }
     if input.reason.trim().len() < 10 {
@@ -697,12 +758,14 @@ async fn create_temporary_override(
     input.reason = input.reason.trim().to_owned();
     let value = TemporaryOverride::from_input(input);
     state.persist_override(&value).await?;
-    state
-        .data
-        .write()
-        .await
-        .temporary_overrides
-        .insert(value.id, value.clone());
+    if state.pool.is_none() {
+        state
+            .data
+            .write()
+            .await
+            .temporary_overrides
+            .insert(value.id, value.clone());
+    }
     let override_reason = value.reason.clone();
     audit(
         &state,
@@ -783,12 +846,14 @@ async fn start_sync_run(
         }),
     };
     state.enqueue_sync_run(&run).await?;
-    state
-        .data
-        .write()
-        .await
-        .sync_runs
-        .insert(run.id, run.clone());
+    if state.pool.is_none() {
+        state
+            .data
+            .write()
+            .await
+            .sync_runs
+            .insert(run.id, run.clone());
+    }
     audit(
         &state,
         &headers,
@@ -811,14 +876,38 @@ async fn list_conflicts(
     State(state): State<AppState>,
     Query(query): Query<CursorQuery>,
 ) -> Result<Json<CursorPage<crate::models::SyncConflict>>, ApiError> {
-    let mut values: Vec<_> = state
-        .data
-        .read()
-        .await
-        .conflicts
-        .values()
-        .cloned()
-        .collect();
+    let mut values: Vec<_> = if let Some(pool) = &state.pool {
+        let rows = sqlx::query(
+            r#"SELECT id,sync_run_id,product_id,source_record_id,field_diffs,resolved_at,resolution
+               FROM sync_conflicts ORDER BY id"#,
+        )
+        .fetch_all(pool)
+        .await?;
+        rows.into_iter()
+            .map(|row| {
+                Ok(crate::models::SyncConflict {
+                    id: row.try_get("id")?,
+                    sync_run_id: row.try_get("sync_run_id")?,
+                    product_id: row.try_get("product_id")?,
+                    source_record_id: row.try_get("source_record_id")?,
+                    diffs: serde_json::from_value(row.try_get("field_diffs")?).map_err(|_| {
+                        ApiError::service_unavailable("Stored sync conflict data is invalid.")
+                    })?,
+                    resolved_at: row.try_get("resolved_at")?,
+                    resolution: row.try_get("resolution")?,
+                })
+            })
+            .collect::<Result<Vec<_>, ApiError>>()?
+    } else {
+        state
+            .data
+            .read()
+            .await
+            .conflicts
+            .values()
+            .cloned()
+            .collect()
+    };
     values.sort_by_key(|entry| entry.id);
     Ok(Json(paginate_by_id(
         "admin.feishuConflicts",
@@ -833,7 +922,7 @@ async fn list_rfqs(
     Extension(principal): Extension<AdminPrincipal>,
     Query(query): Query<CursorQuery>,
 ) -> Result<Json<CursorPage<crate::models::RfqSubmission>>, ApiError> {
-    let mut values: Vec<_> = state.data.read().await.rfqs.values().cloned().collect();
+    let mut values = state.list_stored_rfqs().await?;
     values.sort_by_key(|submission| Reverse(submission.submitted_at));
     let mut page = paginate_by_id("admin.rfqs", values, query, |entry| entry.id)?;
     if !principal.has_permission("rfq.read_pii") {
@@ -849,7 +938,7 @@ async fn list_contacts(
     Extension(principal): Extension<AdminPrincipal>,
     Query(query): Query<CursorQuery>,
 ) -> Result<Json<CursorPage<crate::models::ContactRequest>>, ApiError> {
-    let mut values: Vec<_> = state.data.read().await.contacts.values().cloned().collect();
+    let mut values = state.list_stored_contacts().await?;
     values.sort_by_key(|contact| Reverse(contact.submitted_at));
     let mut page = paginate_by_id("admin.contacts", values, query, |entry| entry.id)?;
     if !principal.has_permission("rfq.read_pii") {
@@ -955,12 +1044,14 @@ async fn create_operation(
         result: None,
     };
     state.persist_operation(&operation).await?;
-    state
-        .data
-        .write()
-        .await
-        .operations
-        .insert(operation.id, operation.clone());
+    if state.pool.is_none() {
+        state
+            .data
+            .write()
+            .await
+            .operations
+            .insert(operation.id, operation.clone());
+    }
     let operation_reason = operation.reason.clone();
     audit(
         &state,
@@ -1086,7 +1177,7 @@ async fn list_audit(
     State(state): State<AppState>,
     Query(query): Query<CursorQuery>,
 ) -> Result<Json<CursorPage<AuditEvent>>, ApiError> {
-    let mut values = state.data.read().await.audit_events.clone();
+    let mut values = state.list_stored_audit().await?;
     values.sort_by_key(|event| Reverse(event.occurred_at));
     Ok(Json(paginate_by_id(
         "admin.audit",
@@ -1096,7 +1187,27 @@ async fn list_audit(
     )?))
 }
 
-fn validate_content_input(input: &ContentDraftInput) -> Result<(), ApiError> {
+const DEDICATED_NEWS_API_DETAIL: &str =
+    "News must be managed through the dedicated /api/admin/v1/news API.";
+
+fn reject_generic_news_input(kind: ContentKind) -> Result<(), ApiError> {
+    if kind == ContentKind::News {
+        return Err(ApiError::validation(BTreeMap::from([(
+            "kind".into(),
+            vec![DEDICATED_NEWS_API_DETAIL.into()],
+        )])));
+    }
+    Ok(())
+}
+
+fn reject_generic_news_entry(entry: &ContentEntry) -> Result<(), ApiError> {
+    if entry.kind == ContentKind::News {
+        return Err(ApiError::conflict(DEDICATED_NEWS_API_DETAIL));
+    }
+    Ok(())
+}
+
+pub(super) fn validate_content_input(input: &ContentDraftInput) -> Result<(), ApiError> {
     let mut errors = BTreeMap::new();
     if input.title.trim().is_empty() || input.title.len() > 300 {
         errors.insert(
@@ -1230,6 +1341,7 @@ fn confirmation_phrase(kind: OperationKind) -> &'static str {
         OperationKind::SearchReindex => "REBUILD SEARCH INDEX",
         OperationKind::CacheInvalidate => "INVALIDATE PUBLIC CACHE",
         OperationKind::FeishuSync => "START FEISHU SYNC",
+        OperationKind::ProductImport => "IMPORT PRODUCT MASTER",
     }
 }
 

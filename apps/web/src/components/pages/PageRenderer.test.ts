@@ -3,7 +3,7 @@ import { renderToString } from 'vue/server-renderer'
 import { describe, expect, it } from 'vitest'
 import type { ContentEntry } from '@airtek/contracts'
 import PageRenderer from './PageRenderer.vue'
-import { resolvePublicRoute } from '@/content/routes'
+import { publicPageFixture } from '@/test/publicPageFixture'
 
 function publishedContent(
   bodyContent: unknown[],
@@ -28,29 +28,30 @@ function publishedContent(
 }
 
 describe('published CMS page rendering', () => {
-  it('composes a non-empty Home body without removing the core discovery modules', async () => {
+  it('composes a non-empty Home body with database-projected taxonomy', async () => {
     const page = {
-      ...resolvePublicRoute('/en'),
+      ...publicPageFixture('/en'),
       title: 'Published home',
       publishedContent: publishedContent([
         { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'CMS body wins' }] },
         { type: 'paragraph', content: [{ type: 'text', text: 'Visible without client JavaScript.' }] },
       ]),
+      productFamilies: [{ code: 'axial' as const, slug: 'axial', name: 'Database family', description: 'Database family description', sortOrder: 1 }],
       dataState: 'published' as const,
     }
     const html = await renderToString(createSSRApp({ render: () => h(PageRenderer, { page }) }))
 
     expect(html).toContain('CMS body wins')
     expect(html).toContain('Visible without client JavaScript.')
-    expect(html).toContain('Turn airflow requirements into a clear engineering path.')
     expect(html).toContain('Product families')
-    expect(html).toContain('Open Fan Selector')
+    expect(html).toContain('Database family')
+    expect(html).not.toContain('class="home-hero"')
   })
 
-  it('keeps the safe static scaffold when the published body is empty', async () => {
-    const page = { ...resolvePublicRoute('/en'), publishedContent: publishedContent([]), dataState: 'published' as const }
+  it('does not resurrect the removed static Home scaffold when the published body is empty', async () => {
+    const page = { ...publicPageFixture('/en'), publishedContent: publishedContent([]), dataState: 'published' as const }
     const html = await renderToString(createSSRApp({ render: () => h(PageRenderer, { page }) }))
-    expect(html).toContain('Turn airflow requirements into a clear engineering path.')
+    expect(html).not.toContain('class="home-hero"')
   })
 
   it('keeps route-specific collection, FAQ, download, About and Contact components after publication', async () => {
@@ -60,15 +61,15 @@ describe('published CMS page rendering', () => {
       slug: string
       marker: string
     }> = [
-      { path: '/en/resources/articles', kind: 'article', slug: 'index', marker: 'Search published articles' },
+      { path: '/en/resources/articles', kind: 'article', slug: 'index', marker: 'Editorial remains visible.' },
       { path: '/en/resources/faqs', kind: 'faq', slug: 'index', marker: 'FAQ categories' },
       { path: '/en/resources/downloads', kind: 'download', slug: 'index', marker: 'Search title, description, type or model' },
-      { path: '/en/company/about', kind: 'company', slug: 'about', marker: 'Innovation · Quality · Service' },
+      { path: '/en/company/about', kind: 'company', slug: 'about', marker: 'Editorial remains visible.' },
       { path: '/en/company/contact', kind: 'company', slug: 'contact', marker: 'Business email' },
     ]
 
     for (const scenario of scenarios) {
-      const route = resolvePublicRoute(scenario.path)
+      const route = publicPageFixture(scenario.path)
       const page = {
         ...route,
         publishedContent: publishedContent([
@@ -85,7 +86,7 @@ describe('published CMS page rendering', () => {
   it('continues to use the CMS body as the primary ordinary detail document', async () => {
     const path = '/en/resources/articles/reading-a-fan-curve'
     const page = {
-      ...resolvePublicRoute(path),
+      ...publicPageFixture(path),
       publishedContent: publishedContent([
         { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Controlled article body' }] },
       ], { kind: 'article', slug: 'reading-a-fan-curve', canonicalPath: path }),
@@ -99,7 +100,7 @@ describe('published CMS page rendering', () => {
   it('keeps a published Download body and adds the controlled-file panel', async () => {
     const path = '/en/resources/downloads/approved-resource'
     const page = {
-      ...resolvePublicRoute(path),
+      ...publicPageFixture(path),
       publishedContent: publishedContent([
         { type: 'paragraph', content: [{ type: 'text', text: 'Controlled resource context.' }] },
       ], {

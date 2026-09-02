@@ -23,7 +23,7 @@ defineProps<{
       </nav>
       <p class="eyebrow">{{ eyebrow }}</p>
       <h1>{{ title }}</h1>
-      <p class="hero-description">{{ description }}</p>
+      <p v-if="description" class="hero-description">{{ description }}</p>
       <slot />
     </div>
   </section>

@@ -1,8 +1,9 @@
 use airtek_platform::{
     build_router,
     models::{
-        FactState, PerformanceCurve, Product, ProductFamily, PublicationStatus, SourceSnapshot,
-        SpecValue, StagingRecord, StagingValidationStatus, SyncConflict, SyncRun, SyncRunStatus,
+        ContentEntry, ContentKind, FactState, GeneralInformation, PerformanceCurve, Product,
+        ProductFamily, PublicationStatus, RichTextDocument, SeoMetadata, SourceSnapshot, SpecValue,
+        StagingRecord, StagingValidationStatus, SyncConflict, SyncRun, SyncRunStatus,
         TemporaryOverride,
     },
     AppState, Config,
@@ -53,7 +54,52 @@ async fn response_json(response: axum::response::Response) -> Value {
     serde_json::from_slice(&bytes).expect("JSON response")
 }
 
-async fn setup_admin(app: &axum::Router) -> TestAdminSession {
+async fn install_published_site_shell(state: &AppState) {
+    let now = chrono::Utc::now();
+    let information = GeneralInformation {
+        id: uuid::Uuid::new_v4(),
+        locale: "en".into(),
+        payload: json!({
+            "brandName": "AIRTEKPOWER",
+            "homePath": "/en",
+            "organization": {"name": "AIRTEKPOWER"}
+        }),
+        status: PublicationStatus::Published,
+        current_revision: 1,
+        published_revision: Some(1),
+        is_placeholder: false,
+        updated_at: now,
+    };
+    let shell_content = |kind, slug: &str| ContentEntry {
+        id: uuid::Uuid::new_v4(),
+        kind,
+        slug: slug.into(),
+        locale: "en".into(),
+        title: "Published site shell".into(),
+        summary: None,
+        body: RichTextDocument {
+            schema_version: 1,
+            doc: json!({"type": "doc", "content": []}),
+        },
+        seo: SeoMetadata::default(),
+        status: PublicationStatus::Published,
+        is_placeholder: false,
+        current_revision: 1,
+        published_revision: Some(1),
+        scheduled_for: None,
+        updated_at: now,
+    };
+    let navigation = shell_content(ContentKind::Navigation, "primary-navigation");
+    let footer = shell_content(ContentKind::Footer, "primary-footer");
+
+    let mut data = state.data.write().await;
+    data.published_general_information
+        .insert(information.id, information);
+    data.published_content.insert(navigation.id, navigation);
+    data.published_content.insert(footer.id, footer);
+}
+
+async fn setup_admin_without_totp(app: &axum::Router) -> TestAdminSession {
     let response = app
         .clone()
         .oneshot(
@@ -113,6 +159,127 @@ async fn setup_admin(app: &axum::Router) -> TestAdminSession {
         .collect::<Vec<_>>()
         .join("; ");
     TestAdminSession { cookie, csrf }
+}
+
+async fn setup_admin(app: &axum::Router) -> TestAdminSession {
+    let session = setup_admin_without_totp(app).await;
+    let enrollment = app
+        .clone()
+        .oneshot(
+            Request::post("/api/admin/v1/auth/totp/enrollment")
+                .header(header::COOKIE, &session.cookie)
+                .header("x-csrf-token", &session.csrf)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(enrollment.status(), StatusCode::OK);
+    let enrollment = response_json(enrollment).await;
+    let totp = totp_rs::TOTP::from_url(enrollment["otpAuthUri"].as_str().unwrap())
+        .expect("valid provisioning URI");
+    let confirmed = app
+        .clone()
+        .oneshot(
+            Request::post("/api/admin/v1/auth/totp/confirm")
+                .header(header::COOKIE, &session.cookie)
+                .header("x-csrf-token", &session.csrf)
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({"code": totp.generate_current().expect("system clock")}).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(confirmed.status(), StatusCode::OK);
+    session
+}
+
+#[tokio::test]
+async fn password_only_session_is_limited_to_totp_enrollment() {
+    let state = AppState::for_test();
+    let app = build_router(state);
+    let session = setup_admin_without_totp(&app).await;
+
+    let current = app
+        .clone()
+        .oneshot(
+            Request::get("/api/admin/v1/auth/session")
+                .header(header::COOKIE, &session.cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(current.status(), StatusCode::OK);
+    let current = response_json(current).await;
+    assert_eq!(current["totpEnabled"], false);
+    assert_eq!(current["permissions"], json!([]));
+
+    let protected = app
+        .oneshot(
+            Request::get("/api/admin/v1/content")
+                .header(header::COOKIE, &session.cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(protected.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn invitation_acceptance_is_unauthenticated_but_admin_origin_bound_and_strictly_typed() {
+    let app = build_router(AppState::for_test());
+    let body = json!({
+        "token": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "password": "correct-horse-123"
+    });
+    let wrong_origin = app
+        .clone()
+        .oneshot(
+            Request::post("/api/admin/v1/auth/invitations/accept")
+                .header(header::ORIGIN, "http://localhost:3000")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(wrong_origin.status(), StatusCode::FORBIDDEN);
+
+    let unknown_field = app
+        .clone()
+        .oneshot(
+            Request::post("/api/admin/v1/auth/invitations/accept")
+                .header(header::ORIGIN, "http://localhost:3100")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "token": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                        "password": "correct-horse-123",
+                        "email": "attacker-controlled@example.com"
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(unknown_field.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+    let no_database = app
+        .oneshot(
+            Request::post("/api/admin/v1/auth/invitations/accept")
+                .header(header::ORIGIN, "http://localhost:3100")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(body.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(no_database.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
 #[tokio::test]
@@ -244,6 +411,9 @@ fn published_test_product(stable_id: &str, slug: &str, family: ProductFamily) ->
         motor_technology: None,
         title: format!("Published {stable_id}"),
         summary: None,
+        seo: Default::default(),
+        sort_order: 0,
+        related_content_ids: Vec::new(),
         specifications: vec![],
         performance_curves: vec![],
         source_snapshot_id: uuid::Uuid::new_v4(),
@@ -371,6 +541,154 @@ async fn public_products_use_stable_opaque_keyset_cursors() {
         .await
         .unwrap();
     assert_eq!(wrong_filters.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn public_product_detail_is_bound_to_family_and_slug() {
+    let state = AppState::for_test();
+    let products = [
+        published_test_product("stable-axial", "shared-slug", ProductFamily::Axial),
+        published_test_product(
+            "stable-centrifugal",
+            "shared-slug",
+            ProductFamily::Centrifugal,
+        ),
+    ];
+    {
+        let mut data = state.data.write().await;
+        for product in products {
+            data.published_products.insert(product.id, product);
+        }
+    }
+    let app = build_router(state);
+
+    let axial = app
+        .clone()
+        .oneshot(
+            Request::get("/api/public/v1/products/shared-slug?family=axial")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(axial.status(), StatusCode::OK);
+    assert_eq!(response_json(axial).await["stableId"], "stable-axial");
+
+    let centrifugal = app
+        .clone()
+        .oneshot(
+            Request::get("/api/public/v1/products/shared-slug?family=centrifugal")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(centrifugal.status(), StatusCode::OK);
+    assert_eq!(
+        response_json(centrifugal).await["stableId"],
+        "stable-centrifugal"
+    );
+
+    let ambiguous = app
+        .oneshot(
+            Request::get("/api/public/v1/products/shared-slug")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(ambiguous.status(), StatusCode::CONFLICT);
+}
+
+#[tokio::test]
+async fn product_presentation_has_an_independent_etag_and_never_revisions_facts() {
+    let state = AppState::for_test();
+    let mut product = published_test_product(
+        "presentation-facts-stable",
+        "presentation-facts-source",
+        ProductFamily::Axial,
+    );
+    product.status = PublicationStatus::Draft;
+    product.published_revision = None;
+    product.indexable = false;
+    let product_id = product.id;
+    insert_publishable_product(&state, product.clone()).await;
+    let app = build_router(state.clone());
+    let session = setup_admin(&app).await;
+    let body = json!({
+        "locale": "en",
+        "slug": "portal-owned-title",
+        "title": "Portal-owned title",
+        "summary": "Editorial presentation only",
+        "seo": {
+            "title": "Portal-owned SEO title",
+            "description": "Editorial SEO description",
+            "canonicalPath": "/en/products/axial/portal-owned-title",
+            "indexable": false
+        },
+        "indexable": false,
+        "sortOrder": 20,
+        "relatedContentIds": [],
+        "reason": "Test independent presentation revision"
+    })
+    .to_string();
+    let request = |key: &str, revision: i64| {
+        Request::patch(format!("/api/admin/v1/products/{product_id}/presentation"))
+            .header(header::COOKIE, &session.cookie)
+            .header("x-csrf-token", &session.csrf)
+            .header("idempotency-key", key)
+            .header(header::IF_MATCH, format!("\"revision-{revision}\""))
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(body.clone()))
+            .unwrap()
+    };
+
+    let updated = app
+        .clone()
+        .oneshot(request("product-presentation-update-0001", 1))
+        .await
+        .unwrap();
+    assert_eq!(updated.status(), StatusCode::OK);
+    assert_eq!(
+        updated.headers().get(header::ETAG).unwrap(),
+        "\"revision-2\""
+    );
+    let updated = response_json(updated).await;
+    assert_eq!(updated["currentRevision"], 1);
+    assert_eq!(updated["presentation"]["revision"], 2);
+    assert_eq!(updated["presentation"]["publishedRevision"], Value::Null);
+
+    let replay = app
+        .clone()
+        .oneshot(request("product-presentation-update-0001", 1))
+        .await
+        .unwrap();
+    assert_eq!(replay.status(), StatusCode::OK);
+    assert_eq!(
+        replay.headers().get(header::ETAG).unwrap(),
+        "\"revision-2\""
+    );
+
+    let stale = app
+        .oneshot(request("product-presentation-update-stale", 1))
+        .await
+        .unwrap();
+    assert_eq!(stale.status(), StatusCode::CONFLICT);
+
+    let data = state.data.read().await;
+    assert_eq!(data.products.get(&product_id), Some(&product));
+    assert_eq!(
+        data.product_revisions
+            .get(&product_id)
+            .map(std::collections::BTreeMap::len),
+        Some(1)
+    );
+    assert_eq!(
+        data.product_presentations
+            .get(&(product_id, "en".to_owned()))
+            .map(|presentation| presentation.revision),
+        Some(2)
+    );
 }
 
 #[tokio::test]
@@ -846,7 +1164,7 @@ async fn analytics_requires_a_current_server_receipt_and_strict_event_dictionary
                 .header(header::CONTENT_TYPE, "application/json")
                 .body(Body::from(event(
                     "filterApplied",
-                    json!({"filterName": "family", "filterValue": "axial", "resultCount": 2}),
+                    json!({"filterName": "family", "resultCount": 2}),
                     session_id,
                     receipt,
                 )))
@@ -875,6 +1193,45 @@ async fn analytics_requires_a_current_server_receipt_and_strict_event_dictionary
         (
             "filterApplied",
             json!({"filterName": "family", "filterValue": "x".repeat(161)}),
+        ),
+        (
+            "filterApplied",
+            json!({"filterName": "family", "filterValue": "Jane Doe"}),
+        ),
+        (
+            "faqExpanded",
+            json!({"faqId": "faq-1", "category": "arbitrary-free-text"}),
+        ),
+        ("pageView", json!({"contentKind": "Jane Doe"})),
+        (
+            "filterApplied",
+            json!({"filterName": "jane-doe", "resultCount": 2}),
+        ),
+        ("faqExpanded", json!({"faqId": "jane-doe"})),
+        (
+            "ctaClicked",
+            json!({"ctaId": "private-note", "placement": "hero"}),
+        ),
+        (
+            "ctaClicked",
+            json!({"ctaId": "request-quote", "placement": "jane-doe"}),
+        ),
+        (
+            "ctaClicked",
+            json!({"ctaId": "request-quote", "placement": "hero", "destinationPath": "/en/jane-doe"}),
+        ),
+        (
+            "rfqValidationError",
+            json!({
+                "journey": "product",
+                "step": 1,
+                "fieldName": "jane-doe",
+                "errorCode": "publishedContextRequired"
+            }),
+        ),
+        (
+            "rfqSubmitFailed",
+            json!({"journey": "product", "errorCode": "jane-doe"}),
         ),
     ] {
         let rejected = app
@@ -1020,6 +1377,9 @@ async fn product_rfq_requires_an_exact_published_product_snapshot() {
         motor_technology: None,
         title: "Validated published product".into(),
         summary: None,
+        seo: Default::default(),
+        sort_order: 0,
+        related_content_ids: Vec::new(),
         specifications: vec![],
         performance_curves: vec![],
         source_snapshot_id: uuid::Uuid::new_v4(),
@@ -1282,6 +1642,7 @@ async fn content_updates_require_the_current_etag() {
                 .header("x-csrf-token", &session.csrf)
                 .header(header::CONTENT_TYPE, "application/json")
                 .header(header::IF_MATCH, "\"revision-1\"")
+                .header("idempotency-key", "content-etag-update-0001")
                 .body(Body::from(body))
                 .unwrap(),
         )
@@ -1292,6 +1653,78 @@ async fn content_updates_require_the_current_etag() {
         updated.headers().get(header::ETAG).unwrap(),
         "\"revision-2\""
     );
+}
+
+#[tokio::test]
+async fn general_information_locale_is_immutable_after_creation() {
+    let app = build_router(AppState::for_test());
+    let session = setup_admin(&app).await;
+    let payload = json!({
+        "brandName": "AIRTEKPOWER",
+        "brandLine": null,
+        "homePath": "/en",
+        "footerStatement": null,
+        "copyrightText": null,
+        "defaultSeo": {"title": null, "description": null},
+        "organization": {"name": "AIRTEKPOWER"}
+    });
+    let created = app
+        .clone()
+        .oneshot(
+            Request::post("/api/admin/v1/general-information")
+                .header(header::COOKIE, &session.cookie)
+                .header("x-csrf-token", &session.csrf)
+                .header("idempotency-key", "general-information-locale-create-0001")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({"locale": "en", "payload": payload, "isPlaceholder": false}).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(created.status(), StatusCode::CREATED);
+    let id = response_json(created).await["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+
+    let rejected = app
+        .clone()
+        .oneshot(
+            Request::patch(format!("/api/admin/v1/general-information/{id}"))
+                .header(header::COOKIE, &session.cookie)
+                .header("x-csrf-token", &session.csrf)
+                .header("idempotency-key", "general-information-locale-update-0001")
+                .header(header::IF_MATCH, "\"revision-1\"")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({"locale": "fr", "payload": payload, "isPlaceholder": false}).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(rejected.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let problem = response_json(rejected).await;
+    assert_eq!(
+        problem["errors"]["locale"],
+        json!(["Locale is immutable after General Information is created."])
+    );
+
+    let unchanged = app
+        .oneshot(
+            Request::get(format!("/api/admin/v1/general-information/{id}"))
+                .header(header::COOKIE, &session.cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(unchanged.status(), StatusCode::OK);
+    let unchanged = response_json(unchanged).await;
+    assert_eq!(unchanged["locale"], "en");
+    assert_eq!(unchanged["currentRevision"], 1);
 }
 
 #[tokio::test]
@@ -1571,6 +2004,125 @@ async fn admin_business_mutations_require_session_and_csrf() {
 }
 
 #[tokio::test]
+async fn identity_mutations_enforce_and_replay_idempotency_keys() {
+    let state = AppState::for_test();
+    let app = build_router(state.clone());
+    let session = setup_admin(&app).await;
+    let user_id = *state
+        .data
+        .read()
+        .await
+        .admin_users
+        .keys()
+        .next()
+        .expect("setup administrator");
+    let update_body = json!({
+        "displayName": "Idempotent Administrator",
+        "reason": "Verify identity mutation idempotency"
+    })
+    .to_string();
+    let update_request = |key: Option<&str>| {
+        let mut request = Request::patch(format!("/api/admin/v1/users/{user_id}"))
+            .header(header::COOKIE, &session.cookie)
+            .header("x-csrf-token", &session.csrf)
+            .header(header::IF_MATCH, "\"revision-1\"")
+            .header(header::CONTENT_TYPE, "application/json");
+        if let Some(key) = key {
+            request = request.header("idempotency-key", key);
+        }
+        request.body(Body::from(update_body.clone())).unwrap()
+    };
+
+    let missing = app.clone().oneshot(update_request(None)).await.unwrap();
+    assert_eq!(missing.status(), StatusCode::BAD_REQUEST);
+    assert!(response_json(missing).await["detail"]
+        .as_str()
+        .unwrap()
+        .contains("Idempotency-Key"));
+
+    let key = "identity-user-update-replay-0001";
+    let first = app
+        .clone()
+        .oneshot(update_request(Some(key)))
+        .await
+        .unwrap();
+    assert_eq!(first.status(), StatusCode::OK);
+    let first_etag = first.headers().get(header::ETAG).unwrap().clone();
+    let first_body = first.into_body().collect().await.unwrap().to_bytes();
+    let replay = app
+        .clone()
+        .oneshot(update_request(Some(key)))
+        .await
+        .unwrap();
+    assert_eq!(replay.status(), StatusCode::OK);
+    assert_eq!(replay.headers().get(header::ETAG).unwrap(), first_etag);
+    assert_eq!(
+        replay.into_body().collect().await.unwrap().to_bytes(),
+        first_body
+    );
+
+    let missing_invitation_key = app
+        .clone()
+        .oneshot(
+            Request::post("/api/admin/v1/user-invitations")
+                .header(header::COOKIE, &session.cookie)
+                .header("x-csrf-token", &session.csrf)
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "email": "invitee@example.com",
+                        "displayName": "Invitee",
+                        "roleKeys": ["content-editor"]
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(missing_invitation_key.status(), StatusCode::BAD_REQUEST);
+
+    let missing_revoke_key = app
+        .clone()
+        .oneshot(
+            Request::post(format!(
+                "/api/admin/v1/user-invitations/{}/revoke",
+                uuid::Uuid::new_v4()
+            ))
+            .header(header::COOKIE, &session.cookie)
+            .header("x-csrf-token", &session.csrf)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(
+                json!({"reason": "Revoke unused invitation safely"}).to_string(),
+            ))
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(missing_revoke_key.status(), StatusCode::BAD_REQUEST);
+
+    let missing_role_key = app
+        .oneshot(
+            Request::patch(format!("/api/admin/v1/roles/{}", uuid::Uuid::new_v4()))
+                .header(header::COOKIE, session.cookie)
+                .header("x-csrf-token", session.csrf)
+                .header(header::IF_MATCH, "\"revision-1\"")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "displayName": "Auditable Role",
+                        "reason": "Verify role mutation idempotency"
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(missing_role_key.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
 async fn logout_requires_csrf_for_an_active_session_before_revocation() {
     let app = build_router(AppState::for_test());
     let session = setup_admin(&app).await;
@@ -1674,6 +2226,7 @@ async fn bootstrap_token_is_not_evaluated_after_initial_setup() {
 #[tokio::test]
 async fn public_projection_survives_draft_edits_and_rollback_republishes_history() {
     let state = AppState::for_test();
+    install_published_site_shell(&state).await;
     let app = build_router(state.clone());
     let session = setup_admin(&app).await;
     let original = json!({
@@ -1739,6 +2292,7 @@ async fn public_projection_survives_draft_edits_and_rollback_republishes_history
                 .header("x-csrf-token", &session.csrf)
                 .header(header::CONTENT_TYPE, "application/json")
                 .header(header::IF_MATCH, "\"revision-1\"")
+                .header("idempotency-key", "projection-update-0001")
                 .body(Body::from(draft.to_string()))
                 .unwrap(),
         )
@@ -1834,7 +2388,7 @@ async fn public_projection_survives_draft_edits_and_rollback_republishes_history
     assert_eq!(data.outbox_events.len(), 2);
     assert_eq!(
         data.content_revisions[&uuid::Uuid::parse_str(&id).unwrap()].len(),
-        3
+        2
     );
     assert_eq!(
         data.audit_events
@@ -1850,6 +2404,152 @@ async fn public_projection_survives_draft_edits_and_rollback_republishes_history
             .count(),
         1
     );
+}
+
+#[tokio::test]
+async fn generic_content_endpoints_exclude_news_and_fail_closed_for_news_mutations() {
+    let app = build_router(AppState::for_test());
+    let session = setup_admin(&app).await;
+    let content = json!({
+        "kind": "news",
+        "slug": "dedicated-news-boundary",
+        "locale": "en",
+        "title": "Dedicated News boundary",
+        "summary": "News metadata must remain transactionally consistent.",
+        "body": {"schemaVersion": 1, "doc": {"type": "doc", "content": []}},
+        "seo": {
+            "indexable": true,
+            "canonicalPath": "/en/resources/news/dedicated-news-boundary"
+        },
+        "isPlaceholder": false
+    });
+
+    let generic_create = app
+        .clone()
+        .oneshot(
+            Request::post("/api/admin/v1/content")
+                .header(header::COOKIE, &session.cookie)
+                .header("x-csrf-token", &session.csrf)
+                .header("idempotency-key", "generic-news-rejected-create")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(content.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(generic_create.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(response_json(generic_create).await["errors"]["kind"][0]
+        .as_str()
+        .unwrap()
+        .contains("/api/admin/v1/news"));
+
+    let created = app
+        .clone()
+        .oneshot(
+            Request::post("/api/admin/v1/news")
+                .header(header::COOKIE, &session.cookie)
+                .header("x-csrf-token", &session.csrf)
+                .header("idempotency-key", "dedicated-news-create-boundary")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "content": content,
+                        "category": "Company",
+                        "authorDisplayName": "AIRTEKPOWER",
+                        "coverMediaId": null,
+                        "publishedAt": null,
+                        "featured": false,
+                        "dataClass": "editorial"
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(created.status(), StatusCode::CREATED);
+    let created = response_json(created).await;
+    let id = created["content"]["id"].as_str().unwrap();
+
+    let generic_list = app
+        .clone()
+        .oneshot(
+            Request::get("/api/admin/v1/content?limit=100")
+                .header(header::COOKIE, &session.cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(generic_list.status(), StatusCode::OK);
+    assert!(response_json(generic_list).await["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|entry| entry["kind"] != "news"));
+
+    let mut generic_update = created["content"].clone();
+    generic_update["kind"] = json!("article");
+    generic_update.as_object_mut().unwrap().retain(|key, _| {
+        matches!(
+            key.as_str(),
+            "kind" | "slug" | "locale" | "title" | "summary" | "body" | "seo" | "isPlaceholder"
+        )
+    });
+    let update = app
+        .clone()
+        .oneshot(
+            Request::patch(format!("/api/admin/v1/content/{id}"))
+                .header(header::COOKIE, &session.cookie)
+                .header("x-csrf-token", &session.csrf)
+                .header("idempotency-key", "generic-news-rejected-update")
+                .header(header::IF_MATCH, "\"revision-1\"")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(generic_update.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(update.status(), StatusCode::CONFLICT);
+    assert!(response_json(update).await["detail"]
+        .as_str()
+        .unwrap()
+        .contains("/api/admin/v1/news"));
+
+    for (path, body, key) in [
+        (
+            format!("/api/admin/v1/content/{id}/publish"),
+            None,
+            "generic-news-rejected-publish",
+        ),
+        (
+            format!("/api/admin/v1/content/{id}/rollback"),
+            Some(json!({"revision": 1, "reason": "Use the dedicated News workflow"})),
+            "generic-news-rejected-rollback",
+        ),
+    ] {
+        let has_body = body.is_some();
+        let mut request = Request::post(path)
+            .header(header::COOKIE, &session.cookie)
+            .header("x-csrf-token", &session.csrf)
+            .header("idempotency-key", key)
+            .header(header::IF_MATCH, "\"revision-1\"")
+            .body(Body::from(
+                body.map_or_else(String::new, |value| value.to_string()),
+            ))
+            .unwrap();
+        if has_body {
+            request
+                .headers_mut()
+                .insert(header::CONTENT_TYPE, "application/json".parse().unwrap());
+        }
+        let response = app.clone().oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+        assert!(response_json(response).await["detail"]
+            .as_str()
+            .unwrap()
+            .contains("/api/admin/v1/news"));
+    }
 }
 
 #[tokio::test]
@@ -1894,6 +2594,7 @@ async fn signed_content_preview_is_exact_short_lived_private_and_audited() {
                 .header(header::COOKIE, &session.cookie)
                 .header("x-csrf-token", &session.csrf)
                 .header(header::IF_MATCH, "\"revision-1\"")
+                .header("idempotency-key", "preview-update-0001")
                 .header(header::CONTENT_TYPE, "application/json")
                 .body(Body::from(second.to_string()))
                 .unwrap(),
@@ -2052,6 +2753,34 @@ async fn signed_content_preview_is_exact_short_lived_private_and_audited() {
         "First private draft"
     );
 
+    state
+        .data
+        .write()
+        .await
+        .admin_sessions
+        .values_mut()
+        .next()
+        .expect("issuing Admin session")
+        .revoked = true;
+    let revoked_session_preview = app
+        .clone()
+        .oneshot(
+            Request::get("/api/public/v1/content-preview")
+                .header(header::AUTHORIZATION, format!("Bearer {first_token}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(revoked_session_preview.status(), StatusCode::NOT_FOUND);
+    assert_eq!(
+        revoked_session_preview
+            .headers()
+            .get(header::CACHE_CONTROL)
+            .unwrap(),
+        "private, no-store, max-age=0"
+    );
+
     let audit = state.data.read().await.audit_events.clone();
     let preview_audits: Vec<_> = audit
         .iter()
@@ -2095,9 +2824,16 @@ async fn expired_content_preview_returns_gone_without_fallback() {
         .or_default()
         .insert(1, content);
     let key = state.config.preview_signing_key.as_ref().unwrap();
-    let token = airtek_platform::preview_token::issue(key, content_id, 1, 1)
-        .unwrap()
-        .token;
+    let token = airtek_platform::preview_token::issue(
+        key,
+        content_id,
+        1,
+        uuid::Uuid::new_v4(),
+        uuid::Uuid::new_v4(),
+        1,
+    )
+    .unwrap()
+    .token;
     tokio::time::sleep(std::time::Duration::from_millis(1_100)).await;
 
     let response = build_router(state)
@@ -2179,7 +2915,7 @@ async fn login_failures_are_rate_limited_by_source_and_account() {
 #[tokio::test]
 async fn high_risk_operations_fail_closed_until_totp_is_enabled() {
     let app = build_router(AppState::for_test());
-    let session = setup_admin(&app).await;
+    let session = setup_admin_without_totp(&app).await;
     let response = app
         .oneshot(
             Request::post("/api/admin/v1/operations")
@@ -2435,7 +3171,7 @@ async fn rfq_lists_redact_pii_without_the_dedicated_permission() {
 async fn totp_recovery_codes_and_session_revocation_are_end_to_end_enforced() {
     let state = AppState::for_test();
     let app = build_router(state.clone());
-    let setup_session = setup_admin(&app).await;
+    let setup_session = setup_admin_without_totp(&app).await;
 
     let enrollment = app
         .clone()
