@@ -1,0 +1,13 @@
+ARG FLYWAY_BASE_IMAGE=flyway/flyway:13.4.0-alpine
+FROM ${FLYWAY_BASE_IMAGE}
+
+COPY services/platform/flyway.toml /flyway/project/flyway.toml
+COPY services/platform/migrations /flyway/project/migrations
+COPY services/platform/flyway/callbacks /flyway/project/flyway/callbacks
+COPY --chmod=0555 infra/docker/flyway-entrypoint.sh /usr/local/bin/airtek-flyway
+
+ENV HOME=/tmp
+WORKDIR /flyway/project
+USER 10001
+ENTRYPOINT ["/usr/local/bin/airtek-flyway"]
+CMD ["migrate"]

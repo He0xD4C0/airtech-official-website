@@ -107,8 +107,17 @@ jobs:
           --health-retries 20
     env:
       DATABASE_URL: postgres://airtek:airtek@127.0.0.1:5432/airtek
+      FLYWAY_URL: jdbc:postgresql://127.0.0.1:5432/airtek
+      FLYWAY_USER: airtek
+      FLYWAY_PASSWORD: airtek
+      FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: airtek_runtime
     steps:
       - uses: actions/checkout@v4
+      - name: Generate a temporary CI-only runtime database password
+        run: |
+          runtime_password="$(openssl rand -hex 32)"
+          echo "::add-mask::${runtime_password}"
+          echo "AIRTEK_RUNTIME_DATABASE_PASSWORD=${runtime_password}" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.98.0
@@ -118,10 +127,160 @@ jobs:
           workspaces: services/platform
       - run: cargo fmt --manifest-path services/platform/Cargo.toml --all -- --check
       - run: cargo clippy --manifest-path services/platform/Cargo.toml --all-targets --features production -- -D warnings
-      - name: Apply migrations twice to verify a clean and idempotent bootstrap
+      - name: Provision a distinct runtime database role
         run: |
-          cargo run --manifest-path services/platform/Cargo.toml --bin airtek-migrate
-          cargo run --manifest-path services/platform/Cargo.toml --bin airtek-migrate
+          docker exec -i "${{ job.services.postgres.id }}" \
+            psql --username airtek --dbname postgres \
+            --set ON_ERROR_STOP=1 \
+            --set "runtime_password=${AIRTEK_RUNTIME_DATABASE_PASSWORD}" <<'SQL'
+          CREATE ROLE airtek_runtime LOGIN PASSWORD :'runtime_password';
+          SQL
+          docker exec ${{ job.services.postgres.id }} psql --username airtek --dbname airtek --set ON_ERROR_STOP=1 --command "CREATE SEQUENCE public.ci_runtime_grant_sequence"
+      - name: Build the non-root Flyway migrations image
+        run: docker build --file infra/docker/Dockerfile.flyway --tag airtek-flyway:ci .
+      - name: Apply Flyway migrations twice and validate history
+        run: |
+          docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE airtek-flyway:ci migrate
+          docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE airtek-flyway:ci migrate
+          docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE airtek-flyway:ci validate
+          docker exec ${{ job.services.postgres.id }} psql --username airtek --dbname airtek --set ON_ERROR_STOP=1 --command "DO \$\$ BEGIN IF NOT has_table_privilege('airtek_runtime', 'public.content_entries', 'SELECT') OR NOT has_sequence_privilege('airtek_runtime', 'public.ci_runtime_grant_sequence', 'USAGE') OR NOT has_database_privilege('airtek_runtime', current_database(), 'TEMPORARY') OR NOT has_table_privilege('airtek_runtime', 'public.flyway_schema_history', 'SELECT') OR has_table_privilege('airtek_runtime', 'public.flyway_schema_history', 'INSERT') OR has_table_privilege('airtek_runtime', 'public.flyway_schema_history', 'TRUNCATE') OR NOT has_schema_privilege('airtek_runtime', 'public', 'USAGE') OR has_schema_privilege('airtek_runtime', 'public', 'CREATE') THEN RAISE EXCEPTION 'runtime role boundary is invalid'; END IF; END \$\$"
+          docker exec \
+            -e "PGPASSWORD=${AIRTEK_RUNTIME_DATABASE_PASSWORD}" \
+            "${{ job.services.postgres.id }}" \
+            psql --host 127.0.0.1 --username airtek_runtime --dbname airtek \
+            --no-password --set ON_ERROR_STOP=1 --command "SELECT 1"
+      - name: Exercise guarded legacy SQLx history adoption
+        run: |
+          set -euo pipefail
+
+          run_psql() {
+            local database="$1"
+            shift
+            docker run --rm -i --network host \
+              -e "PGPASSWORD=${FLYWAY_PASSWORD}" \
+              postgres:17-alpine \
+              psql --host 127.0.0.1 --username "${FLYWAY_USER}" --dbname "${database}" \
+              --set ON_ERROR_STOP=1 "$@"
+          }
+
+          run_flyway() {
+            local database="$1"
+            shift
+            docker run --rm --network host \
+              -e "FLYWAY_URL=jdbc:postgresql://127.0.0.1:5432/${database}" \
+              -e FLYWAY_USER \
+              -e FLYWAY_PASSWORD \
+              -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE \
+              airtek-flyway:ci "$@"
+          }
+
+          run_psql postgres <<'SQL'
+          CREATE DATABASE airtek_sqlx_adoption;
+          SQL
+
+          run_psql airtek_sqlx_adoption <<'SQL'
+          CREATE TABLE public._sqlx_migrations (
+              version bigint PRIMARY KEY,
+              description text NOT NULL,
+              installed_on timestamptz NOT NULL DEFAULT now(),
+              success boolean NOT NULL,
+              checksum bytea NOT NULL,
+              execution_time bigint NOT NULL
+          );
+          CREATE TABLE public.content_entries (id bigint PRIMARY KEY);
+          CREATE TABLE public.jobs (id bigint PRIMARY KEY);
+
+          INSERT INTO public._sqlx_migrations
+              (version, description, success, checksum, execution_time)
+          VALUES
+              (1, 'platform foundation', true, decode('ccd98441f2636df4e875f67bff11a6d5f984a058380810e1be1884c00057717076f04da1f959599dd67f5757a2930564', 'hex'), 0),
+              (2, 'operational hardening', true, decode('84a0652742c1e94b5c50ab5295d5e7f93bac2686f43ad78d72c6c48ff4b2c2eda40efd602a5963a4d6c1ce10789574f7', 'hex'), 0),
+              (3, 'content lifecycle fields', true, decode('1a0867c93e79f58192065c4fdee997988626fe8879f953731e53fa0ee9c498605770d7c09807b153de89c6c31d14f56a', 'hex'), 0),
+              (4, 'operational recovery and erasure', true, decode('b87cab34cfe88e98663e8d1e01dd7fee2424c8efb2b45e392258b0d3fa80cb2f1a55ff9704607ad87bd91c68da8c7ee2', 'hex'), 0),
+              (5, 'platform capability completion', true, decode('8c4b886f20032b2d1c0f4b5df1c9e373b408e71ed7a5f595c6353e24424c2f4914a3b2373852e52b4e01c8cce8d0a250', 'hex'), 0),
+              (6, 'scope completion', true, decode('4a57cee86761d1e06ccdbf824d7347a32dc47c5c8433a636ba24f0e1dd8d38f9c6ccf0985e2c038a8074de47455655cc', 'hex'), 0),
+              (7, 'content versioning and previews', true, decode('862d506fbfcccd71e1472ec7f367638ee262772059a3939fc04d786e3e6c4d76961230276d17c74e8446b88a22f1d3cc', 'hex'), 0),
+              (8, 'analytics chain and catalog', true, decode('f5e7452eadf8b80a01b8abe6715f0470a66045ff1d61038001dce7f9013d1a6dbfe812511fb808f4d4c220670b09c837', 'hex'), 0),
+              (9, 'runtime completion', true, decode('a8f96920cdab8147aaf24ac3db504fb2d49eb4f5dc7a6173f984776fabd8a70f1c72dcd8dc60e8d5c373b64b040917a4', 'hex'), 0),
+              (10, 'product source takeover', true, decode('d674ac912444d60d354a96c81114dbe2d877f26eb8d8d5622c902b49a460c333d8b8b113886b96fcd9d48f43e4712ed9', 'hex'), 0);
+          SQL
+
+          run_psql postgres <<'SQL'
+          CREATE DATABASE airtek_sqlx_bad_checksum TEMPLATE airtek_sqlx_adoption;
+          CREATE DATABASE airtek_sqlx_missing_version TEMPLATE airtek_sqlx_adoption;
+          SQL
+
+          run_psql airtek_sqlx_bad_checksum <<'SQL'
+          UPDATE public._sqlx_migrations
+          SET checksum = decode('00', 'hex')
+          WHERE version = 10;
+          SQL
+
+          run_psql airtek_sqlx_missing_version <<'SQL'
+          DELETE FROM public._sqlx_migrations
+          WHERE version = 10;
+          SQL
+
+          run_flyway airtek_sqlx_adoption baseline
+          run_flyway airtek_sqlx_adoption migrate
+          run_flyway airtek_sqlx_adoption validate
+
+          run_psql airtek_sqlx_adoption <<'SQL'
+          DO $flyway_history$
+          BEGIN
+              IF (
+                  SELECT count(*)
+                  FROM public.flyway_schema_history
+                  WHERE version = '10'
+                    AND type = 'BASELINE'
+                    AND success
+              ) <> 1 THEN
+                  RAISE EXCEPTION
+                      'SQLx adoption must create exactly one successful Flyway baseline at version 10';
+              END IF;
+
+              IF EXISTS (
+                  SELECT 1
+                  FROM public.flyway_schema_history
+                  WHERE type = 'SQL'
+                    AND version::integer BETWEEN 1 AND 10
+              ) THEN
+                  RAISE EXCEPTION
+                      'SQLx adoption must not register or execute V1-V10 as Flyway SQL migrations';
+              END IF;
+          END
+          $flyway_history$;
+          SQL
+
+          run_psql postgres <<'SQL'
+          CREATE DATABASE airtek_sqlx_post_baseline_tamper TEMPLATE airtek_sqlx_adoption;
+          SQL
+
+          run_psql airtek_sqlx_post_baseline_tamper <<'SQL'
+          UPDATE public._sqlx_migrations
+          SET checksum = decode('00', 'hex')
+          WHERE version = 10;
+          SQL
+
+          if tamper_output="$(run_flyway airtek_sqlx_post_baseline_tamper migrate 2>&1)"; then
+            echo "Flyway unexpectedly accepted SQLx history changed after baseline" >&2
+            exit 1
+          fi
+          case "${tamper_output}" in
+            *"Flyway migrate refused: version 10 baseline SQLx evidence"*) ;;
+            *)
+              echo "Flyway failed after SQLx history tampering, but not through beforeMigrate" >&2
+              printf '%s\n' "${tamper_output}" >&2
+              exit 1
+              ;;
+          esac
+
+          for database in airtek_sqlx_bad_checksum airtek_sqlx_missing_version; do
+            if run_flyway "${database}" baseline; then
+              echo "Flyway unexpectedly accepted invalid SQLx history in ${database}" >&2
+              exit 1
+            fi
+          done
       - name: Run Rust unit and HTTP contract tests
         run: cargo test --manifest-path services/platform/Cargo.toml
       - name: Run PostgreSQL integration contracts serially

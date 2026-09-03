@@ -1,62 +1,17 @@
-use std::{borrow::Cow, str::FromStr};
-
 use airtek_platform::models::SeoMetadata;
 use serde_json::{json, Value};
-use sqlx::{
-    migrate::Migrator,
-    postgres::{PgConnectOptions, PgPoolOptions},
-};
 use uuid::Uuid;
 
-fn migration_range(minimum: i64, maximum: i64, ignore_missing: bool) -> Migrator {
-    let all = sqlx::migrate!("./migrations");
-    Migrator {
-        migrations: Cow::Owned(
-            all.iter()
-                .filter(|migration| migration.version >= minimum && migration.version <= maximum)
-                .cloned()
-                .collect(),
-        ),
-        ignore_missing,
-        locking: false,
-        no_tx: false,
-    }
-}
+mod support;
 
 #[tokio::test]
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
 async fn legacy_product_seo_is_normalized_before_becoming_a_public_projection() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let admin_pool = PgPoolOptions::new()
-        .max_connections(1)
-        .connect(&database_url)
-        .await
-        .expect("PostgreSQL connection");
-    sqlx::query("CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public")
-        .execute(&admin_pool)
-        .await
-        .expect("pg_trgm extension");
-
-    let schema = format!("seo_upgrade_{}", Uuid::new_v4().simple());
-    sqlx::query(&format!("CREATE SCHEMA {schema}"))
-        .execute(&admin_pool)
-        .await
-        .expect("isolated migration schema");
-    let search_path = format!("{schema},public");
-    let options = PgConnectOptions::from_str(&database_url)
-        .expect("PostgreSQL connection options")
-        .options([("search_path", search_path)]);
-    let isolated_pool = PgPoolOptions::new()
-        .max_connections(1)
-        .connect_with(options)
-        .await
-        .expect("isolated PostgreSQL connection");
-
-    migration_range(1, 6, false)
-        .run(&isolated_pool)
-        .await
-        .expect("pre-0007 schema");
+    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    sandbox.apply_version_range(1, 6).await;
+    let isolated_pool = sandbox.pool();
     let product_id = Uuid::new_v4();
     let now = chrono::Utc::now();
     sqlx::query(
@@ -71,7 +26,7 @@ async fn legacy_product_seo_is_normalized_before_becoming_a_public_projection() 
     .bind(format!("DEV-FIXTURE-{product_id}"))
     .bind(format!("legacy-seo-{}", product_id.simple()))
     .bind(now)
-    .execute(&isolated_pool)
+    .execute(isolated_pool)
     .await
     .unwrap();
     sqlx::query(
@@ -82,7 +37,7 @@ async fn legacy_product_seo_is_normalized_before_becoming_a_public_projection() 
     )
     .bind(product_id)
     .bind(now)
-    .execute(&isolated_pool)
+    .execute(isolated_pool)
     .await
     .unwrap();
     sqlx::query(
@@ -104,14 +59,11 @@ async fn legacy_product_seo_is_normalized_before_becoming_a_public_projection() 
         "futureField": "preserved"
     }))
     .bind(now)
-    .execute(&isolated_pool)
+    .execute(isolated_pool)
     .await
     .unwrap();
 
-    migration_range(7, 8, true)
-        .run(&isolated_pool)
-        .await
-        .expect("0007-0008 upgrade");
+    sandbox.apply_version_range(7, 8).await;
 
     for (table, revision_filter) in [
         ("product_presentation_working", ""),
@@ -122,7 +74,7 @@ async fn legacy_product_seo_is_normalized_before_becoming_a_public_projection() 
             "SELECT seo_metadata FROM {table} WHERE product_id=$1 AND locale='en'{revision_filter}"
         ))
         .bind(product_id)
-        .fetch_one(&isolated_pool)
+        .fetch_one(isolated_pool)
         .await
         .unwrap();
         let typed: SeoMetadata = serde_json::from_value(seo.clone())
@@ -137,7 +89,7 @@ async fn legacy_product_seo_is_normalized_before_becoming_a_public_projection() 
            WHERE product_id=$1 AND locale='en'"#,
     )
     .bind(product_id)
-    .execute(&isolated_pool)
+    .execute(isolated_pool)
     .await
     .expect_err("typed SEO shape is enforced after migration");
     assert_eq!(
@@ -148,9 +100,5 @@ async fn legacy_product_seo_is_normalized_before_becoming_a_public_projection() 
         Some("23514")
     );
 
-    isolated_pool.close().await;
-    sqlx::query(&format!("DROP SCHEMA {schema} CASCADE"))
-        .execute(&admin_pool)
-        .await
-        .expect("migration schema cleanup");
+    sandbox.cleanup().await;
 }

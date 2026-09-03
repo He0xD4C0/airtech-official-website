@@ -8,6 +8,8 @@ Admin browser  ─┼───────────────────�
 API clients    ─┘                                      API Host             ┘       └──────> Worker / outbox
 
 Public SSR ───────────────── internal service network ────────────────────> API :8080
+
+Flyway 13.4.0 migration job ─────────── schema DDL ───────────────────────> PostgreSQL
 ```
 
 The public SSR process and both browsers have no database credentials. If an
@@ -16,17 +18,23 @@ worker environment; no adapter is connected by this scaffold. Public and admin
 builds do not share a router, cache namespace, service worker, manifest, or
 crawl-control files.
 
+PostgreSQL remains the sole runtime database. SQLx is confined to runtime data
+access inside the Rust API and Worker; it does not own schema history. Flyway
+`13.4.0` is the exclusive schema-version authority.
+
 The checked-in gateway is an executable HTTP integration boundary. It rejects
 unknown Hosts, routes the three configured Hosts to separate upstreams, and has
 no production DevTools/WebSocket upstream. Production TLS terminates at an
 outer ingress or hosting provider rather than inside this Compose stack.
 
-Public SSR, Admin Nginx, Platform, and Gateway production images run as
-non-root users. The local Compose diagnostic ports bind to loopback by default.
+Public SSR, Admin Nginx, Platform, Migrations, and Gateway production images
+run as non-root users. The Flyway migration image is an independent release
+artifact rather than part of the Rust Platform image. The local Compose
+diagnostic ports bind to loopback by default.
 PostgreSQL is never host-published by the base stack, and the unused MinIO
 service is opt-in; their loopback mappings live only in `compose.debug.yaml`.
 The image-only `compose.production.yaml` publishes only the Gateway listener;
-Public `3000`, Admin `3100`, and API `8080` remain internal. Its four immutable
+Public `3000`, Admin `3100`, and API `8080` remain internal. Its five immutable
 image references are independent release and rollback units.
 
 ## Rendering
@@ -94,11 +102,38 @@ return 404 on the admin origin before SPA fallback.
 
 ## Startup and migrations
 
-`airtek-migrate` is a non-root, one-shot production binary that reads only
-`DATABASE_URL` and applies the embedded SQLx migrations. Compose waits for
-PostgreSQL health, requires the migration container to exit successfully, and
-only then starts the API and worker. Re-running the migration is idempotent
-through SQLx's migration history table.
+`flyway-migrate` is an independent, non-root, one-shot Flyway `13.4.0` image.
+It receives a JDBC URL and dedicated migration credentials through
+`FLYWAY_URL`, `FLYWAY_USER`, and `FLYWAY_PASSWORD`. Production grants that role
+the required DDL privileges while the API/Worker `DATABASE_URL` uses a separate
+pre-provisioned runtime role named by `FLYWAY_PLACEHOLDERS_RUNTIME_ROLE`. The
+validated `afterMigrate` callback grants current and future application objects
+to that login role for `CONNECT`, DML, and the Worker's required database
+`TEMPORARY` capability, but makes both Flyway and legacy SQLx history read-only.
+It also revokes the legacy `PUBLIC` schema-create grant and fails if a distinct
+runtime role owns the database/schema objects or lacks the required privileges.
+Compose waits for PostgreSQL health, requires `flyway-migrate` to exit
+successfully, and only then starts the API and Worker.
+
+The supported operator entry points are `pnpm db:migrate`, `pnpm db:info`, and
+`pnpm db:validate`. The Rust `airtek-migrate` binary and any `airtekctl migrate`
+path have been removed. SQLx performs runtime queries and transactions only.
+
+An existing database with the exact legacy SQLx v1-10 history requires a
+controlled, one-time takeover. First back it up, verify restoration, and confirm
+the target environment and database. Then run:
+
+```sh
+docker compose run --rm flyway-migrate baseline
+pnpm db:migrate
+pnpm db:validate
+```
+
+The `beforeBaseline` callback verifies the complete legacy version and checksum
+set before Flyway establishes its `baselineVersion=10` baseline. The normal
+migrate therefore does not replay V1-V10 and applies only later versions.
+`baselineOnMigrate` stays disabled so takeover cannot happen implicitly. Empty
+databases use only `pnpm db:migrate`.
 
 ## Developer tools
 
@@ -121,9 +156,10 @@ exclusive build features.
 
 ## Adapter readiness
 
-PostgreSQL persistence, embedded migrations, internal jobs, and durable outbox
-claiming are local platform capabilities. MinIO/S3 media transport, Feishu
-network synchronization, GA4 loading, CDN purge, external search providers,
-email/CRM/webhooks, backup executors, and isolated restore executors require
-separate adapters and production configuration. Their environment placeholders
-or admin screens must not be treated as proof of an active integration.
+PostgreSQL persistence, Flyway-managed schema versions, internal jobs, and
+durable outbox claiming are local platform capabilities. MinIO/S3 media
+transport, Feishu network synchronization, GA4 loading, CDN purge, external
+search providers, email/CRM/webhooks, backup executors, and isolated restore
+executors require separate adapters and production configuration. Their
+environment placeholders or admin screens must not be treated as proof of an
+active integration.

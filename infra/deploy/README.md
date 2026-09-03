@@ -7,15 +7,18 @@ network boundary without inventing any of them.
 
 ## Release artifacts
 
-Build and scan four immutable artifacts:
+Build and scan five immutable artifacts:
 
 - Public Web from `infra/docker/Dockerfile.web`, with the final public and API
   browser origins passed as Vite build arguments.
 - Admin Web from `infra/docker/Dockerfile.admin`, with the final Admin API
   browser origin passed at build time. Its production build forces DevTools off.
-- Platform from `infra/docker/Dockerfile.platform`. The same image supplies the
-  API, Worker and one-shot migration binaries; it contains neither `airtekctl`
-  nor PTY/WebSocket dependencies.
+- Platform from `infra/docker/Dockerfile.platform`. It supplies the API and
+  Worker only; it contains neither schema migration tools, `airtekctl`, nor
+  PTY/WebSocket dependencies.
+- Migrations from `infra/docker/Dockerfile.flyway`, pinned to Flyway `13.4.0`.
+  It is an independent, non-root one-shot artifact and is the sole owner of
+  PostgreSQL schema versions.
 - Gateway from `infra/docker/Dockerfile.gateway`, containing only the
   production Host router. It has no DevTools/WebSocket upstream.
 
@@ -33,14 +36,28 @@ Before deployment:
    off public interfaces. The production Compose file publishes none of them.
 3. Set the three exact HTTPS origins and three distinct Hosts. Build-time Vite
    origins must match their runtime values.
-4. Supply `DATABASE_URL` and any initial setup token from a secret manager.
-   Remove the setup token after the first Super Admin has been created.
-5. Trust only the exact Gateway address plus any exact outer-proxy hops needed
+4. Supply the API/Worker `DATABASE_URL` runtime credential from a secret
+   manager. SQLx uses it only for runtime data access.
+5. Pre-provision the bounded lowercase PostgreSQL role named by
+   `FLYWAY_PLACEHOLDERS_RUNTIME_ROLE`; it must be the login in `DATABASE_URL`.
+   Supply `FLYWAY_URL`, `FLYWAY_USER`, and `FLYWAY_PASSWORD` separately. The
+   Flyway role is a deployment-only DDL identity and must own new schema objects;
+   for legacy takeover it must own the old objects or hold their grant option.
+   The runtime role must have `LOGIN`, must not own the database, schema, tables,
+   or functions, and must not retain `CREATE` on `public`. `afterMigrate`
+   enforces that boundary, grants `CONNECT`, DML, and the Worker's required
+   database `TEMPORARY` privilege, and leaves schema history read-only. The
+   Flyway role must be able to manage those
+   database/schema grants; the production boundary rejects a shared DDL/runtime
+   identity.
+6. Supply any initial setup token from a secret manager and remove it after the
+   first Super Admin has been created.
+7. Trust only the exact Gateway address plus any exact outer-proxy hops needed
    to interpret `X-Forwarded-For`; never trust a whole private range by default.
-6. Configure provider logs, health probes, backups, restore targets, retention,
+8. Configure provider logs, health probes, backups, restore targets, retention,
    alerting and image/SBOM policy. These provider resources are intentionally
    absent from this repository.
-7. Verify Search Console and webmaster files only on the Public origin. Admin
+9. Verify Search Console and webmaster files only on the Public origin. Admin
    and API must keep their crawl-denial and sitemap `404` behavior.
 
 Run configuration and repository assertions before promotion:
@@ -52,7 +69,27 @@ pnpm check:production
 pnpm check:contracts
 ```
 
-Run migrations as a one-shot task before API and Worker start. Database schema
+Run the non-root `flyway-migrate` artifact as a one-shot task before API and
+Worker start; both services wait for its successful completion. Database schema
 changes must remain compatible with the currently running Public/API release
 during a rolling update. Application rollback never replaces the database;
 restore operations require the separately configured isolated-restore flow.
+
+For a new empty production database, run only the migrations artifact with
+`migrate`. For an existing database with SQLx versions 1 through 10, first back
+up the database, verify restoration, and confirm the selected environment,
+database, dedicated DDL credentials, runtime role, and ownership/grant topology.
+Then perform the one-time takeover using the production Compose boundary and
+the real secret-managed environment file:
+
+```sh
+docker compose --env-file /path/to/production.env -f compose.production.yaml run --rm flyway-migrate baseline
+docker compose --env-file /path/to/production.env -f compose.production.yaml run --rm flyway-migrate migrate
+docker compose --env-file /path/to/production.env -f compose.production.yaml run --rm flyway-migrate validate
+```
+
+The `beforeBaseline` callback permits the `baselineVersion=10` baseline only
+after it verifies the exact successful SQLx v1-v10 history and checksums. Normal
+migrate then leaves V1-V10 untouched and applies only later versions, if any.
+Stop on any mismatch. Keep `baselineOnMigrate` disabled and never bypass the
+controlled takeover.

@@ -1,0 +1,14 @@
+[flyway]
+locations = ["filesystem:migrations"]
+callbackLocations = ["filesystem:flyway/callbacks"]
+defaultSchema = "public"
+table = "flyway_schema_history"
+encoding = "UTF-8"
+validateMigrationNaming = true
+validateOnMigrate = true
+cleanDisabled = true
+outOfOrder = false
+baselineOnMigrate = false
+baselineVersion = "10"
+baselineDescription = "Validated SQLx v1-10 adoption"
+failOnMissingLocations = true

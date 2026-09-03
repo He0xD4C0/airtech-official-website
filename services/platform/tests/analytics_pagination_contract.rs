@@ -15,6 +15,8 @@ use sqlx::postgres::PgPoolOptions;
 use tower::ServiceExt;
 use uuid::Uuid;
 
+mod support;
+
 #[test]
 fn analytics_openapi_exposes_runtime_cursor_and_limit_parameters() {
     let document = airtek_platform::openapi::document();
@@ -162,10 +164,7 @@ async fn postgres_analytics_pagination_merges_history_and_raw_without_overlap() 
         .connect(&database_url)
         .await
         .expect("PostgreSQL connection");
-    sqlx::migrate!("./migrations")
-        .run(&pool)
-        .await
-        .expect("platform migrations");
+    support::assert_flyway_schema_current(&pool).await;
 
     let prefix = Uuid::new_v4().simple().to_string();
     let landing_path = format!("/en/analytics-pagination-{prefix}");

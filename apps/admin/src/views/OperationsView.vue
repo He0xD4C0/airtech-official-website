@@ -26,7 +26,7 @@ const runsState = computed<'loading' | 'ready' | 'empty' | 'error' | 'forbidden'
 })
 
 const tasks = [
-  { id: 'migrationPreflight', name: 'Migration 预检', detail: '检查待执行的预编译 migration 与数据库兼容性', icon: Database, risk: 'medium', confirmation: 'PREFLIGHT MIGRATION' },
+  { id: 'migrationPreflight', name: 'Flyway 状态检查', detail: '读取 Flyway schema history；完整 validate 与 migrate 仅在部署阶段执行', icon: Database, risk: 'medium', confirmation: 'PREFLIGHT MIGRATION' },
   { id: 'backup', name: '创建加密备份', detail: '创建校验和、写入私有对象存储并验证可读性', icon: HardDriveDownload, risk: 'medium', confirmation: 'CREATE BACKUP' },
   { id: 'restoreValidate', name: '隔离恢复演练', detail: '恢复到独立目标，验证后生成受控切换方案', icon: RefreshCw, risk: 'high', confirmation: 'VALIDATE RESTORE' },
   { id: 'retentionApply', name: '执行保留期清理', detail: '处理已过宽限期的 PII，保留匿名聚合与审计', icon: History, risk: 'high', confirmation: 'APPLY RETENTION' },

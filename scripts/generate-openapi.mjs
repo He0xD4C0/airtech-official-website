@@ -13,13 +13,19 @@ import { tmpdir } from 'node:os'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import {
+  compareGeneratedTree,
+  writeModularOpenApiTypes,
+} from './openapi-typescript-modules.mjs'
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const snapshot = join(root, 'packages/contracts/openapi/openapi.production.json')
-const generated = join(root, 'packages/contracts/src/generated/openapi.ts')
+const generatedRoot = join(root, 'packages/contracts/src/generated')
 const check = process.argv.includes('--check')
 const scratch = mkdtempSync(join(tmpdir(), 'airtek-openapi-'))
 const candidateSnapshot = check ? join(scratch, 'openapi.production.json') : snapshot
-const candidateGenerated = check ? join(scratch, 'openapi.ts') : generated
+const rawGenerated = join(scratch, 'openapi.raw.ts')
+const candidateGeneratedRoot = check ? join(scratch, 'generated') : generatedRoot
 const HTTP_METHODS = new Set(['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'])
 
 try {
@@ -46,7 +52,7 @@ try {
   assertRustRouteInventory(document)
   assertRequiredDataContracts(document)
   mkdirSync(dirname(candidateSnapshot), { recursive: true })
-  mkdirSync(dirname(candidateGenerated), { recursive: true })
+  mkdirSync(dirname(rawGenerated), { recursive: true })
   writeFileSync(candidateSnapshot, `${JSON.stringify(document, null, 2)}\n`)
 
   const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
@@ -55,7 +61,7 @@ try {
     'openapi-typescript',
     candidateSnapshot,
     '--output',
-    candidateGenerated,
+    rawGenerated,
     '--alphabetize',
     '--default-non-nullable',
     'false',
@@ -65,10 +71,11 @@ try {
     cwd: root,
     stdio: 'inherit',
   })
+  writeModularOpenApiTypes(rawGenerated, candidateGeneratedRoot)
 
   if (check) {
     compare(snapshot, candidateSnapshot, 'OpenAPI snapshot')
-    compare(generated, candidateGenerated, 'generated TypeScript contract')
+    compareGeneratedTree(generatedRoot, candidateGeneratedRoot)
     console.log('OpenAPI snapshot and generated TypeScript contract are current.')
   } else {
     console.log('Updated production OpenAPI snapshot and generated TypeScript contract.')
@@ -196,7 +203,7 @@ function collectRouterOperations(relativePath, prefix, registered, visited) {
   if (!existsSync(sourcePath)) {
     throw new Error(`Router module ${normalizedPath} does not exist.`)
   }
-  const source = readFileSync(sourcePath, 'utf8')
+  const source = readRustSource(sourcePath)
   const router = extractRustFunction(source, 'router', normalizedPath)
   const routeMatches = [...router.matchAll(/\.route\(\s*"([^"]+)"\s*,/g)]
   for (let index = 0; index < routeMatches.length; index += 1) {
@@ -232,6 +239,18 @@ function extractRustFunction(source, functionName, relativePath) {
   const closeBrace = findMatchingRustBrace(source, openBrace)
   if (closeBrace < 0) throw new Error(`Unable to parse the body of ${functionName}() in ${relativePath}.`)
   return source.slice(openBrace + 1, closeBrace)
+}
+
+function readRustSource(sourcePath, visited = new Set()) {
+  const normalized = resolve(sourcePath)
+  if (visited.has(normalized)) {
+    throw new Error(`Rust include cycle detected at ${normalizeRelativePath(relative(root, normalized))}.`)
+  }
+  const nextVisited = new Set(visited).add(normalized)
+  return readFileSync(normalized, 'utf8').replace(
+    /include!\(\s*"([^"]+)"\s*\);/g,
+    (_match, includedPath) => readRustSource(resolve(dirname(normalized), includedPath), nextVisited),
+  )
 }
 
 function findMatchingRustBrace(source, openBrace) {

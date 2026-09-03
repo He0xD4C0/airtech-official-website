@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -57,11 +57,142 @@ requireMatch(webVite, /strictPort:\s*true/u, 'Public Vite must fail instead of s
 
 const platformDockerfile = read('infra/docker/Dockerfile.platform')
 requireMatch(platformDockerfile, /--features\s+production/u, 'Platform production image must compile only the production feature set.')
-requireMatch(platformDockerfile, /--bin\s+airtek-migrate/u, 'Platform Dockerfile must build airtek-migrate.')
-requireMatch(platformDockerfile, /release\/airtek-migrate\s+\/usr\/local\/bin\/airtek-migrate/u, 'Platform runtime must contain airtek-migrate.')
 requireMatch(platformDockerfile, /^USER\s+10001$/mu, 'Platform runtime must remain non-root.')
 requireMatch(platformDockerfile, /^EXPOSE\s+8080$/mu, 'Platform image must expose only its fixed API port 8080.')
 forbidMatch(platformDockerfile, /airtekctl/u, 'Production Platform image must not build or copy airtekctl.')
+forbidMatch(platformDockerfile, /airtek-migrate/u, 'Production Platform image must not contain the retired SQLx migrator.')
+
+const flywayDockerfile = read('infra/docker/Dockerfile.flyway')
+requireMatch(flywayDockerfile, /^ARG\s+FLYWAY_BASE_IMAGE=flyway\/flyway:13\.4\.0-alpine$/mu, 'Flyway must use the reviewed, fixed OSS image version.')
+requireMatch(flywayDockerfile, /COPY\s+services\/platform\/migrations\s+\/flyway\/project\/migrations/u, 'Flyway image must package the versioned SQL migrations.')
+requireMatch(flywayDockerfile, /COPY\s+services\/platform\/flyway\/callbacks\s+\/flyway\/project\/flyway\/callbacks/u, 'Flyway image must package the guarded SQLx adoption callback.')
+requireMatch(flywayDockerfile, /COPY\s+--chmod=0555\s+infra\/docker\/flyway-entrypoint\.sh/u, 'Flyway image must package the validated entrypoint.')
+requireMatch(flywayDockerfile, /^USER\s+10001$/mu, 'Flyway runtime must use a non-root UID.')
+requireMatch(flywayDockerfile, /^ENTRYPOINT\s+\["\/usr\/local\/bin\/airtek-flyway"\]$/mu, 'Flyway image must use the runtime-role validating entrypoint.')
+
+const flywayEntrypoint = read('infra/docker/flyway-entrypoint.sh')
+requireMatch(flywayEntrypoint, /FLYWAY_PLACEHOLDERS_RUNTIME_ROLE/u, 'Flyway entrypoint must validate the runtime-role placeholder.')
+requireMatch(flywayEntrypoint, /-configFiles=\/flyway\/project\/flyway\.toml/u, 'Flyway entrypoint must load the reviewed configuration explicitly.')
+requireMatch(flywayEntrypoint, /"-placeholders\.runtime_role=\$runtime_role"/u, 'Flyway entrypoint must bind the validated runtime role explicitly.')
+requireMatch(flywayEntrypoint, /The Flyway DDL role and application runtime role must be distinct/u, 'Flyway entrypoint must reject a shared production database role.')
+requireMatch(flywayEntrypoint, /if \[ "\$#" -ne 1 \]/u, 'Flyway entrypoint must reject commands with extra configuration arguments.')
+requireMatch(flywayEntrypoint, /baseline\|migrate\|info\|validate/u, 'Flyway entrypoint must allow only the reviewed command set.')
+requireMatch(flywayEntrypoint, /Unsupported Flyway command/u, 'Flyway entrypoint must reject repair and every unreviewed command.')
+for (const fixedArgument of [
+  /-locations=filesystem:\/flyway\/project\/migrations/u,
+  /-callbackLocations=filesystem:\/flyway\/project\/flyway\/callbacks/u,
+  /-defaultSchema=public/u,
+  /-schemas=public/u,
+  /-table=flyway_schema_history/u,
+  /-encoding=UTF-8/u,
+  /-executeInTransaction=true/u,
+  /-failOnMissingLocations=true/u,
+  /-baselineOnMigrate=false/u,
+  /-cleanDisabled=true/u,
+  /-ignoreMigrationPatterns=\*:future/u,
+  /-outOfOrder=false/u,
+  /-skipDefaultCallbacks=false/u,
+  /-skipDefaultResolvers=false/u,
+  /-target=latest/u,
+  /-validateMigrationNaming=true/u,
+  /-validateOnMigrate=true/u,
+  /-placeholderReplacement=true/u,
+  /-sqlMigrationPrefix=V/u,
+  /-sqlMigrationSeparator=__/u,
+  /-sqlMigrationSuffixes=\.sql/u,
+]) {
+  requireMatch(flywayEntrypoint, fixedArgument, `Flyway entrypoint must pin safety argument ${fixedArgument.source}.`)
+}
+forbidMatch(flywayEntrypoint, /"\$@"/u, 'Flyway entrypoint must not forward caller-supplied configuration arguments.')
+requireMatch(flywayEntrypoint, /-baselineVersion=10/u, 'Flyway entrypoint must fix the guarded SQLx adoption baseline at version 10.')
+requireMatch(flywayEntrypoint, /-connectRetries=10/u, 'Flyway entrypoint must retain bounded database connection retries.')
+requireMatch(flywayEntrypoint, /-skipExecutingMigrations=false/u, 'Flyway entrypoint must always execute pending migrations.')
+requireMatch(flywayEntrypoint, /exec\s+flyway/u, 'Flyway entrypoint must replace itself with the Flyway CLI.')
+
+const beforeBaseline = read('services/platform/flyway/callbacks/beforeBaseline.sql')
+requireMatch(beforeBaseline, /actual\.success IS DISTINCT FROM TRUE/u, 'Flyway baseline validation must reject null or failed SQLx migration rows.')
+requireMatch(beforeBaseline, /actual\.checksum IS DISTINCT FROM decode/u, 'Flyway baseline validation must reject null or changed SQLx checksums.')
+requireMatch(beforeBaseline, /relation\.relname = '_sqlx_migrations'[\s\S]*relation\.relkind IN \('r', 'p'\)/u, 'Flyway baseline validation must require the SQLx history object to be a table.')
+requireMatch(beforeBaseline, /count\(\*\), count\(DISTINCT version\)/u, 'Flyway baseline validation must reject duplicate or non-exact SQLx history.')
+for (const legacyTable of ['content_entries', 'jobs']) {
+  requireMatch(beforeBaseline, new RegExp(`'${legacyTable}'`, 'u'), `Flyway baseline validation must require legacy table ${legacyTable}.`)
+}
+const beforeMigrate = read('services/platform/flyway/callbacks/beforeMigrate.sql')
+requireMatch(beforeMigrate, /to_regclass\('public\.flyway_schema_history'\) IS NULL[\s\S]*RETURN/u, 'Fresh Flyway migrations must bypass the legacy-adoption evidence check.')
+requireMatch(beforeMigrate, /type = 'BASELINE'[\s\S]*version = '10'[\s\S]*success IS TRUE/u, 'Flyway migrate must detect every successful version 10 baseline.')
+requireMatch(beforeMigrate, /IF NOT has_legacy_baseline THEN[\s\S]*RETURN/u, 'Flyway SQL migration histories must bypass the legacy-adoption evidence check.')
+requireMatch(beforeMigrate, /SQLx history exists without the reviewed version 10 baseline/u, 'Flyway migrate must reject an unbaselined legacy SQLx database.')
+requireMatch(beforeMigrate, /relation\.relname = '_sqlx_migrations'[\s\S]*relation\.relkind IN \('r', 'p'\)/u, 'Flyway migrate must require SQLx history to remain a table after baseline adoption.')
+requireMatch(beforeMigrate, /count\(\*\), count\(DISTINCT version\)/u, 'Flyway migrate must reject duplicate or non-exact SQLx adoption history.')
+requireMatch(beforeMigrate, /actual\.success IS DISTINCT FROM TRUE/u, 'Flyway migrate must reject failed SQLx adoption evidence.')
+requireMatch(beforeMigrate, /actual\.checksum IS DISTINCT FROM decode/u, 'Flyway migrate must reject changed SQLx adoption checksums.')
+for (const legacyTable of ['content_entries', 'jobs']) {
+  requireMatch(beforeMigrate, new RegExp(`'${legacyTable}'`, 'u'), `Flyway migrate must require adopted legacy table ${legacyTable}.`)
+}
+const baselineChecksums = beforeBaseline.match(/\b[0-9a-f]{96}\b/gu) ?? []
+const migrateChecksums = beforeMigrate.match(/\b[0-9a-f]{96}\b/gu) ?? []
+if (baselineChecksums.length !== 10 || baselineChecksums.join(',') !== migrateChecksums.join(',')) {
+  failures.push('Flyway baseline and migrate callbacks must enforce the same ten immutable SQLx checksums.')
+}
+const afterMigrate = read('services/platform/flyway/callbacks/afterMigrate.sql')
+requireMatch(afterMigrate, /GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public/u, 'Flyway must grant application DML after migration.')
+requireMatch(afterMigrate, /REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON TABLE public\.flyway_schema_history/u, 'Flyway history must remain read-only to the runtime role.')
+requireMatch(afterMigrate, /REVOKE CREATE ON SCHEMA public FROM PUBLIC/u, 'Flyway must close the legacy PUBLIC schema-create grant.')
+requireMatch(afterMigrate, /rolcanlogin/u, 'Flyway must reject a runtime role that cannot log in.')
+requireMatch(afterMigrate, /GRANT CONNECT ON DATABASE/u, 'Flyway must grant the application runtime role database CONNECT.')
+requireMatch(afterMigrate, /has_database_privilege\(runtime_role, current_database\(\), 'CONNECT'\)/u, 'Flyway must verify the application runtime role database CONNECT grant.')
+requireMatch(afterMigrate, /GRANT TEMPORARY ON DATABASE/u, 'Flyway must preserve the Worker temporary-table capability.')
+for (const roleAttribute of ['rolsuper', 'rolcreatedb', 'rolcreaterole', 'rolreplication', 'rolbypassrls']) {
+  requireMatch(afterMigrate, new RegExp(roleAttribute, 'u'), `Flyway must reject runtime role attribute ${roleAttribute}.`)
+}
+requireMatch(afterMigrate, /pg_has_role\(runtime_role, target_role\.oid, 'SET'\)/u, 'Flyway must reject runtime roles that can SET ROLE to another identity.')
+requireMatch(afterMigrate, /pg_has_role\(runtime_role, target_role\.oid, 'USAGE'\)/u, 'Flyway must reject runtime roles that inherit another role.')
+requireMatch(afterMigrate, /has_table_privilege/u, 'Flyway must fail if runtime table grants are incomplete.')
+
+const flywayConfig = read('services/platform/flyway.toml')
+for (const required of [
+  /validateMigrationNaming\s*=\s*true/u,
+  /validateOnMigrate\s*=\s*true/u,
+  /cleanDisabled\s*=\s*true/u,
+  /outOfOrder\s*=\s*false/u,
+  /baselineOnMigrate\s*=\s*false/u,
+  /baselineVersion\s*=\s*"10"/u,
+]) {
+  requireMatch(flywayConfig, required, `Flyway safety setting ${required.source} is missing.`)
+}
+const migrationDirectory = join(root, 'services/platform/migrations')
+const migrationFiles = existsSync(migrationDirectory)
+  ? readdirSync(migrationDirectory).filter((file) => file.endsWith('.sql')).sort()
+  : []
+const migrationVersions = migrationFiles.map((file) => {
+  const match = /^V(\d{4})__[a-z0-9_]+\.sql$/u.exec(file)
+  if (!match) {
+    failures.push(`Flyway migration ${file} does not use V####__description.sql naming.`)
+    return 0
+  }
+  return Number(match[1])
+})
+const latestMigration = Math.max(0, ...migrationVersions)
+const expectedMigrations = Array.from({ length: latestMigration }, (_, index) => index + 1)
+const legacySqlxVersions = Array.from({ length: 10 }, (_, index) => index + 1)
+if (latestMigration < 10 || !legacySqlxVersions.every((version) => migrationVersions.includes(version))) {
+  failures.push('Flyway migration history V0001-V0010 must remain present.')
+}
+if (new Set(migrationVersions).size !== migrationVersions.length) {
+  failures.push('Flyway migrations must have unique positive versions.')
+}
+if (migrationVersions.slice().sort((left, right) => left - right).join(',') !== expectedMigrations.join(',')) {
+  failures.push('Flyway migration versions must be contiguous from V0001.')
+}
+if (migrationFiles.some((file) => /^\d{4}_/u.test(file))) failures.push('Legacy SQLx migration filenames must not remain in the Flyway location.')
+const flywayBuild = read('services/platform/build.rs')
+requireMatch(flywayBuild, /Flyway migration versions must be contiguous from V1/u, 'Rust builds must derive their required schema version from the Flyway directory.')
+requireMatch(flywayBuild, /LEGACY_SQLX_LAST_VERSION:\s*i64\s*=\s*10/u, 'Rust builds must lock the immutable SQLx v1-v10 migration history.')
+requireMatch(flywayBuild, /Flyway migration history V1-V10 must remain present/u, 'Rust builds must reject deletion of an adopted SQLx migration.')
+const flywayRuntime = read('services/platform/src/flyway.rs')
+requireMatch(flywayRuntime, /include!\(concat!\(env!\("OUT_DIR"\), "\/flyway_version\.rs"\)\)/u, 'Runtime readiness must use the build-derived Flyway version.')
+requireMatch(flywayRuntime, /LEGACY_SQLX_BASELINE_VERSION:\s*i64\s*=\s*10/u, 'Runtime readiness must recognize only the reviewed SQLx v10 baseline.')
+requireMatch(flywayRuntime, /migration_type = 'SQL'/u, 'Runtime readiness must count only successful Flyway SQL migrations as schema coverage.')
 
 const adminDockerfile = read('infra/docker/Dockerfile.admin')
 requireMatch(adminDockerfile, /\/etc\/nginx\/templates\/default\.conf\.template/u, 'Admin Nginx config must be rendered as an environment-aware template.')
@@ -76,7 +207,7 @@ requireMatch(adminVite, /apiConnectSources\(env\.VITE_ADMIN_API_BASE_URL\)/u, 'A
 requireMatch(adminVite, /requestedDevtools\s*=\s*env\.VITE_ENABLE_DEVTOOLS\s*===\s*'true'/u, 'Admin DevTools must require an explicit development opt-in.')
 forbidMatch(adminVite, /connect-src 'self' http:\/\/localhost:8080 ws:\/\/localhost:8080/u, 'Admin development CSP must not hard-code an API port that bypasses the root environment.')
 
-const platformConfig = read('services/platform/src/config.rs')
+const platformConfig = `${read('services/platform/src/config.rs')}\n${read('services/platform/src/config/types.rs')}`
 requireMatch(platformConfig, /pub const API_PORT:\s*u16\s*=\s*8080;/u, 'Rust API must use the fixed application port 8080.')
 const platformApi = read('services/platform/src/bin/api.rs')
 requireMatch(platformApi, /config\.database_url\.is_none\(\)/u, 'The running Rust API must reject the test-only in-memory repository.')
@@ -87,8 +218,13 @@ requireMatch(gatewayDockerfile, /^USER\s+nginx$/mu, 'Gateway runtime must use th
 requireMatch(gatewayDockerfile, /^EXPOSE\s+8088$/mu, 'Gateway image must expose its unprivileged port 8088.')
 
 const compose = read('compose.yaml')
-requireMatch(compose, /^\s{2}platform-migrate:\s*$/mu, 'Compose must define the one-shot migration service.')
-requireMatch(compose, /entrypoint:\s*\["\/usr\/local\/bin\/airtek-migrate"\]/u, 'Compose migration service must run airtek-migrate.')
+requireMatch(compose, /^\s{2}flyway-migrate:\s*$/mu, 'Compose must define the one-shot Flyway migration service.')
+requireMatch(serviceBlock(compose, 'flyway-migrate'), /dockerfile:\s*infra\/docker\/Dockerfile\.flyway/u, 'Compose migration service must build the Flyway image.')
+for (const variable of ['FLYWAY_URL', 'FLYWAY_USER', 'FLYWAY_PASSWORD', 'FLYWAY_PLACEHOLDERS_RUNTIME_ROLE']) {
+  requireMatch(serviceBlock(compose, 'flyway-migrate'), new RegExp(`${variable}:\\s*\\$\\{${variable}`, 'u'), `Local Flyway must receive ${variable} from .env.`)
+}
+requireMatch(serviceBlock(compose, 'flyway-migrate'), /AIRTEK_FLYWAY_ALLOW_SHARED_ROLE:\s*"true"/u, 'Local Compose must make its shared development role exception explicit.')
+forbidMatch(serviceBlock(compose, 'flyway-migrate'), /DATABASE_URL/u, 'Flyway must use its JDBC deployment credentials, not the Rust DATABASE_URL.')
 const migrationWaits = compose.match(/condition:\s*service_completed_successfully/gu)?.length ?? 0
 if (migrationWaits < 2) failures.push('Both API and Worker must wait for a successful migration service.')
 requireMatch(compose, /^\s{2}gateway:\s*$/mu, 'Compose must define the HTTP gateway service.')
@@ -142,7 +278,7 @@ for (const [variable, hostPort, containerPort] of [
 
 const productionCompose = read('compose.production.yaml')
 forbidMatch(productionCompose, /^\s+build:\s*$/mu, 'Production Compose must promote immutable images instead of building from a checkout.')
-for (const imageVariable of ['AIRTEK_PUBLIC_WEB_IMAGE', 'AIRTEK_ADMIN_WEB_IMAGE', 'AIRTEK_PLATFORM_IMAGE', 'AIRTEK_GATEWAY_IMAGE']) {
+for (const imageVariable of ['AIRTEK_PUBLIC_WEB_IMAGE', 'AIRTEK_ADMIN_WEB_IMAGE', 'AIRTEK_PLATFORM_IMAGE', 'AIRTEK_MIGRATIONS_IMAGE', 'AIRTEK_GATEWAY_IMAGE']) {
   requireMatch(
     productionCompose,
     new RegExp(`image:\\s*\\$\\{${imageVariable}:\\?`, 'u'),
@@ -156,7 +292,7 @@ for (const [service, port] of [['public-web', 3000], ['admin-web', 3100], ['plat
   forbidMatch(block, /^\s+ports:/mu, `Production ${service} must not publish its internal port.`)
 }
 forbidMatch(serviceBlock(productionCompose, 'platform-worker'), /^\s+(?:ports|expose):/mu, 'Production Worker must not expose or publish a listening port.')
-for (const service of ['platform-migrate', 'platform-api', 'platform-worker', 'public-web', 'admin-web']) {
+for (const service of ['flyway-migrate', 'platform-api', 'platform-worker', 'public-web', 'admin-web']) {
   forbidMatch(serviceBlock(productionCompose, service), /^\s+ports:/mu, `Production ${service} must not publish an application port.`)
 }
 forbidMatch(serviceBlock(productionCompose, 'public-web'), /DATABASE_URL/u, 'Production Public SSR must not receive database credentials.')
@@ -171,6 +307,12 @@ for (const origin of ['AIRTEK_PUBLIC_ORIGIN=https://', 'AIRTEK_ADMIN_ORIGIN=http
 }
 requireMatch(productionCompose, /AIRTEK_TOTP_ENCRYPTION_KEY:\s*\$\{AIRTEK_TOTP_ENCRYPTION_KEY:\?/u, 'Production must require a secret-manager TOTP encryption key.')
 requireMatch(productionEnv, /^AIRTEK_TOTP_ENCRYPTION_KEY=REPLACE_/mu, 'Production environment example must declare the TOTP key placeholder.')
+for (const variable of ['FLYWAY_URL', 'FLYWAY_USER', 'FLYWAY_PASSWORD', 'FLYWAY_PLACEHOLDERS_RUNTIME_ROLE']) {
+  requireMatch(serviceBlock(productionCompose, 'flyway-migrate'), new RegExp(`${variable}:\\s*\\$\\{${variable}:\\?`, 'u'), `Production Flyway must require ${variable}.`)
+  requireMatch(productionEnv, new RegExp(`^${variable}=`, 'mu'), `Production environment example must declare ${variable}.`)
+}
+forbidMatch(serviceBlock(productionCompose, 'flyway-migrate'), /DATABASE_URL/u, 'Production Flyway must use separate JDBC deployment credentials.')
+forbidMatch(serviceBlock(productionCompose, 'flyway-migrate'), /AIRTEK_FLYWAY_ALLOW_SHARED_ROLE/u, 'Production must never allow a shared Flyway/runtime role.')
 for (const service of ['platform-api', 'platform-worker']) {
   requireMatch(serviceBlock(productionCompose, service), /AIRTEK_PREVIEW_SIGNING_KEY:\s*\$\{AIRTEK_PREVIEW_SIGNING_KEY:\?/u, `Production ${service} must require a secret-manager preview signing key.`)
 }
@@ -202,6 +344,11 @@ for (const variable of [
   'POSTGRES_PASSWORD',
   'AIRTEK_DATABASE_URL_INTERNAL',
   'DATABASE_URL',
+  'AIRTEK_FLYWAY_BASE_IMAGE',
+  'FLYWAY_URL',
+  'FLYWAY_USER',
+  'FLYWAY_PASSWORD',
+  'FLYWAY_PLACEHOLDERS_RUNTIME_ROLE',
   'AIRTEK_TOTP_ENCRYPTION_KEY',
   'AIRTEK_PREVIEW_SIGNING_KEY',
   'AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY',

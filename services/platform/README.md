@@ -15,7 +15,8 @@ cargo run --bin airtek-api
 cargo run --bin airtek-worker
 ```
 
-`DATABASE_URL` is required by the API, worker, and migration binaries. The
+`DATABASE_URL` is required by the API and Worker. PostgreSQL remains the runtime
+database, and SQLx is used only for application queries and transactions. The
 in-memory repository is available only to isolated Rust tests; it is not a
 server runtime mode and never seeds product specifications or values from the
 HTML demos.
@@ -23,15 +24,50 @@ HTML demos.
 With PostgreSQL configured:
 
 ```sh
-cargo run --bin airtek-migrate
+pnpm db:migrate
 cargo run --bin airtek-api
 ```
 
-`airtek-migrate` needs only `DATABASE_URL`; it can be run repeatedly because
-SQLx records applied migration versions. Admin authentication uses an Argon2id
-password and a host-only HttpOnly session cookie. The one-time
-`AIRTEK_ADMIN_BOOTSTRAP_TOKEN` is accepted only by `/api/admin/v1/auth/setup`
-while no users exist. It is not a shared bearer credential.
+Flyway `13.4.0` exclusively owns schema versions and migration history through
+the independent, non-root `flyway-migrate` image. From the repository root, use
+`pnpm db:migrate`, `pnpm db:info`, and `pnpm db:validate`; Flyway receives its
+JDBC URL and credentials through `FLYWAY_URL`, `FLYWAY_USER`, and
+`FLYWAY_PASSWORD`. `FLYWAY_PLACEHOLDERS_RUNTIME_ROLE` names the existing
+PostgreSQL role used by the API and Worker. The guarded `afterMigrate` callback
+requires it to have `LOGIN`, grants `CONNECT`, DML, and the Worker's required
+database `TEMPORARY` capability while keeping migration history read-only,
+removes public schema creation, and refuses an incomplete privilege topology.
+In production, that runtime role must not own the database or schema objects.
+Local Compose alone explicitly
+allows its existing shared `airtek` owner for development-volume compatibility.
+The former Rust `airtek-migrate` binary has been removed, and `airtekctl` has no
+`migrate` subcommand.
+
+Admin authentication uses an Argon2id password and a host-only HttpOnly session
+cookie. The one-time `AIRTEK_ADMIN_BOOTSTRAP_TOKEN` is accepted only by
+`/api/admin/v1/auth/setup` while no users exist. It is not a shared bearer
+credential.
+
+### Existing SQLx v1-10 database takeover
+
+For a database previously migrated by SQLx versions 1 through 10, first create
+a backup, verify the restore path, and confirm the target environment, database,
+and credentials. Do not run the ordinary migration path first. Run:
+
+```sh
+docker compose run --rm flyway-migrate baseline
+pnpm db:migrate
+pnpm db:validate
+```
+
+The `beforeBaseline` callback validates that `_sqlx_migrations` contains exactly
+the successful reviewed v1-10 history and checksums before Flyway records
+its `baselineVersion=10` baseline. The normal migrate therefore skips V1-V10 and
+applies only later versions. Provision the declared runtime role first; the
+migration role must own the legacy objects or have their grant option so
+`afterMigrate` can apply the runtime grants. Stop if validation fails.
+`baselineOnMigrate` remains disabled so takeover is always explicit; a new
+empty database uses only `pnpm db:migrate`.
 
 TOTP secrets are generated from the operating-system CSPRNG and sealed with
 AES-256-GCM before persistence. Set `AIRTEK_TOTP_ENCRYPTION_KEY` to Base64 for
@@ -119,9 +155,9 @@ pnpm generate:contracts
 pnpm check:contracts
 ```
 
-The exporter is a Cargo example rather than a shipped runtime binary. Production
-containers continue to contain only the explicitly selected API, worker, and
-migration executables.
+The exporter is a Cargo example rather than a shipped runtime binary. The
+production Platform container contains only the selected API and Worker
+executables; schema migration ships as a separate non-root Flyway artifact.
 
 ## Boundaries
 

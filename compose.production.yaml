@@ -2,14 +2,17 @@ name: airtekpower-production
 
 # Provider-neutral production process boundary. The image references and
 # browser-visible origins are deliberately mandatory: a release must promote
-# immutable, independently versioned Public, Admin, Platform and Gateway
+# immutable, independently versioned Public, Admin, Platform, Migrations and Gateway
 # artifacts instead of rebuilding from the production checkout.
 services:
-  platform-migrate:
-    image: ${AIRTEK_PLATFORM_IMAGE:?set AIRTEK_PLATFORM_IMAGE to an immutable image reference}
-    entrypoint: ["/usr/local/bin/airtek-migrate"]
+  flyway-migrate:
+    image: ${AIRTEK_MIGRATIONS_IMAGE:?set AIRTEK_MIGRATIONS_IMAGE to an immutable image reference}
+    command: ["migrate"]
     environment:
-      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
+      FLYWAY_URL: ${FLYWAY_URL:?set FLYWAY_URL to a JDBC PostgreSQL URL}
+      FLYWAY_USER: ${FLYWAY_USER:?set the migration role}
+      FLYWAY_PASSWORD: ${FLYWAY_PASSWORD:?set the migration role password from the secret manager}
+      FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: ${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:?set the existing API and Worker database role}
     restart: "no"
 
   platform-api:
@@ -40,7 +43,7 @@ services:
     expose:
       - "8080"
     depends_on:
-      platform-migrate:
+      flyway-migrate:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/readyz"]
@@ -74,7 +77,7 @@ services:
       AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS: ${AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS:-}
       RUST_LOG: ${RUST_LOG:-airtek_platform=info}
     depends_on:
-      platform-migrate:
+      flyway-migrate:
         condition: service_completed_successfully
     restart: unless-stopped
 

@@ -6,6 +6,7 @@ compile_error!("the `production` and `devtools` features are mutually exclusive"
 pub mod auth;
 pub mod config;
 pub mod error;
+pub mod flyway;
 pub mod idempotency;
 pub mod models;
 pub mod openapi;

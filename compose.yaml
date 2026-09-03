@@ -30,13 +30,21 @@ services:
       - object-data:/data
     restart: unless-stopped
 
-  platform-migrate:
+  flyway-migrate:
     build:
       context: .
-      dockerfile: infra/docker/Dockerfile.platform
-    entrypoint: ["/usr/local/bin/airtek-migrate"]
+      dockerfile: infra/docker/Dockerfile.flyway
+      args:
+        FLYWAY_BASE_IMAGE: ${AIRTEK_FLYWAY_BASE_IMAGE:-flyway/flyway:13.4.0-alpine}
+    command: ["migrate"]
     environment:
-      DATABASE_URL: ${AIRTEK_DATABASE_URL_INTERNAL:-postgres://airtek:airtek@postgres:5432/airtek}
+      FLYWAY_URL: ${FLYWAY_URL:-jdbc:postgresql://postgres:5432/airtek}
+      FLYWAY_USER: ${FLYWAY_USER:-airtek}
+      FLYWAY_PASSWORD: ${FLYWAY_PASSWORD:-airtek}
+      FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: ${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:-airtek}
+      # Local compatibility for the existing single-role development volume.
+      # The production boundary cannot pass this override.
+      AIRTEK_FLYWAY_ALLOW_SHARED_ROLE: "true"
     depends_on:
       postgres:
         condition: service_healthy
@@ -73,7 +81,7 @@ services:
     ports:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_API_HOST_PORT:-8080}:8080"
     depends_on:
-      platform-migrate:
+      flyway-migrate:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/readyz"]
@@ -110,7 +118,7 @@ services:
       AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS: ${AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS:-}
       RUST_LOG: ${RUST_LOG:-airtek_platform=info}
     depends_on:
-      platform-migrate:
+      flyway-migrate:
         condition: service_completed_successfully
     restart: unless-stopped
 

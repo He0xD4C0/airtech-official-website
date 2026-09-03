@@ -14,6 +14,10 @@ This repository contains the public AIRTEKPOWER website, the management portal, 
 
 Vike is the SSR layer used by the public Vite application; it does not replace Vite. The admin application is a separate Vite SPA and is independently built and deployed.
 
+PostgreSQL remains the database. SQLx is used only by the Rust API and Worker
+for runtime data access; Flyway `13.4.0` exclusively owns schema versions and
+migration history.
+
 ## Local development
 
 Prerequisites:
@@ -21,7 +25,8 @@ Prerequisites:
 - Node.js 22+
 - pnpm 11+
 - Rust 1.98 toolchain (pinned by `rust-toolchain.toml`)
-- Docker with Compose for PostgreSQL; optional object-storage diagnostics
+- Docker with Compose for PostgreSQL and the pinned Flyway `13.4.0` migration
+  image; optional object-storage diagnostics
 
 The repository includes a ready-to-run, Git-ignored `.env` and a tracked
 `.env.example`. Keep machine-specific values in `.env`; never place production
@@ -32,6 +37,7 @@ credentials there. The main configuration groups are:
 | Host mappings | `AIRTEK_PUBLIC_HOST_PORT`, `AIRTEK_ADMIN_HOST_PORT`, `AIRTEK_API_HOST_PORT`, `AIRTEK_GATEWAY_HOST_PORT`, debug PostgreSQL/MinIO ports |
 | Browser and security origins | `PUBLIC_HOST`, `ADMIN_HOST`, `API_HOST`, `AIRTEK_*_ORIGIN`, `VITE_*_BASE_URL`, `PUBLIC_API_BROWSER_ORIGIN` |
 | Local persistence | `POSTGRES_*`, `AIRTEK_DATABASE_URL_INTERNAL`, host-side `DATABASE_URL`, `MINIO_ROOT_*` |
+| Schema migration | `AIRTEK_FLYWAY_BASE_IMAGE`, JDBC `FLYWAY_URL`, `FLYWAY_USER`/`FLYWAY_PASSWORD`, and `FLYWAY_PLACEHOLDERS_RUNTIME_ROLE` |
 | Authentication, private staging and network trust | setup-only `AIRTEK_ADMIN_BOOTSTRAP_TOKEN`, independent TOTP/preview/Product Staging/Analytics HMAC/invitation replay keys, gateway subnet/address, exact trusted-proxy CIDRs |
 | Data lifecycle | `AIRTEK_GUEST_RAW_RETENTION_DAYS`, `AIRTEK_GUEST_AGGREGATE_RETENTION_MONTHS`, `AIRTEK_PRODUCT_IMPORT_MAPPING_VERSION` |
 | Analytics vocabulary | `AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES`, `AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS`, `AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS` register the only UTM identifiers the API may store; unknown free text is rejected |
@@ -41,8 +47,15 @@ credentials there. The main configuration groups are:
 Internal application ports remain the fixed architecture contract. Host-side
 port variables only change loopback diagnostics and avoid collisions; if the
 gateway host port changes, update the browser-visible origin values together.
-Database credentials and both internal/host connection URLs must also stay in
-sync. Generate five independent random 32-byte Base64 keys for TOTP, preview
+Local PostgreSQL credentials, the two application connection URLs, and the
+Flyway JDBC settings must stay in sync. Production must instead give Flyway a
+dedicated DDL role, pre-provision the named API/Worker runtime role, and keep
+their credentials separate. The runtime role must have `LOGIN`; Flyway grants
+it `CONNECT`, the required DML, and Worker `TEMPORARY` access after each
+successful migration while keeping schema history read-only.
+The production runtime role must not own the database, schema, tables, or
+functions and must not retain `CREATE` on `public`.
+Generate five independent random 32-byte Base64 keys for TOTP, preview
 signing, Product Master private staging, analytics-token HMAC, and encrypted
 invitation idempotency replay before retaining real local data. Invitation
 tokens remain hashed in their source table; the short-lived replay response is
@@ -63,9 +76,9 @@ preview route so its bearer query token is not copied into container logs. Do
 not otherwise log, persist, or forward a preview URL; rotating
 `AIRTEK_PREVIEW_SIGNING_KEY` immediately invalidates all outstanding links.
 
-The complete local
-stack builds all three applications, applies migrations through the one-shot
-`platform-migrate` container, then starts the API and worker only after that
+The complete local stack builds all three applications plus the independent,
+non-root migration image, applies migrations through the one-shot
+`flyway-migrate` container, then starts the API and Worker only after that
 container exits successfully:
 
 ```sh
@@ -96,7 +109,7 @@ in separate terminals:
 ```sh
 pnpm install
 docker compose -f compose.yaml -f compose.debug.yaml up -d postgres
-cargo run --manifest-path services/platform/Cargo.toml --bin airtek-migrate
+pnpm db:migrate
 cargo run --manifest-path services/platform/Cargo.toml --bin airtek-api
 cargo run --manifest-path services/platform/Cargo.toml --bin airtek-worker
 pnpm dev
@@ -131,18 +144,66 @@ with `devtools.shell`; leaving the variable absent or `false` keeps the Admin
 route and terminal package out of the module graph. Production builds reject a
 true value instead of silently packaging the terminal.
 
-The running API, worker and migration process all require `DATABASE_URL`.
-In-memory repositories exist only behind isolated test construction and are not
-a supported server mode. MinIO is present as a reserved local dependency; the
-current platform does not yet include an object-storage network adapter.
+The running API and Worker require the PostgreSQL `DATABASE_URL`; SQLx uses it
+only for runtime queries and transactions. Flyway uses the separate JDBC
+`FLYWAY_URL`, `FLYWAY_USER`, and `FLYWAY_PASSWORD` settings.
+`FLYWAY_PLACEHOLDERS_RUNTIME_ROLE` names the existing PostgreSQL login used by
+`DATABASE_URL`; the Flyway entrypoint accepts only a bounded lowercase
+identifier before its `afterMigrate` callback grants connection and DML access.
+The supported local schema commands are:
+
+```sh
+pnpm db:migrate
+pnpm db:info
+pnpm db:validate
+```
+
+The checked-in local Compose stack explicitly permits its historical single
+`airtek` owner role for development-volume compatibility. That shared-role
+override is not present in `compose.production.yaml`; production rejects using
+the Flyway DDL identity as the application runtime identity.
+
+The former Rust `airtek-migrate` binary has been removed, and `airtekctl` has no
+`migrate` subcommand. In-memory repositories exist only behind isolated test
+construction and are not a supported server mode. MinIO is present as a
+reserved local dependency; the current platform does not yet include an
+object-storage network adapter.
+
+### One-time adoption of an existing SQLx v1-10 database
+
+Do not run a normal migration first against a database already managed through
+SQLx versions 1 through 10. Back up that database, verify the restore path, and
+confirm the exact environment, database identity, credentials, and maintenance
+window. Then run this controlled adoption sequence:
+
+```sh
+docker compose run --rm flyway-migrate baseline
+pnpm db:migrate
+pnpm db:validate
+```
+
+The `beforeBaseline` callback refuses the baseline unless the old
+`_sqlx_migrations` table contains exactly successful versions 1 through 10 with
+the reviewed checksums. Flyway then establishes its
+`baselineVersion=10` baseline, so the normal migrate does not replay V1-V10 and
+applies only later versions. The migration role must own the legacy objects or
+hold their grant option so
+`afterMigrate` can grant the declared runtime role. If any check fails, stop and
+investigate; never bypass the callback.
+
+This is a one-time takeover procedure only. `baselineOnMigrate` must remain
+disabled so adoption always requires the explicit, guarded baseline command. A
+new empty database must not be baselined; initialize it only with
+`pnpm db:migrate`.
 
 ## Production image boundary
 
 `compose.production.yaml` is a provider-neutral, image-only deployment
-boundary. It requires separate immutable references for Public Web, Admin Web,
-Platform, and Gateway, exposes only the Gateway to the outer TLS ingress, and
-keeps ports `3000`, `3100`, and `8080` internal. This permits Public and Admin
-to be promoted or rolled back independently. Start from
+boundary. It requires five separate immutable references for Public Web, Admin
+Web, Platform, Migrations, and Gateway. The non-root Flyway migration artifact
+is independent from the Rust Platform artifact. Only the Gateway is exposed to
+the outer TLS ingress; ports `3000`, `3100`, and `8080` stay internal. This
+permits Public and Admin to be promoted or rolled back independently. Start from
 `infra/deploy/production.env.example`; replace every example image, host,
 origin, database URL, and secret through the deployment platform before use.
 
@@ -168,6 +229,7 @@ docker compose --env-file infra/deploy/production.env.example -f compose.product
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm db:validate
 pnpm test:e2e
 pnpm test:e2e:stack
 pnpm check:contracts
@@ -226,10 +288,10 @@ types; its small fetch helper remains available for application transport.
 
 The production isolation check rejects an admin bundle containing DevTools,
 public manifests, webmaster verification files, or sitemaps. Deployment checks
-also assert the migration dependency, non-root images, gateway Host boundary,
-and production DevTools route exclusion. Production Rust builds use the
-`production` feature without `devtools`; the mutually enabled combination must
-fail to compile.
+also assert the Flyway migration dependency, independent non-root migration
+image, gateway Host boundary, and production DevTools route exclusion.
+Production Rust builds use the `production` feature without `devtools`; the
+mutually enabled combination must fail to compile.
 
 ## Database-driven content and Product Master
 

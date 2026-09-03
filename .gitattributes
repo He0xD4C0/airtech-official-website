@@ -1,0 +1,2 @@
+services/platform/migrations/*.sql text eol=lf
+services/platform/flyway/callbacks/*.sql text eol=lf
