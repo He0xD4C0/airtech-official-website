@@ -717,10 +717,11 @@ async fn create_analytics_event(
     validate_analytics_event(&event)?;
     validate_analytics_consent(&state, &event).await?;
     let event_id = Uuid::new_v4();
+    let occurred_at = Utc::now();
     let event_value = serde_json::to_value(&event)
         .map_err(|_| ApiError::internal("Analytics serialization failed."))?;
     state
-        .persist_analytics_event(event_id, &event_value)
+        .persist_analytics_event(event_id, &event_value, occurred_at)
         .await?;
     let receipt = AnalyticsEventReceipt {
         accepted: true,

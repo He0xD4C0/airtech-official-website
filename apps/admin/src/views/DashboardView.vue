@@ -19,6 +19,7 @@ import DataStatePanel from '@/components/DataStatePanel.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { adminApi } from '@/services/adminApi'
+import { analyticsApiRange, analyticsRangeForPreset } from '@/services/analyticsDateRange'
 import { apiErrorMessage, apiProblemStatus } from '@/services/cursorPagination'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
@@ -26,7 +27,23 @@ import { useUiStore } from '@/stores/ui'
 const auth = useAuthStore()
 const ui = useUiStore()
 
-const metrics = ref<{ drafts: number | null; conflicts: number | null; rfqs: number | null; operations: number | null; events: number | null }>({ drafts: null, conflicts: null, rfqs: null, operations: null, events: null })
+const metrics = ref<{
+  drafts: number | null
+  conflicts: number | null
+  rfqs: number | null
+  operations: number | null
+  visits: number | null
+  pageViews: number | null
+  rfqSubmitEvents: number | null
+}>({
+  drafts: null,
+  conflicts: null,
+  rfqs: null,
+  operations: null,
+  visits: null,
+  pageViews: null,
+  rfqSubmitEvents: null,
+})
 const hasMore = ref({ drafts: false, conflicts: false, rfqs: false, operations: false })
 const state = ref<'loading' | 'ready' | 'empty' | 'error' | 'forbidden'>('loading')
 const errorMessage = ref('')
@@ -45,7 +62,15 @@ const tasks = computed(() => [
 async function loadDashboard(): Promise<void> {
   state.value = 'loading'
   errorMessage.value = ''
-  metrics.value = { drafts: null, conflicts: null, rfqs: null, operations: null, events: null }
+  metrics.value = {
+    drafts: null,
+    conflicts: null,
+    rfqs: null,
+    operations: null,
+    visits: null,
+    pageViews: null,
+    rfqSubmitEvents: null,
+  }
   hasMore.value = { drafts: false, conflicts: false, rfqs: false, operations: false }
   activities.value = []
   try {
@@ -62,11 +87,14 @@ async function loadDashboard(): Promise<void> {
       metrics.value.operations = operations.items.filter((operation) => ['queued', 'running'].includes(operation.status)).length
       hasMore.value.operations = Boolean(operations.nextCursor)
     }))
-    if (auth.hasPermission('analytics.read')) requests.push(adminApi.analyticsSummary().then((analytics) => {
-      metrics.value.rfqs = analytics.rfqCount
-      metrics.value.events = analytics.acceptedEventCount
+    if (auth.hasPermission('analytics.read')) requests.push(adminApi.analyticsOverview(
+      analyticsApiRange(analyticsRangeForPreset(30)),
+    ).then((analytics) => {
+      metrics.value.visits = analytics.consentedMetrics.visits
+      metrics.value.pageViews = analytics.consentedMetrics.pageViews
+      metrics.value.rfqSubmitEvents = analytics.consentedMetrics.rfqSubmitEvents
     }))
-    else if (auth.hasPermission('rfq.read')) requests.push(adminApi.listRfqs({ limit: 100 }).then((rfqs) => {
+    if (auth.hasPermission('rfq.read')) requests.push(adminApi.listRfqs({ limit: 100 }).then((rfqs) => {
       metrics.value.rfqs = rfqs.items.length
       hasMore.value.rfqs = Boolean(rfqs.nextCursor)
     }))
@@ -119,14 +147,14 @@ onMounted(loadDashboard)
       <article class="panel performance-panel">
         <header class="panel__header">
           <div><p class="eyebrow">SITE SIGNAL</p><h2>公开站关键行为</h2></div>
-          <span class="inline-note">全部可用聚合 · API 暂未提供时间范围筛选</span>
+          <span class="inline-note">最近 30 个 UTC 日历日</span>
         </header>
         <div class="performance-summary">
-          <div><span>已接受行为事件</span><strong>{{ metrics.events ?? '—' }}</strong><em><TrendingUp :size="13" />第一方白名单</em></div>
-          <div><span>产品互动</span><strong>—</strong><small>聚合维度端点尚未提供</small></div>
-          <div><span>RFQ 记录</span><strong>{{ metricValue('rfqs') }}</strong><small>不含任何表单正文或 PII</small></div>
+          <div><span>已同意访问</span><strong>{{ metrics.visits ?? '—' }}</strong><em><TrendingUp :size="13" />第一方聚合</em></div>
+          <div><span>页面浏览事件</span><strong>{{ metrics.pageViews ?? '—' }}</strong><small>已接受 pageView</small></div>
+          <div><span>可归因 RFQ 提交事件</span><strong>{{ metrics.rfqSubmitEvents ?? '—' }}</strong><small>与业务 RFQ 记录独立</small></div>
         </div>
-        <p class="empty-mini">时间序列聚合端点尚未返回数据；不会用示意柱替代真实趋势。</p>
+        <p class="empty-mini">这里只显示已同意行为的 30 天汇总；业务 RFQ 数量由 RFQ API 单独读取。</p>
         <footer class="panel__footer"><span><i class="legend-dot legend-dot--blue"></i>内容互动</span><span><i class="legend-dot legend-dot--green"></i>高意向操作</span><RouterLink to="/analytics">打开 Analytics <ArrowRight :size="14" /></RouterLink></footer>
       </article>
 

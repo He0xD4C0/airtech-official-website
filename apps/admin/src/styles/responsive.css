@@ -17,7 +17,7 @@
   .shell-scrim { position: fixed; z-index: 45; inset: 0; display: block; background: rgb(5 24 29 / 44%); }
   .workspace { min-width: 0; }
   .topbar__context-icon { display: none; }
-  .dashboard-grid, .dashboard-grid--bottom, .analytics-grid { grid-template-columns: 1fr; }
+  .dashboard-grid, .dashboard-grid--bottom { grid-template-columns: 1fr; }
   .general-information-layout, .source-dashboard { grid-template-columns: 1fr; }
   .site-preview { position: static; }
   .product-detail-grid { grid-template-columns: 1fr; }
@@ -41,6 +41,9 @@
   .page-header__actions { width: 100%; flex-wrap: wrap; }
   .page-header__actions .button { flex: 1; }
   .metric-grid { grid-template-columns: 1fr; }
+  .analytics-range-picker { align-items: stretch; flex-direction: column; }
+  .analytics-range-picker__presets { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .analytics-range-picker > p { flex-wrap: wrap; }
   .performance-summary { grid-template-columns: 1fr 1fr; }
   .performance-summary > div:last-child { grid-column: 1 / -1; }
   .activity-list { grid-template-columns: 1fr; }

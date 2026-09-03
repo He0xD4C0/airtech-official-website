@@ -1,6 +1,6 @@
 use airtek_platform::{
-    models::{CursorPage, GuestSourceDaily, GuestVisitAggregate},
-    routes::admin_data,
+    models::{AnalyticsOverview, CursorPage, GuestSourceDaily, GuestVisitAggregate},
+    routes::{admin, admin_data},
     worker::apply_retention,
     AppState, Config,
 };
@@ -53,6 +53,29 @@ async fn analytics_rows(
         .find(|row| row.landing_path == landing_path)
         .expect("landing path is visible in source analytics");
     (visit, source)
+}
+
+async fn analytics_overview(
+    database_url: &str,
+    from: DateTime<Utc>,
+    to: DateTime<Utc>,
+) -> AnalyticsOverview {
+    let response = admin::router()
+        .with_state(postgres_state(database_url))
+        .oneshot(
+            Request::get(format!(
+                "/analytics/overview?from={}&to={}",
+                from.to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
+                to.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
+            ))
+            .body(Body::empty())
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    serde_json::from_slice(&body).expect("analytics overview contract")
 }
 
 #[tokio::test]
@@ -294,6 +317,19 @@ async fn retention_materializes_once_before_fk_safe_raw_deletion() {
         before_source.utm_source.as_deref(),
         Some("retention-source")
     );
+    let overview_from =
+        DateTime::<Utc>::from_naive_utc_and_offset(bucket_date.and_hms_opt(0, 0, 0).unwrap(), Utc);
+    let overview_before = analytics_overview(
+        &database_url,
+        overview_from,
+        overview_from + Duration::days(1),
+    )
+    .await;
+    assert_eq!(overview_before.consented_metrics.visits, 6);
+    assert_eq!(overview_before.consented_metrics.page_views, 9);
+    assert_eq!(overview_before.consented_metrics.engaged_visit_days, 3);
+    assert_eq!(overview_before.consented_metrics.rfq_start_events, 3);
+    assert_eq!(overview_before.consented_metrics.rfq_submit_events, 2);
 
     let (recent_before_visit, recent_before_source) =
         analytics_rows(&database_url, &recent_landing_path).await;
@@ -345,6 +381,17 @@ async fn retention_materializes_once_before_fk_safe_raw_deletion() {
         serde_json::to_value(&after_source).unwrap(),
         serde_json::to_value(&before_source).unwrap(),
         "source attribution must remain stable across retention"
+    );
+    let overview_after = analytics_overview(
+        &database_url,
+        overview_from,
+        overview_from + Duration::days(1),
+    )
+    .await;
+    assert_eq!(
+        serde_json::to_value(&overview_after.consented_metrics).unwrap(),
+        serde_json::to_value(&overview_before.consented_metrics).unwrap(),
+        "retention must not change the consented overview metrics"
     );
     let (recent_after_visit, recent_after_source) =
         analytics_rows(&database_url, &recent_landing_path).await;
@@ -625,6 +672,17 @@ async fn engagement_crossing_event_cutoffs_is_materialized_once() {
     let report_before = analytics_rows(&database_url, &landing_path).await;
     assert_eq!(report_before.0.visits, 1);
     assert_eq!(report_before.0.page_views, 2);
+    let overview_from =
+        DateTime::<Utc>::from_naive_utc_and_offset(bucket_date.and_hms_opt(0, 0, 0).unwrap(), Utc);
+    let overview_before = analytics_overview(
+        &database_url,
+        overview_from,
+        overview_from + Duration::days(1),
+    )
+    .await;
+    assert_eq!(overview_before.consented_metrics.visits, 1);
+    assert_eq!(overview_before.consented_metrics.page_views, 2);
+    assert_eq!(overview_before.consented_metrics.engaged_visit_days, 1);
 
     let first_result = apply_retention(&pool).await.expect("first cutoff run");
     assert_eq!(first_result["analyticsEventsDeleted"], json!(1));
@@ -656,6 +714,17 @@ async fn engagement_crossing_event_cutoffs_is_materialized_once() {
         serde_json::to_value(analytics_rows(&database_url, &landing_path).await).unwrap(),
         serde_json::to_value(&report_before).unwrap(),
         "historical plus live data must remain stable between cutoffs"
+    );
+    let overview_after_first_cutoff = analytics_overview(
+        &database_url,
+        overview_from,
+        overview_from + Duration::days(1),
+    )
+    .await;
+    assert_eq!(
+        serde_json::to_value(&overview_after_first_cutoff.consented_metrics).unwrap(),
+        serde_json::to_value(&overview_before.consented_metrics).unwrap(),
+        "the ledger must contribute only the unmaterialized engagement delta"
     );
 
     sqlx::query(
@@ -700,6 +769,17 @@ async fn engagement_crossing_event_cutoffs_is_materialized_once() {
         serde_json::to_value(analytics_rows(&database_url, &landing_path).await).unwrap(),
         serde_json::to_value(&report_before).unwrap(),
         "the report must remain stable after the second cutoff"
+    );
+    let overview_after_second_cutoff = analytics_overview(
+        &database_url,
+        overview_from,
+        overview_from + Duration::days(1),
+    )
+    .await;
+    assert_eq!(
+        serde_json::to_value(&overview_after_second_cutoff.consented_metrics).unwrap(),
+        serde_json::to_value(&overview_before.consented_metrics).unwrap(),
+        "fully materialized overview metrics must match the original raw cohort"
     );
 
     let retry_result = apply_retention(&pool).await.expect("idempotent retry");

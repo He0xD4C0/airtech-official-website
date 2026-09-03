@@ -621,6 +621,49 @@ pub struct AnalyticsEventReceipt {
     pub event_id: Option<Uuid>,
 }
 
+#[derive(Clone, Debug)]
+pub struct StoredAnalyticsEvent {
+    pub event_name: String,
+    pub guest_visit_id: Uuid,
+    pub occurred_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnalyticsOverviewRange {
+    pub from: DateTime<Utc>,
+    pub to_exclusive: DateTime<Utc>,
+    pub timezone: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnalyticsConsentedMetrics {
+    pub visits: i64,
+    pub page_views: i64,
+    pub engaged_visit_days: i64,
+    pub rfq_start_events: i64,
+    pub rfq_submit_events: i64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnalyticsBusinessOutcomes {
+    pub rfq_submissions: i64,
+    pub contact_requests: i64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnalyticsOverview {
+    pub range: AnalyticsOverviewRange,
+    pub generated_at: DateTime<Utc>,
+    pub consented_metrics: AnalyticsConsentedMetrics,
+    pub business_outcomes: AnalyticsBusinessOutcomes,
+    pub source: String,
+    pub contains_pii: bool,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CreateGuestVisit {

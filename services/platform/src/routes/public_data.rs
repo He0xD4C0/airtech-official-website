@@ -428,17 +428,18 @@ async fn create_guest_visit(
         visit.anonymous_session_id = request.anonymous_session_id;
         (visit, existing_id.is_none())
     } else {
-        let existing = state
-            .data
-            .read()
-            .await
-            .guest_visits
-            .values()
-            .find(|visit| {
-                visit.anonymous_session_id == request.anonymous_session_id
-                    && visit.retention_until > now
-            })
-            .cloned();
+        let existing = {
+            let data = state.data.read().await;
+            data.guest_visits
+                .values()
+                .find(|visit| {
+                    visit.anonymous_session_id == request.anonymous_session_id
+                        && data.guest_visit_consent_records.get(&visit.id)
+                            == Some(&receipt.consent_receipt)
+                        && visit.retention_until > now
+                })
+                .cloned()
+        };
         let created = existing.is_none();
         let visit = match existing {
             Some(mut visit) => {
@@ -458,12 +459,10 @@ async fn create_guest_visit(
                 retention_until: now + Duration::days(state.config.guest_raw_retention_days),
             },
         };
-        state
-            .data
-            .write()
-            .await
-            .guest_visits
-            .insert(visit.id, visit.clone());
+        let mut data = state.data.write().await;
+        data.guest_visit_consent_records
+            .insert(visit.id, receipt.consent_receipt);
+        data.guest_visits.insert(visit.id, visit.clone());
         (visit, created)
     };
     let status = if created {

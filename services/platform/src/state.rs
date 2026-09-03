@@ -22,8 +22,8 @@ use crate::{
         AnalyticsConsentReceipt, AnalyticsEventReceipt, AuditEvent, BackgroundOperation,
         ContactRequest, ContentEntry, GeneralInformation, GuestVisit, NewsEntry, PlatformSettings,
         Product, ProductImportResult, ProductPresentation, RfqSubmission, SourceSnapshot,
-        StagingRecord, StagingValidationStatus, SyncConflict, SyncRun, SyncRunStatus,
-        TemporaryOverride, UpdatePlatformSettings, ValidationIssue,
+        StagingRecord, StagingValidationStatus, StoredAnalyticsEvent, SyncConflict, SyncRun,
+        SyncRunStatus, TemporaryOverride, UpdatePlatformSettings, ValidationIssue,
     },
     rate_limit::InMemoryRateLimit,
     services::product_facts::project_product_facts,
@@ -111,7 +111,9 @@ pub struct PlatformData {
     pub contacts: HashMap<Uuid, ContactRequest>,
     pub analytics_consents: HashMap<Uuid, AnalyticsConsentReceipt>,
     pub analytics_receipts: HashMap<Uuid, AnalyticsEventReceipt>,
+    pub analytics_events: HashMap<Uuid, StoredAnalyticsEvent>,
     pub guest_visits: HashMap<Uuid, GuestVisit>,
+    pub guest_visit_consent_records: HashMap<Uuid, Uuid>,
     pub product_imports: HashMap<Uuid, ProductImportResult>,
     pub operations: HashMap<Uuid, BackgroundOperation>,
     pub audit_events: Vec<AuditEvent>,
@@ -2606,10 +2608,8 @@ impl AppState {
         &self,
         event_id: Uuid,
         event: &Value,
+        occurred_at: DateTime<Utc>,
     ) -> Result<(), ApiError> {
-        let Some(pool) = &self.pool else {
-            return Ok(());
-        };
         let external_session_id = event
             .get("anonymousSessionId")
             .and_then(Value::as_str)
@@ -2620,6 +2620,43 @@ impl AppState {
             .and_then(Value::as_str)
             .and_then(|value| Uuid::parse_str(value).ok())
             .ok_or_else(|| ApiError::bad_request("consentReceipt is invalid."))?;
+        let event_name = event
+            .get("eventName")
+            .and_then(Value::as_str)
+            .ok_or_else(|| ApiError::bad_request("eventName is invalid."))?
+            .to_owned();
+        let Some(pool) = &self.pool else {
+            let mut data = self.data.write().await;
+            let guest_visit_id = data
+                .guest_visits
+                .values()
+                .filter(|visit| {
+                    visit.anonymous_session_id == external_session_id
+                        && data.guest_visit_consent_records.get(&visit.id)
+                            == Some(&consent_record_id)
+                        && visit.retention_until > occurred_at
+                })
+                .max_by_key(|visit| visit.last_seen_at)
+                .map(|visit| visit.id)
+                .ok_or_else(|| {
+                    ApiError::validation(BTreeMap::from([(
+                        "anonymousSessionId".into(),
+                        vec![
+                            "Create the consented guest visit before sending analytics events."
+                                .into(),
+                        ],
+                    )]))
+                })?;
+            data.analytics_events.insert(
+                event_id,
+                StoredAnalyticsEvent {
+                    event_name,
+                    guest_visit_id,
+                    occurred_at,
+                },
+            );
+            return Ok(());
+        };
         let storage_session_id = self.analytics_storage_session_id(external_session_id)?;
         let mut transaction = pool.begin().await?;
         let guest_visit_id = sqlx::query_scalar::<_, Uuid>(
@@ -2665,7 +2702,7 @@ impl AppState {
                 .cloned()
                 .unwrap_or(Value::Object(Default::default())),
         )
-        .bind(Utc::now())
+        .bind(occurred_at)
         .bind(guest_visit_id)
         .bind(consent_record_id)
         .execute(&mut *transaction)

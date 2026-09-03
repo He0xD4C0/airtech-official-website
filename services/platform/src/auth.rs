@@ -2073,6 +2073,10 @@ mod tests {
             ),
             Some("product.pricing.read")
         );
+        assert_eq!(
+            required_permission("/api/admin/v1/analytics/overview", &axum::http::Method::GET),
+            Some("analytics.read")
+        );
     }
 
     #[test]

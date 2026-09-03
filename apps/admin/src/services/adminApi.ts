@@ -4,6 +4,7 @@ import type {
   AdminProductDetail as ContractAdminProductDetail,
   AdminSession as ContractAdminSession,
   AdminUserRecord as ContractAdminUserRecord,
+  AnalyticsOverview as ContractAnalyticsOverview,
   AuditEvent as ContractAuditEvent,
   BackgroundOperation as ContractBackgroundOperation,
   ContentDraftInput as ContractContentDraftInput,
@@ -55,6 +56,7 @@ import {
   clearAdminCsrfToken,
   getAdminCsrfToken,
 } from './adminCsrf'
+import type { AnalyticsApiRange } from './analyticsDateRange'
 
 export type { CursorPage, CursorPageRequest } from './cursorPagination'
 export type BackendContentEntry = ContractContentEntry
@@ -74,6 +76,7 @@ export type ProductImportResult = ContractProductImportResult
 export type ProductImportAccepted = ContractProductImportAccepted
 export type GuestVisitAggregate = ContractGuestVisitAggregate
 export type GuestSourceDaily = ContractGuestSourceDaily
+export type AnalyticsOverview = ContractAnalyticsOverview
 export type NewsRevision = ContractNewsRevision
 export type GeneralInformationRevision = ContractGeneralInformationRevision
 export type AdminUserRecord = ContractAdminUserRecord
@@ -566,8 +569,10 @@ export const adminApi = {
       nextCursor: result.data.nextCursor,
     }
   },
-  async analyticsSummary(): Promise<{ acceptedEventCount: number; rfqCount: number; contactCount: number; containsPii: false; source: 'firstParty' }> {
-    const result = await contractClient.get('/api/admin/v1/analytics/summary')
+  async analyticsOverview(range: AnalyticsApiRange): Promise<AnalyticsOverview> {
+    const result = await contractClient.get('/api/admin/v1/analytics/overview', {
+      parameters: { query: range },
+    })
     return result.data
   },
   async listGuestVisits(pagination?: CursorPageRequest): Promise<CursorPage<GuestVisitAggregate>> {

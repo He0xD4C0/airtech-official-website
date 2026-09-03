@@ -44,9 +44,9 @@ async function loadNavigationBadges(): Promise<void> {
       if (page.items.length) badges['/integrations/feishu'] = `${page.items.length}${page.nextCursor ? '+' : ''}`
     }))
   }
-  if (auth.hasPermission('analytics.read') && auth.hasPermission('rfq.read')) {
-    requests.push(adminApi.analyticsSummary().then((summary) => {
-      if (summary.rfqCount) badges['/rfqs'] = String(summary.rfqCount)
+  if (auth.hasPermission('rfq.read')) {
+    requests.push(adminApi.listRfqs({ limit: 100 }).then((rfqs) => {
+      if (rfqs.items.length) badges['/rfqs'] = `${rfqs.items.length}${rfqs.nextCursor ? '+' : ''}`
     }))
   }
   if (auth.hasPermission('operations.run')) {

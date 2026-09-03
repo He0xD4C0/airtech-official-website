@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/admin/v1/analytics/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a time-scoped first-party analytics overview */
+        get: operations["getAnalyticsOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/v1/analytics/sources": {
         parameters: {
             query?: never;
@@ -28,7 +45,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get first-party analytics totals */
+        /**
+         * Get legacy unscoped first-party analytics totals
+         * @deprecated
+         * @description Deprecated compatibility endpoint. Use /api/admin/v1/analytics/overview for time-scoped metrics with consistent consented and business-outcome cohorts.
+         */
         get: operations["getAnalyticsSummary"];
         put?: never;
         post?: never;
@@ -1294,6 +1315,17 @@ export interface components {
             items: components["schemas"]["AdminUserRecord"][];
             nextCursor: string | null;
         };
+        AnalyticsBusinessOutcomes: {
+            contactRequests: number;
+            rfqSubmissions: number;
+        };
+        AnalyticsConsentedMetrics: {
+            engagedVisitDays: number;
+            pageViews: number;
+            rfqStartEvents: number;
+            rfqSubmitEvents: number;
+            visits: number;
+        };
         AnalyticsConsentReceipt: {
             analyticsAllowed: boolean;
             /** Format: uuid */
@@ -1384,6 +1416,25 @@ export interface components {
             /** @default {} */
             properties?: Record<string, never>;
             sourcePath: string;
+        };
+        AnalyticsOverview: {
+            businessOutcomes: components["schemas"]["AnalyticsBusinessOutcomes"];
+            consentedMetrics: components["schemas"]["AnalyticsConsentedMetrics"];
+            /** @constant */
+            containsPii: false;
+            /** Format: date-time */
+            generatedAt: string;
+            range: components["schemas"]["AnalyticsOverviewRange"];
+            /** @constant */
+            source: "firstParty";
+        };
+        AnalyticsOverviewRange: {
+            /** Format: date-time */
+            from: string;
+            /** @constant */
+            timezone: "UTC";
+            /** Format: date-time */
+            toExclusive: string;
         };
         /** @enum {string} */
         AnalyticsPolicyVersion: "analytics-v1";
@@ -2345,11 +2396,15 @@ export type AdminRoleRecordPage = components['schemas']['AdminRoleRecordPage'];
 export type AdminSession = components['schemas']['AdminSession'];
 export type AdminUserRecord = components['schemas']['AdminUserRecord'];
 export type AdminUserRecordPage = components['schemas']['AdminUserRecordPage'];
+export type AnalyticsBusinessOutcomes = components['schemas']['AnalyticsBusinessOutcomes'];
+export type AnalyticsConsentedMetrics = components['schemas']['AnalyticsConsentedMetrics'];
 export type AnalyticsConsentReceipt = components['schemas']['AnalyticsConsentReceipt'];
 export type AnalyticsEventName = components['schemas']['AnalyticsEventName'];
 export type AnalyticsEventProperties = components['schemas']['AnalyticsEventProperties'];
 export type AnalyticsEventReceipt = components['schemas']['AnalyticsEventReceipt'];
 export type AnalyticsOptOutEvent = components['schemas']['AnalyticsOptOutEvent'];
+export type AnalyticsOverview = components['schemas']['AnalyticsOverview'];
+export type AnalyticsOverviewRange = components['schemas']['AnalyticsOverviewRange'];
 export type AnalyticsPolicyVersion = components['schemas']['AnalyticsPolicyVersion'];
 export type AnalyticsSummary = components['schemas']['AnalyticsSummary'];
 export type AuditEvent = components['schemas']['AuditEvent'];
@@ -2475,6 +2530,119 @@ export type UserInvitation = components['schemas']['UserInvitation'];
 export type UserInvitationPage = components['schemas']['UserInvitationPage'];
 export type $defs = Record<string, never>;
 export interface operations {
+    getAnalyticsOverview: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Analytics overview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyticsOverview"];
+                };
+            };
+            /** @description Malformed request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Admin session required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Permission, CSRF, origin, or TOTP check failed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Resource or route not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Concurrent or domain conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Required service is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     listGuestSources: {
         parameters: {
             query?: {

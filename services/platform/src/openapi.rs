@@ -726,22 +726,57 @@ pub fn document() -> Value {
         "List contacts with permission-aware PII redaction",
         "ContactRequestPage",
     );
+    let analytics_boundary = || {
+        json!({
+            "type": "string",
+            "format": "date-time",
+            "description": "RFC3339 UTC midnight boundary. from is inclusive and to is exclusive; supply both or neither."
+        })
+    };
+    add(
+        &mut paths,
+        "/api/admin/v1/analytics/overview",
+        "get",
+        admin(
+            params(
+                op(
+                    "getAnalyticsOverview",
+                    "Get a time-scoped first-party analytics overview",
+                    "adminAnalytics",
+                    [(
+                        "200",
+                        json_response("Analytics overview", r("AnalyticsOverview")),
+                    )],
+                ),
+                vec![
+                    query_param("from", false, analytics_boundary()),
+                    query_param("to", false, analytics_boundary()),
+                ],
+            ),
+            false,
+        ),
+    );
+    let mut legacy_analytics_summary = admin(
+        op(
+            "getAnalyticsSummary",
+            "Get legacy unscoped first-party analytics totals",
+            "adminAnalytics",
+            [(
+                "200",
+                json_response("Analytics summary", r("AnalyticsSummary")),
+            )],
+        ),
+        false,
+    );
+    legacy_analytics_summary["deprecated"] = json!(true);
+    legacy_analytics_summary["description"] = json!(
+        "Deprecated compatibility endpoint. Use /api/admin/v1/analytics/overview for time-scoped metrics with consistent consented and business-outcome cohorts."
+    );
     add(
         &mut paths,
         "/api/admin/v1/analytics/summary",
         "get",
-        admin(
-            op(
-                "getAnalyticsSummary",
-                "Get first-party analytics totals",
-                "adminAnalytics",
-                [(
-                    "200",
-                    json_response("Analytics summary", r("AnalyticsSummary")),
-                )],
-            ),
-            false,
-        ),
+        legacy_analytics_summary,
     );
     add_admin_data_paths(&mut paths);
 
@@ -3231,6 +3266,67 @@ fn add_admin_schemas(s: &mut Map<String, Value>) {
         json!({"id": uuid(), "actor": {"type": "string"}, "action": {"type": "string"}, "entityType": {"type": "string"}, "entityId": nullable(uuid()), "before": nullable(json!({})), "after": nullable(json!({})), "reason": nullable(json!({"type": "string"})), "requestId": uuid(), "occurredAt": timestamp()})
     ));
     s.insert("AuditEventPage".into(), page("AuditEvent"));
+    s.insert(
+        "AnalyticsOverviewRange".into(),
+        object(
+            &["from", "toExclusive", "timezone"],
+            json!({
+                "from": timestamp(),
+                "toExclusive": timestamp(),
+                "timezone": {"type": "string", "const": "UTC"}
+            }),
+        ),
+    );
+    s.insert(
+        "AnalyticsConsentedMetrics".into(),
+        object(
+            &[
+                "visits",
+                "pageViews",
+                "engagedVisitDays",
+                "rfqStartEvents",
+                "rfqSubmitEvents",
+            ],
+            json!({
+                "visits": counter(),
+                "pageViews": counter(),
+                "engagedVisitDays": counter(),
+                "rfqStartEvents": counter(),
+                "rfqSubmitEvents": counter()
+            }),
+        ),
+    );
+    s.insert(
+        "AnalyticsBusinessOutcomes".into(),
+        object(
+            &["rfqSubmissions", "contactRequests"],
+            json!({
+                "rfqSubmissions": counter(),
+                "contactRequests": counter()
+            }),
+        ),
+    );
+    s.insert(
+        "AnalyticsOverview".into(),
+        object(
+            &[
+                "range",
+                "generatedAt",
+                "consentedMetrics",
+                "businessOutcomes",
+                "source",
+                "containsPii",
+            ],
+            json!({
+                "range": r("AnalyticsOverviewRange"),
+                "generatedAt": timestamp(),
+                "consentedMetrics": r("AnalyticsConsentedMetrics"),
+                "businessOutcomes": r("AnalyticsBusinessOutcomes"),
+                "source": {"type": "string", "const": "firstParty"},
+                "containsPii": {"type": "boolean", "const": false}
+            }),
+        ),
+    );
     s.insert("AnalyticsSummary".into(), object(
         &["acceptedEventCount", "rfqCount", "contactCount", "containsPii", "source"],
         json!({"acceptedEventCount": counter(), "rfqCount": counter(), "contactCount": counter(), "containsPii": {"type": "boolean", "const": false}, "source": {"type": "string", "const": "firstParty"}})
@@ -3571,6 +3667,7 @@ mod tests {
         let document = document();
         let paths = document["paths"].as_object().expect("paths object");
         let expected = [
+            "/api/admin/v1/analytics/overview",
             "/api/admin/v1/analytics/sources",
             "/api/admin/v1/analytics/summary",
             "/api/admin/v1/analytics/visits",
