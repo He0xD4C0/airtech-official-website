@@ -4,12 +4,12 @@ use axum::{
     extract::{rejection::JsonRejection, Extension, Path, Query, State},
     http::{header, HeaderMap, HeaderValue, StatusCode},
     response::{sse::Event, sse::KeepAlive, IntoResponse, Response, Sse},
-    routing::{get, patch, post},
+    routing::{get, post},
     Json, Router,
 };
 use chrono::{DateTime, Duration as ChronoDuration, NaiveTime, Utc};
 use futures_util::stream;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use sqlx::Row;
 use uuid::Uuid;
@@ -20,24 +20,32 @@ use crate::{
     idempotency::{begin as begin_idempotency, IdempotencyOutcome},
     models::{
         AnalyticsBusinessOutcomes, AnalyticsConsentedMetrics, AnalyticsOverview,
-        AnalyticsOverviewRange, AuditEvent, BackgroundOperation, ContentDraftInput, ContentEntry,
-        ContentKind, ContentPreviewLink, CreateContentPreviewRequest, CreateOperationRequest,
-        CreateTemporaryOverride, CursorPage, OperationKind, OperationStatus, Product,
-        PublicationStatus, StartSyncRequest, SyncRun, SyncRunStatus, TemporaryOverride,
-        UpdatePlatformSettings,
+        AnalyticsOverviewRange, AuditEvent, BackgroundOperation, ContentDraftV2, ContentRecordV2,
+        ContentRevisionV2, ContentSnapshotIntent, CreateContentSnapshotRequest,
+        CreateOperationRequest, CreateTemporaryOverride, CursorPage, OperationKind,
+        OperationStatus, Product, PublicationStatus, RestoreContentRevisionRequest,
+        StartSyncRequest, SyncRun, SyncRunStatus, TemporaryOverride, UpdatePlatformSettings,
     },
     pagination::{paginate_by_id, CursorQuery},
     routes::{actor, etag, parse_if_match},
+    services::cms_content::{self, MutationMetadata},
     state::AppState,
 };
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/content", get(list_content).post(create_content))
-        .route("/content/{id}", patch(update_content))
-        .route("/content/{id}/preview", post(create_content_preview))
-        .route("/content/{id}/publish", post(publish_content))
-        .route("/content/{id}/rollback", post(rollback_content))
+        .route(
+            "/content/{id}/draft",
+            get(get_content_draft).patch(update_content_draft),
+        )
+        .route("/content/{id}/snapshots", post(create_content_snapshot))
+        .route("/content/{id}/revisions", get(list_content_revisions))
+        .route("/content/{id}/diff", get(get_content_diff))
+        .route(
+            "/content/{id}/revisions/{revision}/restore",
+            post(restore_content_revision),
+        )
         .route("/products", get(list_products))
         .route("/products/{id}/publish", post(publish_product))
         .route(
@@ -62,8 +70,7 @@ pub fn router() -> Router<AppState> {
 }
 
 include!("admin/settings.rs");
-include!("admin/content_preview.rs");
-include!("admin/content.rs");
+include!("admin/cms_content.rs");
 include!("admin/products.rs");
 include!("admin/temporary_overrides.rs");
 include!("admin/sync.rs");

@@ -76,13 +76,23 @@ async fn admin_idempotency_serializes_instances_and_survives_restart() {
     let slug = format!("postgres-idempotency-{run_id}");
     let key = format!("postgres-admin-idempotency-{run_id}");
     let body = json!({
+        "schemaVersion": 2,
         "kind": "article",
         "slug": slug,
         "locale": "en",
+        "templateKey": "articleDetail",
         "title": "PostgreSQL cross-instance idempotency",
-        "body": {"schemaVersion": 1, "doc": {"type": "doc", "content": []}},
-        "seo": {"indexable": false},
-        "isPlaceholder": true
+        "summary": null,
+        "body": {"type": "doc", "content": []},
+        "typeFields": {
+            "type": "article", "category": null, "authorDisplayName": null,
+            "publicationAt": null, "cover": null, "featured": false
+        },
+        "composition": {"blocks": []},
+        "seo": {"title": null, "description": null, "indexable": false, "socialImage": null},
+        "relations": [],
+        "isPlaceholder": true,
+        "draftVersion": 1
     })
     .to_string();
     let request = |body: String| {
@@ -92,6 +102,7 @@ async fn admin_idempotency_serializes_instances_and_survives_restart() {
                 "postgres-contract@example.com",
             )
             .header("idempotency-key", &key)
+            .header(header::IF_MATCH, "\"draft-0\"")
             .header(header::CONTENT_TYPE, "application/json")
             .body(Body::from(body))
             .unwrap()

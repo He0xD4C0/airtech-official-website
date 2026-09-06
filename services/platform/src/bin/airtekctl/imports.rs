@@ -4,6 +4,7 @@ use airtek_platform::{
     models::{ContentEntry, FactState, Product, SyncRun, SyncRunStatus},
     openapi,
     services::{
+        cms_preflight,
         development_seed,
         feishu::validate_staging_payload,
         product_import::{

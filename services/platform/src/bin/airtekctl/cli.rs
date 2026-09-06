@@ -17,6 +17,11 @@ enum Command {
     Seed,
     /// Print the development OpenAPI document.
     Openapi,
+    /// Inspect legacy CMS data for a lossless CMS V2 migration without writing to the database.
+    Cms {
+        #[command(subcommand)]
+        action: CmsAction,
+    },
     /// Queue Feishu synchronization work for the development worker.
     Sync {
         #[command(subcommand)]
@@ -47,6 +52,12 @@ enum Command {
         #[command(subcommand)]
         action: JobsAction,
     },
+}
+
+#[derive(Subcommand)]
+enum CmsAction {
+    /// Emit a read-only CMS V2 migration report and fail when blockers are present.
+    Preflight,
 }
 
 #[derive(Subcommand)]

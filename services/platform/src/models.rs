@@ -1,4 +1,6 @@
 include!("models/imports.rs");
+include!("models/cms_v2.rs");
+include!("models/cms_content.rs");
 include!("models/editorial.rs");
 include!("models/product.rs");
 include!("models/sync.rs");

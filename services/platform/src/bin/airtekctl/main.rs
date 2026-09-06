@@ -27,6 +27,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let report = development_seed::seed(&pool, &cli_actor()).await?;
             print_json(serde_json::to_value(report)?)?;
         }
+        Command::Cms {
+            action: CmsAction::Preflight,
+        } => {
+            let report = cms_preflight::run(&pool).await?;
+            let can_migrate = report.can_migrate;
+            print_json(serde_json::to_value(report)?)?;
+            if !can_migrate {
+                return Err("CMS V2 migration preflight found blocking issues".into());
+            }
+        }
         Command::Sync { action } => match action {
             SyncAction::DryRun {
                 mapping_version,

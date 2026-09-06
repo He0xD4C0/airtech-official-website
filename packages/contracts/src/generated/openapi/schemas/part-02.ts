@@ -6,6 +6,367 @@
 import type { components } from '../components'
 
 export interface SchemasPart02 {
+ContentTypeFields: {
+            /** @constant */
+            type: "home";
+        } | {
+            /** @constant */
+            type: "page";
+        } | {
+            key?: string | null;
+            /** @constant */
+            type: "solution";
+        } | {
+            key?: string | null;
+            /** @constant */
+            type: "technology";
+        } | {
+            authorDisplayName?: string | null;
+            category?: string | null;
+            cover?: components["schemas"]["MediaUseReference"] | null;
+            featured: boolean;
+            publicationAt?: string | null;
+            /** @constant */
+            type: "article";
+        } | {
+            authorDisplayName?: string | null;
+            category?: string | null;
+            cover?: components["schemas"]["MediaUseReference"] | null;
+            featured: boolean;
+            publicationAt?: string | null;
+            /** @constant */
+            type: "news";
+        } | {
+            items: components["schemas"]["FaqItem"][];
+            /** @constant */
+            type: "faq";
+        } | {
+            industry?: string | null;
+            location?: string | null;
+            /** @constant */
+            type: "caseStudy";
+        } | {
+            resourceType?: string | null;
+            /** @constant */
+            type: "download";
+            versionLabel?: string | null;
+            versionNotes?: string | null;
+        } | {
+            /** @constant */
+            type: "company";
+        } | {
+            effectiveDate?: string | null;
+            /** @constant */
+            type: "legal";
+        } | {
+            brandLine?: string | null;
+            contact: components["schemas"]["ContactInformationInput"];
+            copyrightTemplate?: string | null;
+            defaultSeo: components["schemas"]["SeoInputV2"];
+            footerStatement?: string | null;
+            homePath?: string | null;
+            navigationCta?: components["schemas"]["EditorialAction"] | null;
+            organizationName?: string | null;
+            productCategories: components["schemas"]["ProductCategoryPresentationInput"][];
+            socialLinks: components["schemas"]["SocialLinkInput"][];
+            /** @constant */
+            type: "generalInformation";
+        } | {
+            items: components["schemas"]["NavigationItem"][];
+            /** @constant */
+            type: "navigation";
+        } | {
+            columns: components["schemas"]["FooterColumn"][];
+            legalLinks: components["schemas"]["NavigationItem"][];
+            /** @constant */
+            type: "footer";
+        };
+/** @enum {string} */
+        ContentWidth: "narrow" | "standard" | "wide";
+CreateAnalyticsConsent: {
+            analyticsAllowed: boolean;
+            /** Format: uuid */
+            anonymousSessionId: string;
+            policyVersion: components["schemas"]["AnalyticsPolicyVersion"];
+        };
+CreateAnalyticsEvent: components["schemas"]["ConsentedAnalyticsEvent"] | components["schemas"]["AnalyticsOptOutEvent"];
+CreateContactRequest: {
+            consent: boolean;
+            contact: components["schemas"]["BusinessContact"];
+            locale: string;
+            message: string;
+            sourcePath: string;
+            topic: string;
+        };
+CreateContentPreviewRequest: {
+            /** @default 600 */
+            expiresInSeconds?: number;
+            /** Format: int64 */
+            revision: number;
+        };
+CreateContentSnapshotRequest: {
+            intent: components["schemas"]["ContentSnapshotIntent"];
+            reason: string;
+        };
+CreateGuestVisit: {
+            /** Format: uuid */
+            anonymousSessionId: string;
+            campaign?: string | null;
+            /** Format: uuid */
+            consentReceipt: string;
+            landingPath: string;
+            medium?: string | null;
+            policyVersion: components["schemas"]["AnalyticsPolicyVersion"];
+            referrerDomain?: string | null;
+            source?: string | null;
+        };
+CreateOperationRequest: {
+            confirmation: string;
+            kind: components["schemas"]["OperationKind"];
+            reason: string;
+        };
+CreateRfqRequest: components["schemas"]["ProductRfqRequest"] | components["schemas"]["SelectionRfqRequest"] | components["schemas"]["ProjectRfqRequest"] | components["schemas"]["ReplacementRfqRequest"];
+CreateTemporaryOverride: {
+            expiresAt?: string | null;
+            fieldPath: string;
+            /** Format: uuid */
+            productId: string;
+            reason: string;
+            value: unknown;
+        };
+CtaBlock: {
+            action: components["schemas"]["EditorialAction"];
+            body?: string | null;
+            eyebrow?: string | null;
+            heading: string;
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "cta";
+            variant: components["schemas"]["CtaVariant"];
+        };
+/** @enum {string} */
+        CtaVariant: "standard" | "emphasized";
+/** @enum {string} */
+        DataClass: "editorial" | "feishu" | "verifiedCsv" | "developmentFixture";
+DiscoveryDocument: {
+            entries: components["schemas"]["DiscoveryEntry"][];
+            /** Format: date-time */
+            generatedAt: string;
+        };
+DiscoveryEntry: {
+            /** Format: uuid */
+            entityId: string;
+            /** @enum {string} */
+            entityType: "content" | "product";
+            locale: string;
+            path: string;
+            summary: string | null;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+DownloadAssetBlock: {
+            asset: components["schemas"]["AssetVersionReference"];
+            description?: string | null;
+            /** Format: uuid */
+            id: string;
+            label: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "downloadAsset";
+        };
+DownloadTypeFields: {
+            resourceType?: string | null;
+            versionLabel?: string | null;
+            versionNotes?: string | null;
+        };
+EditorialAction: {
+            label: string;
+            target: components["schemas"]["LinkTargetReference"];
+        };
+EditorialTypeFields: {
+            authorDisplayName?: string | null;
+            category?: string | null;
+            cover?: components["schemas"]["MediaUseReference"] | null;
+            featured: boolean;
+            publicationAt?: string | null;
+        };
+EvidenceBlock: {
+            heading?: string | null;
+            /** Format: uuid */
+            id: string;
+            items: components["schemas"]["EvidenceItem"][];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "evidence";
+        };
+EvidenceItem: {
+            /** Format: uuid */
+            id: string;
+            label: string;
+            sourceNote?: string | null;
+            statement: string;
+        };
+/** @enum {string} */
+        FactState: "verified" | "missing" | "notApplicable" | "notTested" | "confidential" | "pendingVerification";
+FaqCollectionBlock: {
+            heading?: string | null;
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "faqCollection";
+        };
+FaqItem: {
+            answer: components["schemas"]["TiptapDocument"];
+            /** Format: uuid */
+            id: string;
+            question: string;
+        };
+FaqTypeFields: {
+            items: components["schemas"]["FaqItem"][];
+        };
+FeatureGridBlock: {
+            heading?: string | null;
+            /** Format: uuid */
+            id: string;
+            items: components["schemas"]["FeatureItem"][];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "featureGrid";
+        };
+FeatureItem: {
+            description?: string | null;
+            icon?: components["schemas"]["MediaUseReference"] | null;
+            /** Format: uuid */
+            id: string;
+            title: string;
+        };
+FieldDiff: {
+            baseValue: unknown | null;
+            fieldPath: string;
+            incomingValue: unknown | null;
+            localValue: unknown | null;
+            sourceOwned: boolean;
+        };
+FooterColumn: {
+            /** Format: uuid */
+            id: string;
+            links: components["schemas"]["NavigationItem"][];
+            title: string;
+        };
+FooterTypeFields: {
+            columns: components["schemas"]["FooterColumn"][];
+            legalLinks: components["schemas"]["NavigationItem"][];
+        };
+GeneralInformation: {
+            /** Format: int64 */
+            currentRevision: number;
+            /** Format: uuid */
+            id: string;
+            isPlaceholder: boolean;
+            locale: string;
+            payload: components["schemas"]["GeneralInformationPayload"];
+            publishedRevision: number | null;
+            status: components["schemas"]["PublicationStatus"];
+            /** Format: date-time */
+            updatedAt: string;
+        };
+GeneralInformationDraftInput: {
+            /** @default false */
+            isPlaceholder?: boolean;
+            /** @default en */
+            locale?: string;
+            payload: components["schemas"]["GeneralInformationPayload"];
+        };
+GeneralInformationPayload: {
+            brandLine: string | null;
+            brandName: string;
+            copyrightText: string | null;
+            defaultSeo: {
+                [key: string]: unknown;
+            };
+            footerStatement: string | null;
+            homePath: string;
+            navigationCta?: {
+                href?: string;
+                label?: string;
+            } | null;
+            organization: {
+                [key: string]: unknown;
+            };
+            productCategories?: components["schemas"]["ProductFamilyPresentation"][];
+        } & {
+            [key: string]: unknown;
+        };
+/** @description Immutable General Information revision payload. */
+        GeneralInformationRevision: components["schemas"]["GeneralInformation"];
+GeneralInformationRevisionPage: {
+            items: components["schemas"]["GeneralInformationRevision"][];
+            nextCursor: string | null;
+        };
+GeneralInformationTypeFields: {
+            brandLine?: string | null;
+            contact: components["schemas"]["ContactInformationInput"];
+            copyrightTemplate?: string | null;
+            defaultSeo: components["schemas"]["SeoInputV2"];
+            footerStatement?: string | null;
+            homePath?: string | null;
+            navigationCta?: components["schemas"]["EditorialAction"] | null;
+            organizationName?: string | null;
+            productCategories: components["schemas"]["ProductCategoryPresentationInput"][];
+            socialLinks: components["schemas"]["SocialLinkInput"][];
+        };
+GuestSourceDaily: {
+            /** Format: date */
+            bucketDate: string;
+            campaign: string | null;
+            landingPath: string;
+            locale: string;
+            medium: string | null;
+            pageViews: number;
+            referrerDomain: string | null;
+            rfqStarts: number;
+            rfqSubmissions: number;
+            source: string;
+            sourceName: string | null;
+            utmSource: string | null;
+            visits: number;
+        };
+GuestSourceDailyPage: {
+            items: components["schemas"]["GuestSourceDaily"][];
+            nextCursor: string | null;
+        };
+GuestSourceSummary: components["schemas"]["GuestSourceDaily"];
+GuestVisit: {
+            /** Format: uuid */
+            anonymousSessionId: string;
+            campaign: string | null;
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: uuid */
+            id: string;
+            landingPath: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            medium: string | null;
+            referrerDomain: string | null;
+            /** Format: date-time */
+            retentionUntil: string;
+            source: string;
+        };
 GuestVisitAggregate: {
             /** Format: date */
             bucketDate: string;
@@ -32,6 +393,23 @@ HealthStatus: {
             timestamp: string;
             version: string;
         };
+HeroBlock: {
+            actions: components["schemas"]["EditorialAction"][];
+            eyebrow?: string | null;
+            heading?: string | null;
+            /** Format: uuid */
+            id: string;
+            lead?: string | null;
+            media?: components["schemas"]["MediaUseReference"] | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "hero";
+            variant: components["schemas"]["HeroVariant"];
+        };
+/** @enum {string} */
+        HeroVariant: "standard" | "splitMedia" | "minimal";
 InvitationAcceptance: {
             /** Format: date-time */
             acceptedAt: string;
@@ -51,6 +429,36 @@ InviteAdminUser: {
             email: string;
             roleKeys: string[];
         };
+LegalTypeFields: {
+            effectiveDate?: string | null;
+        };
+LinkTargetContent: {
+            /** Format: uuid */
+            contentId: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            targetType: "content";
+        };
+LinkTargetExternal: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            targetType: "external";
+            /** Format: uri */
+            url: string;
+        };
+LinkTargetReference: components["schemas"]["LinkTargetContent"] | components["schemas"]["LinkTargetRoute"] | components["schemas"]["LinkTargetExternal"];
+LinkTargetRoute: {
+            path: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            targetType: "route";
+        };
 LoginRequest: {
             /** Format: email */
             email: string;
@@ -58,433 +466,33 @@ LoginRequest: {
             /** Format: password */
             password: string;
         };
-MissingAssetReference: {
-            assetType: string;
-            sourceReference: string;
-            stableId: string;
-        };
-NewsDraftInput: {
-            authorDisplayName: string;
-            category: string;
-            content: components["schemas"]["ContentDraftInput"];
-            coverMediaId?: string | null;
-            /** @default editorial */
-            dataClass?: components["schemas"]["DataClass"];
-            /** @default false */
-            featured?: boolean;
-            publishedAt?: string | null;
-        };
-NewsEntry: {
-            authorDisplayName: string | null;
-            category: string;
-            content: components["schemas"]["ContentEntry"];
-            coverMediaId: string | null;
-            dataClass: components["schemas"]["DataClass"];
-            featured: boolean;
-            publishedAt: string | null;
-        };
-NewsPage: {
-            items: components["schemas"]["NewsEntry"][];
-            nextCursor: string | null;
-        };
-/** @description Immutable News revision payload. */
-        NewsRevision: components["schemas"]["NewsEntry"];
-NewsRevisionPage: {
-            items: components["schemas"]["NewsRevision"][];
-            nextCursor: string | null;
-        };
-OpenApiDocument: {
-            [key: string]: unknown;
-        };
-/** @enum {string} */
-        OperationKind: "migrationPreflight" | "migrationApply" | "backup" | "restoreValidate" | "retentionApply" | "searchReindex" | "cacheInvalidate" | "feishuSync" | "productImport";
-/** @enum {string} */
-        OperationStatus: "queued" | "running" | "completed" | "failed";
-PerformanceCurve: {
-            airflowUnit: string;
-            densityKgM3: number | null;
-            points: components["schemas"]["PerformancePoint"][];
-            pressureUnit: string;
-            sourceReference: string;
-            speedRpm: number | null;
-            state: components["schemas"]["FactState"];
-            testMethod: string | null;
-            voltage: string | null;
-        };
-PerformancePoint: {
-            airflow: number;
-            pressure: number;
-        };
-PlatformSettings: {
-            /** @constant */
-            readonly publicLocale: "en";
-            retentionDeletionGraceDays: number;
-            readonly revision: number;
-            rfqRetentionDays: number;
-            temporaryOverrideDefaultDays: number;
-        };
-ProblemDetails: {
-            detail: string;
-            errors?: {
-                [key: string]: string[];
-            };
-            instance?: string | null;
-            /** Format: uuid */
-            requestId: string;
-            status: number;
-            title: string;
-            /** Format: uri */
-            type: string;
-        };
-Product: {
-            /** Format: int64 */
-            currentRevision: number;
-            family: components["schemas"]["ProductFamily"];
+MediaBlock: {
+            caption?: string | null;
             /** Format: uuid */
             id: string;
-            indexable: boolean;
-            locale: string;
-            model: string | null;
-            motorTechnology: string | null;
-            performanceCurves: components["schemas"]["PerformanceCurve"][];
-            publishedRevision: number | null;
-            relatedContentIds: string[];
-            seo: components["schemas"]["SeoMetadata"];
-            slug: string;
-            sortOrder: number;
-            sourceRevision: string;
-            /** Format: uuid */
-            sourceSnapshotId: string;
-            specifications: components["schemas"]["SpecValue"][];
-            stableId: string;
-            status: components["schemas"]["PublicationStatus"];
-            subtype: string | null;
-            summary: string | null;
-            title: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-ProductContext: {
-            model?: string | null;
-            /** Format: uuid */
-            productId: string;
-            /** Format: int64 */
-            publishedRevision: number;
-            stableId: string;
-        };
-/** @enum {string} */
-        ProductFamily: "centrifugal" | "axial" | "crossFlow" | "inlineDuct" | "motors";
-ProductFamilyPresentation: {
-            code: components["schemas"]["ProductFamily"];
-            description: string;
-            name: string;
-            slug: string;
-            sortOrder: number;
-        };
-ProductImportAccepted: {
-            eventsUrl: string;
-            /** Format: uuid */
-            operationId: string;
-            operationUrl: string;
-            /** @enum {string} */
-            status: "queued" | "running" | "completed" | "failed" | "cancelled";
-        };
-ProductImportError: {
-            code: string;
-            detail: string;
-            fieldName: string | null;
-            rowNumber: number;
-            /** @enum {string} */
-            severity: "warning" | "error";
-            stableId: string | null;
-        };
-ProductImportRequest: {
-            csv: string;
-            mappingVersion?: string | null;
-        };
-ProductImportResult: {
-            checksum: string;
-            /** Format: date-time */
-            createdAt: string;
-            errors: components["schemas"]["ProductImportRowError"][];
-            /** Format: uuid */
-            id: string;
-            malformedRows: number;
-            mappingVersion: string;
-            missingAssets: components["schemas"]["MissingAssetReference"][];
-            reused: boolean;
-            status: string;
-            totalRows: number;
-            validRows: number;
-        };
-ProductImportResultPage: {
-            items: components["schemas"]["ProductImportResult"][];
-            nextCursor: string | null;
-        };
-ProductImportRowError: {
-            code: string;
-            detail: string;
-            fieldName: string | null;
-            rowNumber: number;
-            /** @enum {string} */
-            severity: "warning" | "error";
-            stableId: string | null;
-        };
-ProductImportRun: components["schemas"]["ProductImportResult"];
-ProductPage: {
-            items: components["schemas"]["Product"][];
-            /** @description Opaque base64url v1 keyset cursor bound to the filters used for this page. */
-            nextCursor: string | null;
-        };
-ProductPresentation: {
-            indexable: boolean;
-            locale: string;
-            publishedRevision: number | null;
-            relatedContentIds: string[];
-            /** Format: int64 */
-            revision: number;
-            seo: components["schemas"]["SeoMetadata"];
-            slug: string;
-            sortOrder: number;
-            summary: string | null;
-            title: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-ProductPrivatePricing: {
-            readonly pricingFields: {
-                [key: string]: string;
-            };
-            /** Format: uuid */
-            productId: string;
-            sourceRowNumber: number;
-            stableId: string;
-        };
-ProductRfqContext: {
-            additionalMessage?: string;
-            application: string;
-            electrical?: components["schemas"]["RfqElectricalContext"];
-            environment?: string;
-            /** @enum {string} */
-            priority?: "efficiency" | "noise" | "size" | "headroom";
-            quantity?: components["schemas"]["RfqQuantity"];
-        };
-ProductRfqProductContext: {
-            model: string;
-            /** Format: uuid */
-            productId: string;
-            /** Format: int64 */
-            publishedRevision: number;
-            stableId: string;
-        };
-ProductRfqRequest: {
-            /** @enum {boolean} */
-            consent: true;
-            contact: components["schemas"]["BusinessContact"];
-            context: components["schemas"]["ProductRfqContext"];
+            layout: components["schemas"]["MediaLayout"];
+            media: components["schemas"]["MediaUseReference"];
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            journey: "product";
-            /** @enum {string} */
-            locale: "en";
-            productContext: components["schemas"]["ProductRfqProductContext"];
-            sourcePath: string;
-        };
-ProjectRfqContext: {
-            additionalMessage?: string;
-            application: string;
-            electrical?: components["schemas"]["RfqElectricalContext"];
-            engineeringNeeds?: string;
-            environment?: string;
-            /** @enum {string} */
-            priority?: "efficiency" | "noise" | "size" | "headroom";
-            projectScale?: string;
-            /** @enum {string} */
-            projectStage: "Concept" | "Engineering" | "Prototype" | "Production planning";
-            quantity?: components["schemas"]["RfqQuantity"];
-            schedule?: string;
-        };
-ProjectRfqRequest: {
-            /** @enum {boolean} */
-            consent: true;
-            contact: components["schemas"]["BusinessContact"];
-            context: components["schemas"]["ProjectRfqContext"];
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            journey: "project";
-            /** @enum {string} */
-            locale: "en";
-            sourcePath: string;
+            type: "media";
         };
 /** @enum {string} */
-        PublicationStatus: "draft" | "scheduled" | "published" | "archived";
-ReasonRequest: {
-            reason: string;
+        MediaLayout: "inline" | "fullWidth" | "aside";
+MediaUseReference: {
+            altText?: string | null;
+            asset: components["schemas"]["AssetVersionReference"];
+            decorative: boolean;
         };
-RecoveryCodeSet: {
-            /** Format: date-time */
-            generatedAt: string;
-            readonly recoveryCodes: string[];
-        };
-ReplacementRfqContext: {
-            additionalMessage?: string;
-            application: string;
-            dutyPoint: components["schemas"]["RfqDutyPoint"];
-            electrical?: components["schemas"]["RfqElectricalContext"];
-            environment?: string;
-            existingModel: string;
-            installationConstraints?: string;
-            /** @enum {string} */
-            priority?: "efficiency" | "noise" | "size" | "headroom";
-            quantity?: components["schemas"]["RfqQuantity"];
-            replacementGoal?: string;
-        };
-ReplacementRfqRequest: {
-            /** @enum {boolean} */
-            consent: true;
-            contact: components["schemas"]["BusinessContact"];
-            context: components["schemas"]["ReplacementRfqContext"];
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            journey: "replacement";
-            /** @enum {string} */
-            locale: "en";
-            sourcePath: string;
-        };
-RevisionRequest: {
-            reason: string;
-            /** Format: int64 */
-            revision: number;
-        };
-RfqDutyPoint: {
-            airflow: number;
-            /** @enum {string} */
-            airflowUnit: "m3/h" | "m³/h" | "CFM" | "cfm";
-            pressure: number;
-            /** @enum {string} */
-            pressureUnit: "Pa" | "pa" | "kPa" | "kpa" | "inH2O" | "inh2o";
-        };
-RfqElectricalContext: {
-            frequencyHz?: number;
-            voltage?: string;
-        };
-/** @enum {string} */
-        RfqJourney: "product" | "selection" | "project" | "replacement";
-RfqQuantity: number | string;
-RfqSubmission: {
-            /** Format: uuid */
-            id: string;
-            reference: string;
-            request: components["schemas"]["CreateRfqRequest"];
-            /** Format: date-time */
-            retentionUntil: string;
-            status: string;
-            /** Format: date-time */
-            submittedAt: string;
-        };
-RfqSubmissionPage: {
-            items: components["schemas"]["RfqSubmission"][];
-            nextCursor: string | null;
-        };
-RichTextDocument: {
-            doc: unknown;
-            schemaVersion: number;
-        };
-RoleDefinition: components["schemas"]["AdminRoleRecord"];
-RollbackContentRequest: {
-            reason: string;
-            /** Format: int64 */
-            revision: number;
-        };
-RouteResolution: {
-            dataClass: components["schemas"]["DataClass"];
-            entityId: string | null;
-            entityType: string;
-            indexable: boolean;
-            locale: string;
-            page: components["schemas"]["ContentEntry"] | null;
-            path: string;
-            publishedRevision: number | null;
-            templateKey: string;
-        };
-SelectionRfqContext: {
-            additionalMessage?: string;
-            application: string;
-            control?: string;
-            dutyPoint: components["schemas"]["RfqDutyPoint"];
-            electrical?: components["schemas"]["RfqElectricalContext"];
-            environment?: string;
-            maximumDiameterMm?: number;
-            /** @enum {string} */
-            priority?: "efficiency" | "noise" | "size" | "headroom";
-            quantity?: components["schemas"]["RfqQuantity"];
-            requiredCertifications?: string[];
-        };
-SelectionRfqRequest: {
-            /** @enum {boolean} */
-            consent: true;
-            contact: components["schemas"]["BusinessContact"];
-            context: components["schemas"]["SelectionRfqContext"];
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            journey: "selection";
-            /** @enum {string} */
-            locale: "en";
-            sourcePath: string;
-        };
-SelectorCandidate: {
-            matchedConstraints: string[];
-            /** Format: uuid */
-            productId: string;
-            /** Format: int64 */
-            productRevision: number;
-            rank: number;
-            title: string;
-            warnings: string[];
-        };
-/** @enum {string} */
-        SelectorOutcome: "matched" | "noValidatedCandidates" | "engineeringReviewRequired";
-/** @enum {string} */
-        SelectorPriority: "efficiency" | "noise" | "size" | "headroom";
-SelectorRequest: {
-            airflow: number;
-            airflowUnit: string;
-            ambientTemperatureC?: number | null;
-            frequencyHz?: number | null;
-            maximumDiameterMm?: number | null;
-            motorTechnology?: string | null;
-            preferredFamily?: components["schemas"]["ProductFamily"] | null;
-            pressure: number;
-            pressureUnit: string;
-            priority?: components["schemas"]["SelectorPriority"] | null;
-            requiredCertifications: string[];
-            voltage?: string | null;
-        };
-SelectorResponse: {
-            candidates: components["schemas"]["SelectorCandidate"][];
-            explanations: string[];
-            outcome: components["schemas"]["SelectorOutcome"];
-        };
-SeoMetadata: {
-            canonicalPath: string | null;
-            description: string | null;
-            /** @default false */
-            indexable: boolean;
-            title: string | null;
-        };
-SeoMetadataInput: {
-            canonicalPath?: string | null;
-            description?: string | null;
-            /** @default false */
-            indexable: boolean;
-            title?: string | null;
+MigrationPreflightCounts: {
+            contentEntries: number;
+            contentRevisions: number;
+            generalInformationEntries: number;
+            mediaAssets: number;
+            mediaReferences: number;
+            newsEntries: number;
+            publicRoutes: number;
+            relations: number;
         };
 }

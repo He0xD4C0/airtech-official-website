@@ -204,6 +204,12 @@ AnalyticsSummary: {
             /** @constant */
             source: "firstParty";
         };
+AssetVersionReference: {
+            /** Format: uuid */
+            assetId: string;
+            /** Format: uuid */
+            versionId: string;
+        };
 AuditEvent: {
             action: string;
             actor: string;
@@ -239,6 +245,16 @@ BackgroundOperationPage: {
             items: components["schemas"]["BackgroundOperation"][];
             nextCursor: string | null;
         };
+BodyBlock: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "body";
+            width: components["schemas"]["ContentWidth"];
+        };
 BusinessContact: {
             company?: string | null;
             countryOrRegion?: string | null;
@@ -247,6 +263,18 @@ BusinessContact: {
             name: string;
             phone?: string | null;
         };
+CaseStudyTypeFields: {
+            industry?: string | null;
+            location?: string | null;
+        };
+/** @enum {string} */
+        CmsBodyPolicy: "required" | "optional" | "forbidden";
+/** @enum {string} */
+        CmsContentKind: "home" | "page" | "solution" | "technology" | "article" | "news" | "faq" | "caseStudy" | "download" | "company" | "legal" | "generalInformation" | "navigation" | "footer";
+/** @enum {string} */
+        CmsPublicationStatusV2: "draft" | "published" | "archived";
+/** @enum {string} */
+        CollectionPresentation: "cards" | "list" | "compact";
 ConsentedAnalyticsEvent: {
             /** Format: uuid */
             anonymousSessionId: string;
@@ -260,6 +288,29 @@ ConsentedAnalyticsEvent: {
             policyVersion: components["schemas"]["AnalyticsPolicyVersion"];
             properties?: components["schemas"]["AnalyticsEventProperties"];
             sourcePath: string;
+        };
+ContactBlock: {
+            action?: components["schemas"]["EditorialAction"] | null;
+            channels: components["schemas"]["ContactChannelKind"][];
+            heading?: string | null;
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "contactBlock";
+        };
+/** @enum {string} */
+        ContactChannelKind: "email" | "phone" | "address" | "social";
+ContactInformationInput: {
+            addressLines: string[];
+            countryCode?: string | null;
+            email?: string | null;
+            locality?: string | null;
+            phone?: string | null;
+            postalCode?: string | null;
+            region?: string | null;
         };
 ContactRequest: {
             /** Format: uuid */
@@ -276,6 +327,23 @@ ContactRequestPage: {
             items: components["schemas"]["ContactRequest"][];
             nextCursor: string | null;
         };
+ContentBlock: components["schemas"]["HeroBlock"] | components["schemas"]["BodyBlock"] | components["schemas"]["MediaBlock"] | components["schemas"]["FeatureGridBlock"] | components["schemas"]["EvidenceBlock"] | components["schemas"]["CtaBlock"] | components["schemas"]["RelationCollectionBlock"] | components["schemas"]["FaqCollectionBlock"] | components["schemas"]["DownloadAssetBlock"] | components["schemas"]["ContactBlock"];
+/** @enum {string} */
+        ContentBlockKind: "hero" | "body" | "media" | "featureGrid" | "evidence" | "cta" | "relationCollection" | "faqCollection" | "downloadAsset" | "contactBlock";
+ContentDiffChange: {
+            after: unknown | null;
+            before: unknown | null;
+            path: string;
+        };
+ContentDiffV2: {
+            /** Format: int64 */
+            baseRevision: number;
+            changes: components["schemas"]["ContentDiffChange"][];
+            /** Format: uuid */
+            contentId: string;
+            targetDraftVersion: number | null;
+            targetRevision: number | null;
+        };
 ContentDraftInput: {
             body: components["schemas"]["RichTextDocument"];
             /** @default false */
@@ -290,6 +358,24 @@ ContentDraftInput: {
             slug: string;
             summary?: string | null;
             title: string;
+        };
+ContentDraftV2: {
+            body?: components["schemas"]["TiptapDocument"] | null;
+            composition: components["schemas"]["PageComposition"];
+            /** Format: int64 */
+            draftVersion: number;
+            isPlaceholder: boolean;
+            kind: components["schemas"]["CmsContentKind"];
+            locale: string;
+            relations: components["schemas"]["ContentRelationReference"][];
+            /** @constant */
+            schemaVersion: 2;
+            seo: components["schemas"]["SeoInputV2"];
+            slug?: string | null;
+            summary?: string | null;
+            templateKey: components["schemas"]["ContentTemplateKey"];
+            title: string;
+            typeFields: components["schemas"]["ContentTypeFields"];
         };
 ContentEntry: {
             body: components["schemas"]["RichTextDocument"];
@@ -333,163 +419,60 @@ ContentPreviewResponse: {
             /** Format: date-time */
             previewExpiresAt: string;
         };
-CreateAnalyticsConsent: {
-            analyticsAllowed: boolean;
+ContentRecordV2: {
+            /** Format: date-time */
+            createdAt: string;
+            draft: components["schemas"]["ContentDraftV2"];
             /** Format: uuid */
-            anonymousSessionId: string;
-            policyVersion: components["schemas"]["AnalyticsPolicyVersion"];
+            id: string;
+            latestRevision: number | null;
+            publishedRevision: number | null;
+            status: components["schemas"]["CmsPublicationStatusV2"];
+            /** Format: date-time */
+            updatedAt: string;
+            updatedBy: string;
         };
-CreateAnalyticsEvent: components["schemas"]["ConsentedAnalyticsEvent"] | components["schemas"]["AnalyticsOptOutEvent"];
-CreateContactRequest: {
-            consent: boolean;
-            contact: components["schemas"]["BusinessContact"];
-            locale: string;
-            message: string;
-            sourcePath: string;
-            topic: string;
+ContentRecordV2Page: {
+            items: components["schemas"]["ContentRecordV2"][];
+            nextCursor: string | null;
         };
-CreateContentPreviewRequest: {
-            /** @default 600 */
-            expiresInSeconds?: number;
+ContentRelationReference: {
+            /** Format: uuid */
+            id: string;
+            slot: string;
+            target: components["schemas"]["RelationTargetReference"];
+        };
+/** @enum {string} */
+        ContentRevisionKindV2: "manual" | "publish" | "restore";
+ContentRevisionV2: {
+            /** Format: uuid */
+            contentId: string;
+            /** Format: date-time */
+            createdAt: string;
+            createdBy: string;
+            document: components["schemas"]["ContentDraftV2"];
+            kind: components["schemas"]["ContentRevisionKindV2"];
+            reason: string;
             /** Format: int64 */
             revision: number;
-        };
-CreateGuestVisit: {
-            /** Format: uuid */
-            anonymousSessionId: string;
-            campaign?: string | null;
-            /** Format: uuid */
-            consentReceipt: string;
-            landingPath: string;
-            medium?: string | null;
-            policyVersion: components["schemas"]["AnalyticsPolicyVersion"];
-            referrerDomain?: string | null;
-            source?: string | null;
-        };
-CreateOperationRequest: {
-            confirmation: string;
-            kind: components["schemas"]["OperationKind"];
-            reason: string;
-        };
-CreateRfqRequest: components["schemas"]["ProductRfqRequest"] | components["schemas"]["SelectionRfqRequest"] | components["schemas"]["ProjectRfqRequest"] | components["schemas"]["ReplacementRfqRequest"];
-CreateTemporaryOverride: {
-            expiresAt?: string | null;
-            fieldPath: string;
-            /** Format: uuid */
-            productId: string;
-            reason: string;
-            value: unknown;
-        };
-/** @enum {string} */
-        DataClass: "editorial" | "feishu" | "verifiedCsv" | "developmentFixture";
-DiscoveryDocument: {
-            entries: components["schemas"]["DiscoveryEntry"][];
-            /** Format: date-time */
-            generatedAt: string;
-        };
-DiscoveryEntry: {
-            /** Format: uuid */
-            entityId: string;
-            /** @enum {string} */
-            entityType: "content" | "product";
-            locale: string;
-            path: string;
-            summary: string | null;
-            title: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-/** @enum {string} */
-        FactState: "verified" | "missing" | "notApplicable" | "notTested" | "confidential" | "pendingVerification";
-FieldDiff: {
-            baseValue: unknown | null;
-            fieldPath: string;
-            incomingValue: unknown | null;
-            localValue: unknown | null;
-            sourceOwned: boolean;
-        };
-GeneralInformation: {
             /** Format: int64 */
-            currentRevision: number;
-            /** Format: uuid */
-            id: string;
-            isPlaceholder: boolean;
-            locale: string;
-            payload: components["schemas"]["GeneralInformationPayload"];
-            publishedRevision: number | null;
-            status: components["schemas"]["PublicationStatus"];
-            /** Format: date-time */
-            updatedAt: string;
+            sourceDraftVersion: number;
         };
-GeneralInformationDraftInput: {
-            /** @default false */
-            isPlaceholder?: boolean;
-            /** @default en */
-            locale?: string;
-            payload: components["schemas"]["GeneralInformationPayload"];
-        };
-GeneralInformationPayload: {
-            brandLine: string | null;
-            brandName: string;
-            copyrightText: string | null;
-            defaultSeo: {
-                [key: string]: unknown;
-            };
-            footerStatement: string | null;
-            homePath: string;
-            navigationCta?: {
-                href?: string;
-                label?: string;
-            } | null;
-            organization: {
-                [key: string]: unknown;
-            };
-            productCategories?: components["schemas"]["ProductFamilyPresentation"][];
-        } & {
-            [key: string]: unknown;
-        };
-/** @description Immutable General Information revision payload. */
-        GeneralInformationRevision: components["schemas"]["GeneralInformation"];
-GeneralInformationRevisionPage: {
-            items: components["schemas"]["GeneralInformationRevision"][];
+ContentRevisionV2Page: {
+            items: components["schemas"]["ContentRevisionV2"][];
             nextCursor: string | null;
         };
-GuestSourceDaily: {
-            /** Format: date */
-            bucketDate: string;
-            campaign: string | null;
-            landingPath: string;
-            locale: string;
-            medium: string | null;
-            pageViews: number;
-            referrerDomain: string | null;
-            rfqStarts: number;
-            rfqSubmissions: number;
-            source: string;
-            sourceName: string | null;
-            utmSource: string | null;
-            visits: number;
+/** @enum {string} */
+        ContentSnapshotIntent: "manual" | "publish";
+ContentTemplateDefinition: {
+            allowedBlocks: components["schemas"]["ContentBlockKind"][];
+            bodyPolicy: components["schemas"]["CmsBodyPolicy"];
+            contentKind: components["schemas"]["CmsContentKind"];
+            key: components["schemas"]["ContentTemplateKey"];
+            requiredBlocks: components["schemas"]["ContentBlockKind"][];
+            routable: boolean;
+            singletonPerLocale: boolean;
         };
-GuestSourceDailyPage: {
-            items: components["schemas"]["GuestSourceDaily"][];
-            nextCursor: string | null;
-        };
-GuestSourceSummary: components["schemas"]["GuestSourceDaily"];
-GuestVisit: {
-            /** Format: uuid */
-            anonymousSessionId: string;
-            campaign: string | null;
-            /** Format: date-time */
-            firstSeenAt: string;
-            /** Format: uuid */
-            id: string;
-            landingPath: string;
-            /** Format: date-time */
-            lastSeenAt: string;
-            medium: string | null;
-            referrerDomain: string | null;
-            /** Format: date-time */
-            retentionUntil: string;
-            source: string;
-        };
+/** @enum {string} */
+        ContentTemplateKey: "home" | "productIndex" | "productFamily" | "selector" | "compare" | "solutionIndex" | "solutionDetail" | "technologyIndex" | "technologyDetail" | "articleIndex" | "articleDetail" | "newsIndex" | "newsDetail" | "faqIndex" | "faqDetail" | "caseStudyIndex" | "caseStudyDetail" | "downloadIndex" | "downloadDetail" | "about" | "contact" | "rfqRouter" | "rfqForm" | "search" | "legal" | "navigation" | "footer" | "generalInformation";
 }

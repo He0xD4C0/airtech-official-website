@@ -6,9 +6,10 @@
 import type { SchemasPart01 } from './schemas/part-01'
 import type { SchemasPart02 } from './schemas/part-02'
 import type { SchemasPart03 } from './schemas/part-03'
+import type { SchemasPart04 } from './schemas/part-04'
 
 export interface components {
-    schemas: SchemasPart01 & SchemasPart02 & SchemasPart03;
+    schemas: SchemasPart01 & SchemasPart02 & SchemasPart03 & SchemasPart04;
     responses: never;
     parameters: never;
     requestBodies: never;

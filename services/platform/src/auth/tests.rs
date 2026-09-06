@@ -23,19 +23,22 @@ mod tests {
     #[test]
     fn permission_mapping_distinguishes_edit_and_publish() {
         assert_eq!(
-            required_permission("/api/admin/v1/content/abc", &axum::http::Method::PATCH),
+            required_permission(
+                "/api/admin/v1/content/abc/draft",
+                &axum::http::Method::PATCH
+            ),
             Some("content.write")
         );
         assert_eq!(
             required_permission(
-                "/api/admin/v1/content/abc/publish",
+                "/api/admin/v1/content/abc/snapshots",
                 &axum::http::Method::POST
             ),
-            Some("content.publish")
+            Some("content.write")
         );
         assert_eq!(
             required_permission(
-                "/api/admin/v1/content/abc/preview",
+                "/api/admin/v1/content/abc/revisions/2/restore",
                 &axum::http::Method::POST
             ),
             Some("content.write")

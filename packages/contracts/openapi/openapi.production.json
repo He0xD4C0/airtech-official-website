@@ -835,6 +835,24 @@
         ],
         "type": "object"
       },
+      "AssetVersionReference": {
+        "additionalProperties": false,
+        "properties": {
+          "assetId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "versionId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "assetId",
+          "versionId"
+        ],
+        "type": "object"
+      },
       "AuditEvent": {
         "additionalProperties": false,
         "properties": {
@@ -1007,6 +1025,28 @@
         ],
         "type": "object"
       },
+      "BodyBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "type": {
+            "const": "body",
+            "type": "string"
+          },
+          "width": {
+            "$ref": "#/components/schemas/ContentWidth"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "width"
+        ],
+        "type": "object"
+      },
       "BusinessContact": {
         "additionalProperties": false,
         "properties": {
@@ -1063,6 +1103,78 @@
         ],
         "type": "object"
       },
+      "CaseStudyTypeFields": {
+        "additionalProperties": false,
+        "properties": {
+          "industry": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "location": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "CmsBodyPolicy": {
+        "enum": [
+          "required",
+          "optional",
+          "forbidden"
+        ],
+        "type": "string"
+      },
+      "CmsContentKind": {
+        "enum": [
+          "home",
+          "page",
+          "solution",
+          "technology",
+          "article",
+          "news",
+          "faq",
+          "caseStudy",
+          "download",
+          "company",
+          "legal",
+          "generalInformation",
+          "navigation",
+          "footer"
+        ],
+        "type": "string"
+      },
+      "CmsPublicationStatusV2": {
+        "enum": [
+          "draft",
+          "published",
+          "archived"
+        ],
+        "type": "string"
+      },
+      "CollectionPresentation": {
+        "enum": [
+          "cards",
+          "list",
+          "compact"
+        ],
+        "type": "string"
+      },
       "ConsentedAnalyticsEvent": {
         "additionalProperties": false,
         "properties": {
@@ -1110,6 +1222,145 @@
           "consentGranted",
           "policyVersion",
           "consentReceipt"
+        ],
+        "type": "object"
+      },
+      "ContactBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EditorialAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "channels": {
+            "items": {
+              "$ref": "#/components/schemas/ContactChannelKind"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "heading": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "type": {
+            "const": "contactBlock",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "channels"
+        ],
+        "type": "object"
+      },
+      "ContactChannelKind": {
+        "enum": [
+          "email",
+          "phone",
+          "address",
+          "social"
+        ],
+        "type": "string"
+      },
+      "ContactInformationInput": {
+        "additionalProperties": false,
+        "properties": {
+          "addressLines": {
+            "items": {
+              "maxLength": 300,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "countryCode": {
+            "anyOf": [
+              {
+                "maxLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "maxLength": 254,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "locality": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "postalCode": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "region": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "addressLines"
         ],
         "type": "object"
       },
@@ -1174,6 +1425,155 @@
         ],
         "type": "object"
       },
+      "ContentBlock": {
+        "discriminator": {
+          "mapping": {
+            "body": "#/components/schemas/BodyBlock",
+            "contactBlock": "#/components/schemas/ContactBlock",
+            "cta": "#/components/schemas/CtaBlock",
+            "downloadAsset": "#/components/schemas/DownloadAssetBlock",
+            "evidence": "#/components/schemas/EvidenceBlock",
+            "faqCollection": "#/components/schemas/FaqCollectionBlock",
+            "featureGrid": "#/components/schemas/FeatureGridBlock",
+            "hero": "#/components/schemas/HeroBlock",
+            "media": "#/components/schemas/MediaBlock",
+            "relationCollection": "#/components/schemas/RelationCollectionBlock"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/HeroBlock"
+          },
+          {
+            "$ref": "#/components/schemas/BodyBlock"
+          },
+          {
+            "$ref": "#/components/schemas/MediaBlock"
+          },
+          {
+            "$ref": "#/components/schemas/FeatureGridBlock"
+          },
+          {
+            "$ref": "#/components/schemas/EvidenceBlock"
+          },
+          {
+            "$ref": "#/components/schemas/CtaBlock"
+          },
+          {
+            "$ref": "#/components/schemas/RelationCollectionBlock"
+          },
+          {
+            "$ref": "#/components/schemas/FaqCollectionBlock"
+          },
+          {
+            "$ref": "#/components/schemas/DownloadAssetBlock"
+          },
+          {
+            "$ref": "#/components/schemas/ContactBlock"
+          }
+        ]
+      },
+      "ContentBlockKind": {
+        "enum": [
+          "hero",
+          "body",
+          "media",
+          "featureGrid",
+          "evidence",
+          "cta",
+          "relationCollection",
+          "faqCollection",
+          "downloadAsset",
+          "contactBlock"
+        ],
+        "type": "string"
+      },
+      "ContentDiffChange": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "before": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "path": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "before",
+          "after"
+        ],
+        "type": "object"
+      },
+      "ContentDiffV2": {
+        "additionalProperties": false,
+        "properties": {
+          "baseRevision": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/ContentDiffChange"
+            },
+            "maxItems": 5000,
+            "type": "array"
+          },
+          "contentId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "targetDraftVersion": {
+            "anyOf": [
+              {
+                "format": "int64",
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "targetRevision": {
+            "anyOf": [
+              {
+                "format": "int64",
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "contentId",
+          "baseRevision",
+          "targetRevision",
+          "targetDraftVersion",
+          "changes"
+        ],
+        "type": "object"
+      },
       "ContentDraftInput": {
         "additionalProperties": false,
         "properties": {
@@ -1224,6 +1624,111 @@
           "slug",
           "title",
           "body"
+        ],
+        "type": "object"
+      },
+      "ContentDraftV2": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TiptapDocument"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "composition": {
+            "$ref": "#/components/schemas/PageComposition"
+          },
+          "draftVersion": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "isPlaceholder": {
+            "type": "boolean"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CmsContentKind"
+              }
+            ],
+            "x-immutable": true
+          },
+          "locale": {
+            "maxLength": 35,
+            "minLength": 2,
+            "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$",
+            "type": "string",
+            "x-immutable": true
+          },
+          "relations": {
+            "items": {
+              "$ref": "#/components/schemas/ContentRelationReference"
+            },
+            "type": "array"
+          },
+          "schemaVersion": {
+            "const": 2,
+            "type": "integer"
+          },
+          "seo": {
+            "$ref": "#/components/schemas/SeoInputV2"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "maxLength": 180,
+                "pattern": "^(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "templateKey": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContentTemplateKey"
+              }
+            ],
+            "x-immutable": true
+          },
+          "title": {
+            "maxLength": 300,
+            "type": "string"
+          },
+          "typeFields": {
+            "$ref": "#/components/schemas/ContentTypeFields"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "kind",
+          "locale",
+          "templateKey",
+          "title",
+          "isPlaceholder",
+          "typeFields",
+          "composition",
+          "seo",
+          "relations",
+          "draftVersion"
         ],
         "type": "object"
       },
@@ -1417,6 +1922,779 @@
         ],
         "type": "object"
       },
+      "ContentRecordV2": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "draft": {
+            "$ref": "#/components/schemas/ContentDraftV2"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "latestRevision": {
+            "anyOf": [
+              {
+                "format": "int64",
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "publishedRevision": {
+            "anyOf": [
+              {
+                "format": "int64",
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/CmsPublicationStatusV2"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedBy": {
+            "maxLength": 320,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "draft",
+          "latestRevision",
+          "publishedRevision",
+          "createdAt",
+          "updatedAt",
+          "updatedBy"
+        ],
+        "type": "object"
+      },
+      "ContentRecordV2Page": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ContentRecordV2"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object"
+      },
+      "ContentRelationReference": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "slot": {
+            "maxLength": 120,
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/RelationTargetReference"
+          }
+        },
+        "required": [
+          "id",
+          "slot",
+          "target"
+        ],
+        "type": "object"
+      },
+      "ContentRevisionKindV2": {
+        "enum": [
+          "manual",
+          "publish",
+          "restore"
+        ],
+        "type": "string"
+      },
+      "ContentRevisionV2": {
+        "additionalProperties": false,
+        "properties": {
+          "contentId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdBy": {
+            "maxLength": 320,
+            "minLength": 1,
+            "type": "string"
+          },
+          "document": {
+            "$ref": "#/components/schemas/ContentDraftV2"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ContentRevisionKindV2"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "sourceDraftVersion": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "contentId",
+          "revision",
+          "sourceDraftVersion",
+          "kind",
+          "document",
+          "reason",
+          "createdBy",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "ContentRevisionV2Page": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ContentRevisionV2"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object"
+      },
+      "ContentSnapshotIntent": {
+        "enum": [
+          "manual",
+          "publish"
+        ],
+        "type": "string"
+      },
+      "ContentTemplateDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "allowedBlocks": {
+            "items": {
+              "$ref": "#/components/schemas/ContentBlockKind"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "bodyPolicy": {
+            "$ref": "#/components/schemas/CmsBodyPolicy"
+          },
+          "contentKind": {
+            "$ref": "#/components/schemas/CmsContentKind"
+          },
+          "key": {
+            "$ref": "#/components/schemas/ContentTemplateKey"
+          },
+          "requiredBlocks": {
+            "items": {
+              "$ref": "#/components/schemas/ContentBlockKind"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "routable": {
+            "type": "boolean"
+          },
+          "singletonPerLocale": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key",
+          "contentKind",
+          "bodyPolicy",
+          "requiredBlocks",
+          "allowedBlocks",
+          "routable",
+          "singletonPerLocale"
+        ],
+        "type": "object"
+      },
+      "ContentTemplateKey": {
+        "enum": [
+          "home",
+          "productIndex",
+          "productFamily",
+          "selector",
+          "compare",
+          "solutionIndex",
+          "solutionDetail",
+          "technologyIndex",
+          "technologyDetail",
+          "articleIndex",
+          "articleDetail",
+          "newsIndex",
+          "newsDetail",
+          "faqIndex",
+          "faqDetail",
+          "caseStudyIndex",
+          "caseStudyDetail",
+          "downloadIndex",
+          "downloadDetail",
+          "about",
+          "contact",
+          "rfqRouter",
+          "rfqForm",
+          "search",
+          "legal",
+          "navigation",
+          "footer",
+          "generalInformation"
+        ],
+        "type": "string"
+      },
+      "ContentTypeFields": {
+        "discriminator": {
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "home",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "page",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "key": {
+                "anyOf": [
+                  {
+                    "maxLength": 120,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": {
+                "const": "solution",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "key": {
+                "anyOf": [
+                  {
+                    "maxLength": 120,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": {
+                "const": "technology",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "authorDisplayName": {
+                "anyOf": [
+                  {
+                    "maxLength": 200,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "category": {
+                "anyOf": [
+                  {
+                    "maxLength": 120,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "cover": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/MediaUseReference"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "featured": {
+                "type": "boolean"
+              },
+              "publicationAt": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": {
+                "const": "article",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "featured"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "authorDisplayName": {
+                "anyOf": [
+                  {
+                    "maxLength": 200,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "category": {
+                "anyOf": [
+                  {
+                    "maxLength": 120,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "cover": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/MediaUseReference"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "featured": {
+                "type": "boolean"
+              },
+              "publicationAt": {
+                "anyOf": [
+                  {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": {
+                "const": "news",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "featured"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "items": {
+                "items": {
+                  "$ref": "#/components/schemas/FaqItem"
+                },
+                "type": "array"
+              },
+              "type": {
+                "const": "faq",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "items"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "industry": {
+                "anyOf": [
+                  {
+                    "maxLength": 200,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "location": {
+                "anyOf": [
+                  {
+                    "maxLength": 200,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": {
+                "const": "caseStudy",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "resourceType": {
+                "anyOf": [
+                  {
+                    "maxLength": 120,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": {
+                "const": "download",
+                "type": "string"
+              },
+              "versionLabel": {
+                "anyOf": [
+                  {
+                    "maxLength": 200,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "versionNotes": {
+                "anyOf": [
+                  {
+                    "maxLength": 2000,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "const": "company",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "effectiveDate": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": {
+                "const": "legal",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "brandLine": {
+                "anyOf": [
+                  {
+                    "maxLength": 500,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "contact": {
+                "$ref": "#/components/schemas/ContactInformationInput"
+              },
+              "copyrightTemplate": {
+                "anyOf": [
+                  {
+                    "maxLength": 500,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "defaultSeo": {
+                "$ref": "#/components/schemas/SeoInputV2"
+              },
+              "footerStatement": {
+                "anyOf": [
+                  {
+                    "maxLength": 1000,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "homePath": {
+                "anyOf": [
+                  {
+                    "maxLength": 2048,
+                    "pattern": "^/(?![/\\\\])[^?#\\s\\\\]*$",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "navigationCta": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/EditorialAction"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "organizationName": {
+                "anyOf": [
+                  {
+                    "maxLength": 200,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "productCategories": {
+                "items": {
+                  "$ref": "#/components/schemas/ProductCategoryPresentationInput"
+                },
+                "type": "array"
+              },
+              "socialLinks": {
+                "items": {
+                  "$ref": "#/components/schemas/SocialLinkInput"
+                },
+                "type": "array"
+              },
+              "type": {
+                "const": "generalInformation",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "contact",
+              "socialLinks",
+              "defaultSeo",
+              "productCategories"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "items": {
+                "items": {
+                  "$ref": "#/components/schemas/NavigationItem"
+                },
+                "type": "array"
+              },
+              "type": {
+                "const": "navigation",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "items"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "columns": {
+                "items": {
+                  "$ref": "#/components/schemas/FooterColumn"
+                },
+                "type": "array"
+              },
+              "legalLinks": {
+                "items": {
+                  "$ref": "#/components/schemas/NavigationItem"
+                },
+                "type": "array"
+              },
+              "type": {
+                "const": "footer",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "columns",
+              "legalLinks"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "ContentWidth": {
+        "enum": [
+          "narrow",
+          "standard",
+          "wide"
+        ],
+        "type": "string"
+      },
       "CreateAnalyticsConsent": {
         "additionalProperties": false,
         "properties": {
@@ -1497,6 +2775,24 @@
         },
         "required": [
           "revision"
+        ],
+        "type": "object"
+      },
+      "CreateContentSnapshotRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "intent": {
+            "$ref": "#/components/schemas/ContentSnapshotIntent"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 10,
+            "type": "string"
+          }
+        },
+        "required": [
+          "intent",
+          "reason"
         ],
         "type": "object"
       },
@@ -1663,6 +2959,66 @@
         ],
         "type": "object"
       },
+      "CtaBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/EditorialAction"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "eyebrow": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "heading": {
+            "maxLength": 300,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "type": {
+            "const": "cta",
+            "type": "string"
+          },
+          "variant": {
+            "$ref": "#/components/schemas/CtaVariant"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "heading",
+          "action",
+          "variant"
+        ],
+        "type": "object"
+      },
+      "CtaVariant": {
+        "enum": [
+          "standard",
+          "emphasized"
+        ],
+        "type": "string"
+      },
       "DataClass": {
         "enum": [
           "editorial",
@@ -1742,6 +3098,226 @@
         ],
         "type": "object"
       },
+      "DownloadAssetBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "asset": {
+            "$ref": "#/components/schemas/AssetVersionReference"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "type": {
+            "const": "downloadAsset",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "asset",
+          "label"
+        ],
+        "type": "object"
+      },
+      "DownloadTypeFields": {
+        "additionalProperties": false,
+        "properties": {
+          "resourceType": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "versionLabel": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "versionNotes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "EditorialAction": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "maxLength": 120,
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/LinkTargetReference"
+          }
+        },
+        "required": [
+          "label",
+          "target"
+        ],
+        "type": "object"
+      },
+      "EditorialTypeFields": {
+        "additionalProperties": false,
+        "properties": {
+          "authorDisplayName": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cover": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaUseReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "featured": {
+            "type": "boolean"
+          },
+          "publicationAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "featured"
+        ],
+        "type": "object"
+      },
+      "EvidenceBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "heading": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceItem"
+            },
+            "type": "array"
+          },
+          "type": {
+            "const": "evidence",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "items"
+        ],
+        "type": "object"
+      },
+      "EvidenceItem": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "sourceNote": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "statement": {
+            "maxLength": 2000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "statement"
+        ],
+        "type": "object"
+      },
       "FactState": {
         "enum": [
           "verified",
@@ -1752,6 +3328,147 @@
           "pendingVerification"
         ],
         "type": "string"
+      },
+      "FaqCollectionBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "heading": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "type": {
+            "const": "faqCollection",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id"
+        ],
+        "type": "object"
+      },
+      "FaqItem": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "$ref": "#/components/schemas/TiptapDocument"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "question": {
+            "maxLength": 500,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "question",
+          "answer"
+        ],
+        "type": "object"
+      },
+      "FaqTypeFields": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FaqItem"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "FeatureGridBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "heading": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureItem"
+            },
+            "type": "array"
+          },
+          "type": {
+            "const": "featureGrid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "items"
+        ],
+        "type": "object"
+      },
+      "FeatureItem": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaUseReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "type": "object"
       },
       "FieldDiff": {
         "additionalProperties": false,
@@ -1793,6 +3510,53 @@
           "localValue",
           "incomingValue",
           "sourceOwned"
+        ],
+        "type": "object"
+      },
+      "FooterColumn": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/NavigationItem"
+            },
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 120,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "links"
+        ],
+        "type": "object"
+      },
+      "FooterTypeFields": {
+        "additionalProperties": false,
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/FooterColumn"
+            },
+            "type": "array"
+          },
+          "legalLinks": {
+            "items": {
+              "$ref": "#/components/schemas/NavigationItem"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "columns",
+          "legalLinks"
         ],
         "type": "object"
       },
@@ -1986,6 +3750,102 @@
         "required": [
           "items",
           "nextCursor"
+        ],
+        "type": "object"
+      },
+      "GeneralInformationTypeFields": {
+        "additionalProperties": false,
+        "properties": {
+          "brandLine": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contact": {
+            "$ref": "#/components/schemas/ContactInformationInput"
+          },
+          "copyrightTemplate": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "defaultSeo": {
+            "$ref": "#/components/schemas/SeoInputV2"
+          },
+          "footerStatement": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "homePath": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "pattern": "^/(?![/\\\\])[^?#\\s\\\\]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "navigationCta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EditorialAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "organizationName": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "productCategories": {
+            "items": {
+              "$ref": "#/components/schemas/ProductCategoryPresentationInput"
+            },
+            "type": "array"
+          },
+          "socialLinks": {
+            "items": {
+              "$ref": "#/components/schemas/SocialLinkInput"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "contact",
+          "socialLinks",
+          "defaultSeo",
+          "productCategories"
         ],
         "type": "object"
       },
@@ -2320,6 +4180,87 @@
         ],
         "type": "object"
       },
+      "HeroBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/EditorialAction"
+            },
+            "maxItems": 2,
+            "type": "array"
+          },
+          "eyebrow": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "heading": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "lead": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "media": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaUseReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "const": "hero",
+            "type": "string"
+          },
+          "variant": {
+            "$ref": "#/components/schemas/HeroVariant"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "actions",
+          "variant"
+        ],
+        "type": "object"
+      },
+      "HeroVariant": {
+        "enum": [
+          "standard",
+          "splitMedia",
+          "minimal"
+        ],
+        "type": "string"
+      },
       "InvitationAcceptance": {
         "additionalProperties": false,
         "properties": {
@@ -2390,6 +4331,101 @@
         ],
         "type": "object"
       },
+      "LegalTypeFields": {
+        "additionalProperties": false,
+        "properties": {
+          "effectiveDate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "LinkTargetContent": {
+        "additionalProperties": false,
+        "properties": {
+          "contentId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "targetType": {
+            "const": "content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetType",
+          "contentId"
+        ],
+        "type": "object"
+      },
+      "LinkTargetExternal": {
+        "additionalProperties": false,
+        "properties": {
+          "targetType": {
+            "const": "external",
+            "type": "string"
+          },
+          "url": {
+            "format": "uri",
+            "maxLength": 2048,
+            "pattern": "^https://",
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetType",
+          "url"
+        ],
+        "type": "object"
+      },
+      "LinkTargetReference": {
+        "discriminator": {
+          "mapping": {
+            "content": "#/components/schemas/LinkTargetContent",
+            "external": "#/components/schemas/LinkTargetExternal",
+            "route": "#/components/schemas/LinkTargetRoute"
+          },
+          "propertyName": "targetType"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/LinkTargetContent"
+          },
+          {
+            "$ref": "#/components/schemas/LinkTargetRoute"
+          },
+          {
+            "$ref": "#/components/schemas/LinkTargetExternal"
+          }
+        ]
+      },
+      "LinkTargetRoute": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "maxLength": 2048,
+            "pattern": "^/(?![/\\\\])[^?#\\s\\\\]*$",
+            "type": "string"
+          },
+          "targetType": {
+            "const": "route",
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetType",
+          "path"
+        ],
+        "type": "object"
+      },
       "LoginRequest": {
         "additionalProperties": false,
         "properties": {
@@ -2422,6 +4458,275 @@
         ],
         "type": "object"
       },
+      "MediaBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "caption": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "layout": {
+            "$ref": "#/components/schemas/MediaLayout"
+          },
+          "media": {
+            "$ref": "#/components/schemas/MediaUseReference"
+          },
+          "type": {
+            "const": "media",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "media",
+          "layout"
+        ],
+        "type": "object"
+      },
+      "MediaLayout": {
+        "enum": [
+          "inline",
+          "fullWidth",
+          "aside"
+        ],
+        "type": "string"
+      },
+      "MediaUseReference": {
+        "additionalProperties": false,
+        "properties": {
+          "altText": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "asset": {
+            "$ref": "#/components/schemas/AssetVersionReference"
+          },
+          "decorative": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "asset",
+          "decorative"
+        ],
+        "type": "object"
+      },
+      "MigrationPreflightCounts": {
+        "additionalProperties": false,
+        "properties": {
+          "contentEntries": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "contentRevisions": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "generalInformationEntries": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "mediaAssets": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "mediaReferences": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "newsEntries": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "publicRoutes": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "relations": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "contentEntries",
+          "contentRevisions",
+          "newsEntries",
+          "generalInformationEntries",
+          "mediaAssets",
+          "mediaReferences",
+          "relations",
+          "publicRoutes"
+        ],
+        "type": "object"
+      },
+      "MigrationPreflightIssue": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/MigrationPreflightIssueCode"
+          },
+          "entityId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "jsonPath": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "format": "int64",
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "severity": {
+            "$ref": "#/components/schemas/MigrationPreflightSeverity"
+          },
+          "source": {
+            "$ref": "#/components/schemas/MigrationPreflightSource"
+          }
+        },
+        "required": [
+          "severity",
+          "code",
+          "source",
+          "message"
+        ],
+        "type": "object"
+      },
+      "MigrationPreflightIssueCode": {
+        "enum": [
+          "invalidLegacyPayload",
+          "unsupportedContentKind",
+          "unsupportedTemplate",
+          "embeddedPageSlots",
+          "unknownBlock",
+          "invalidTiptapDocument",
+          "typeFieldMismatch",
+          "invalidRelation",
+          "missingRelationTarget",
+          "relationHistoryUnavailable",
+          "missingMediaAsset",
+          "missingMediaVersion",
+          "duplicatePublicPath",
+          "missingPublicRoute",
+          "routeOwnershipMismatch",
+          "canonicalPathMismatch",
+          "scheduledPublicationUnsupported",
+          "revisionConversionFailed"
+        ],
+        "type": "string"
+      },
+      "MigrationPreflightReport": {
+        "additionalProperties": false,
+        "properties": {
+          "blockingIssueCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "canMigrate": {
+            "type": "boolean"
+          },
+          "convertible": {
+            "$ref": "#/components/schemas/MigrationPreflightCounts"
+          },
+          "generatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/MigrationPreflightIssue"
+            },
+            "type": "array"
+          },
+          "scanned": {
+            "$ref": "#/components/schemas/MigrationPreflightCounts"
+          },
+          "targetSchemaVersion": {
+            "const": 2,
+            "type": "integer"
+          },
+          "warningCount": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "targetSchemaVersion",
+          "generatedAt",
+          "canMigrate",
+          "scanned",
+          "convertible",
+          "blockingIssueCount",
+          "warningCount",
+          "issues"
+        ],
+        "type": "object"
+      },
+      "MigrationPreflightSeverity": {
+        "enum": [
+          "warning",
+          "blocking"
+        ],
+        "type": "string"
+      },
+      "MigrationPreflightSource": {
+        "enum": [
+          "content",
+          "contentRevision",
+          "news",
+          "generalInformation",
+          "media",
+          "relation",
+          "route"
+        ],
+        "type": "string"
+      },
       "MissingAssetReference": {
         "additionalProperties": false,
         "properties": {
@@ -2439,6 +4744,56 @@
           "stableId",
           "assetType",
           "sourceReference"
+        ],
+        "type": "object"
+      },
+      "NavigationItem": {
+        "additionalProperties": false,
+        "properties": {
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/NavigationItem"
+            },
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 120,
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinkTargetReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "children"
+        ],
+        "type": "object"
+      },
+      "NavigationTypeFields": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NavigationItem"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
         ],
         "type": "object"
       },
@@ -2645,6 +5000,21 @@
           "failed"
         ],
         "type": "string"
+      },
+      "PageComposition": {
+        "additionalProperties": false,
+        "properties": {
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/ContentBlock"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "blocks"
+        ],
+        "type": "object"
       },
       "PerformanceCurve": {
         "additionalProperties": false,
@@ -2976,6 +5346,39 @@
           "status",
           "indexable",
           "updatedAt"
+        ],
+        "type": "object"
+      },
+      "ProductCategoryPresentationInput": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ProductFamily"
+          },
+          "description": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "type": "string"
+          },
+          "slug": {
+            "maxLength": 180,
+            "pattern": "^(?:[a-z0-9]+(?:-[a-z0-9]+)*)?$",
+            "type": "string"
+          },
+          "sortOrder": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "slug",
+          "name",
+          "description",
+          "sortOrder"
         ],
         "type": "object"
       },
@@ -3727,6 +6130,101 @@
         ],
         "type": "object"
       },
+      "RelationCollectionBlock": {
+        "additionalProperties": false,
+        "properties": {
+          "heading": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/CollectionPresentation"
+          },
+          "relationIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          },
+          "type": {
+            "const": "relationCollection",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "relationIds",
+          "presentation"
+        ],
+        "type": "object"
+      },
+      "RelationTargetContent": {
+        "additionalProperties": false,
+        "properties": {
+          "contentId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "targetType": {
+            "const": "content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetType",
+          "contentId"
+        ],
+        "type": "object"
+      },
+      "RelationTargetProduct": {
+        "additionalProperties": false,
+        "properties": {
+          "productId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "targetType": {
+            "const": "product",
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetType",
+          "productId"
+        ],
+        "type": "object"
+      },
+      "RelationTargetReference": {
+        "discriminator": {
+          "mapping": {
+            "content": "#/components/schemas/RelationTargetContent",
+            "product": "#/components/schemas/RelationTargetProduct"
+          },
+          "propertyName": "targetType"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RelationTargetContent"
+          },
+          {
+            "$ref": "#/components/schemas/RelationTargetProduct"
+          }
+        ]
+      },
       "ReplacementRfqContext": {
         "additionalProperties": false,
         "properties": {
@@ -3827,6 +6325,20 @@
           "locale",
           "consent",
           "context"
+        ],
+        "type": "object"
+      },
+      "RestoreContentRevisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 10,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
         ],
         "type": "object"
       },
@@ -4398,6 +6910,50 @@
         ],
         "type": "object"
       },
+      "SeoInputV2": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "indexable": {
+            "type": "boolean"
+          },
+          "socialImage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaUseReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "indexable"
+        ],
+        "type": "object"
+      },
       "SeoMetadata": {
         "additionalProperties": false,
         "properties": {
@@ -4617,6 +7173,26 @@
           "productFamilies",
           "motorTechnologies",
           "generatedAt"
+        ],
+        "type": "object"
+      },
+      "SocialLinkInput": {
+        "additionalProperties": false,
+        "properties": {
+          "service": {
+            "maxLength": 120,
+            "type": "string"
+          },
+          "url": {
+            "format": "uri",
+            "maxLength": 2048,
+            "pattern": "^https://",
+            "type": "string"
+          }
+        },
+        "required": [
+          "service",
+          "url"
         ],
         "type": "object"
       },
@@ -4919,6 +7495,24 @@
         ],
         "type": "string"
       },
+      "TaxonomyTypeFields": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
       "TemporaryOverride": {
         "additionalProperties": false,
         "properties": {
@@ -4984,6 +7578,436 @@
         "required": [
           "items",
           "nextCursor"
+        ],
+        "type": "object"
+      },
+      "TiptapCodeBlockAttrs": {
+        "additionalProperties": false,
+        "properties": {
+          "language": {
+            "maxLength": 80,
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "TiptapCodeBlockNode": {
+        "additionalProperties": false,
+        "properties": {
+          "attrs": {
+            "$ref": "#/components/schemas/TiptapCodeBlockAttrs"
+          },
+          "content": {
+            "items": {
+              "$ref": "#/components/schemas/TiptapNode"
+            },
+            "maxItems": 10000,
+            "type": "array"
+          },
+          "marks": {
+            "items": {
+              "$ref": "#/components/schemas/TiptapMark"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "type": {
+            "enum": [
+              "codeBlock"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "TiptapDocument": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "items": {
+              "$ref": "#/components/schemas/TiptapNode"
+            },
+            "maxItems": 10000,
+            "type": "array"
+          },
+          "type": {
+            "const": "doc",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "content"
+        ],
+        "type": "object"
+      },
+      "TiptapFormulaAttrs": {
+        "additionalProperties": false,
+        "properties": {
+          "latex": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "latex"
+        ],
+        "type": "object"
+      },
+      "TiptapFormulaNode": {
+        "additionalProperties": false,
+        "properties": {
+          "attrs": {
+            "$ref": "#/components/schemas/TiptapFormulaAttrs"
+          },
+          "content": {
+            "items": {
+              "$ref": "#/components/schemas/TiptapNode"
+            },
+            "maxItems": 10000,
+            "type": "array"
+          },
+          "marks": {
+            "items": {
+              "$ref": "#/components/schemas/TiptapMark"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "type": {
+            "enum": [
+              "formula"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "attrs"
+        ],
+        "type": "object"
+      },
+      "TiptapHeadingAttrs": {
+        "additionalProperties": false,
+        "properties": {
+          "level": {
+            "maximum": 4,
+            "minimum": 2,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "level"
+        ],
+        "type": "object"
+      },
+      "TiptapHeadingNode": {
+        "additionalProperties": false,
+        "properties": {
+          "attrs": {
+            "$ref": "#/components/schemas/TiptapHeadingAttrs"
+          },
+          "content": {
+            "items": {
+              "$ref": "#/components/schemas/TiptapNode"
+            },
+            "maxItems": 10000,
+            "type": "array"
+          },
+          "marks": {
+            "items": {
+              "$ref": "#/components/schemas/TiptapMark"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "type": {
+            "enum": [
+              "heading"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "attrs"
+        ],
+        "type": "object"
+      },
+      "TiptapLinkAttrs": {
+        "additionalProperties": false,
+        "properties": {
+          "href": {
+            "maxLength": 2048,
+            "pattern": "^(?:https://[^\\s\\\\]+|/(?![/\\\\])[^\\s\\\\]*|mailto:[^\\s\\\\]+|tel:[^\\s\\\\]+)$",
+            "type": "string"
+          },
+          "rel": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target": {
+            "anyOf": [
+              {
+                "enum": [
+                  "_self",
+                  "_blank"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "href"
+        ],
+        "type": "object"
+      },
+      "TiptapLinkMark": {
+        "additionalProperties": false,
+        "properties": {
+          "attrs": {
+            "$ref": "#/components/schemas/TiptapLinkAttrs"
+          },
+          "type": {
+            "const": "link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "attrs"
+        ],
+        "type": "object"
+      },
+      "TiptapMark": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/TiptapSimpleMark"
+          },
+          {
+            "$ref": "#/components/schemas/TiptapLinkMark"
+          }
+        ]
+      },
+      "TiptapNoAttrs": {
+        "additionalProperties": false,
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "TiptapNode": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/TiptapTextNode"
+          },
+          {
+            "$ref": "#/components/schemas/TiptapPlainNode"
+          },
+          {
+            "$ref": "#/components/schemas/TiptapHeadingNode"
+          },
+          {
+            "$ref": "#/components/schemas/TiptapOrderedListNode"
+          },
+          {
+            "$ref": "#/components/schemas/TiptapCodeBlockNode"
+          },
+          {
+            "$ref": "#/components/schemas/TiptapFormulaNode"
+          },
+          {
+            "$ref": "#/components/schemas/TiptapTableCellNode"
+          }
+        ]
+      },
+      "TiptapOrderedListAttrs": {
+        "additionalProperties": false,
+        "properties": {
+          "start": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "TiptapOrderedListNode": {
+        "additionalProperties": false,
+        "properties": {
+          "attrs": {
+            "$ref": "#/components/schemas/TiptapOrderedListAttrs"
+          },
+          "content": {
+            "items": {
+              "$ref": "#/components/schemas/TiptapNode"
+            },
+            "maxItems": 10000,
+            "type": "array"
+          },
+          "marks": {
+            "items": {
+              "$ref": "#/components/schemas/TiptapMark"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "type": {
+            "enum": [
+              "orderedList"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "TiptapPlainNode": {
+        "additionalProperties": false,
+        "properties": {
+          "attrs": {
+            "$ref": "#/components/schemas/TiptapNoAttrs"
+          },
+          "content": {
+            "items": {
+              "$ref": "#/components/schemas/TiptapNode"
+            },
+            "maxItems": 10000,
+            "type": "array"
+          },
+          "marks": {
+            "items": {
+              "$ref": "#/components/schemas/TiptapMark"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "type": {
+            "enum": [
+              "paragraph",
+              "bulletList",
+              "listItem",
+              "blockquote",
+              "hardBreak",
+              "table",
+              "tableRow"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "TiptapSimpleMark": {
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "enum": [
+              "bold",
+              "italic",
+              "underline",
+              "strike",
+              "code"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "TiptapTableCellAttrs": {
+        "additionalProperties": false,
+        "properties": {
+          "colspan": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "rowspan": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "TiptapTableCellNode": {
+        "additionalProperties": false,
+        "properties": {
+          "attrs": {
+            "$ref": "#/components/schemas/TiptapTableCellAttrs"
+          },
+          "content": {
+            "items": {
+              "$ref": "#/components/schemas/TiptapNode"
+            },
+            "maxItems": 10000,
+            "type": "array"
+          },
+          "marks": {
+            "items": {
+              "$ref": "#/components/schemas/TiptapMark"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "type": {
+            "enum": [
+              "tableHeader",
+              "tableCell"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "TiptapTextNode": {
+        "additionalProperties": false,
+        "properties": {
+          "marks": {
+            "items": {
+              "$ref": "#/components/schemas/TiptapMark"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "text": {
+            "maxLength": 100000,
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "text"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
         ],
         "type": "object"
       },
@@ -7567,7 +10591,7 @@
     },
     "/api/admin/v1/content": {
       "get": {
-        "operationId": "listAdminContent",
+        "operationId": "listAdminContentV2",
         "parameters": [
           {
             "description": "Opaque endpoint-scoped cursor returned by the previous page.",
@@ -7598,7 +10622,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ContentPage"
+                  "$ref": "#/components/schemas/ContentRecordV2Page"
                 }
               }
             },
@@ -7710,14 +10734,24 @@
             "adminSession": []
           }
         ],
-        "summary": "List non-News content working records; News uses the dedicated Admin News API",
+        "summary": "List unified CMS working records",
         "tags": [
           "adminContent"
         ]
       },
       "post": {
-        "operationId": "createContentDraft",
+        "operationId": "createAdminContentV2",
         "parameters": [
+          {
+            "description": "Current draft ETag. Creation requires draft-0.",
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "pattern": "^\\\"draft-[0-9]+\\\"$",
+              "type": "string"
+            }
+          },
           {
             "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
             "in": "header",
@@ -7734,7 +10768,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ContentDraftInput"
+                "$ref": "#/components/schemas/ContentDraftV2"
               }
             }
           },
@@ -7745,14 +10779,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ContentEntry"
+                  "$ref": "#/components/schemas/ContentRecordV2"
                 }
               }
             },
-            "description": "Draft created",
+            "description": "Content draft created",
             "headers": {
               "ETag": {
-                "description": "Current working revision tag",
+                "description": "Current draft-N entity tag",
                 "schema": {
                   "type": "string"
                 }
@@ -7866,15 +10900,15 @@
             "csrfToken": []
           }
         ],
-        "summary": "Create a non-News content draft; kind=news is rejected in favor of the dedicated Admin News API",
+        "summary": "Create a unified CMS draft without creating a revision",
         "tags": [
           "adminContent"
         ]
       }
     },
-    "/api/admin/v1/content/{id}": {
-      "patch": {
-        "operationId": "updateContentDraft",
+    "/api/admin/v1/content/{id}/diff": {
+      "get": {
+        "operationId": "getAdminContentDiffV2",
         "parameters": [
           {
             "in": "path",
@@ -7886,189 +10920,323 @@
             }
           },
           {
-            "description": "Current entity ETag, formatted as revision-N.",
-            "in": "header",
-            "name": "If-Match",
+            "in": "query",
+            "name": "baseRevision",
             "required": true,
             "schema": {
-              "pattern": "^\\\"revision-[0-9]+\\\"$",
-              "type": "string"
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
             }
           },
           {
-            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": true,
-            "schema": {
-              "maxLength": 200,
-              "minLength": 8,
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ContentDraftInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ContentEntry"
-                }
-              }
-            },
-            "description": "Draft updated",
-            "headers": {
-              "ETag": {
-                "description": "Current revision tag",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": [],
-            "csrfToken": []
-          }
-        ],
-        "summary": "Update a non-News content draft; existing or requested News is rejected",
-        "tags": [
-          "adminContent"
-        ]
-      }
-    },
-    "/api/admin/v1/content/{id}/preview": {
-      "post": {
-        "operationId": "createContentPreview",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Optional current working revision precondition. When supplied and stale, preview issuance returns 409.",
-            "in": "header",
-            "name": "If-Match",
+            "in": "query",
+            "name": "targetRevision",
             "required": false,
             "schema": {
-              "pattern": "^\\\"revision-[0-9]+\\\"$",
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentDiffV2"
+                }
+              }
+            },
+            "description": "Content diff"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "Compare an immutable revision with another revision or the current draft",
+        "tags": [
+          "adminContent"
+        ]
+      }
+    },
+    "/api/admin/v1/content/{id}/draft": {
+      "get": {
+        "operationId": "getAdminContentDraftV2",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentRecordV2"
+                }
+              }
+            },
+            "description": "Current content draft",
+            "headers": {
+              "ETag": {
+                "description": "Current draft-N entity tag",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "Get the current unified CMS draft",
+        "tags": [
+          "adminContent"
+        ]
+      },
+      "patch": {
+        "operationId": "updateAdminContentDraftV2",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Current draft ETag. Creation requires draft-0.",
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "pattern": "^\\\"draft-[0-9]+\\\"$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 8,
               "type": "string"
             }
           }
@@ -8077,7 +11245,354 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateContentPreviewRequest"
+                "$ref": "#/components/schemas/ContentDraftV2"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentRecordV2"
+                }
+              }
+            },
+            "description": "Content draft saved",
+            "headers": {
+              "ETag": {
+                "description": "Current draft-N entity tag",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Auto-save the draft and increment only draftVersion",
+        "tags": [
+          "adminContent"
+        ]
+      }
+    },
+    "/api/admin/v1/content/{id}/revisions": {
+      "get": {
+        "operationId": "listAdminContentRevisionsV2",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque endpoint-scoped cursor returned by the previous page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page size; values outside 1 through 100 return Problem Details 400.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentRevisionV2Page"
+                }
+              }
+            },
+            "description": "Content revisions"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "List immutable unified CMS revisions",
+        "tags": [
+          "adminContent"
+        ]
+      }
+    },
+    "/api/admin/v1/content/{id}/revisions/{revision}/restore": {
+      "post": {
+        "operationId": "restoreAdminContentRevisionV2",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "revision",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Current draft ETag. Creation requires draft-0.",
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "pattern": "^\\\"draft-[0-9]+\\\"$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreContentRevisionRequest"
               }
             }
           },
@@ -8088,187 +11603,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ContentPreviewLink"
+                  "$ref": "#/components/schemas/ContentRecordV2"
                 }
               }
             },
-            "description": "Preview URL created",
-            "headers": {
-              "Cache-Control": {
-                "description": "private, no-store, max-age=0",
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "Location": {
-                "description": "Absolute short-lived Public Web preview URL",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": [],
-            "csrfToken": []
-          }
-        ],
-        "summary": "Create a short-lived URL bound to the issuing Admin user and session for one immutable content revision",
-        "tags": [
-          "adminContent"
-        ]
-      }
-    },
-    "/api/admin/v1/content/{id}/publish": {
-      "post": {
-        "operationId": "publishContentRevision",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Current entity ETag, formatted as revision-N.",
-            "in": "header",
-            "name": "If-Match",
-            "required": true,
-            "schema": {
-              "pattern": "^\\\"revision-[0-9]+\\\"$",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": true,
-            "schema": {
-              "maxLength": 200,
-              "minLength": 8,
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ContentEntry"
-                }
-              }
-            },
-            "description": "Content published",
+            "description": "Content revision restored",
             "headers": {
               "ETag": {
-                "description": "Current revision tag",
+                "description": "Current draft-N entity tag",
                 "schema": {
                   "type": "string"
                 }
@@ -8382,15 +11724,15 @@
             "csrfToken": []
           }
         ],
-        "summary": "Publish an immutable non-News content revision; News uses its dedicated publish operation",
+        "summary": "Restore an immutable revision as a new draft and immutable restore revision",
         "tags": [
           "adminContent"
         ]
       }
     },
-    "/api/admin/v1/content/{id}/rollback": {
+    "/api/admin/v1/content/{id}/snapshots": {
       "post": {
-        "operationId": "rollbackContentRevision",
+        "operationId": "createAdminContentSnapshotV2",
         "parameters": [
           {
             "in": "path",
@@ -8402,12 +11744,12 @@
             }
           },
           {
-            "description": "Current entity ETag, formatted as revision-N.",
+            "description": "Current draft ETag. Creation requires draft-0.",
             "in": "header",
             "name": "If-Match",
             "required": true,
             "schema": {
-              "pattern": "^\\\"revision-[0-9]+\\\"$",
+              "pattern": "^\\\"draft-[0-9]+\\\"$",
               "type": "string"
             }
           },
@@ -8427,25 +11769,25 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RollbackContentRequest"
+                "$ref": "#/components/schemas/CreateContentSnapshotRequest"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ContentEntry"
+                  "$ref": "#/components/schemas/ContentRecordV2"
                 }
               }
             },
-            "description": "Content republished",
+            "description": "Content snapshot created",
             "headers": {
               "ETag": {
-                "description": "Current revision tag",
+                "description": "Current draft-N entity tag",
                 "schema": {
                   "type": "string"
                 }
@@ -8559,7 +11901,7 @@
             "csrfToken": []
           }
         ],
-        "summary": "Republish a historical non-News snapshot as a new immutable revision; News uses its dedicated rollback operation",
+        "summary": "Create an immutable manual or published revision from the current draft",
         "tags": [
           "adminContent"
         ]
@@ -9012,2219 +12354,6 @@
         "summary": "Queue a resumable Feishu staging sync job",
         "tags": [
           "adminFeishu"
-        ]
-      }
-    },
-    "/api/admin/v1/general-information": {
-      "get": {
-        "operationId": "getGeneralInformation",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "locale",
-            "required": false,
-            "schema": {
-              "default": "en",
-              "enum": [
-                "en"
-              ],
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GeneralInformation"
-                }
-              }
-            },
-            "description": "General Information",
-            "headers": {
-              "ETag": {
-                "description": "Current working revision tag",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": []
-          }
-        ],
-        "summary": "Get the locale-aware General Information working record",
-        "tags": [
-          "adminGeneralInformation"
-        ]
-      },
-      "post": {
-        "operationId": "createGeneralInformation",
-        "parameters": [
-          {
-            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": true,
-            "schema": {
-              "maxLength": 200,
-              "minLength": 8,
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GeneralInformationDraftInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GeneralInformation"
-                }
-              }
-            },
-            "description": "General Information draft created",
-            "headers": {
-              "ETag": {
-                "description": "Current working revision tag",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": [],
-            "csrfToken": []
-          }
-        ],
-        "summary": "Create a locale-aware General Information draft",
-        "tags": [
-          "adminGeneralInformation"
-        ]
-      }
-    },
-    "/api/admin/v1/general-information/{id}": {
-      "get": {
-        "operationId": "getGeneralInformationById",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GeneralInformation"
-                }
-              }
-            },
-            "description": "General Information",
-            "headers": {
-              "ETag": {
-                "description": "Current working revision tag",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": []
-          }
-        ],
-        "summary": "Get one General Information working record",
-        "tags": [
-          "adminGeneralInformation"
-        ]
-      },
-      "patch": {
-        "operationId": "updateGeneralInformation",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Current entity ETag, formatted as revision-N.",
-            "in": "header",
-            "name": "If-Match",
-            "required": true,
-            "schema": {
-              "pattern": "^\\\"revision-[0-9]+\\\"$",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": true,
-            "schema": {
-              "maxLength": 200,
-              "minLength": 8,
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GeneralInformationDraftInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GeneralInformation"
-                }
-              }
-            },
-            "description": "General Information draft updated",
-            "headers": {
-              "ETag": {
-                "description": "New working revision tag",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": [],
-            "csrfToken": []
-          }
-        ],
-        "summary": "Update a General Information draft",
-        "tags": [
-          "adminGeneralInformation"
-        ]
-      }
-    },
-    "/api/admin/v1/general-information/{id}/publish": {
-      "post": {
-        "operationId": "publishGeneralInformationRevision",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Current entity ETag, formatted as revision-N.",
-            "in": "header",
-            "name": "If-Match",
-            "required": true,
-            "schema": {
-              "pattern": "^\\\"revision-[0-9]+\\\"$",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": true,
-            "schema": {
-              "maxLength": 200,
-              "minLength": 8,
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GeneralInformation"
-                }
-              }
-            },
-            "description": "General Information published",
-            "headers": {
-              "ETag": {
-                "description": "Published revision tag",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": [],
-            "csrfToken": []
-          }
-        ],
-        "summary": "Publish the current General Information revision",
-        "tags": [
-          "adminGeneralInformation"
-        ]
-      }
-    },
-    "/api/admin/v1/general-information/{id}/revisions": {
-      "get": {
-        "operationId": "listGeneralInformationRevisions",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GeneralInformationRevisionPage"
-                }
-              }
-            },
-            "description": "General Information revision snapshots"
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": []
-          }
-        ],
-        "summary": "List immutable General Information revision snapshots",
-        "tags": [
-          "adminGeneralInformation"
-        ]
-      }
-    },
-    "/api/admin/v1/general-information/{id}/rollback": {
-      "post": {
-        "operationId": "rollbackGeneralInformationRevision",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Current entity ETag, formatted as revision-N.",
-            "in": "header",
-            "name": "If-Match",
-            "required": true,
-            "schema": {
-              "pattern": "^\\\"revision-[0-9]+\\\"$",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": true,
-            "schema": {
-              "maxLength": 200,
-              "minLength": 8,
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RevisionRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GeneralInformation"
-                }
-              }
-            },
-            "description": "General Information revision republished",
-            "headers": {
-              "ETag": {
-                "description": "New published revision tag",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": [],
-            "csrfToken": []
-          }
-        ],
-        "summary": "Republish a historical General Information revision",
-        "tags": [
-          "adminGeneralInformation"
-        ]
-      }
-    },
-    "/api/admin/v1/news": {
-      "get": {
-        "operationId": "listAdminNews",
-        "parameters": [
-          {
-            "description": "Opaque endpoint-scoped cursor returned by the previous page.",
-            "in": "query",
-            "name": "cursor",
-            "required": false,
-            "schema": {
-              "maxLength": 2048,
-              "minLength": 1,
-              "type": "string"
-            }
-          },
-          {
-            "description": "Page size; values outside 1 through 100 return Problem Details 400.",
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 50,
-              "maximum": 100,
-              "minimum": 1,
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NewsPage"
-                }
-              }
-            },
-            "description": "News records"
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": []
-          }
-        ],
-        "summary": "List News working records",
-        "tags": [
-          "adminNews"
-        ]
-      },
-      "post": {
-        "operationId": "createNewsDraft",
-        "parameters": [
-          {
-            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": true,
-            "schema": {
-              "maxLength": 200,
-              "minLength": 8,
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewsDraftInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NewsEntry"
-                }
-              }
-            },
-            "description": "News draft created",
-            "headers": {
-              "ETag": {
-                "description": "Current working revision tag",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": [],
-            "csrfToken": []
-          }
-        ],
-        "summary": "Create a News draft",
-        "tags": [
-          "adminNews"
-        ]
-      }
-    },
-    "/api/admin/v1/news/{id}": {
-      "get": {
-        "operationId": "getAdminNews",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NewsEntry"
-                }
-              }
-            },
-            "description": "News working record",
-            "headers": {
-              "ETag": {
-                "description": "Current working revision tag",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": []
-          }
-        ],
-        "summary": "Get one News working record",
-        "tags": [
-          "adminNews"
-        ]
-      },
-      "patch": {
-        "operationId": "updateNewsDraft",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Current entity ETag, formatted as revision-N.",
-            "in": "header",
-            "name": "If-Match",
-            "required": true,
-            "schema": {
-              "pattern": "^\\\"revision-[0-9]+\\\"$",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": true,
-            "schema": {
-              "maxLength": 200,
-              "minLength": 8,
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewsDraftInput"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NewsEntry"
-                }
-              }
-            },
-            "description": "News draft updated",
-            "headers": {
-              "ETag": {
-                "description": "New working revision tag",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": [],
-            "csrfToken": []
-          }
-        ],
-        "summary": "Update a News draft",
-        "tags": [
-          "adminNews"
-        ]
-      }
-    },
-    "/api/admin/v1/news/{id}/publish": {
-      "post": {
-        "operationId": "publishNewsRevision",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Current entity ETag, formatted as revision-N.",
-            "in": "header",
-            "name": "If-Match",
-            "required": true,
-            "schema": {
-              "pattern": "^\\\"revision-[0-9]+\\\"$",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": true,
-            "schema": {
-              "maxLength": 200,
-              "minLength": 8,
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NewsEntry"
-                }
-              }
-            },
-            "description": "News revision published",
-            "headers": {
-              "ETag": {
-                "description": "Published revision tag",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": [],
-            "csrfToken": []
-          }
-        ],
-        "summary": "Publish the current immutable News revision",
-        "tags": [
-          "adminNews"
-        ]
-      }
-    },
-    "/api/admin/v1/news/{id}/revisions": {
-      "get": {
-        "operationId": "listNewsRevisions",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NewsRevisionPage"
-                }
-              }
-            },
-            "description": "News revision snapshots"
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": []
-          }
-        ],
-        "summary": "List immutable News revision snapshots",
-        "tags": [
-          "adminNews"
-        ]
-      }
-    },
-    "/api/admin/v1/news/{id}/rollback": {
-      "post": {
-        "operationId": "rollbackNewsRevision",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Current entity ETag, formatted as revision-N.",
-            "in": "header",
-            "name": "If-Match",
-            "required": true,
-            "schema": {
-              "pattern": "^\\\"revision-[0-9]+\\\"$",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": true,
-            "schema": {
-              "maxLength": 200,
-              "minLength": 8,
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RevisionRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NewsEntry"
-                }
-              }
-            },
-            "description": "News revision republished",
-            "headers": {
-              "ETag": {
-                "description": "New published revision tag",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": [],
-            "csrfToken": []
-          }
-        ],
-        "summary": "Republish a historical News revision as a new revision",
-        "tags": [
-          "adminNews"
         ]
       }
     },

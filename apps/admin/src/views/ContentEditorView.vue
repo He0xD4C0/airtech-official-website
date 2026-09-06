@@ -197,25 +197,14 @@ async function save(silent = false): Promise<boolean> {
 
 async function preview(): Promise<void> {
   previewing.value = true
-  const previewWindow = window.open('about:blank', '_blank')
-  if (previewWindow) previewWindow.opener = null
   try {
     const saved = await save(true)
-    if (!saved || !entryId.value || !revision.value) {
-      previewWindow?.close()
-      return
-    }
-    const link = await adminApi.createContentPreview(entryId.value, revision.value)
-    if (previewWindow) {
-      previewWindow.location.replace(link.url)
-      ui.toast('预览已打开', `Revision ${link.revision} 的链接将在 10 分钟内失效。`)
-    } else {
-      await navigator.clipboard.writeText(link.url)
-      ui.toast('浏览器阻止了新窗口', '短效预览链接已复制，请在 10 分钟内打开。', 'warning')
-    }
+    if (!saved || !entryId.value || !revision.value) return
+    const result = await adminApi.snapshotContent(entryId.value, revision.value)
+    applyEntry(result.entry, false)
+    ui.toast('手动快照已建立', '当前草稿已写入不可变 revision。')
   } catch (error) {
-    previewWindow?.close()
-    ui.toast('预览创建失败', error instanceof Error ? error.message : '请检查权限、会话与并发版本。', 'danger')
+    ui.toast('快照创建失败', error instanceof Error ? error.message : '请检查权限、会话与并发版本。', 'danger')
   } finally {
     previewing.value = false
   }
@@ -326,7 +315,7 @@ onBeforeUnmount(() => window.clearTimeout(autosaveTimer))
       <div class="editor-topbar__right">
         <span class="save-state"><Check :size="14" />{{ saving ? '正在保存…' : savedAt }}</span>
         <button class="button button--quiet" type="button" @click="save(false)"><Save :size="16" />保存</button>
-        <button class="button button--secondary" type="button" :disabled="previewing || saving" @click="preview"><Eye :size="16" />{{ previewing ? '正在生成…' : '预览' }}</button>
+        <button class="button button--secondary" type="button" :disabled="previewing || saving" @click="preview"><Eye :size="16" />{{ previewing ? '正在建立…' : '建立快照' }}</button>
         <button v-if="auth.hasPermission('content.publish')" class="button button--primary" type="button" @click="publish"><Send :size="16" />发布<ChevronDown :size="14" /></button>
       </div>
     </header>

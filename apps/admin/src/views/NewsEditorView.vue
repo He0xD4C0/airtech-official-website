@@ -149,10 +149,12 @@ async function publish(): Promise<void> {
 async function preview(): Promise<void> {
   if (!await save(true) || !id.value || !revision.value) return
   try {
-    const link = await adminApi.createContentPreview(id.value, revision.value)
-    window.open(link.url, '_blank', 'noopener,noreferrer')
+    const result = await adminApi.snapshotNews(id.value, revision.value)
+    applyEntry(result.entry)
+    await loadRevisions()
+    ui.toast('手动快照已建立', '当前草稿已写入不可变 revision。')
   } catch (error) {
-    ui.toast('预览失败', apiErrorMessage(error, '无法签发短效预览。'), 'danger')
+    ui.toast('快照失败', apiErrorMessage(error, '无法建立手动快照。'), 'danger')
   }
 }
 
@@ -214,7 +216,7 @@ onBeforeUnmount(() => window.clearTimeout(autosaveTimer))
   <div v-else class="editor-page">
     <header class="editor-topbar">
       <div class="editor-topbar__left"><button class="icon-button" type="button" aria-label="返回 News" @click="router.push('/news')"><ArrowLeft :size="19" /></button><div><span>News · English</span><strong>{{ title || '未命名 News' }}</strong></div><StatusBadge :label="isPlaceholder ? 'Placeholder' : 'Editorial'" :tone="isPlaceholder ? 'warning' : 'success'" /></div>
-      <div class="editor-topbar__right"><button class="button button--quiet" type="button" :disabled="saving" @click="save(false)"><Save :size="16" />保存</button><button class="button button--secondary" type="button" @click="preview"><Eye :size="16" />预览</button><button v-if="auth.hasPermission('content.publish')" class="button button--secondary" type="button" :disabled="selectedRevision === undefined" @click="rollback"><RotateCcw :size="16" />回滚所选</button><button v-if="auth.hasPermission('content.publish')" class="button button--primary" type="button" @click="publish"><Send :size="16" />发布</button></div>
+      <div class="editor-topbar__right"><button class="button button--quiet" type="button" :disabled="saving" @click="save(false)"><Save :size="16" />保存</button><button class="button button--secondary" type="button" @click="preview"><Eye :size="16" />建立快照</button><button v-if="auth.hasPermission('content.publish')" class="button button--secondary" type="button" :disabled="selectedRevision === undefined" @click="rollback"><RotateCcw :size="16" />恢复所选</button><button v-if="auth.hasPermission('content.publish')" class="button button--primary" type="button" @click="publish"><Send :size="16" />发布</button></div>
     </header>
     <div class="editor-layout">
       <main class="editor-workspace">

@@ -1,58 +1,6 @@
 use super::*;
 
 impl AppState {
-    pub async fn list_working_content(&self) -> Result<Vec<ContentEntry>, ApiError> {
-        let Some(pool) = &self.pool else {
-            return Ok(self.data.read().await.content.values().cloned().collect());
-        };
-        let rows = sqlx::query("SELECT payload FROM content_entries ORDER BY updated_at DESC,id")
-            .fetch_all(pool)
-            .await?;
-        rows.into_iter()
-            .map(|row| decode_payload(row.try_get("payload")?, "content"))
-            .collect()
-    }
-
-    pub async fn load_working_content(&self, id: Uuid) -> Result<Option<ContentEntry>, ApiError> {
-        let Some(pool) = &self.pool else {
-            return Ok(self.data.read().await.content.get(&id).cloned());
-        };
-        sqlx::query_scalar::<_, Value>("SELECT payload FROM content_entries WHERE id=$1")
-            .bind(id)
-            .fetch_optional(pool)
-            .await?
-            .map(|payload| decode_payload(payload, "content"))
-            .transpose()
-    }
-
-    pub async fn content_identity_exists(
-        &self,
-        kind: crate::models::ContentKind,
-        slug: &str,
-        locale: &str,
-        exclude_id: Option<Uuid>,
-    ) -> Result<bool, ApiError> {
-        let Some(pool) = &self.pool else {
-            return Ok(self.data.read().await.content.values().any(|entry| {
-                Some(entry.id) != exclude_id
-                    && entry.kind == kind
-                    && entry.slug == slug
-                    && entry.locale == locale
-            }));
-        };
-        Ok(sqlx::query_scalar::<_, bool>(
-            r#"SELECT EXISTS(SELECT 1 FROM content_entries
-               WHERE kind=$1 AND slug=$2 AND locale=$3
-                 AND ($4::uuid IS NULL OR id<>$4))"#,
-        )
-        .bind(enum_label(kind))
-        .bind(slug)
-        .bind(locale)
-        .bind(exclude_id)
-        .fetch_one(pool)
-        .await?)
-    }
-
     pub async fn list_working_products(&self) -> Result<Vec<Product>, ApiError> {
         let Some(pool) = &self.pool else {
             let data = self.data.read().await;

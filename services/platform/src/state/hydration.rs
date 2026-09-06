@@ -10,6 +10,7 @@ impl AppState {
             return Ok(());
         }
         self.check_persistence().await?;
+        crate::services::cms_content::migrate_legacy_content(self).await?;
         Ok(())
     }
 

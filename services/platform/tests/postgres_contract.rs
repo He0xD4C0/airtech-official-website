@@ -23,8 +23,6 @@ use http_body_util::BodyExt;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use sqlx::postgres::PgPoolOptions;
-#[cfg(feature = "devtools")]
-use sqlx::Row;
 use tower::ServiceExt;
 use uuid::Uuid;
 
@@ -61,47 +59,9 @@ fn postgres_state(database_url: &str) -> AppState {
 }
 
 #[cfg(feature = "devtools")]
-async fn direct_admin_mutation(
-    app: &Router,
-    method: Method,
-    path: &str,
-    revision: Option<i64>,
-    idempotency_key: &str,
-    body: Option<Value>,
-) -> Response {
-    let mut builder = Request::builder()
-        .method(method)
-        .uri(path)
-        .header("idempotency-key", idempotency_key)
-        .header("x-actor", "postgres-contract-editor");
-    if let Some(revision) = revision {
-        builder = builder.header(header::IF_MATCH, format!("\"revision-{revision}\""));
-    }
-    let request = if let Some(body) = body {
-        builder
-            .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(body.to_string()))
-            .unwrap()
-    } else {
-        builder.body(Body::empty()).unwrap()
-    };
-    app.clone().oneshot(request).await.unwrap()
-}
-
-#[cfg(feature = "devtools")]
-fn editorial_content_draft(payload: &Value, title: &str) -> Value {
-    let mut seo = payload["seo"].clone();
-    seo["indexable"] = json!(payload["seo"]["canonicalPath"].is_string());
-    json!({
-        "kind": payload["kind"],
-        "slug": payload["slug"],
-        "locale": payload["locale"],
-        "title": title,
-        "summary": payload["summary"],
-        "body": payload["body"],
-        "seo": seo,
-        "isPlaceholder": false
-    })
+async fn response_json(response: Response) -> Value {
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    serde_json::from_slice(&bytes).unwrap()
 }
 
 include!("postgres_contract/bootstrap_and_fixture_takeover.rs");
@@ -109,4 +69,4 @@ include!("postgres_contract/preview_and_invitations.rs");
 include!("postgres_contract/rate_limit_and_admin_idempotency.rs");
 include!("postgres_contract/identity_mutation_atomicity.rs");
 include!("postgres_contract/settings_and_product_publish.rs");
-include!("postgres_contract/general_information.rs");
+include!("postgres_contract/unified_content.rs");

@@ -28,12 +28,10 @@ use crate::{
         begin as begin_idempotency, idempotency_key as parse_idempotency_key, IdempotencyOutcome,
     },
     models::{
-        AdminProductDetail, AdminRoleRecord, AdminUserRecord, AuditEvent, ContentEntry,
-        ContentKind, CursorPage, DataClass, GeneralInformation, GeneralInformationDraftInput,
-        GuestSourceDaily, GuestVisitAggregate, InviteAdminUser, NewsDraftInput, NewsEntry,
-        ProductImportRequest, ProductImportResult, ProductPresentation, ProductPrivatePricing,
-        PublicationStatus, UpdateAdminRole, UpdateAdminUser, UpdateProductPresentation,
-        UserInvitation,
+        AdminProductDetail, AdminRoleRecord, AdminUserRecord, AuditEvent, CursorPage, DataClass,
+        GuestSourceDaily, GuestVisitAggregate, InviteAdminUser, ProductImportRequest,
+        ProductImportResult, ProductPresentation, ProductPrivatePricing, UpdateAdminRole,
+        UpdateAdminUser, UpdateProductPresentation, UserInvitation,
     },
     pagination::{
         cursor_limit, decode_scoped_cursor, encode_scoped_cursor, paginate_by_id, CursorQuery,
@@ -48,31 +46,6 @@ use crate::{
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/news", get(list_news).post(create_news))
-        .route("/news/{id}", get(get_news).patch(update_news))
-        .route("/news/{id}/revisions", get(list_news_revisions))
-        .route("/news/{id}/publish", post(publish_news))
-        .route("/news/{id}/rollback", post(rollback_news))
-        .route(
-            "/general-information",
-            get(get_general_information).post(create_general_information),
-        )
-        .route(
-            "/general-information/{id}",
-            get(get_general_information_by_id).patch(update_general_information),
-        )
-        .route(
-            "/general-information/{id}/revisions",
-            get(list_general_information_revisions),
-        )
-        .route(
-            "/general-information/{id}/publish",
-            post(publish_general_information),
-        )
-        .route(
-            "/general-information/{id}/rollback",
-            post(rollback_general_information),
-        )
         .route(
             "/products/imports",
             get(list_product_imports)
@@ -95,20 +68,6 @@ pub fn router() -> Router<AppState> {
         .route("/user-invitations/{id}/revoke", post(revoke_invitation))
         .route("/roles", get(list_roles))
         .route("/roles/{id}", get(get_role).patch(update_role))
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct LocaleQuery {
-    #[serde(default = "default_locale")]
-    locale: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct RevisionRequest {
-    revision: i64,
-    reason: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -150,8 +109,6 @@ struct AnalyticsCursor {
     dimension_hash: Vec<u8>,
 }
 
-include!("admin_data/news.rs");
-include!("admin_data/general_information.rs");
 include!("admin_data/product_imports.rs");
 include!("admin_data/product_presentation.rs");
 include!("admin_data/analytics.rs");
@@ -159,13 +116,9 @@ include!("admin_data/users.rs");
 include!("admin_data/roles.rs");
 include!("admin_data/invitations.rs");
 include!("admin_data/product_loading.rs");
-include!("admin_data/news_storage.rs");
-include!("admin_data/general_information_storage.rs");
 include!("admin_data/identity_storage.rs");
 include!("admin_data/analytics_memory.rs");
 include!("admin_data/audit.rs");
-include!("admin_data/editorial_validation.rs");
-include!("admin_data/site_information_validation.rs");
 include!("admin_data/product_validation.rs");
 include!("admin_data/invitation_replay.rs");
 include!("admin_data/analytics_pagination.rs");

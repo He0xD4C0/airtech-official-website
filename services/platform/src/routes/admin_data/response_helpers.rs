@@ -8,15 +8,6 @@ fn validate_reason(reason: &str) -> Result<(), ApiError> {
     }
 }
 
-fn decode_publication_status(value: String) -> PublicationStatus {
-    match value.as_str() {
-        "scheduled" => PublicationStatus::Scheduled,
-        "published" => PublicationStatus::Published,
-        "archived" => PublicationStatus::Archived,
-        _ => PublicationStatus::Draft,
-    }
-}
-
 fn decode_json<T: serde::de::DeserializeOwned>(value: Value, entity: &str) -> Result<T, ApiError> {
     serde_json::from_value(value).map_err(|error| {
         tracing::error!(%error, entity, "stored JSON payload is invalid");
@@ -52,8 +43,4 @@ fn valid_locale(value: &str) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
-}
-
-fn default_locale() -> String {
-    "en".into()
 }

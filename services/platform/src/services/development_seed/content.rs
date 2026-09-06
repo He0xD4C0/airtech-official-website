@@ -77,6 +77,15 @@ async fn seed_content(
         current_revision
     };
     let payload = content_payload(fixture, revision)?;
+    let template_key = match fixture.kind {
+        "navigation" => "navigation",
+        "footer" => "footer",
+        _ => fixture
+            .page_slots
+            .get("templateKey")
+            .and_then(Value::as_str)
+            .expect("routable development fixtures declare a templateKey"),
+    };
     let updated_at = fixture_timestamp()?;
 
     if existing.is_none() {
@@ -84,9 +93,9 @@ async fn seed_content(
             r#"INSERT INTO content_entries
                (id, kind, slug, locale, title, status, is_placeholder,
                 current_revision, published_revision, scheduled_for, payload,
-                updated_at, data_origin)
+                updated_at, data_origin, template_key)
                VALUES ($1,$2,$3,'en',$4,'published',true,$5,$5,NULL,$6,$7,
-                       'developmentFixture')"#,
+                       'developmentFixture',$8)"#,
         )
         .bind(fixture.id)
         .bind(fixture.kind)
@@ -95,6 +104,7 @@ async fn seed_content(
         .bind(revision)
         .bind(&payload)
         .bind(updated_at)
+        .bind(template_key)
         .execute(&mut **transaction)
         .await?;
     }

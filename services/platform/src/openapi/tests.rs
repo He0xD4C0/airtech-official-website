@@ -27,22 +27,13 @@ fn documents_every_production_route() {
         "/api/admin/v1/auth/totp/enrollment",
         "/api/admin/v1/contacts",
         "/api/admin/v1/content",
-        "/api/admin/v1/content/{id}",
-        "/api/admin/v1/content/{id}/preview",
-        "/api/admin/v1/content/{id}/publish",
-        "/api/admin/v1/content/{id}/rollback",
+        "/api/admin/v1/content/{id}/diff",
+        "/api/admin/v1/content/{id}/draft",
+        "/api/admin/v1/content/{id}/revisions",
+        "/api/admin/v1/content/{id}/revisions/{revision}/restore",
+        "/api/admin/v1/content/{id}/snapshots",
         "/api/admin/v1/feishu/conflicts",
         "/api/admin/v1/feishu/sync-runs",
-        "/api/admin/v1/general-information",
-        "/api/admin/v1/general-information/{id}",
-        "/api/admin/v1/general-information/{id}/publish",
-        "/api/admin/v1/general-information/{id}/revisions",
-        "/api/admin/v1/general-information/{id}/rollback",
-        "/api/admin/v1/news",
-        "/api/admin/v1/news/{id}",
-        "/api/admin/v1/news/{id}/publish",
-        "/api/admin/v1/news/{id}/revisions",
-        "/api/admin/v1/news/{id}/rollback",
         "/api/admin/v1/operations",
         "/api/admin/v1/operations/{id}",
         "/api/admin/v1/operations/{id}/events",
@@ -177,21 +168,16 @@ fn admin_submit_publish_and_job_mutations_require_a_bounded_idempotency_key() {
     let document = document();
     for (path, method) in [
         ("/api/admin/v1/content", "post"),
-        ("/api/admin/v1/content/{id}", "patch"),
-        ("/api/admin/v1/content/{id}/publish", "post"),
-        ("/api/admin/v1/content/{id}/rollback", "post"),
+        ("/api/admin/v1/content/{id}/draft", "patch"),
+        ("/api/admin/v1/content/{id}/snapshots", "post"),
+        (
+            "/api/admin/v1/content/{id}/revisions/{revision}/restore",
+            "post",
+        ),
         ("/api/admin/v1/products/{id}/publish", "post"),
         ("/api/admin/v1/products/{id}/temporary-overrides", "post"),
         ("/api/admin/v1/feishu/sync-runs", "post"),
         ("/api/admin/v1/operations", "post"),
-        ("/api/admin/v1/news", "post"),
-        ("/api/admin/v1/news/{id}", "patch"),
-        ("/api/admin/v1/news/{id}/publish", "post"),
-        ("/api/admin/v1/news/{id}/rollback", "post"),
-        ("/api/admin/v1/general-information", "post"),
-        ("/api/admin/v1/general-information/{id}", "patch"),
-        ("/api/admin/v1/general-information/{id}/publish", "post"),
-        ("/api/admin/v1/general-information/{id}/rollback", "post"),
         ("/api/admin/v1/products/imports", "post"),
         ("/api/admin/v1/products/{id}/presentation", "patch"),
         ("/api/admin/v1/user-invitations", "post"),
@@ -210,6 +196,19 @@ fn admin_submit_publish_and_job_mutations_require_a_bounded_idempotency_key() {
         assert_eq!(key["required"], true);
         assert_eq!(key["schema"]["minLength"], 8);
         assert_eq!(key["schema"]["maxLength"], 200);
+    }
+}
+
+#[test]
+fn unified_content_contract_removes_dedicated_editorial_mutations() {
+    let document = document();
+    for path in [
+        "/api/admin/v1/news",
+        "/api/admin/v1/news/{id}",
+        "/api/admin/v1/general-information",
+        "/api/admin/v1/general-information/{id}",
+    ] {
+        assert!(document["paths"].get(path).is_none(), "legacy path {path}");
     }
 }
 

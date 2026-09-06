@@ -22,8 +22,5 @@ import type { OperationsPart16 } from './operations/part-16'
 import type { OperationsPart17 } from './operations/part-17'
 import type { OperationsPart18 } from './operations/part-18'
 import type { OperationsPart19 } from './operations/part-19'
-import type { OperationsPart20 } from './operations/part-20'
-import type { OperationsPart21 } from './operations/part-21'
-import type { OperationsPart22 } from './operations/part-22'
 
-export interface operations extends OperationsPart01, OperationsPart02, OperationsPart03, OperationsPart04, OperationsPart05, OperationsPart06, OperationsPart07, OperationsPart08, OperationsPart09, OperationsPart10, OperationsPart11, OperationsPart12, OperationsPart13, OperationsPart14, OperationsPart15, OperationsPart16, OperationsPart17, OperationsPart18, OperationsPart19, OperationsPart20, OperationsPart21, OperationsPart22 {}
+export interface operations extends OperationsPart01, OperationsPart02, OperationsPart03, OperationsPart04, OperationsPart05, OperationsPart06, OperationsPart07, OperationsPart08, OperationsPart09, OperationsPart10, OperationsPart11, OperationsPart12, OperationsPart13, OperationsPart14, OperationsPart15, OperationsPart16, OperationsPart17, OperationsPart18, OperationsPart19 {}

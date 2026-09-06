@@ -30,6 +30,7 @@ pub struct MigrationSandbox {
     admin_pool: PgPool,
     pool: PgPool,
     schema: String,
+    connection_url: String,
 }
 
 impl MigrationSandbox {
@@ -51,6 +52,9 @@ impl MigrationSandbox {
             .expect("isolated migration schema");
 
         let search_path = format!("{schema},public");
+        let separator = if database_url.contains('?') { '&' } else { '?' };
+        let connection_url =
+            format!("{database_url}{separator}options=-csearch_path%3D{schema}%2Cpublic");
         let options = PgConnectOptions::from_str(database_url)
             .expect("PostgreSQL connection options")
             .options([("search_path", search_path)]);
@@ -64,11 +68,16 @@ impl MigrationSandbox {
             admin_pool,
             pool,
             schema,
+            connection_url,
         }
     }
 
     pub fn pool(&self) -> &PgPool {
         &self.pool
+    }
+
+    pub fn connection_url(&self) -> &str {
+        &self.connection_url
     }
 
     pub async fn apply_version_range(&self, minimum: u32, maximum: u32) {

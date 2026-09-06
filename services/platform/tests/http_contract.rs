@@ -1,9 +1,8 @@
 use airtek_platform::{
     build_router,
     models::{
-        ContentEntry, ContentKind, FactState, GeneralInformation, PerformanceCurve, Product,
-        ProductFamily, PublicationStatus, RichTextDocument, SeoMetadata, SourceSnapshot, SpecValue,
-        StagingRecord, StagingValidationStatus, SyncConflict, SyncRun, SyncRunStatus,
+        FactState, PerformanceCurve, Product, ProductFamily, PublicationStatus, SourceSnapshot,
+        SpecValue, StagingRecord, StagingValidationStatus, SyncConflict, SyncRun, SyncRunStatus,
         TemporaryOverride,
     },
     AppState, Config,
@@ -52,51 +51,6 @@ async fn response_json(response: axum::response::Response) -> Value {
         .expect("response body")
         .to_bytes();
     serde_json::from_slice(&bytes).expect("JSON response")
-}
-
-async fn install_published_site_shell(state: &AppState) {
-    let now = chrono::Utc::now();
-    let information = GeneralInformation {
-        id: uuid::Uuid::new_v4(),
-        locale: "en".into(),
-        payload: json!({
-            "brandName": "AIRTEKPOWER",
-            "homePath": "/en",
-            "organization": {"name": "AIRTEKPOWER"}
-        }),
-        status: PublicationStatus::Published,
-        current_revision: 1,
-        published_revision: Some(1),
-        is_placeholder: false,
-        updated_at: now,
-    };
-    let shell_content = |kind, slug: &str| ContentEntry {
-        id: uuid::Uuid::new_v4(),
-        kind,
-        slug: slug.into(),
-        locale: "en".into(),
-        title: "Published site shell".into(),
-        summary: None,
-        body: RichTextDocument {
-            schema_version: 1,
-            doc: json!({"type": "doc", "content": []}),
-        },
-        seo: SeoMetadata::default(),
-        status: PublicationStatus::Published,
-        is_placeholder: false,
-        current_revision: 1,
-        published_revision: Some(1),
-        scheduled_for: None,
-        updated_at: now,
-    };
-    let navigation = shell_content(ContentKind::Navigation, "primary-navigation");
-    let footer = shell_content(ContentKind::Footer, "primary-footer");
-
-    let mut data = state.data.write().await;
-    data.published_general_information
-        .insert(information.id, information);
-    data.published_content.insert(navigation.id, navigation);
-    data.published_content.insert(footer.id, footer);
 }
 
 async fn setup_admin_without_totp(app: &axum::Router) -> TestAdminSession {
@@ -197,12 +151,11 @@ async fn setup_admin(app: &axum::Router) -> TestAdminSession {
 }
 
 include!("http_contract/bootstrap_and_public_boundaries.rs");
+include!("http_contract/cms_postgres_boundary.rs");
 include!("http_contract/product_and_submission_contracts.rs");
 include!("http_contract/settings_and_rate_limits.rs");
 include!("http_contract/analytics_consent.rs");
 include!("http_contract/rfq_and_content_concurrency.rs");
 include!("http_contract/publication_and_identity.rs");
-include!("http_contract/editorial_history.rs");
-include!("http_contract/content_preview.rs");
 include!("http_contract/operations_security.rs");
 include!("http_contract/operations_and_recovery.rs");

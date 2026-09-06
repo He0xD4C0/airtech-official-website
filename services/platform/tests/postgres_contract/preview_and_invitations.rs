@@ -78,10 +78,34 @@ async fn preview_ticket_revalidates_postgres_identity_session_and_permission() {
         scheduled_for: None,
         updated_at: chrono::Utc::now(),
     };
-    state
-        .persist_content(&content, "postgres-contract")
-        .await
-        .unwrap();
+    let legacy_payload = serde_json::to_value(&content).unwrap();
+    sqlx::query(
+        r#"INSERT INTO content_entries
+           (id,kind,slug,locale,title,status,is_placeholder,current_revision,
+            published_revision,scheduled_for,payload,updated_at,data_origin,
+            template_key,latest_revision,cms_published_revision,cms_created_at,cms_updated_by)
+           VALUES ($1,'article',$2,'en',$3,'draft',false,1,NULL,NULL,$4,$5,
+                   'editorial','articleDetail',0,NULL,$5,'postgres-contract')"#,
+    )
+    .bind(content.id)
+    .bind(&content.slug)
+    .bind(&content.title)
+    .bind(&legacy_payload)
+    .bind(content.updated_at)
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        r#"INSERT INTO content_revisions
+           (content_id,revision,payload,created_by,created_at)
+           VALUES ($1,1,$2,'postgres-contract',$3)"#,
+    )
+    .bind(content.id)
+    .bind(legacy_payload)
+    .bind(content.updated_at)
+    .execute(&pool)
+    .await
+    .unwrap();
     let token = airtek_platform::preview_token::issue(
         state.config.preview_signing_key.as_ref().unwrap(),
         content.id,

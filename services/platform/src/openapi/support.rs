@@ -103,22 +103,6 @@ pub(super) fn admin(mut operation: Value, mutation: bool) -> Value {
     operation
 }
 
-pub(super) fn entity_op(operation_id: &str, summary: &str, description: &str) -> Value {
-    op(
-        operation_id,
-        summary,
-        "adminContent",
-        [(
-            "200",
-            response_header(
-                json_response(description, r("ContentEntry")),
-                "ETag",
-                "Current revision tag",
-            ),
-        )],
-    )
-}
-
 pub(super) fn product_entity_op(operation_id: &str, summary: &str) -> Value {
     op(
         operation_id,
@@ -195,14 +179,6 @@ pub(super) fn idempotency_param() -> Value {
 
 pub(super) fn if_match_param() -> Value {
     json!({"name": "If-Match", "in": "header", "required": true, "description": "Current entity ETag, formatted as revision-N.", "schema": {"type": "string", "pattern": "^\\\"revision-[0-9]+\\\"$"}})
-}
-
-pub(super) fn optional_if_match_param() -> Value {
-    json!({
-        "name": "If-Match", "in": "header", "required": false,
-        "description": "Optional current working revision precondition. When supplied and stale, preview issuance returns 409.",
-        "schema": {"type": "string", "pattern": "^\\\"revision-[0-9]+\\\"$"}
-    })
 }
 
 pub(super) fn totp_param() -> Value {

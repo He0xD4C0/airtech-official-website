@@ -289,52 +289,70 @@ export interface PathsPart01 {
             path?: never;
             cookie?: never;
         };
-        /** List non-News content working records; News uses the dedicated Admin News API */
-        get: operations["listAdminContent"];
+        /** List unified CMS working records */
+        get: operations["listAdminContentV2"];
         put?: never;
-        /** Create a non-News content draft; kind=news is rejected in favor of the dedicated Admin News API */
-        post: operations["createContentDraft"];
+        /** Create a unified CMS draft without creating a revision */
+        post: operations["createAdminContentV2"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/content/{id}": {
+"/api/admin/v1/content/{id}/diff": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Compare an immutable revision with another revision or the current draft */
+        get: operations["getAdminContentDiffV2"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /** Update a non-News content draft; existing or requested News is rejected */
-        patch: operations["updateContentDraft"];
+        patch?: never;
         trace?: never;
     };
-"/api/admin/v1/content/{id}/preview": {
+"/api/admin/v1/content/{id}/draft": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get the current unified CMS draft */
+        get: operations["getAdminContentDraftV2"];
         put?: never;
-        /** Create a short-lived URL bound to the issuing Admin user and session for one immutable content revision */
-        post: operations["createContentPreview"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Auto-save the draft and increment only draftVersion */
+        patch: operations["updateAdminContentDraftV2"];
+        trace?: never;
+    };
+"/api/admin/v1/content/{id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List immutable unified CMS revisions */
+        get: operations["listAdminContentRevisionsV2"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/content/{id}/publish": {
+"/api/admin/v1/content/{id}/revisions/{revision}/restore": {
         parameters: {
             query?: never;
             header?: never;
@@ -343,15 +361,15 @@ export interface PathsPart01 {
         };
         get?: never;
         put?: never;
-        /** Publish an immutable non-News content revision; News uses its dedicated publish operation */
-        post: operations["publishContentRevision"];
+        /** Restore an immutable revision as a new draft and immutable restore revision */
+        post: operations["restoreAdminContentRevisionV2"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/content/{id}/rollback": {
+"/api/admin/v1/content/{id}/snapshots": {
         parameters: {
             query?: never;
             header?: never;
@@ -360,8 +378,8 @@ export interface PathsPart01 {
         };
         get?: never;
         put?: never;
-        /** Republish a historical non-News snapshot as a new immutable revision; News uses its dedicated rollback operation */
-        post: operations["rollbackContentRevision"];
+        /** Create an immutable manual or published revision from the current draft */
+        post: operations["createAdminContentSnapshotV2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -403,68 +421,33 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/general-information": {
+"/api/admin/v1/operations": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get the locale-aware General Information working record */
-        get: operations["getGeneralInformation"];
+        /** List predefined background operations */
+        get: operations["listBackgroundOperations"];
         put?: never;
-        /** Create a locale-aware General Information draft */
-        post: operations["createGeneralInformation"];
+        /** Queue a predefined background operation */
+        post: operations["createBackgroundOperation"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/general-information/{id}": {
+"/api/admin/v1/operations/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get one General Information working record */
-        get: operations["getGeneralInformationById"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Update a General Information draft */
-        patch: operations["updateGeneralInformation"];
-        trace?: never;
-    };
-"/api/admin/v1/general-information/{id}/publish": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Publish the current General Information revision */
-        post: operations["publishGeneralInformationRevision"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/general-information/{id}/revisions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List immutable General Information revision snapshots */
-        get: operations["listGeneralInformationRevisions"];
+        /** Get background operation status */
+        get: operations["getBackgroundOperation"];
         put?: never;
         post?: never;
         delete?: never;
@@ -473,17 +456,34 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/general-information/{id}/rollback": {
+"/api/admin/v1/operations/{id}/events": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Stream operation status as a server-sent event */
+        get: operations["streamBackgroundOperationEvents"];
         put?: never;
-        /** Republish a historical General Information revision */
-        post: operations["rollbackGeneralInformationRevision"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List product working records */
+        get: operations["listAdminProducts"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

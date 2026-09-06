@@ -130,8 +130,12 @@ function assertProductionDocument(document) {
 function assertRequiredDataContracts(document) {
   const operations = [
     ['post', '/api/admin/v1/auth/invitations/accept', 'acceptAdministratorInvitation'],
-    ['get', '/api/admin/v1/news/{id}/revisions', 'listNewsRevisions'],
-    ['get', '/api/admin/v1/general-information/{id}/revisions', 'listGeneralInformationRevisions'],
+    ['get', '/api/admin/v1/content/{id}/draft', 'getAdminContentDraftV2'],
+    ['patch', '/api/admin/v1/content/{id}/draft', 'updateAdminContentDraftV2'],
+    ['post', '/api/admin/v1/content/{id}/snapshots', 'createAdminContentSnapshotV2'],
+    ['get', '/api/admin/v1/content/{id}/revisions', 'listAdminContentRevisionsV2'],
+    ['get', '/api/admin/v1/content/{id}/diff', 'getAdminContentDiffV2'],
+    ['post', '/api/admin/v1/content/{id}/revisions/{revision}/restore', 'restoreAdminContentRevisionV2'],
     ['get', '/api/admin/v1/products/{id}/private-pricing', 'getProductPrivatePricing'],
   ]
   for (const [method, path, operationId] of operations) {
@@ -147,6 +151,13 @@ function assertRequiredDataContracts(document) {
     ProductPrivatePricing: ['productId', 'stableId', 'sourceRowNumber', 'pricingFields'],
     GuestVisitAggregate: ['bucketDate', 'landingPath', 'locale', 'visits', 'pageViews', 'rfqStarts', 'rfqSubmissions'],
     GuestSourceDaily: ['bucketDate', 'source', 'landingPath', 'locale', 'visits', 'pageViews', 'rfqStarts', 'rfqSubmissions'],
+    ContentDraftV2: ['schemaVersion', 'kind', 'templateKey', 'isPlaceholder', 'typeFields', 'composition', 'seo', 'relations', 'draftVersion'],
+    ContentRecordV2: ['id', 'status', 'draft', 'latestRevision', 'publishedRevision', 'updatedBy'],
+    ContentRevisionV2: ['contentId', 'revision', 'sourceDraftVersion', 'kind', 'document', 'reason'],
+    ContentDiffV2: ['contentId', 'baseRevision', 'targetRevision', 'targetDraftVersion', 'changes'],
+    GeneralInformationTypeFields: ['contact', 'socialLinks', 'defaultSeo', 'productCategories', 'navigationCta'],
+    MigrationPreflightReport: ['targetSchemaVersion', 'generatedAt', 'canMigrate', 'scanned', 'convertible', 'issues'],
+    MigrationPreflightCounts: ['contentEntries', 'contentRevisions', 'newsEntries', 'generalInformationEntries', 'mediaAssets', 'mediaReferences', 'relations', 'publicRoutes'],
   }
   for (const [schemaName, properties] of Object.entries(requiredSchemaProperties)) {
     const schema = document?.components?.schemas?.[schemaName]
@@ -157,6 +168,20 @@ function assertRequiredDataContracts(document) {
         throw new Error(`Required production schema property ${schemaName}.${property} is missing.`)
       }
     }
+  }
+  const schemas = document.components.schemas
+  if (schemas.ContentBlock?.discriminator?.propertyName !== 'type'
+    || schemas.ContentTypeFields?.discriminator?.propertyName !== 'type') {
+    throw new Error('CMS V2 discriminators must use the Rust serde `type` property.')
+  }
+  if ('canonicalPath' in (schemas.SeoInputV2?.properties || {})) {
+    throw new Error('CMS V2 canonical paths are server-derived, not editable SEO input.')
+  }
+  if ((schemas.CmsPublicationStatusV2?.enum || []).includes('scheduled')) {
+    throw new Error('CMS V2 must not expose deferred scheduled publishing.')
+  }
+  if ((schemas.ContentTemplateKey?.enum || []).includes('productDetail')) {
+    throw new Error('Product detail is catalog-owned and cannot be a CMS V2 template.')
   }
 }
 

@@ -43,6 +43,14 @@ export function revisionEtag(revision: number | undefined): string {
   return `"revision-${revision}"`
 }
 
+export function draftEtag(version: number | undefined, allowZero = false): string {
+  const value = version ?? -1
+  if (!Number.isInteger(value) || value < (allowZero ? 0 : 1)) {
+    throw new TypeError('A valid draft version is required for this update.')
+  }
+  return `"draft-${value}"`
+}
+
 export function operationKind(value: string): ContractOperationKind {
   switch (value) {
     case 'migrationPreflight':

@@ -6,7 +6,7 @@
 import type { components } from '../components'
 
 export interface OperationsPart05 {
-listAdminContent: {
+listAdminContentV2: {
         parameters: {
             query?: {
                 /** @description Opaque endpoint-scoped cursor returned by the previous page. */
@@ -26,7 +26,7 @@ listAdminContent: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContentPage"];
+                    "application/json": components["schemas"]["ContentRecordV2Page"];
                 };
             };
             /** @description Malformed request */
@@ -121,31 +121,33 @@ listAdminContent: {
             };
         };
     };
-createContentDraft: {
+createAdminContentV2: {
         parameters: {
             query?: never;
             header: {
                 /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
                 "Idempotency-Key": string;
+                /** @description Current draft ETag. Creation requires draft-0. */
+                "If-Match": string;
             };
             path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ContentDraftInput"];
+                "application/json": components["schemas"]["ContentDraftV2"];
             };
         };
         responses: {
-            /** @description Draft created */
+            /** @description Content draft created */
             201: {
                 headers: {
-                    /** @description Current working revision tag */
+                    /** @description Current draft-N entity tag */
                     ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContentEntry"];
+                    "application/json": components["schemas"]["ContentRecordV2"];
                 };
             };
             /** @description Malformed request */
@@ -240,35 +242,27 @@ createContentDraft: {
             };
         };
     };
-updateContentDraft: {
+getAdminContentDiffV2: {
         parameters: {
-            query?: never;
-            header: {
-                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
-                "Idempotency-Key": string;
-                /** @description Current entity ETag, formatted as revision-N. */
-                "If-Match": string;
+            query: {
+                baseRevision: number;
+                targetRevision?: number;
             };
+            header?: never;
             path: {
                 id: string;
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ContentDraftInput"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description Draft updated */
+            /** @description Content diff */
             200: {
                 headers: {
-                    /** @description Current revision tag */
-                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContentEntry"];
+                    "application/json": components["schemas"]["ContentDiffV2"];
                 };
             };
             /** @description Malformed request */
@@ -363,35 +357,26 @@ updateContentDraft: {
             };
         };
     };
-createContentPreview: {
+getAdminContentDraftV2: {
         parameters: {
             query?: never;
-            header?: {
-                /** @description Optional current working revision precondition. When supplied and stale, preview issuance returns 409. */
-                "If-Match"?: string;
-            };
+            header?: never;
             path: {
                 id: string;
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateContentPreviewRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description Preview URL created */
-            201: {
+            /** @description Current content draft */
+            200: {
                 headers: {
-                    /** @description private, no-store, max-age=0 */
-                    "Cache-Control"?: string;
-                    /** @description Absolute short-lived Public Web preview URL */
-                    Location?: string;
+                    /** @description Current draft-N entity tag */
+                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContentPreviewLink"];
+                    "application/json": components["schemas"]["ContentRecordV2"];
                 };
             };
             /** @description Malformed request */

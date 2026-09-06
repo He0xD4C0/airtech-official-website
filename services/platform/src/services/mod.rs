@@ -1,3 +1,6 @@
+pub mod cms_content;
+pub mod cms_preflight;
+pub mod cms_templates;
 #[cfg(feature = "devtools")]
 pub mod development_seed;
 pub mod feishu;
