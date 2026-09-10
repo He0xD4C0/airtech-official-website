@@ -151,9 +151,9 @@ onMounted(loadTemplates)
 .template-card { display: flex; gap: .5rem; align-items: flex-start; border: 1px solid var(--color-border, #d1d5db); border-radius: .5rem; padding: .55rem .65rem; cursor: pointer; }
 .template-card.is-selected { border-color: var(--color-primary, #2563eb); box-shadow: 0 0 0 1px var(--color-primary, #2563eb) inset; }
 .template-card strong { display: block; }
-.template-card span { font-size: .76rem; color: var(--color-text-muted, #6b7280); }
+.template-card span { font-size: .76rem; color: var(--admin-muted, #556663); }
 .create-form__fields { display: flex; flex-direction: column; gap: .65rem; }
-.create-form__lock { display: inline-flex; align-items: center; gap: .35rem; font-size: .8rem; color: var(--color-text-muted, #6b7280); margin: 0; }
+.create-form__lock { display: inline-flex; align-items: center; gap: .35rem; font-size: .8rem; color: var(--admin-muted, #556663); margin: 0; }
 .create-form__error { color: #b91c1c; font-size: .85rem; margin: 0; }
 .create-form__actions { display: flex; justify-content: flex-end; gap: .5rem; }
 </style>

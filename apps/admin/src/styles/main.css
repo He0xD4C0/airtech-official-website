@@ -10,7 +10,7 @@
   --admin-line: #dbe4e3;
   --admin-line-soft: #e9efee;
   --admin-text: #183130;
-  --admin-muted: #647876;
+  --admin-muted: #556663;
   --admin-soft-blue: #e7f3f7;
   --admin-soft-green: #e8f5ec;
   --admin-soft-amber: #fff6dc;
@@ -411,7 +411,7 @@ input[type='radio'] {
 .table-toolbar__filters select { min-height: 2.25rem; padding: 0 1.8rem 0 0.65rem; border: 1px solid var(--admin-line); border-radius: 8px; background: white; color: var(--admin-muted); font-size: 0.72rem; }
 .data-table-wrap { overflow-x: auto; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.73rem; }
-.data-table th { padding: 0.68rem 0.8rem; border-bottom: 1px solid var(--admin-line); background: #f8fafa; color: #6b7c7a; font-size: 0.63rem; font-weight: 750; letter-spacing: 0.045em; text-align: left; text-transform: uppercase; white-space: nowrap; }
+.data-table th { padding: 0.68rem 0.8rem; border-bottom: 1px solid var(--admin-line); background: #f8fafa; color: #556663; font-size: 0.63rem; font-weight: 750; letter-spacing: 0.045em; text-align: left; text-transform: uppercase; white-space: nowrap; }
 .data-table td { padding: 0.78rem 0.8rem; border-bottom: 1px solid var(--admin-line-soft); color: #465b59; vertical-align: middle; }
 .data-table tbody tr:hover { background: #f9fbfb; }
 .data-table tbody tr:last-child td { border-bottom: 0; }
@@ -419,7 +419,7 @@ input[type='radio'] {
 .data-table td code { color: #315250; font-size: 0.67rem; }
 .data-table td > a { display: flex; flex-direction: column; gap: 0.18rem; color: inherit; }
 .data-table td > a strong { color: var(--admin-text); font-size: 0.76rem; }
-.data-table td > a span { color: #758785; font-size: 0.65rem; }
+.data-table td > a span { color: #556663; font-size: 0.65rem; }
 .data-table td > a em { color: #916600; font-style: normal; }
 .data-table td > svg { margin-right: 0.25rem; vertical-align: -0.15rem; }
 .table-footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.7rem 1rem; border-top: 1px solid var(--admin-line); background: #fafcfc; color: var(--admin-muted); font-size: 0.67rem; }

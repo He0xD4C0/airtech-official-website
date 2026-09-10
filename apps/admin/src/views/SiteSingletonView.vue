@@ -124,5 +124,5 @@ onMounted(load)
 <style scoped>
 .site-empty { display: flex; flex-direction: column; gap: .6rem; align-items: flex-start; }
 .site-empty h2 { margin: 0; font-size: 1rem; }
-.site-empty p { margin: 0; font-size: .88rem; color: var(--color-text-muted, #6b7280); }
+.site-empty p { margin: 0; font-size: .88rem; color: var(--admin-muted, #556663); }
 </style>

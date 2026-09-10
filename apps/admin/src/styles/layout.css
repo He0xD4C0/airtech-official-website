@@ -83,11 +83,11 @@
 .topbar { position: sticky; z-index: 35; top: 0; display: flex; align-items: center; justify-content: space-between; height: 4.3rem; padding: 0 1.35rem; border-bottom: 1px solid var(--admin-line); background: rgb(255 255 255 / 91%); backdrop-filter: blur(15px); }
 .topbar__left, .topbar__actions { display: flex; align-items: center; gap: 0.7rem; }
 .topbar__left > div { display: flex; flex-direction: column; }
-.topbar__left small { color: #7a8d8b; font-size: 0.59rem; }
+.topbar__left small { color: #556663; font-size: 0.59rem; }
 .topbar__left strong { font-size: 0.76rem; }
 .topbar__context-icon { color: #849694; }
 .topbar__menu { display: none; }
-.command-trigger { display: flex; align-items: center; gap: 0.55rem; width: 17rem; min-height: 2.3rem; padding: 0 0.55rem 0 0.7rem; border: 1px solid var(--admin-line); border-radius: 8px; background: #f8fafa; color: #788a88; font-size: 0.68rem; text-align: left; }
+.command-trigger { display: flex; align-items: center; gap: 0.55rem; width: 17rem; min-height: 2.3rem; padding: 0 0.55rem 0 0.7rem; border: 1px solid var(--admin-line); border-radius: 8px; background: #f8fafa; color: #556663; font-size: 0.68rem; text-align: left; }
 .command-trigger > span { flex: 1; }
 .command-trigger kbd { display: flex; align-items: center; gap: 0.1rem; padding: 0.22rem 0.35rem; border: 1px solid #d8e1e0; border-radius: 5px; background: white; color: #718380; font-size: 0.56rem; }
 .environment-chip { padding: 0.3rem 0.45rem; border: 1px solid #e7d89e; border-radius: 6px; background: #fff9e8; color: #826004; font-size: 0.6rem; font-weight: 750; }

@@ -37,7 +37,14 @@ function errorStatus(error: unknown): number | undefined {
 }
 
 function errorMessage(error: unknown, fallback: string): string {
-  if (error instanceof ApiError) return error.detail || error.title || fallback
+  if (error instanceof ApiError) {
+    const fields = error.errors
+      ? Object.entries(error.errors)
+          .map(([path, messages]) => `${path}: ${messages.join('; ')}`)
+          .join(' | ')
+      : ''
+    return [error.detail || error.title || fallback, fields].filter(Boolean).join(' — ')
+  }
   if (error instanceof Error && error.message) return error.message
   return fallback
 }

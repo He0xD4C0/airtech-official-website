@@ -83,7 +83,9 @@ const editor = useEditor({
   editorProps: {
     attributes: {
       class: 'structured-editor__content',
+      role: 'textbox',
       'aria-label': '内容正文编辑器',
+      'aria-multiline': 'true',
     },
   },
   onUpdate: ({ editor: currentEditor }) => {

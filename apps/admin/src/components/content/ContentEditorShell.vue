@@ -322,6 +322,11 @@ async function loadRevisions(): Promise<void> {
       <button class="button button--quiet" type="button" @click="store.reopenConflict()">查看差异</button>
     </div>
 
+    <div v-if="store.saveError" class="save-error" role="alert">
+      <ShieldAlert :size="17" />
+      <span>{{ store.saveError }}</span>
+    </div>
+
     <div class="content-editor__layout">
       <ContentOutline :sections="sections" :active-id="activeSection" @select="goToSection" />
 
@@ -477,21 +482,22 @@ async function loadRevisions(): Promise<void> {
 .content-editor { display: flex; flex-direction: column; gap: 1rem; }
 .content-editor__topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; }
 .content-editor__identity { display: flex; align-items: center; gap: .65rem; }
-.content-editor__identity span { display: block; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--color-text-muted, #6b7280); }
+.content-editor__identity span { display: block; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--admin-muted, #556663); }
 .content-editor__identity strong { font-size: 1.05rem; }
 .content-editor__actions { display: flex; align-items: center; gap: .5rem; }
-.save-state { font-size: .8rem; color: var(--color-text-muted, #6b7280); }
+.save-state { font-size: .8rem; color: var(--admin-muted, #556663); }
 .conflict-banner { display: flex; align-items: center; gap: .6rem; padding: .6rem .8rem; border: 1px solid #f0b429; border-radius: .5rem; background: #fff8e6; }
+.save-error { display: flex; align-items: center; gap: .6rem; padding: .6rem .8rem; border: 1px solid #e0b4af; border-radius: .5rem; background: #fdf2f1; color: #8f2c1f; }
 .content-editor__layout { display: grid; grid-template-columns: minmax(160px, 200px) minmax(0, 1fr) minmax(280px, 360px); gap: 1rem; align-items: start; }
 .content-editor__workspace { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
 .editor-section { display: flex; flex-direction: column; gap: .75rem; }
 .editor-section h2 { font-size: 1rem; margin: 0; }
-.editor-identity { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; font-size: .8rem; color: var(--color-text-muted, #6b7280); }
+.editor-identity { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; font-size: .8rem; color: var(--admin-muted, #556663); }
 .content-editor__inspector { display: flex; flex-direction: column; gap: .75rem; }
 .inspector-tabs { display: flex; gap: .25rem; }
 .inspector-tabs button { display: inline-flex; align-items: center; gap: .35rem; padding: .45rem .6rem; border: 1px solid transparent; border-radius: .4rem; background: transparent; cursor: pointer; }
 .inspector-tabs button.is-active { border-color: var(--color-border, #d1d5db); background: var(--color-surface, #fff); font-weight: 600; }
 .inspector-panel { display: flex; flex-direction: column; gap: .75rem; }
-.inspector-empty { font-size: .85rem; color: var(--color-text-muted, #6b7280); }
+.inspector-empty { font-size: .85rem; color: var(--admin-muted, #556663); }
 @media (max-width: 1280px) { .content-editor__layout { grid-template-columns: 1fr; } }
 </style>

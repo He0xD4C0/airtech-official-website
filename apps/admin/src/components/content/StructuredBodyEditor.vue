@@ -20,7 +20,13 @@ function emptyDocument(): BodyDocument {
 const document = computed<BodyDocument>(() => props.modelValue ?? emptyDocument())
 
 function onUpdate(value: unknown): void {
-  emit('update:modelValue', value as BodyDocument)
+  const document = (typeof value === 'object' && value !== null ? value : {}) as {
+    content?: unknown
+  }
+  emit('update:modelValue', {
+    type: 'doc',
+    content: Array.isArray(document.content) ? document.content : [],
+  } as BodyDocument)
 }
 </script>
 

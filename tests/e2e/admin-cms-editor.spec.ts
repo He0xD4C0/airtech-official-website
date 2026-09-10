@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import {
   absolute,
   adminOrigin,
@@ -11,6 +11,25 @@ function severeViolations(
   violations: Awaited<ReturnType<AxeBuilder['analyze']>>['violations'],
 ) {
   return violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')
+}
+
+function describeViolations(
+  violations: Awaited<ReturnType<AxeBuilder['analyze']>>['violations'],
+): string {
+  return severeViolations(violations).flatMap((violation) => violation.nodes.map((node) => {
+    const data = (node.any?.[0]?.data ?? {}) as Record<string, unknown>
+    const detail = ['fgColor', 'bgColor', 'contrastRatio']
+      .filter((key) => data[key] !== undefined)
+      .map((key) => `${key}=${String(data[key])}`)
+      .join(' ')
+    return `${violation.id} ${violation.impact} ${node.target.join(' ')} ${detail}`.trim()
+  })).join('\n')
+}
+
+async function analyzeStable(page: Page): Promise<Awaited<ReturnType<AxeBuilder['analyze']>>> {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.waitForTimeout(400)
+  return new AxeBuilder({ page }).analyze()
 }
 
 test.describe('Unified CMS content editor', () => {
@@ -66,19 +85,21 @@ test.describe('Unified CMS content editor', () => {
     await page.getByRole('button', { name: '创建草稿' }).click()
 
     await page.getByRole('tab', { name: 'SEO' }).click()
-    await expect(page.getByText('/en/e2e-canonical-derivation')).toBeVisible()
+    await expect(
+      page.locator('code').filter({ hasText: '/en/e2e-canonical-derivation' }).first(),
+    ).toBeVisible()
     await expect(page.getByLabel(/canonical/i)).toHaveCount(0)
     expect(await page.locator('input[value*="e2e-canonical-derivation"]').count()).toBe(1)
   })
 
   test('supports keyboard operation and passes axe checks', async ({ page }) => {
     await page.goto(absolute(adminOrigin, '/content'))
-    const listResults = await new AxeBuilder({ page }).analyze()
-    expect(severeViolations(listResults.violations)).toEqual([])
+    const listResults = await analyzeStable(page)
+    expect(describeViolations(listResults.violations)).toBe('')
 
     await page.goto(absolute(adminOrigin, '/content/new'))
-    const createResults = await new AxeBuilder({ page }).analyze()
-    expect(severeViolations(createResults.violations)).toEqual([])
+    const createResults = await analyzeStable(page)
+    expect(describeViolations(createResults.violations)).toBe('')
 
     await page.locator('input[type="radio"][value="articleDetail"]').check()
     await page.getByLabel('标题', { exact: true }).fill('E2E keyboard editor')
@@ -86,8 +107,8 @@ test.describe('Unified CMS content editor', () => {
     await page.getByRole('button', { name: '创建草稿' }).click()
     await expect(page.getByRole('heading', { name: '基本信息' })).toBeVisible()
 
-    const editorResults = await new AxeBuilder({ page }).analyze()
-    expect(severeViolations(editorResults.violations)).toEqual([])
+    const editorResults = await analyzeStable(page)
+    expect(describeViolations(editorResults.violations)).toBe('')
 
     const reachedNames = new Set<string>()
     for (let index = 0; index < 60; index += 1) {

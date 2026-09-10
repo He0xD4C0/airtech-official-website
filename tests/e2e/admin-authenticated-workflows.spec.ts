@@ -27,7 +27,9 @@ test.describe('Authenticated Admin workflows against Rust and PostgreSQL', () =>
     await page.getByRole('button', { name: '创建草稿' }).click()
 
     await expect(page.getByRole('heading', { name: '基本信息' })).toBeVisible()
-    await expect(page.getByText(administrator.displayName)).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: new RegExp(administrator.displayName, 'u') }),
+    ).toBeVisible({ timeout: 15_000 })
     await page.getByLabel('分类').fill('Acceptance')
     await page.getByLabel('作者显示名').fill('AIRTEKPOWER E2E')
 
@@ -35,7 +37,7 @@ test.describe('Authenticated Admin workflows against Rust and PostgreSQL', () =>
     await body.click()
     await body.fill('Disposable browser acceptance record body.')
 
-    const placeholder = page.locator('label.toggle-row').filter({ hasText: '占位内容' }).getByRole('checkbox')
+    const placeholder = page.getByRole('checkbox', { name: /^占位内容/u })
     if (await placeholder.isChecked()) await placeholder.uncheck()
     await expect(page.locator('.save-state')).toContainText('已保存', { timeout: 15_000 })
 

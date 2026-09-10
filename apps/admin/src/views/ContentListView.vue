@@ -39,9 +39,16 @@ const displayTotal = computed(() => {
   if (!query.value.kinds.length) return total.value
   return query.value.kinds.reduce((sum, kind) => sum + (counts.value[kind] ?? 0), 0)
 })
-const kindTabs = computed(() => Object.entries(counts.value)
-  .filter(([, count]) => count > 0)
-  .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0])))
+const kindTabs = computed(() => {
+  const entries = new Map(
+    Object.entries(counts.value).filter(([, count]) => count > 0),
+  )
+  for (const kind of query.value.kinds) {
+    if (!entries.has(kind)) entries.set(kind, counts.value[kind] ?? 0)
+  }
+  return [...entries.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+})
 const showKind = (kind: string): boolean => query.value.kinds.includes(kind)
 
 async function applyQuery(patch: Partial<ContentListFilters>): Promise<void> {
