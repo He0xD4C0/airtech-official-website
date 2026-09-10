@@ -12,3 +12,7 @@ Load the smallest relevant project Skill before making AIRTEK-specific decisions
 - `$airtek-knowledge-governance` when importing documents, reconciling conflicting sources, correcting stale knowledge, or maintaining project Skills.
 
 For a task spanning several domains, load each relevant Skill; do not use the governance Skill as a substitute for domain knowledge. Treat `CONFLICTED`, `PROVISIONAL`, and date-sensitive values as non-authoritative, and never invent a resolution. Preserve evidence in `docs/`; store normalized working knowledge in `.agents/skills/`.
+
+## Sub-agent collaboration
+
+Sub-agents are mutually independent: each one owns only its assigned task and must not wait for, poll, or coordinate with sibling sub-agents. When spawning a sub-agent, state this identity explicitly in its task prompt, and instruct it to finish its own scope and return its final result directly without depending on other agents' output. The orchestrating agent owns result merging and is the only one that may issue bounded waits.
