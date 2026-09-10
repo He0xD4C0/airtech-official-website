@@ -89,8 +89,83 @@ fn add_records(s: &mut Map<String, Value>) {
             }),
         ),
     );
-    s.insert("ContentRecordV2Page".into(), page("ContentRecordV2"));
+    s.insert(
+        "ContentRecordV2Page".into(),
+        object(
+            &["items", "nextCursor", "total", "counts"],
+            json!({
+                "items": array(r("ContentRecordV2")),
+                "nextCursor": nullable(json!({"type": "string"})),
+                "total": {"type": "integer", "minimum": 0},
+                "counts": content_kind_counts()
+            }),
+        ),
+    );
+    s.insert(
+        "ContentTemplateDefinitionPage".into(),
+        object(
+            &["items"],
+            json!({"items": array(r("ContentTemplateDefinition"))}),
+        ),
+    );
+    s.insert(
+        "MediaAssetSummary".into(),
+        object(
+            &[
+                "id",
+                "versionId",
+                "originalName",
+                "mediaType",
+                "byteSize",
+                "scanStatus",
+                "accessLevel",
+                "createdAt",
+            ],
+            json!({
+                "id": uuid(),
+                "versionId": uuid(),
+                "originalName": {"type": "string", "minLength": 1, "maxLength": 500},
+                "mediaType": {"type": "string", "minLength": 1, "maxLength": 120},
+                "byteSize": {"type": "integer", "minimum": 0},
+                "scanStatus": {
+                    "type": "string",
+                    "enum": ["pending", "clean", "quarantined", "failed"]
+                },
+                "accessLevel": {
+                    "type": "string",
+                    "enum": ["public", "authenticated", "internal"]
+                },
+                "createdAt": timestamp()
+            }),
+        ),
+    );
+    s.insert("MediaAssetSummaryPage".into(), page("MediaAssetSummary"));
     s.insert("ContentRevisionV2Page".into(), page("ContentRevisionV2"));
+}
+
+/// Type counts are a closed map over `CmsContentKind`; CMS V2 object schemas
+/// must set `additionalProperties: false`.
+fn content_kind_counts() -> Value {
+    let mut properties = Map::new();
+    for kind in [
+        "home",
+        "page",
+        "solution",
+        "technology",
+        "article",
+        "news",
+        "faq",
+        "caseStudy",
+        "download",
+        "company",
+        "legal",
+        "generalInformation",
+        "navigation",
+        "footer",
+    ] {
+        properties.insert(kind.into(), json!({"type": "integer", "minimum": 0}));
+    }
+    object(&[], Value::Object(properties))
 }
 
 fn add_diff(s: &mut Map<String, Value>) {

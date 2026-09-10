@@ -19,36 +19,43 @@ test.describe('Authenticated Admin workflows against Rust and PostgreSQL', () =>
   test.describe.configure({ mode: 'serial' })
   test.use({ storageState: adminStorageStatePath })
 
-  test('creates and publishes News through the authenticated editor', async ({ page }) => {
-    await page.goto(absolute(adminOrigin, '/news/new'))
-    await expect(page.getByText(administrator.displayName)).toBeVisible()
+  test('creates and publishes News through the unified content editor', async ({ page }) => {
+    await page.goto(absolute(adminOrigin, '/content/new'))
+    await page.locator('input[type="radio"][value="newsDetail"]').check()
+    await page.getByLabel('标题', { exact: true }).fill('AIRTEK E2E publication')
+    await page.getByLabel(/Slug/u).fill('airtek-e2e-publication')
+    await page.getByRole('button', { name: '创建草稿' }).click()
 
-    await page.getByRole('textbox', { name: '标题', exact: true }).fill('AIRTEK E2E publication')
-    await page.getByLabel('摘要').fill('A disposable browser acceptance record.')
-    await page.getByLabel('Slug').fill('airtek-e2e-publication')
+    await expect(page.getByRole('heading', { name: '基本信息' })).toBeVisible()
+    await expect(page.getByText(administrator.displayName)).toBeVisible()
     await page.getByLabel('分类').fill('Acceptance')
-    await page.getByLabel('作者显示').fill('AIRTEKPOWER E2E')
-    const placeholder = page.locator('label.toggle-row').filter({ hasText: '开发占位' }).getByRole('checkbox')
+    await page.getByLabel('作者显示名').fill('AIRTEKPOWER E2E')
+
+    const body = page.locator('[contenteditable="true"]').first()
+    await body.click()
+    await body.fill('Disposable browser acceptance record body.')
+
+    const placeholder = page.locator('label.toggle-row').filter({ hasText: '占位内容' }).getByRole('checkbox')
     if (await placeholder.isChecked()) await placeholder.uncheck()
+    await expect(page.locator('.save-state')).toContainText('已保存', { timeout: 15_000 })
 
     await page.getByRole('button', { name: '发布', exact: true }).click()
-    await expect(page.getByText('News 已发布')).toBeVisible()
-    await expect(page.getByLabel('回滚目标').locator('option')).not.toHaveCount(0)
+    await page.getByRole('button', { name: '确认发布' }).click()
+    await expect(page.getByText('内容已发布')).toBeVisible()
   })
 
   test('updates, autosaves and publishes General Information', async ({ page }) => {
-    await page.goto(absolute(adminOrigin, '/general-information'))
-    const begin = page.getByRole('button', { name: '开始配置' })
-    if (await begin.isVisible()) await begin.click()
+    await page.goto(absolute(adminOrigin, '/site/general-information'))
+    const initialize = page.getByRole('button', { name: /初始化 General Information/u })
+    if (await initialize.isVisible().catch(() => false)) await initialize.click()
 
-    await page.getByLabel('Brand Line').fill('AIRTEK E2E database-backed identity')
-    const placeholder = page.locator('label.toggle-row').filter({ hasText: '开发占位信息' }).getByRole('checkbox')
-    if (await placeholder.isChecked()) await placeholder.uncheck()
-    await expect(page.getByText('自动保存：已保存')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: '基本信息' })).toBeVisible()
+    await page.getByLabel('品牌标语').fill('AIRTEK E2E database-backed identity')
+    await expect(page.locator('.save-state')).toContainText('已保存', { timeout: 15_000 })
 
     await page.getByRole('button', { name: '发布', exact: true }).click()
-    await expect(page.getByText('全站信息已发布')).toBeVisible()
-    await expect(page.getByLabel('回滚目标').locator('option')).not.toHaveCount(0)
+    await page.getByRole('button', { name: '确认发布' }).click()
+    await expect(page.getByText('内容已发布')).toBeVisible()
   })
 
   test('imports a Product Master row and edits portal-owned product fields', async ({ page }) => {

@@ -70,3 +70,5 @@ include!("postgres_contract/rate_limit_and_admin_idempotency.rs");
 include!("postgres_contract/identity_mutation_atomicity.rs");
 include!("postgres_contract/settings_and_product_publish.rs");
 include!("postgres_contract/unified_content.rs");
+include!("postgres_contract/media_assets.rs");
+include!("postgres_contract/cms_round_trip.rs");

@@ -1,132 +1,271 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { BookOpenText, ChevronDown, FilePlus2, Filter, MoreHorizontal, Search, SlidersHorizontal } from 'lucide-vue-next'
-import CursorPaginationControls from '@/components/CursorPaginationControls.vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ArrowDownUp, FilePlus2, Filter, Plus, Search, X } from 'lucide-vue-next'
+import { ApiError } from '@airtek/contracts'
+import type { ContentRecordV2 } from '@airtek/contracts'
 import DataStatePanel from '@/components/DataStatePanel.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { useCursorPagination } from '@/composables/useCursorPagination'
-import { adminApi } from '@/services/adminApi'
-import { isGenericContentKind } from '@/services/contentManagement'
-import type { ContentEntry } from '@/types/domain'
+import { contentKindLabel, contentStatusLabels } from '@/components/content/labels'
+import { contentApi, type ContentSortField } from '@/services/contentApi'
+import {
+  buildContentListRouteQuery,
+  parseContentListQuery,
+  toggleKindSelection,
+  type ContentListFilters,
+} from '@/services/contentListQuery'
 
-const query = ref('')
-const status = ref('all')
+type PageState = 'loading' | 'ready' | 'empty' | 'error' | 'forbidden'
+type StatusFilter = 'draft' | 'published' | 'archived' | undefined
 
-const contentPager = useCursorPagination(async (pagination) => {
-  const page = await adminApi.listContent(pagination)
-  return {
-    ...page,
-    items: page.items.filter((entry) => isGenericContentKind(entry.kind)).map((entry): ContentEntry => ({
-      id: entry.id,
-      type: entry.kind,
-      title: entry.title,
-      locale: entry.locale.toUpperCase(),
-      status: entry.status,
-      updatedAt: new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(entry.updatedAt)),
-      updatedBy: '列表响应未提供',
-      publishedRevision: entry.publishedRevision?.toString(),
-      isPlaceholder: entry.isPlaceholder,
-    })),
+const route = useRoute()
+const router = useRouter()
+
+const items = ref<ContentRecordV2[]>([])
+const counts = ref<Record<string, number>>({})
+const total = ref(0)
+const nextCursor = ref<string | null>(null)
+const cursorStack = ref<string[]>([])
+const pageState = ref<PageState>('loading')
+const errorMessage = ref('')
+const searchInput = ref('')
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+
+const query = computed(() => parseContentListQuery(route.query as Record<string, unknown>))
+
+const hasFilters = computed(() => Boolean(query.value.q || query.value.kinds.length || query.value.status))
+const displayTotal = computed(() => {
+  if (!query.value.kinds.length) return total.value
+  return query.value.kinds.reduce((sum, kind) => sum + (counts.value[kind] ?? 0), 0)
+})
+const kindTabs = computed(() => Object.entries(counts.value)
+  .filter(([, count]) => count > 0)
+  .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0])))
+const showKind = (kind: string): boolean => query.value.kinds.includes(kind)
+
+async function applyQuery(patch: Partial<ContentListFilters>): Promise<void> {
+  await router.replace({ query: buildContentListRouteQuery(query.value, patch) })
+}
+
+function toggleKind(kind: string): void {
+  void applyQuery({ kinds: toggleKindSelection(query.value.kinds, kind) })
+}
+
+async function load(reset: boolean): Promise<void> {
+  if (reset) {
+    cursorStack.value = []
+    nextCursor.value = null
+    pageState.value = 'loading'
   }
-}, {
-  errorMessage: '无法读取内容记录。',
-})
-const loadError = computed(() => contentPager.error.value ?? '')
-const entries = computed(() => contentPager.items.value)
-const dataState = computed<'loading' | 'ready' | 'empty' | 'error' | 'forbidden'>(() => {
-  if (contentPager.loading.value && !entries.value.length) return 'loading'
-  if (contentPager.errorStatus.value === 403) return 'forbidden'
-  if (contentPager.error.value) return 'error'
-  return entries.value.length ? 'ready' : 'empty'
+  try {
+    const page = await contentApi.listContent({
+      q: query.value.q || undefined,
+      kinds: query.value.kinds.length ? query.value.kinds : undefined,
+      status: query.value.status,
+      sort: query.value.sort,
+      direction: query.value.direction,
+      cursor: cursorStack.value.at(-1),
+      limit: 50,
+    })
+    items.value = page.items
+    counts.value = page.counts
+    total.value = page.total
+    nextCursor.value = page.nextCursor
+    pageState.value = page.items.length ? 'ready' : 'empty'
+    errorMessage.value = ''
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 403) {
+      pageState.value = 'forbidden'
+    } else {
+      pageState.value = 'error'
+      errorMessage.value = error instanceof Error ? error.message : '内容列表加载失败。'
+    }
+  }
+}
+
+async function nextPage(): Promise<void> {
+  if (!nextCursor.value) return
+  cursorStack.value.push(nextCursor.value)
+  await load(false)
+}
+
+async function previousPage(): Promise<void> {
+  if (!cursorStack.value.length) return
+  cursorStack.value.pop()
+  await load(false)
+}
+
+function onSearchInput(): void {
+  if (searchTimer !== undefined) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    void applyQuery({ q: searchInput.value })
+  }, 300)
+}
+
+function clearSearch(): void {
+  searchInput.value = ''
+  void applyQuery({ q: '' })
+}
+
+function badgeTone(status: string): 'neutral' | 'success' | 'warning' {
+  if (status === 'published') return 'success'
+  if (status === 'archived') return 'warning'
+  return 'neutral'
+}
+
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+}
+
+watch(
+  () => [route.query.q, route.query.kind, route.query.status, route.query.sort, route.query.direction].join('|'),
+  () => {
+    searchInput.value = query.value.q
+    void load(true)
+  },
+)
+
+onMounted(() => {
+  searchInput.value = query.value.q
+  void load(true)
 })
 
-const filteredEntries = computed(() => entries.value.filter((entry) => {
-  const matchesQuery = `${entry.title} ${entry.type}`.toLowerCase().includes(query.value.toLowerCase())
-  const matchesStatus = status.value === 'all' || entry.status === status.value
-  return matchesQuery && matchesStatus
-}))
-const typeCounts = computed(() => ({
-  all: entries.value.length,
-  pages: entries.value.filter((entry) => !['article', 'faq', 'caseStudy', 'download'].includes(entry.type)).length,
-  articles: entries.value.filter((entry) => entry.type === 'article').length,
-  faqs: entries.value.filter((entry) => entry.type === 'faq').length,
-  cases: entries.value.filter((entry) => entry.type === 'caseStudy').length,
-  downloads: entries.value.filter((entry) => entry.type === 'download').length,
-}))
-
-onMounted(async () => {
-  await contentPager.first()
+onBeforeUnmount(() => {
+  if (searchTimer !== undefined) clearTimeout(searchTimer)
 })
-
-const badge = (entryStatus: ContentEntry['status']) => ({
-  draft: { label: '草稿', tone: 'neutral' as const },
-  scheduled: { label: '计划发布', tone: 'info' as const },
-  published: { label: '已发布', tone: 'success' as const },
-  archived: { label: '已归档', tone: 'warning' as const },
-})[entryStatus]
 </script>
 
 <template>
   <div class="page-stack">
-    <PageHeader eyebrow="CONTENT" title="内容中心" description="统一管理公开站页面、文章、FAQ、案例、下载与全局内容。">
+    <PageHeader
+      eyebrow="CONTENT"
+      :title="query.kinds.includes('news') ? '新闻内容' : '内容中心'"
+      description="服务端搜索、筛选、排序与类型计数；News 与其它内容共用同一套受控模板编辑器。"
+    >
       <template #actions>
-        <button class="button button--secondary" type="button"><SlidersHorizontal :size="16" />内容模型</button>
-        <RouterLink class="button button--primary" to="/content/new/edit"><FilePlus2 :size="16" />新建内容</RouterLink>
+        <RouterLink class="button button--primary" to="/content/new"><FilePlus2 :size="16" />新建内容</RouterLink>
       </template>
     </PageHeader>
 
-    <section v-if="dataState === 'ready'" class="content-type-strip" aria-label="内容类型">
-      <button class="is-active" type="button"><BookOpenText :size="17" /><span>全部内容<strong>{{ typeCounts.all }}</strong></span></button>
-      <button type="button"><span>页面<strong>{{ typeCounts.pages }}</strong></span></button>
-      <button type="button"><span>Articles<strong>{{ typeCounts.articles }}</strong></span></button>
-      <button type="button"><span>FAQ<strong>{{ typeCounts.faqs }}</strong></span></button>
-      <button type="button"><span>Cases<strong>{{ typeCounts.cases }}</strong></span></button>
-      <button type="button"><span>Downloads<strong>{{ typeCounts.downloads }}</strong></span></button>
+    <section class="panel content-list-toolbar" aria-label="内容筛选">
+      <label class="search-field">
+        <Search :size="17" />
+        <span class="sr-only">搜索内容</span>
+        <input
+          v-model="searchInput"
+          type="search"
+          placeholder="按标题或 slug 搜索（服务端）"
+          @input="onSearchInput"
+        />
+      </label>
+      <button v-if="searchInput" class="icon-button" type="button" aria-label="清除搜索" @click="clearSearch"><X :size="16" /></button>
+
+      <div class="content-list-toolbar__filters">
+        <label>
+          <Filter :size="15" />
+          <span class="sr-only">状态筛选</span>
+          <select :value="query.status ?? ''" @change="applyQuery({ status: (($event.target as HTMLSelectElement).value || undefined) as StatusFilter })">
+            <option value="">全部状态</option>
+            <option value="draft">草稿</option>
+            <option value="published">已发布</option>
+            <option value="archived">已归档</option>
+          </select>
+        </label>
+        <label>
+          <ArrowDownUp :size="15" />
+          <span class="sr-only">排序字段</span>
+          <select :value="query.sort" @change="applyQuery({ sort: ($event.target as HTMLSelectElement).value as ContentSortField, direction: ($event.target as HTMLSelectElement).value === 'updatedAt' ? 'desc' : 'asc' })">
+            <option value="updatedAt">最近更新</option>
+            <option value="title">标题</option>
+            <option value="kind">类型</option>
+          </select>
+        </label>
+        <button
+          class="button button--quiet"
+          type="button"
+          :aria-label="query.direction === 'asc' ? '当前升序，点击切换降序' : '当前降序，点击切换升序'"
+          @click="applyQuery({ direction: query.direction === 'asc' ? 'desc' : 'asc' })"
+        >{{ query.direction === 'asc' ? '升序 ↑' : '降序 ↓' }}</button>
+      </div>
+    </section>
+
+    <section class="content-type-strip" aria-label="内容类型计数">
+      <button type="button" :aria-pressed="query.kinds.length === 0" :class="{ 'is-active': query.kinds.length === 0 }" @click="applyQuery({ kinds: [] })">
+        <span>全部内容<strong>{{ total }}</strong></span>
+      </button>
+      <button
+        v-for="[kind, count] in kindTabs"
+        :key="kind"
+        type="button"
+        :aria-pressed="showKind(kind)"
+        :class="{ 'is-active': showKind(kind) }"
+        @click="toggleKind(kind)"
+      >
+        <span>{{ contentKindLabel(kind) }}<strong>{{ count }}</strong></span>
+      </button>
+      <RouterLink class="content-type-strip__link" to="/content?kind=news"><Plus :size="14" />News 视图</RouterLink>
     </section>
 
     <DataStatePanel
-      v-if="dataState !== 'ready'"
-      :state="dataState"
-      :title="dataState === 'empty' ? '数据库中暂无内容记录' : dataState === 'error' ? loadError : ''"
-      @retry="contentPager.refresh"
+      v-if="pageState !== 'ready'"
+      :state="pageState === 'loading' ? 'loading' : pageState === 'forbidden' ? 'forbidden' : pageState === 'error' ? 'error' : 'empty'"
+      :title="pageState === 'empty' ? (hasFilters ? '没有匹配筛选条件的内容' : '数据库中暂无内容记录') : pageState === 'error' ? errorMessage : ''"
+      @retry="load(true)"
     />
 
     <section v-else class="panel table-panel">
-      <div class="table-toolbar">
-        <label class="search-field"><Search :size="17" /><input v-model="query" placeholder="搜索标题或类型" /></label>
-        <div class="table-toolbar__filters">
-          <Filter :size="16" />
-          <select v-model="status" aria-label="按状态筛选"><option value="all">全部状态</option><option value="draft">草稿</option><option value="scheduled">计划发布</option><option value="published">已发布</option><option value="archived">已归档</option></select>
-          <button type="button" class="button button--quiet">最近更新<ChevronDown :size="14" /></button>
-        </div>
-      </div>
       <div class="data-table-wrap">
         <table class="data-table">
-          <thead><tr><th><input type="checkbox" aria-label="选择全部内容" /></th><th>内容</th><th>语言</th><th>状态</th><th>最近更新</th><th>更新人</th><th><span class="sr-only">操作</span></th></tr></thead>
+          <caption class="sr-only">内容列表，共 {{ displayTotal }} 条记录</caption>
+          <thead>
+            <tr>
+              <th scope="col">内容</th>
+              <th scope="col">类型</th>
+              <th scope="col">语言</th>
+              <th scope="col">状态</th>
+              <th scope="col">最近更新</th>
+              <th scope="col">更新人</th>
+            </tr>
+          </thead>
           <tbody>
-            <tr v-for="entry in filteredEntries" :key="entry.id">
-              <td><input type="checkbox" :aria-label="`选择 ${entry.title}`" /></td>
-              <td><RouterLink :to="`/content/${entry.id}/edit`"><strong>{{ entry.title }}</strong><span>{{ entry.type }} · <em v-if="entry.isPlaceholder">占位内容 / 不可索引</em><template v-else>Revision {{ entry.publishedRevision }}</template></span></RouterLink></td>
-              <td><span class="locale-chip">{{ entry.locale }}</span></td>
-              <td><StatusBadge v-bind="badge(entry.status)" /></td>
-              <td>{{ entry.updatedAt }}</td>
+            <tr v-for="entry in items" :key="entry.id">
+              <td>
+                <RouterLink :to="`/content/${entry.id}/edit`">
+                  <strong>{{ entry.draft.title || '未命名内容' }}</strong>
+                  <span>
+                    {{ entry.draft.templateKey }}
+                    <template v-if="entry.draft.isPlaceholder"> · 占位内容 / noindex</template>
+                    <template v-else-if="entry.publishedRevision"> · Revision {{ entry.publishedRevision }}</template>
+                  </span>
+                </RouterLink>
+              </td>
+              <td>{{ contentKindLabel(entry.draft.kind) }}</td>
+              <td><span class="locale-chip">{{ entry.draft.locale.toUpperCase() }}</span></td>
+              <td><StatusBadge :label="contentStatusLabels[entry.status] ?? entry.status" :tone="badgeTone(entry.status)" /></td>
+              <td>{{ formatDate(entry.updatedAt) }}</td>
               <td>{{ entry.updatedBy }}</td>
-              <td><button class="icon-button" type="button" aria-label="更多操作"><MoreHorizontal :size="18" /></button></td>
             </tr>
           </tbody>
         </table>
       </div>
-      <CursorPaginationControls
-        :item-count="filteredEntries.length"
-        :page-number="contentPager.pageNumber.value"
-        :can-previous="contentPager.canPrevious.value"
-        :can-next="contentPager.canNext.value"
-        :loading="contentPager.loading.value"
-        label="条数据库记录（筛选作用于当前页）"
-        @previous="contentPager.previous"
-        @next="contentPager.next"
-      />
+      <div class="content-list-pagination" aria-label="分页">
+        <span>共 {{ displayTotal }} 条 · 本页 {{ items.length }} 条</span>
+        <div>
+          <button class="button button--quiet" type="button" :disabled="!cursorStack.length" @click="previousPage">上一页</button>
+          <button class="button button--quiet" type="button" :disabled="!nextCursor" @click="nextPage">下一页</button>
+        </div>
+      </div>
     </section>
   </div>
 </template>
+
+<style scoped>
+.content-list-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+.content-list-toolbar__filters { display: flex; align-items: center; gap: .5rem; margin-left: auto; }
+.content-list-toolbar__filters label { display: inline-flex; align-items: center; gap: .35rem; }
+.content-list-toolbar select { padding: .35rem .5rem; }
+.content-type-strip__link { display: inline-flex; align-items: center; gap: .3rem; margin-left: auto; font-size: .82rem; }
+.content-list-pagination { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .6rem .25rem 0; font-size: .82rem; }
+.content-list-pagination div { display: flex; gap: .4rem; }
+</style>

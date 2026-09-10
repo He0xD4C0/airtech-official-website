@@ -88,33 +88,163 @@ async function expectJson(response: Awaited<ReturnType<ApiContext['post']>>, act
   return await response.json() as Record<string, unknown>
 }
 
+function record(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null ? value as Record<string, unknown> : {}
+}
+
+function legacyTarget(href: unknown): Record<string, unknown> {
+  const value = typeof href === 'string' ? href : ''
+  return value.startsWith('/')
+    ? { targetType: 'route', path: value }
+    : { targetType: 'external', url: value }
+}
+
+function legacyLinks(value: unknown): Array<Record<string, unknown>> {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((entry) => {
+    const link = record(entry)
+    const label = typeof link.label === 'string' ? link.label : ''
+    if (!label) return []
+    return [{
+      id: randomUUID(),
+      label,
+      target: legacyTarget(link.href),
+      children: legacyLinks(link.children),
+    }]
+  })
+}
+
+function placeholderBody(): Record<string, unknown> {
+  return {
+    type: 'doc',
+    content: [{
+      type: 'paragraph',
+      content: [{
+        type: 'text',
+        text: 'This development fixture verifies database-backed rendering. Replace it with reviewed editorial content before launch.',
+      }],
+    }],
+  }
+}
+
+/**
+ * The public projection still reads the legacy revision payload, while the
+ * Admin CMS stores unified V2 documents. Fixtures are therefore created as V2
+ * drafts so the Admin acceptance flows exercise the real API; rendering the V2
+ * revision on the public origin is part of the deferred projection cutover.
+ */
+function v2DraftFromLegacy(payload: Record<string, unknown>): Record<string, unknown> {
+  const kind = String(payload.kind)
+  const slots = record(record(record(payload.body).doc).attrs).pageSlots
+  const slotValues = record(slots)
+  const seo = record(payload.seo)
+  const draft: Record<string, unknown> = {
+    schemaVersion: 2,
+    kind,
+    locale: 'en',
+    templateKey: String(slotValues.templateKey ?? kind),
+    title: String(payload.title ?? ''),
+    summary: payload.summary ?? null,
+    isPlaceholder: payload.isPlaceholder ?? true,
+    body: null,
+    composition: { blocks: [] },
+    seo: {
+      title: seo.title ?? null,
+      description: seo.description ?? null,
+      indexable: false,
+      socialImage: null,
+    },
+    relations: [],
+    draftVersion: 1,
+  }
+  if (kind === 'home') {
+    const hero = record(slotValues.hero)
+    const cta = record(slotValues.primaryCta)
+    draft.slug = payload.slug ?? 'index'
+    draft.typeFields = { type: 'home' }
+    draft.body = placeholderBody()
+    draft.composition = {
+      blocks: [
+        {
+          type: 'hero',
+          id: randomUUID(),
+          eyebrow: hero.eyebrow ?? null,
+          heading: hero.title ?? draft.title,
+          lead: hero.description ?? null,
+          media: null,
+          actions: typeof cta.label === 'string' && cta.label
+            ? [{ label: cta.label, target: legacyTarget(cta.href) }]
+            : [],
+          variant: 'standard',
+        },
+        { type: 'body', id: randomUUID(), width: 'standard' },
+      ],
+    }
+  } else if (kind === 'navigation') {
+    draft.slug = null
+    draft.typeFields = { type: 'navigation', items: legacyLinks(slotValues.items) }
+  } else if (kind === 'footer') {
+    draft.slug = null
+    draft.typeFields = {
+      type: 'footer',
+      columns: Array.isArray(slotValues.columns)
+        ? slotValues.columns.map((column) => {
+            const value = record(column)
+            return { id: randomUUID(), title: String(value.title ?? ''), links: legacyLinks(value.links) }
+          })
+        : [],
+      legalLinks: legacyLinks(slotValues.legalLinks),
+    }
+  } else {
+    throw new Error(`Unsupported legacy fixture kind: ${kind}`)
+  }
+  return draft
+}
+
+async function upsertAndPublish(
+  api: ApiContext,
+  csrf: string,
+  draft: Record<string, unknown>,
+): Promise<void> {
+  const listed = await api.get('/api/admin/v1/content?limit=100')
+  if (!listed.ok()) throw new Error(`Unable to inspect content fixtures (${listed.status()}): ${await listed.text()}`)
+  const listing = await listed.json() as { items: Array<Record<string, unknown>> }
+  let entry = listing.items.find((item) => {
+    const document = record(item.draft)
+    return document.kind === draft.kind
+      && (document.slug ?? null) === (draft.slug ?? null)
+      && document.locale === 'en'
+  })
+  if (!entry) {
+    const created = await api.post('/api/admin/v1/content', {
+      headers: {
+        'X-CSRF-Token': csrf,
+        'Idempotency-Key': randomUUID(),
+        'If-Match': '"draft-0"',
+      },
+      data: draft,
+    })
+    entry = await expectJson(created, `Unable to create ${String(draft.kind)} fixture`)
+  }
+  if (entry.status === 'published' && entry.publishedRevision != null) return
+  const document = record(entry.draft)
+  const published = await api.post(`/api/admin/v1/content/${String(entry.id)}/snapshots`, {
+    headers: {
+      'X-CSRF-Token': csrf,
+      'Idempotency-Key': randomUUID(),
+      'If-Match': `"draft-${Number(document.draftVersion)}"`,
+    },
+    data: { intent: 'publish', reason: 'Seed development fixture for the isolated E2E stack' },
+  })
+  await expectJson(published, `Unable to publish ${String(draft.kind)} fixture`)
+}
+
 async function createAndPublishContent(
   api: ApiContext,
   csrf: string,
   payload: Record<string, unknown>,
 ): Promise<void> {
-  const listed = await api.get('/api/admin/v1/content?limit=100')
-  if (!listed.ok()) throw new Error(`Unable to inspect content fixtures (${listed.status()}): ${await listed.text()}`)
-  const listing = await listed.json() as { items: Array<Record<string, unknown>> }
-  let entry = listing.items.find((item) => item.kind === payload.kind && item.slug === payload.slug && item.locale === 'en')
-  if (!entry) {
-    const created = await api.post('/api/admin/v1/content', {
-      headers: { 'X-CSRF-Token': csrf, 'Idempotency-Key': randomUUID() },
-      data: payload,
-    })
-    entry = await expectJson(created, `Unable to create ${String(payload.kind)} fixture`)
-  }
-  if (entry.status === 'published' && entry.publishedRevision === entry.currentRevision) return
-  const id = String(entry.id)
-  const revision = Number(entry.currentRevision)
-  const published = await api.post(`/api/admin/v1/content/${id}/publish`, {
-    headers: {
-      'X-CSRF-Token': csrf,
-      'Idempotency-Key': randomUUID(),
-      'If-Match': `"revision-${revision}"`,
-    },
-  })
-  await expectJson(published, `Unable to publish ${String(payload.kind)} fixture`)
+  await upsertAndPublish(api, csrf, v2DraftFromLegacy(payload))
 }
 
 async function seedPublicProjection(api: ApiContext, csrf: string): Promise<void> {
@@ -186,45 +316,50 @@ async function seedPublicProjection(api: ApiContext, csrf: string): Promise<void
     legalLinks: [{ label: 'Privacy', href: '/en/privacy' }, { label: 'Terms', href: '/en/terms' }],
   }))
 
-  const existingInformation = await api.get('/api/admin/v1/general-information?locale=en')
-  let informationEntry: Record<string, unknown>
-  if (existingInformation.status() === 404) {
-    const information = await api.post('/api/admin/v1/general-information', {
-      headers: { 'X-CSRF-Token': csrf, 'Idempotency-Key': randomUUID() },
-      data: {
-      locale: 'en',
-      isPlaceholder: true,
-      payload: {
-        brandName: 'AIRTEKPOWER',
-        brandLine: 'Redefining Airflow with Smart, Green Technology',
-        homePath: '/en',
-        footerStatement: 'Development fixture content. Replace all placeholders with reviewed, source-backed publication data before launch.',
-        copyrightText: '© {year} AIRTEKPOWER. Development fixture.',
-        defaultSeo: {
-          title: 'AIRTEKPOWER | Development Preview',
-          description: 'A database-backed development preview for the AIRTEKPOWER public website.',
-        },
-        organization: { name: 'AIRTEKPOWER' },
-        navigationCta: { label: 'Request a Quote', href: '/en/request-a-quote' },
+  await upsertAndPublish(api, csrf, {
+    schemaVersion: 2,
+    kind: 'generalInformation',
+    locale: 'en',
+    templateKey: 'generalInformation',
+    title: 'General Information',
+    slug: null,
+    summary: null,
+    isPlaceholder: true,
+    typeFields: {
+      type: 'generalInformation',
+      organizationName: 'AIRTEKPOWER',
+      brandLine: 'Redefining Airflow with Smart, Green Technology',
+      homePath: '/en',
+      footerStatement: 'Development fixture content. Replace all placeholders with reviewed, source-backed publication data before launch.',
+      copyrightTemplate: '© {year} AIRTEKPOWER. Development fixture.',
+      contact: {
+        email: null,
+        phone: null,
+        addressLines: [],
+        locality: null,
+        region: null,
+        postalCode: null,
+        countryCode: null,
       },
+      socialLinks: [],
+      defaultSeo: {
+        title: 'AIRTEKPOWER | Development Preview',
+        description: 'A database-backed development preview for the AIRTEKPOWER public website.',
+        indexable: false,
+        socialImage: null,
       },
-    })
-    informationEntry = await expectJson(information, 'Unable to create General Information fixture')
-  } else {
-    if (!existingInformation.ok()) {
-      throw new Error(`Unable to inspect General Information fixture (${existingInformation.status()}): ${await existingInformation.text()}`)
-    }
-    informationEntry = await existingInformation.json() as Record<string, unknown>
-  }
-  if (informationEntry.status === 'published' && informationEntry.publishedRevision === informationEntry.currentRevision) return
-  const published = await api.post(`/api/admin/v1/general-information/${String(informationEntry.id)}/publish`, {
-    headers: {
-      'X-CSRF-Token': csrf,
-      'Idempotency-Key': randomUUID(),
-      'If-Match': `"revision-${Number(informationEntry.currentRevision)}"`,
+      productCategories: [],
+      navigationCta: {
+        label: 'Request a Quote',
+        target: { targetType: 'route', path: '/en/request-a-quote' },
+      },
     },
+    body: null,
+    composition: { blocks: [] },
+    seo: { title: null, description: null, indexable: false, socialImage: null },
+    relations: [],
+    draftVersion: 1,
   })
-  await expectJson(published, 'Unable to publish General Information fixture')
 }
 
 export default async function globalSetup(_config: FullConfig): Promise<void> {

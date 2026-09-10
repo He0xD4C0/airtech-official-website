@@ -1,13 +1,37 @@
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ProductListQuery {
+    cursor: Option<String>,
+    limit: Option<usize>,
+    q: Option<String>,
+}
+
 async fn list_products(
     State(state): State<AppState>,
-    Query(query): Query<CursorQuery>,
+    Query(query): Query<ProductListQuery>,
 ) -> Result<Json<CursorPage<Product>>, ApiError> {
     let mut values = state.list_working_products().await?;
+    if let Some(raw) = query.q.as_deref() {
+        let needle = raw.trim().to_lowercase();
+        if !needle.is_empty() {
+            values.retain(|product| {
+                product.stable_id.to_lowercase().contains(&needle)
+                    || product
+                        .model
+                        .as_deref()
+                        .is_some_and(|model| model.to_lowercase().contains(&needle))
+                    || product.title.to_lowercase().contains(&needle)
+            });
+        }
+    }
     values.sort_by(|left, right| left.stable_id.cmp(&right.stable_id));
     Ok(Json(paginate_by_id(
         "admin.products",
         values,
-        query,
+        CursorQuery {
+            cursor: query.cursor,
+            limit: query.limit,
+        },
         |product| product.id,
     )?))
 }

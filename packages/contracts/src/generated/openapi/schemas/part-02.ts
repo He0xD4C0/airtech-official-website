@@ -466,33 +466,23 @@ LoginRequest: {
             /** Format: password */
             password: string;
         };
-MediaBlock: {
-            caption?: string | null;
+MediaAssetSummary: {
+            /** @enum {string} */
+            accessLevel: "public" | "authenticated" | "internal";
+            byteSize: number;
+            /** Format: date-time */
+            createdAt: string;
             /** Format: uuid */
             id: string;
-            layout: components["schemas"]["MediaLayout"];
-            media: components["schemas"]["MediaUseReference"];
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "media";
+            mediaType: string;
+            originalName: string;
+            /** @enum {string} */
+            scanStatus: "pending" | "clean" | "quarantined" | "failed";
+            /** Format: uuid */
+            versionId: string;
         };
-/** @enum {string} */
-        MediaLayout: "inline" | "fullWidth" | "aside";
-MediaUseReference: {
-            altText?: string | null;
-            asset: components["schemas"]["AssetVersionReference"];
-            decorative: boolean;
-        };
-MigrationPreflightCounts: {
-            contentEntries: number;
-            contentRevisions: number;
-            generalInformationEntries: number;
-            mediaAssets: number;
-            mediaReferences: number;
-            newsEntries: number;
-            publicRoutes: number;
-            relations: number;
+MediaAssetSummaryPage: {
+            items: components["schemas"]["MediaAssetSummary"][];
+            nextCursor: string | null;
         };
 }

@@ -14,6 +14,21 @@ impl<T> CursorPage<T> {
     }
 }
 
+/// Admin media-library projection. `version_id` is the deterministic
+/// `stable_media_version_id(asset_id)` value so editors never type UUIDs.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaAssetSummary {
+    pub id: Uuid,
+    pub version_id: Uuid,
+    pub original_name: String,
+    pub media_type: String,
+    pub byte_size: i64,
+    pub scan_status: String,
+    pub access_level: String,
+    pub created_at: DateTime<Utc>,
+}
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub enum ContentKind {

@@ -289,7 +289,7 @@ export interface PathsPart01 {
             path?: never;
             cookie?: never;
         };
-        /** List unified CMS working records */
+        /** List unified CMS working records with server-side search, filters, sort, and type counts */
         get: operations["listAdminContentV2"];
         put?: never;
         /** Create a unified CMS draft without creating a revision */
@@ -386,6 +386,23 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/content/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the controlled CMS template registry */
+        get: operations["listAdminContentTemplatesV2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/feishu/conflicts": {
         parameters: {
             query?: never;
@@ -421,6 +438,23 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/media/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List media library assets for the unified content editor */
+        get: operations["listAdminMediaAssets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/operations": {
         parameters: {
             query?: never;
@@ -448,40 +482,6 @@ export interface PathsPart01 {
         };
         /** Get background operation status */
         get: operations["getBackgroundOperation"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/operations/{id}/events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Stream operation status as a server-sent event */
-        get: operations["streamBackgroundOperationEvents"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/products": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List product working records */
-        get: operations["listAdminProducts"];
         put?: never;
         post?: never;
         delete?: never;

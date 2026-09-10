@@ -76,7 +76,7 @@ function generalInformationRecord(draftVersion = 2): ContentRecordV2 {
 describe('unified Admin CMS API', () => {
   it('creates content with draft-0 and a canonical V2 document', async () => {
     const created = newsRecord(1)
-    const fetchMock = vi.fn(async () => (
+    const fetchMock = vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(async () => (
       response(created, { ETag: '"draft-1"' })
     ))
     vi.stubGlobal('fetch', fetchMock)
@@ -128,7 +128,7 @@ describe('unified Admin CMS API', () => {
   })
 
   it('publishes and restores through snapshots and immutable revisions', async () => {
-    const fetchMock = vi.fn(async () => (
+    const fetchMock = vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(async () => (
       response(newsRecord(4), { ETag: '"draft-4"' })
     ))
     vi.stubGlobal('fetch', fetchMock)
@@ -170,7 +170,7 @@ describe('unified Admin CMS API', () => {
   })
 
   it('loads News and General Information history from one revision route', async () => {
-    const fetchMock = vi.fn(async () => (
+    const fetchMock = vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(async () => (
       response({ items: [], nextCursor: null })
     ))
     vi.stubGlobal('fetch', fetchMock)

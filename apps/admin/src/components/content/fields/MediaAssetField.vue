@@ -1,0 +1,289 @@
+<script setup lang="ts">
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { ImageIcon, LoaderCircle, RefreshCcw, Search, Trash2 } from 'lucide-vue-next'
+import type { AssetVersionReference, MediaUseReference } from '@airtek/contracts'
+import { contentApi } from '@/services/contentApi'
+import { apiErrorMessage } from '@/services/cursorPagination'
+
+type MediaFieldValue = MediaUseReference | AssetVersionReference | null
+
+/** Minimal projection of the media asset endpoint, kept local so the field survives contract churn. */
+interface MediaAssetOption {
+  id: string
+  versionId: string
+  originalName: string
+  mediaType: string
+  byteSize: number
+  scanStatus: string
+  accessLevel: string
+}
+
+const props = withDefaults(defineProps<{
+  modelValue: MediaFieldValue
+  mode?: 'media' | 'asset'
+  label?: string
+  disabled?: boolean
+}>(), {
+  mode: 'media',
+  label: '媒体资产',
+  disabled: false,
+})
+
+const emit = defineEmits<{ 'update:modelValue': [value: MediaFieldValue] }>()
+
+const dialogOpen = ref(false)
+const query = ref('')
+const options = ref<MediaAssetOption[]>([])
+const listState = ref<'idle' | 'loading' | 'ready' | 'empty' | 'error'>('idle')
+const listError = ref('')
+const searchInput = ref<HTMLInputElement | null>(null)
+let previousFocus: HTMLElement | null = null
+let debounce: ReturnType<typeof setTimeout> | undefined
+
+const selected = computed(() => {
+  const value = props.modelValue
+  if (!value) return null
+  const asset = 'asset' in value ? value.asset : value
+  return {
+    assetId: asset.assetId,
+    versionId: asset.versionId,
+    altText: 'altText' in value ? value.altText ?? '' : '',
+    decorative: 'decorative' in value ? value.decorative : false,
+  }
+})
+
+const selectionLabel = computed(() => {
+  if (!selected.value) return '未选择资产'
+  const name = options.value.find((entry) => entry.id === selected.value?.assetId)?.originalName
+  return name ?? `资产 ${selected.value.assetId.slice(0, 8)} · 版本 ${selected.value.versionId.slice(0, 8)}`
+})
+
+function mediaValue(assetId: string, versionId: string): MediaUseReference {
+  return {
+    asset: { assetId, versionId },
+    altText: selected.value?.altText ?? null,
+    decorative: selected.value?.decorative ?? false,
+  }
+}
+
+function selectAsset(option: MediaAssetOption): void {
+  if (option.scanStatus !== 'clean') return
+  emit('update:modelValue', props.mode === 'asset'
+    ? { assetId: option.id, versionId: option.versionId }
+    : mediaValue(option.id, option.versionId))
+  closeDialog()
+}
+
+function updateAltText(value: string): void {
+  if (!selected.value || props.mode === 'asset') return
+  emit('update:modelValue', {
+    asset: { assetId: selected.value.assetId, versionId: selected.value.versionId },
+    altText: value || null,
+    decorative: selected.value.decorative,
+  })
+}
+
+function updateDecorative(value: boolean): void {
+  if (!selected.value || props.mode === 'asset') return
+  emit('update:modelValue', {
+    asset: { assetId: selected.value.assetId, versionId: selected.value.versionId },
+    altText: value ? null : selected.value.altText || null,
+    decorative: value,
+  })
+}
+
+function clearSelection(): void {
+  emit('update:modelValue', null)
+}
+
+async function loadOptions(): Promise<void> {
+  listState.value = 'loading'
+  listError.value = ''
+  try {
+    const page = await contentApi.listMediaAssets({
+      q: query.value.trim() || undefined,
+      limit: 50,
+    })
+    options.value = page.items as unknown as MediaAssetOption[]
+    listState.value = options.value.length ? 'ready' : 'empty'
+  } catch (error) {
+    options.value = []
+    listState.value = 'error'
+    listError.value = apiErrorMessage(error, '无法读取媒体资产库。')
+  }
+}
+
+function scheduleSearch(): void {
+  if (debounce !== undefined) clearTimeout(debounce)
+  debounce = setTimeout(() => {
+    debounce = undefined
+    void loadOptions()
+  }, 300)
+}
+
+function openDialog(): void {
+  if (props.disabled) return
+  previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  dialogOpen.value = true
+  void nextTick(() => searchInput.value?.focus())
+  void loadOptions()
+}
+
+function closeDialog(): void {
+  dialogOpen.value = false
+  if (debounce !== undefined) {
+    clearTimeout(debounce)
+    debounce = undefined
+  }
+  previousFocus?.focus()
+  previousFocus = null
+}
+
+function onDialogKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    event.stopPropagation()
+    closeDialog()
+  }
+}
+
+watch(query, scheduleSearch)
+onBeforeUnmount(() => {
+  if (debounce !== undefined) clearTimeout(debounce)
+})
+
+defineExpose({ loadOptions })
+</script>
+
+<template>
+  <div class="media-field">
+    <div class="media-field__row">
+      <span class="media-field__icon" aria-hidden="true"><ImageIcon :size="15" /></span>
+      <div class="media-field__summary">
+        <strong>{{ selectionLabel }}</strong>
+        <small v-if="selected">ID {{ selected.assetId.slice(0, 8) }}… · 版本 {{ selected.versionId.slice(0, 8) }}…</small>
+        <small v-else>媒体只能从资产库选择，不接受手填 UUID 或 URL。</small>
+      </div>
+      <div class="media-field__actions">
+        <button class="button button--quiet" type="button" :disabled="disabled" @click="openDialog">
+          {{ selected ? '更换' : '选择' }}
+        </button>
+        <button
+          v-if="selected"
+          class="icon-button"
+          type="button"
+          :disabled="disabled"
+          :aria-label="`移除${label}`"
+          @click="clearSelection"
+        >
+          <Trash2 :size="15" />
+        </button>
+      </div>
+    </div>
+
+    <label v-if="selected && mode === 'media'" class="field media-field__alt">
+      <span>替代文本<small v-if="selected.decorative">装饰性媒体已禁用替代文本</small></span>
+      <input
+        :value="selected.altText"
+        :disabled="disabled || selected.decorative"
+        maxlength="300"
+        :placeholder="selected.decorative ? '装饰性媒体不需要替代文本' : '描述图片传达的信息'"
+        @input="updateAltText(($event.target as HTMLInputElement).value)"
+      />
+    </label>
+    <label v-if="selected && mode === 'media'" class="toggle-row">
+      <span><strong>装饰性媒体</strong><small>纯装饰内容对辅助技术隐藏，并强制清空替代文本</small></span>
+      <input
+        type="checkbox"
+        :checked="selected.decorative"
+        :disabled="disabled"
+        @change="updateDecorative(($event.target as HTMLInputElement).checked)"
+      />
+    </label>
+
+    <Teleport to="body">
+      <div v-if="dialogOpen" class="dialog-backdrop" @keydown="onDialogKeydown">
+        <div
+          class="dialog-panel media-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="media-asset-title"
+          aria-describedby="media-asset-hint"
+        >
+          <h2 id="media-asset-title">选择{{ label }}</h2>
+          <p id="media-asset-hint" class="dialog-note">仅可选择扫描状态为 clean 的资产；其他状态需要先完成安全扫描。</p>
+          <label class="search-field media-dialog__search">
+            <Search :size="16" />
+            <span class="sr-only">搜索媒体资产</span>
+            <input ref="searchInput" v-model="query" type="search" placeholder="按文件名搜索" />
+          </label>
+
+          <div class="media-dialog__body" aria-live="polite">
+            <p v-if="listState === 'loading'" class="media-dialog__state">
+              <LoaderCircle class="data-state__spin" :size="16" />正在读取媒体资产…
+            </p>
+            <p v-else-if="listState === 'error'" class="media-dialog__state media-dialog__state--error">
+              {{ listError }}
+            </p>
+            <p v-else-if="listState === 'empty'" class="media-dialog__state">没有匹配的媒体资产。</p>
+            <ul v-else-if="listState === 'ready'" class="media-dialog__list">
+              <li v-for="option in options" :key="option.id">
+                <button
+                  class="media-dialog__option"
+                  type="button"
+                  :disabled="option.scanStatus !== 'clean'"
+                  @click="selectAsset(option)"
+                >
+                  <span>
+                    <strong>{{ option.originalName }}</strong>
+                    <small>{{ option.mediaType }} · {{ Math.max(1, Math.round(option.byteSize / 1024)) }} KB</small>
+                  </span>
+                  <em>{{ option.scanStatus }} · {{ option.accessLevel }}</em>
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <div class="dialog-actions">
+            <button
+              class="button button--quiet"
+              type="button"
+              :disabled="listState === 'loading'"
+              @click="loadOptions"
+            >
+              <RefreshCcw :size="15" />重新加载
+            </button>
+            <button class="button button--secondary" type="button" @click="closeDialog">关闭</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+  </div>
+</template>
+
+<style scoped>
+.dialog-backdrop { position: fixed; z-index: 60; display: grid; place-items: center; inset: 0; padding: 1.5rem; background: rgba(11, 38, 48, 0.45); }
+.dialog-panel { display: flex; flex-direction: column; gap: 0.5rem; max-height: 88vh; padding: 1.1rem; border-radius: 14px; background: white; box-shadow: 0 24px 60px rgba(11, 38, 48, 0.28); }
+.dialog-panel h2 { margin: 0; font-size: 0.95rem; }
+.dialog-note { margin: 0; color: var(--admin-muted); font-size: 0.62rem; line-height: 1.5; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 0.4rem; padding-top: 0.5rem; border-top: 1px solid var(--admin-line-soft); }
+.media-field { display: flex; flex-direction: column; gap: 0.55rem; }
+.media-field__row { display: flex; align-items: center; gap: 0.55rem; padding: 0.6rem; border: 1px solid var(--admin-line); border-radius: 8px; background: white; }
+.media-field__icon { display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: 7px; background: var(--admin-soft-blue); color: var(--airtek-blue); }
+.media-field__summary { display: flex; flex: 1; min-width: 0; flex-direction: column; }
+.media-field__summary strong { overflow: hidden; font-size: 0.66rem; text-overflow: ellipsis; white-space: nowrap; }
+.media-field__summary small { color: var(--admin-muted); font-size: 0.57rem; }
+.media-field__actions { display: flex; align-items: center; gap: 0.25rem; }
+.media-field__alt { margin-top: 0; }
+.media-dialog { width: min(38rem, 92vw); }
+.media-dialog__search { margin: 0.6rem 0; }
+.media-dialog__body { max-height: 18rem; overflow-y: auto; }
+.media-dialog__state { display: flex; align-items: center; gap: 0.4rem; padding: 1.1rem 0; color: var(--admin-muted); font-size: 0.66rem; text-align: center; }
+.media-dialog__state--error { color: #b42318; }
+.media-dialog__list { display: flex; flex-direction: column; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
+.media-dialog__option { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; width: 100%; padding: 0.55rem 0.65rem; border: 1px solid var(--admin-line); border-radius: 8px; background: white; text-align: left; }
+.media-dialog__option:hover:not(:disabled) { border-color: var(--airtek-blue); background: var(--admin-soft-blue); }
+.media-dialog__option:disabled { cursor: not-allowed; opacity: 0.6; }
+.media-dialog__option strong { display: block; font-size: 0.66rem; }
+.media-dialog__option small { color: var(--admin-muted); font-size: 0.56rem; }
+.media-dialog__option em { color: var(--admin-muted); font-size: 0.55rem; font-style: normal; text-transform: uppercase; }
+</style>

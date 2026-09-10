@@ -35,6 +35,8 @@ use crate::{
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/content", get(list_content).post(create_content))
+        .route("/content/templates", get(list_content_templates))
+        .route("/media/assets", get(list_media_assets))
         .route(
             "/content/{id}/draft",
             get(get_content_draft).patch(update_content_draft),

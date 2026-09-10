@@ -19,6 +19,9 @@ const e2eProductMasterBytes = Buffer.from(e2eProductMasterCsv, 'utf8')
 const e2eProductMasterSha256 = createHash('sha256').update(e2eProductMasterBytes).digest('hex')
 const e2eProductMasterMapping = process.env.AIRTEK_PRODUCT_IMPORT_MAPPING_VERSION
   ?? 'airtek-basic-v1'
+const playwrightArgs = (process.env.E2E_PLAYWRIGHT_ARGS ?? '').trim()
+  ? (process.env.E2E_PLAYWRIGHT_ARGS ?? '').trim().split(/\s+/)
+  : []
 const environment = {
   ...process.env,
   COMPOSE_PROJECT_NAME: project,
@@ -90,7 +93,7 @@ try {
     process.exitCode = upStatus
   }
   else {
-    testStatus = run('pnpm', ['exec', 'playwright', 'test'])
+    testStatus = run('pnpm', ['exec', 'playwright', 'test', ...playwrightArgs])
     if (testStatus !== 0) run('docker', ['compose', 'logs', '--no-color'])
     process.exitCode = testStatus
   }

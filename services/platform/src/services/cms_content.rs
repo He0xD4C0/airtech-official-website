@@ -18,12 +18,14 @@ use crate::{
 
 mod audit;
 mod diff;
+mod listing;
 mod migration;
 mod mutations;
 mod storage;
 mod validation;
 
 pub use diff::diff_content;
+pub use listing::{ContentListFilter, ContentListOutcome, ContentSortField, SortDirection};
 pub use migration::migrate_legacy_content;
 pub use mutations::{create_content, restore_revision, save_draft, snapshot_content};
 pub use storage::{get_content, list_content, list_revisions};

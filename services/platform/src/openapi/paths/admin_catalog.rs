@@ -4,6 +4,20 @@ use serde_json::{Map, Value};
 
 use super::super::support::*;
 
+fn product_list_params() -> Vec<Value> {
+    let mut values = admin_pagination_params();
+    values.push(query_param(
+        "q",
+        false,
+        serde_json::json!({
+            "type": "string",
+            "maxLength": 200,
+            "description": "Case-insensitive stable id, model, or title search."
+        }),
+    ));
+    values
+}
+
 /// Adds product publication, temporary override, and Feishu sync endpoints.
 pub(super) fn add_publication_and_sync(paths: &mut Map<String, Value>) {
     add(
@@ -18,7 +32,7 @@ pub(super) fn add_publication_and_sync(paths: &mut Map<String, Value>) {
                     "adminCatalog",
                     [("200", json_response("Product records", r("ProductPage")))],
                 ),
-                admin_pagination_params(),
+                product_list_params(),
             ),
             false,
         ),

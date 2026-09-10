@@ -11,8 +11,13 @@ listAdminContentV2: {
             query?: {
                 /** @description Opaque endpoint-scoped cursor returned by the previous page. */
                 cursor?: string;
+                direction?: "asc" | "desc";
+                kind?: string;
                 /** @description Page size; values outside 1 through 100 return Problem Details 400. */
                 limit?: number;
+                q?: string;
+                sort?: "updatedAt" | "title" | "kind";
+                status?: components["schemas"]["CmsPublicationStatusV2"];
             };
             header?: never;
             path?: never;

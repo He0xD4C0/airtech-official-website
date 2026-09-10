@@ -1988,6 +1988,69 @@
       "ContentRecordV2Page": {
         "additionalProperties": false,
         "properties": {
+          "counts": {
+            "additionalProperties": false,
+            "properties": {
+              "article": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "caseStudy": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "company": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "download": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "faq": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "footer": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "generalInformation": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "home": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "legal": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "navigation": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "news": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "page": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "solution": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "technology": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [],
+            "type": "object"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/ContentRecordV2"
@@ -2003,11 +2066,17 @@
                 "type": "null"
               }
             ]
+          },
+          "total": {
+            "minimum": 0,
+            "type": "integer"
           }
         },
         "required": [
           "items",
-          "nextCursor"
+          "nextCursor",
+          "total",
+          "counts"
         ],
         "type": "object"
       },
@@ -2165,6 +2234,21 @@
           "allowedBlocks",
           "routable",
           "singletonPerLocale"
+        ],
+        "type": "object"
+      },
+      "ContentTemplateDefinitionPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ContentTemplateDefinition"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
         ],
         "type": "object"
       },
@@ -4455,6 +4539,91 @@
         "required": [
           "email",
           "password"
+        ],
+        "type": "object"
+      },
+      "MediaAssetSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "accessLevel": {
+            "enum": [
+              "public",
+              "authenticated",
+              "internal"
+            ],
+            "type": "string"
+          },
+          "byteSize": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "mediaType": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "originalName": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "scanStatus": {
+            "enum": [
+              "pending",
+              "clean",
+              "quarantined",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "versionId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "versionId",
+          "originalName",
+          "mediaType",
+          "byteSize",
+          "scanStatus",
+          "accessLevel",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "MediaAssetSummaryPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MediaAssetSummary"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
         ],
         "type": "object"
       },
@@ -10615,6 +10784,59 @@
               "minimum": 1,
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "description": "Case-insensitive title or slug search.",
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "description": "Comma-separated CmsContentKind filters.",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CmsPublicationStatusV2"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "updatedAt",
+              "enum": [
+                "updatedAt",
+                "title",
+                "kind"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -10734,7 +10956,7 @@
             "adminSession": []
           }
         ],
-        "summary": "List unified CMS working records",
+        "summary": "List unified CMS working records with server-side search, filters, sort, and type counts",
         "tags": [
           "adminContent"
         ]
@@ -10901,6 +11123,132 @@
           }
         ],
         "summary": "Create a unified CMS draft without creating a revision",
+        "tags": [
+          "adminContent"
+        ]
+      }
+    },
+    "/api/admin/v1/content/templates": {
+      "get": {
+        "operationId": "listAdminContentTemplatesV2",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentTemplateDefinitionPage"
+                }
+              }
+            },
+            "description": "Controlled content templates"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "List the controlled CMS template registry",
         "tags": [
           "adminContent"
         ]
@@ -12357,6 +12705,194 @@
         ]
       }
     },
+    "/api/admin/v1/media/assets": {
+      "get": {
+        "operationId": "listAdminMediaAssets",
+        "parameters": [
+          {
+            "description": "Opaque endpoint-scoped cursor returned by the previous page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page size; values outside 1 through 100 return Problem Details 400.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "description": "Case-insensitive original name search.",
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scanStatus",
+            "required": false,
+            "schema": {
+              "enum": [
+                "pending",
+                "clean",
+                "quarantined",
+                "failed"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "accessLevel",
+            "required": false,
+            "schema": {
+              "enum": [
+                "public",
+                "authenticated",
+                "internal"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaAssetSummaryPage"
+                }
+              }
+            },
+            "description": "Media assets"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "List media library assets for the unified content editor",
+        "tags": [
+          "adminContent"
+        ]
+      }
+    },
     "/api/admin/v1/operations": {
       "get": {
         "operationId": "listBackgroundOperations",
@@ -12973,6 +13509,16 @@
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "description": "Case-insensitive stable id, model, or title search.",
+              "maxLength": 200,
+              "type": "string"
             }
           }
         ],

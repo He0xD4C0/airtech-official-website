@@ -1,3 +1,11 @@
+use crate::models::{
+    CmsContentKind, CmsPublicationStatusV2, ContentTemplateDefinition, MediaAssetSummary,
+};
+use crate::pagination::paginate_by_id_scoped;
+use crate::services::cms_content::{ContentListFilter, ContentSortField, SortDirection};
+use crate::services::cms_templates;
+use crate::services::media_assets::{self, MediaAssetFilter};
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ContentDiffQuery {
@@ -5,17 +13,180 @@ struct ContentDiffQuery {
     target_revision: Option<i64>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MediaAssetListQuery {
+    cursor: Option<String>,
+    limit: Option<usize>,
+    q: Option<String>,
+    scan_status: Option<String>,
+    access_level: Option<String>,
+}
+
+async fn list_media_assets(
+    State(state): State<AppState>,
+    Query(query): Query<MediaAssetListQuery>,
+) -> Result<Json<CursorPage<MediaAssetSummary>>, ApiError> {
+    let filter = MediaAssetFilter::parse(query.q, query.scan_status, query.access_level)?;
+    let page = media_assets::list_media_assets(
+        &state,
+        filter,
+        CursorQuery {
+            cursor: query.cursor,
+            limit: query.limit,
+        },
+    )
+    .await?;
+    Ok(Json(page))
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ContentListQuery {
+    cursor: Option<String>,
+    limit: Option<usize>,
+    q: Option<String>,
+    kind: Option<String>,
+    status: Option<String>,
+    sort: Option<String>,
+    direction: Option<String>,
+}
+
+impl ContentListQuery {
+    fn into_parts(self) -> Result<(ContentListFilter, CursorQuery), ApiError> {
+        let query = parse_query_text(self.q)?;
+        let kinds = parse_kinds(self.kind)?;
+        let status = parse_status(self.status)?;
+        let sort = parse_sort(self.sort)?;
+        let direction = parse_direction(self.direction, sort)?;
+        Ok((
+            ContentListFilter {
+                query,
+                kinds,
+                status,
+                sort,
+                direction,
+            },
+            CursorQuery {
+                cursor: self.cursor,
+                limit: self.limit,
+            },
+        ))
+    }
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ContentRecordListPage {
+    items: Vec<ContentRecordV2>,
+    next_cursor: Option<String>,
+    total: usize,
+    counts: std::collections::BTreeMap<String, usize>,
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ContentTemplateListPage {
+    items: Vec<ContentTemplateDefinition>,
+}
+
 async fn list_content(
     State(state): State<AppState>,
-    Query(query): Query<CursorQuery>,
-) -> Result<Json<CursorPage<ContentRecordV2>>, ApiError> {
-    let values = cms_content::list_content(&state).await?;
-    Ok(Json(paginate_by_id(
-        "admin.content.v2",
-        values,
-        query,
-        |entry| entry.id,
-    )?))
+    Query(query): Query<ContentListQuery>,
+) -> Result<Json<ContentRecordListPage>, ApiError> {
+    let (filter, pagination) = query.into_parts()?;
+    let outcome = cms_content::list_content(&state, filter.clone()).await?;
+    let scope = format!("admin.content.v2|{}", filter.cursor_scope());
+    let page = paginate_by_id_scoped(&scope, outcome.records, pagination, |entry| entry.id)?;
+    Ok(Json(ContentRecordListPage {
+        items: page.items,
+        next_cursor: page.next_cursor,
+        total: outcome.total,
+        counts: outcome.counts,
+    }))
+}
+
+async fn list_content_templates() -> Result<Json<ContentTemplateListPage>, ApiError> {
+    Ok(Json(ContentTemplateListPage {
+        items: cms_templates::template_registry().to_vec(),
+    }))
+}
+
+fn parse_query_text(value: Option<String>) -> Result<Option<String>, ApiError> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    if trimmed.chars().count() > 200 {
+        return Err(ApiError::bad_request("q must be at most 200 characters."));
+    }
+    Ok(Some(trimmed.to_string()))
+}
+
+fn parse_kinds(value: Option<String>) -> Result<Vec<CmsContentKind>, ApiError> {
+    let Some(value) = value else {
+        return Ok(Vec::new());
+    };
+    let mut kinds = Vec::new();
+    for raw in value.split(',') {
+        let entry = raw.trim();
+        if entry.is_empty() {
+            continue;
+        }
+        let kind: CmsContentKind = serde_json::from_value(Value::String(entry.to_string()))
+            .map_err(|_| {
+                ApiError::bad_request("kind must be a comma-separated list of CMS content kinds.")
+            })?;
+        if !kinds.contains(&kind) {
+            kinds.push(kind);
+        }
+    }
+    Ok(kinds)
+}
+
+fn parse_status(value: Option<String>) -> Result<Option<CmsPublicationStatusV2>, ApiError> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    serde_json::from_value(Value::String(trimmed.to_string()))
+        .map(Some)
+        .map_err(|_| ApiError::bad_request("status must be draft, published, or archived."))
+}
+
+fn parse_sort(value: Option<String>) -> Result<ContentSortField, ApiError> {
+    match value.as_deref() {
+        None | Some("") => Ok(ContentSortField::UpdatedAt),
+        Some("updatedAt") => Ok(ContentSortField::UpdatedAt),
+        Some("title") => Ok(ContentSortField::Title),
+        Some("kind") => Ok(ContentSortField::Kind),
+        Some(_) => Err(ApiError::bad_request("sort must be updatedAt, title, or kind.")),
+    }
+}
+
+fn parse_direction(
+    value: Option<String>,
+    sort: ContentSortField,
+) -> Result<SortDirection, ApiError> {
+    match value.as_deref() {
+        None | Some("") => Ok(default_direction(sort)),
+        Some("asc") => Ok(SortDirection::Asc),
+        Some("desc") => Ok(SortDirection::Desc),
+        Some(_) => Err(ApiError::bad_request("direction must be asc or desc.")),
+    }
+}
+
+fn default_direction(sort: ContentSortField) -> SortDirection {
+    match sort {
+        ContentSortField::Title | ContentSortField::Kind => SortDirection::Asc,
+        ContentSortField::UpdatedAt => SortDirection::Desc,
+    }
 }
 
 async fn get_content_draft(

@@ -433,8 +433,25 @@ ContentRecordV2: {
             updatedBy: string;
         };
 ContentRecordV2Page: {
+            counts: {
+                article?: number;
+                caseStudy?: number;
+                company?: number;
+                download?: number;
+                faq?: number;
+                footer?: number;
+                generalInformation?: number;
+                home?: number;
+                legal?: number;
+                navigation?: number;
+                news?: number;
+                page?: number;
+                solution?: number;
+                technology?: number;
+            };
             items: components["schemas"]["ContentRecordV2"][];
             nextCursor: string | null;
+            total: number;
         };
 ContentRelationReference: {
             /** Format: uuid */
@@ -472,6 +489,9 @@ ContentTemplateDefinition: {
             requiredBlocks: components["schemas"]["ContentBlockKind"][];
             routable: boolean;
             singletonPerLocale: boolean;
+        };
+ContentTemplateDefinitionPage: {
+            items: components["schemas"]["ContentTemplateDefinition"][];
         };
 /** @enum {string} */
         ContentTemplateKey: "home" | "productIndex" | "productFamily" | "selector" | "compare" | "solutionIndex" | "solutionDetail" | "technologyIndex" | "technologyDetail" | "articleIndex" | "articleDetail" | "newsIndex" | "newsDetail" | "faqIndex" | "faqDetail" | "caseStudyIndex" | "caseStudyDetail" | "downloadIndex" | "downloadDetail" | "about" | "contact" | "rfqRouter" | "rfqForm" | "search" | "legal" | "navigation" | "footer" | "generalInformation";

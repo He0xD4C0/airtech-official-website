@@ -9,6 +9,50 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
     add_draft_paths(paths);
     add_snapshot_path(paths);
     add_revision_paths(paths);
+    add_media_paths(paths);
+}
+
+fn add_media_paths(paths: &mut Map<String, Value>) {
+    add(
+        paths,
+        "/api/admin/v1/media/assets",
+        "get",
+        admin(
+            params(
+                op(
+                    "listAdminMediaAssets",
+                    "List media library assets for the unified content editor",
+                    "adminContent",
+                    [(
+                        "200",
+                        json_response("Media assets", r("MediaAssetSummaryPage")),
+                    )],
+                ),
+                media_asset_params(),
+            ),
+            false,
+        ),
+    );
+}
+
+fn media_asset_params() -> Vec<Value> {
+    let mut values = admin_pagination_params();
+    values.push(query_param(
+        "q",
+        false,
+        json!({"type": "string", "maxLength": 200, "description": "Case-insensitive original name search."}),
+    ));
+    values.push(query_param(
+        "scanStatus",
+        false,
+        json!({"type": "string", "enum": ["pending", "clean", "quarantined", "failed"]}),
+    ));
+    values.push(query_param(
+        "accessLevel",
+        false,
+        json!({"type": "string", "enum": ["public", "authenticated", "internal"]}),
+    ));
+    values
 }
 
 fn add_collection_paths(paths: &mut Map<String, Value>) {
@@ -20,14 +64,34 @@ fn add_collection_paths(paths: &mut Map<String, Value>) {
             params(
                 op(
                     "listAdminContentV2",
-                    "List unified CMS working records",
+                    "List unified CMS working records with server-side search, filters, sort, and type counts",
                     "adminContent",
                     [(
                         "200",
                         json_response("Content records", r("ContentRecordV2Page")),
                     )],
                 ),
-                admin_pagination_params(),
+                content_list_params(),
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/content/templates",
+        "get",
+        admin(
+            op(
+                "listAdminContentTemplatesV2",
+                "List the controlled CMS template registry",
+                "adminContent",
+                [(
+                    "200",
+                    json_response(
+                        "Controlled content templates",
+                        r("ContentTemplateDefinitionPage"),
+                    ),
+                )],
             ),
             false,
         ),
@@ -52,6 +116,32 @@ fn add_collection_paths(paths: &mut Map<String, Value>) {
             true,
         ),
     );
+}
+
+fn content_list_params() -> Vec<Value> {
+    let mut values = admin_pagination_params();
+    values.push(query_param(
+        "q",
+        false,
+        json!({"type": "string", "maxLength": 200, "description": "Case-insensitive title or slug search."}),
+    ));
+    values.push(query_param(
+        "kind",
+        false,
+        json!({"type": "string", "description": "Comma-separated CmsContentKind filters."}),
+    ));
+    values.push(query_param("status", false, r("CmsPublicationStatusV2")));
+    values.push(query_param(
+        "sort",
+        false,
+        json!({"type": "string", "enum": ["updatedAt", "title", "kind"], "default": "updatedAt"}),
+    ));
+    values.push(query_param(
+        "direction",
+        false,
+        json!({"type": "string", "enum": ["asc", "desc"]}),
+    ));
+    values
 }
 
 fn add_draft_paths(paths: &mut Map<String, Value>) {

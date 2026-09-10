@@ -6,6 +6,34 @@
 import type { components } from '../components'
 
 export interface SchemasPart04 {
+SelectionRfqRequest: {
+            /** @enum {boolean} */
+            consent: true;
+            contact: components["schemas"]["BusinessContact"];
+            context: components["schemas"]["SelectionRfqContext"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            journey: "selection";
+            /** @enum {string} */
+            locale: "en";
+            sourcePath: string;
+        };
+SelectorCandidate: {
+            matchedConstraints: string[];
+            /** Format: uuid */
+            productId: string;
+            /** Format: int64 */
+            productRevision: number;
+            rank: number;
+            title: string;
+            warnings: string[];
+        };
+/** @enum {string} */
+        SelectorOutcome: "matched" | "noValidatedCandidates" | "engineeringReviewRequired";
+/** @enum {string} */
+        SelectorPriority: "efficiency" | "noise" | "size" | "headroom";
 SelectorRequest: {
             airflow: number;
             airflowUnit: string;

@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use super::{conversion::issue, types::*};
 
-pub(super) fn stable_media_version_id(asset_id: Uuid) -> Uuid {
+pub(crate) fn stable_media_version_id(asset_id: Uuid) -> Uuid {
     let mut digest = Sha256::new();
     digest.update(b"airtek-cms-v2-media-version\0");
     digest.update(asset_id.as_bytes());

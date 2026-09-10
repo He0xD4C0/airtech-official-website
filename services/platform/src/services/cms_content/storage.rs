@@ -1,22 +1,29 @@
+use super::listing::{apply_filter, ContentListFilter, ContentListOutcome};
 use super::*;
 
 const RECORD_COLUMNS: &str = r#"entry.id,entry.status,entry.latest_revision,
     entry.cms_published_revision,entry.cms_created_at,draft.document,
     draft.draft_version,draft.updated_at,draft.updated_by"#;
 
-pub async fn list_content(state: &AppState) -> Result<Vec<ContentRecordV2>, ApiError> {
+/// Loads the collection and applies the admin list filters, sort order, and
+/// type counts on the server. Paging happens after filtering in the route.
+pub async fn list_content(
+    state: &AppState,
+    filter: ContentListFilter,
+) -> Result<ContentListOutcome, ApiError> {
     let pool = require_postgres(state)?;
     let query = format!(
         "SELECT {RECORD_COLUMNS} FROM content_entries entry \
          JOIN content_drafts draft ON draft.content_id=entry.id \
          ORDER BY draft.updated_at DESC,entry.id"
     );
-    sqlx::query(&query)
+    let records = sqlx::query(&query)
         .fetch_all(pool)
         .await?
         .into_iter()
         .map(|row| decode_record(&row))
-        .collect()
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(apply_filter(records, &filter))
 }
 
 pub async fn get_content(state: &AppState, id: Uuid) -> Result<ContentRecordV2, ApiError> {

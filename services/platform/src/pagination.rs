@@ -61,6 +61,17 @@ pub fn paginate_by_id<T>(
     query: CursorQuery,
     id: impl Fn(&T) -> Uuid,
 ) -> Result<CursorPage<T>, ApiError> {
+    paginate_by_id_scoped(scope, values, query, id)
+}
+
+/// Same contract as [`paginate_by_id`], but the cursor scope may include the
+/// active filter and sort signature so a cursor cannot survive a filter change.
+pub fn paginate_by_id_scoped<T>(
+    scope: &str,
+    values: Vec<T>,
+    query: CursorQuery,
+    id: impl Fn(&T) -> Uuid,
+) -> Result<CursorPage<T>, ApiError> {
     let limit = cursor_limit(&query)?;
     let start = if let Some(value) = query.cursor.as_deref() {
         let after_id = decode_scoped_cursor::<Uuid>(scope, value)?;

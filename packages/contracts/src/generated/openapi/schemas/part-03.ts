@@ -6,6 +6,35 @@
 import type { components } from '../components'
 
 export interface SchemasPart03 {
+MediaBlock: {
+            caption?: string | null;
+            /** Format: uuid */
+            id: string;
+            layout: components["schemas"]["MediaLayout"];
+            media: components["schemas"]["MediaUseReference"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "media";
+        };
+/** @enum {string} */
+        MediaLayout: "inline" | "fullWidth" | "aside";
+MediaUseReference: {
+            altText?: string | null;
+            asset: components["schemas"]["AssetVersionReference"];
+            decorative: boolean;
+        };
+MigrationPreflightCounts: {
+            contentEntries: number;
+            contentRevisions: number;
+            generalInformationEntries: number;
+            mediaAssets: number;
+            mediaReferences: number;
+            newsEntries: number;
+            publicRoutes: number;
+            relations: number;
+        };
 MigrationPreflightIssue: {
             code: components["schemas"]["MigrationPreflightIssueCode"];
             entityId?: string | null;
@@ -456,32 +485,4 @@ SelectionRfqContext: {
             quantity?: components["schemas"]["RfqQuantity"];
             requiredCertifications?: string[];
         };
-SelectionRfqRequest: {
-            /** @enum {boolean} */
-            consent: true;
-            contact: components["schemas"]["BusinessContact"];
-            context: components["schemas"]["SelectionRfqContext"];
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            journey: "selection";
-            /** @enum {string} */
-            locale: "en";
-            sourcePath: string;
-        };
-SelectorCandidate: {
-            matchedConstraints: string[];
-            /** Format: uuid */
-            productId: string;
-            /** Format: int64 */
-            productRevision: number;
-            rank: number;
-            title: string;
-            warnings: string[];
-        };
-/** @enum {string} */
-        SelectorOutcome: "matched" | "noValidatedCandidates" | "engineeringReviewRequired";
-/** @enum {string} */
-        SelectorPriority: "efficiency" | "noise" | "size" | "headroom";
 }

@@ -15,6 +15,7 @@ import {
 import BrandMark from '@/components/BrandMark.vue'
 import { navigation, quickActions } from '@/config/navigation'
 import { adminApi } from '@/services/adminApi'
+import { contentApi } from '@/services/contentApi'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 
@@ -56,8 +57,8 @@ async function loadNavigationBadges(): Promise<void> {
     }))
   }
   if (auth.hasPermission('content.read')) {
-    requests.push(adminApi.listNews({ limit: 100 }).then((page) => {
-      if (page.items.length) badges['/news'] = `${page.items.length}${page.nextCursor ? '+' : ''}`
+    requests.push(contentApi.listContent({ kinds: ['news'], limit: 1 }).then((page) => {
+      if (page.total > 0) badges['/content?kind=news'] = `${page.total}`
     }))
   }
 

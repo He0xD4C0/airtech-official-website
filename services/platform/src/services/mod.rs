@@ -4,6 +4,7 @@ pub mod cms_templates;
 #[cfg(feature = "devtools")]
 pub mod development_seed;
 pub mod feishu;
+pub mod media_assets;
 pub mod product_facts;
 pub mod product_import;
 pub mod product_publication;
