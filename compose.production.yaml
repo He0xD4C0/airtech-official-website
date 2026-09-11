@@ -1,4 +1,4 @@
-name: airtekpower-production
+name: ${AIRTEK_APP_PROJECT_NAME:-airtek-app}
 
 # Provider-neutral production process boundary. The image references and
 # browser-visible origins are deliberately mandatory: a release must promote
@@ -38,6 +38,14 @@ services:
       AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES: ${AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES:-}
       AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS: ${AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS:-}
       AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS: ${AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS:-}
+      AIRTEK_MEDIA_STORAGE: ${AIRTEK_MEDIA_STORAGE:?set AIRTEK_MEDIA_STORAGE to s3 for production media}
+      AIRTEK_MEDIA_S3_ENDPOINT: ${AIRTEK_MEDIA_S3_ENDPOINT:?set the internal MinIO endpoint}
+      AIRTEK_MEDIA_S3_REGION: ${AIRTEK_MEDIA_S3_REGION:-us-east-1}
+      AIRTEK_MEDIA_S3_BUCKET: ${AIRTEK_MEDIA_S3_BUCKET:?set the private media bucket}
+      AIRTEK_MEDIA_S3_ACCESS_KEY_ID: ${AIRTEK_MEDIA_S3_ACCESS_KEY_ID:?set the scoped MinIO access key}
+      AIRTEK_MEDIA_S3_SECRET_ACCESS_KEY: ${AIRTEK_MEDIA_S3_SECRET_ACCESS_KEY:?set the scoped MinIO secret key}
+      AIRTEK_MEDIA_S3_KEY_PREFIX: ${AIRTEK_MEDIA_S3_KEY_PREFIX:-media}
+      AIRTEK_MEDIA_S3_PATH_STYLE: ${AIRTEK_MEDIA_S3_PATH_STYLE:-true}
       AIRTEK_TRUSTED_PROXY_CIDRS: ${AIRTEK_TRUSTED_PROXY_CIDRS:-172.29.0.10/32}
       RUST_LOG: ${RUST_LOG:-airtek_platform=info,tower_http=info}
     expose:
@@ -146,6 +154,5 @@ services:
 
 networks:
   default:
-    ipam:
-      config:
-        - subnet: ${AIRTEK_COMPOSE_SUBNET:-172.29.0.0/24}
+    external: true
+    name: ${AIRTEK_PRODUCTION_NETWORK:-airtek-production}

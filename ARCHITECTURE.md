@@ -135,11 +135,11 @@ private and same-origin but is not a CDN. Local objects are read asynchronously
 in bounded chunks, while S3 response bytes cross a bounded channel into the
 Axum response body. The gateway disables response buffering for `/media/*`, so
 same-origin delivery preserves that backpressure instead of collecting the
-object at either hop. The repository's MinIO profile is a local acceptance
-environment, not proof of a configured production object store. The checked-in
-production Compose boundary supplies no media storage credentials, so
-production media remains disabled until an approved deployment adds complete
-settings. Human review remains the only approval path in every environment.
+object at either hop. Local development keeps MinIO opt-in. The selected
+single-host production topology operates MinIO in the independent
+`airtek-infra` project and gives the API only bucket-scoped credentials over the
+private `airtek-production` network. Human review remains the only approval
+path in every environment.
 
 The required product-master paths are:
 
@@ -235,9 +235,9 @@ exclusive build features.
 
 PostgreSQL persistence, Flyway-managed schema versions, internal jobs, and
 durable outbox claiming are local platform capabilities. Local-file and
-S3-compatible media transport are implemented, with MinIO available only as an
-opt-in local profile; production storage still requires an approved endpoint,
-bucket, credentials and deployment wiring. Feishu network synchronization, GA4
+S3-compatible media transport are implemented; MinIO is opt-in locally and is
+operated as independent stateful infrastructure in the selected single-host
+production topology. Feishu network synchronization, GA4
 loading, CDN purge, external search providers, email/CRM/webhooks, backup
 executors, and isolated restore executors are not
 connected. Environment placeholders or Admin screens must not be treated as

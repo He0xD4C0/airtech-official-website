@@ -387,12 +387,12 @@ strong ETag, immutable one-year caching and `nosniff`; the download route forces
 unconfigured or backend-mismatched objects fail closed. The repository includes
 local-file and S3-compatible storage implementations plus the opt-in MinIO
 profile, but it does not provide a CDN, public bucket, third-party scanner, or a
-configured production object store. Public delivery streams local files
+managed external object store. Public delivery streams local files
 asynchronously and forwards S3 response bytes through a bounded channel; the
 gateway disables proxy response buffering for `/media/*`, so neither layer
 collects a complete object before sending it to the client. The checked-in
-production Compose boundary leaves media storage disabled until an approved
-deployment supplies and reviews the complete settings.
+production topology connects the API to the independently operated private
+MinIO service through bucket-scoped credentials on a shared internal network.
 
 ## Data and publication rules
 
@@ -431,9 +431,9 @@ deployment supplies and reviews the complete settings.
   inferred from a completed internal hook.
 - The S3-compatible adapter and local MinIO profile are implemented and remain
   opt-in. Feishu and GA4 values are still reserved configuration only; no live
-  Feishu synchronization or GA4 loading is implied. The standard production
-  deployment does not configure an object store; machine scanning is not part
-  of the media workflow.
+  Feishu synchronization or GA4 loading is implied. The selected single-host
+  production deployment uses a private MinIO bucket; machine scanning is not
+  part of the media workflow.
 - Consent-gated first-party analytics events are sanitized in the public client,
   accepted by the Rust API, and exposed through the admin aggregate. A GA4
   provider adapter is not connected, so no GA4 loading is implied.

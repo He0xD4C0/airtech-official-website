@@ -1,0 +1,98 @@
+name: ${AIRTEK_INFRA_PROJECT_NAME:-airtek-infra}
+
+# Stateful production services are operated independently from application
+# releases. They share only the pre-created airtek-production network with the
+# application stack and never participate in application rollback or teardown.
+services:
+  postgres:
+    image: ${AIRTEK_POSTGRES_IMAGE:?set AIRTEK_POSTGRES_IMAGE to a pinned PostgreSQL 17 image}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-airtek}
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?set POSTGRES_SUPERUSER_PASSWORD}
+    volumes:
+      - "${AIRTEK_POSTGRES_DATA_DIR:-/srv/airtek/data/postgres}:/var/lib/postgresql/data:Z"
+    ports:
+      - "${AIRTEK_INFRA_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_POSTGRES_ADMIN_PORT:-15432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    stop_grace_period: 1m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  postgres-bootstrap:
+    image: ${AIRTEK_POSTGRES_IMAGE:?set AIRTEK_POSTGRES_IMAGE to a pinned PostgreSQL 17 image}
+    profiles: ["bootstrap"]
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: postgres
+      PGUSER: ${POSTGRES_SUPERUSER:-postgres}
+      PGPASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?set POSTGRES_SUPERUSER_PASSWORD}
+      AIRTEK_DATABASE_NAME: ${POSTGRES_DB:-airtek}
+      AIRTEK_MIGRATOR_ROLE: ${FLYWAY_USER:-airtek_migrator}
+      AIRTEK_MIGRATOR_PASSWORD: ${FLYWAY_PASSWORD:?set FLYWAY_PASSWORD}
+      AIRTEK_RUNTIME_ROLE: ${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:-airtek_runtime}
+      AIRTEK_RUNTIME_PASSWORD: ${AIRTEK_RUNTIME_DATABASE_PASSWORD:?set AIRTEK_RUNTIME_DATABASE_PASSWORD}
+    volumes:
+      - "${AIRTEK_INFRA_SCRIPT_DIR:-/opt/airtek/infra/scripts}/postgres-bootstrap.sh:/usr/local/bin/airtek-postgres-bootstrap:ro,Z"
+    entrypoint: ["/bin/sh", "/usr/local/bin/airtek-postgres-bootstrap"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  minio:
+    image: ${AIRTEK_MINIO_IMAGE:?set AIRTEK_MINIO_IMAGE to a pinned MinIO image}
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
+    volumes:
+      - "${AIRTEK_MINIO_DATA_DIR:-/srv/airtek/data/minio}:/data:Z"
+    ports:
+      - "${AIRTEK_INFRA_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_MINIO_ADMIN_PORT:-19000}:9000"
+      - "${AIRTEK_INFRA_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_MINIO_CONSOLE_PORT:-19001}:9001"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    stop_grace_period: 1m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  minio-bootstrap:
+    image: ${AIRTEK_MINIO_MC_IMAGE:?set AIRTEK_MINIO_MC_IMAGE to a pinned MinIO Client image}
+    profiles: ["bootstrap"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
+      AIRTEK_MEDIA_S3_BUCKET: ${AIRTEK_MEDIA_S3_BUCKET:-airtek-media}
+      AIRTEK_MEDIA_S3_ACCESS_KEY_ID: ${AIRTEK_MEDIA_S3_ACCESS_KEY_ID:?set the application MinIO access key}
+      AIRTEK_MEDIA_S3_SECRET_ACCESS_KEY: ${AIRTEK_MEDIA_S3_SECRET_ACCESS_KEY:?set the application MinIO secret key}
+    volumes:
+      - "${AIRTEK_INFRA_SCRIPT_DIR:-/opt/airtek/infra/scripts}/minio-bootstrap.sh:/usr/local/bin/airtek-minio-bootstrap:ro,Z"
+    entrypoint: ["/bin/sh", "/usr/local/bin/airtek-minio-bootstrap"]
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+
+networks:
+  default:
+    external: true
+    name: ${AIRTEK_PRODUCTION_NETWORK:-airtek-production}

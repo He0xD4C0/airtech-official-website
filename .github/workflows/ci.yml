@@ -316,11 +316,16 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/assert-deployment-config.mjs
+      - run: node scripts/assert-production-infrastructure.mjs
       - run: docker compose config --quiet
       - name: Validate opt-in debug port override
         run: docker compose -f compose.yaml -f compose.debug.yaml --profile object-storage config --quiet
       - name: Validate provider-neutral production Compose
         run: docker compose --env-file infra/deploy/production.env.example -f compose.production.yaml config --quiet
+      - name: Validate independently operated production infrastructure
+        run: docker compose --env-file infra/deploy/infrastructure.env.example -f compose.infrastructure.production.yaml --profile bootstrap config --quiet
+      - name: Validate production shell scripts
+        run: sh -n infra/deploy/deploy-app.sh infra/deploy/postgres-bootstrap.sh infra/deploy/minio-bootstrap.sh
       - name: Validate Admin Nginx template
         run: >-
           docker run --rm

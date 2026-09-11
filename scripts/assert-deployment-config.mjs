@@ -11,7 +11,7 @@ function read(relativePath) {
     failures.push(`${relativePath} is missing.`)
     return ''
   }
-  return readFileSync(path, 'utf8')
+  return readFileSync(path, 'utf8').replace(/\r\n/gu, '\n')
 }
 
 function requireMatch(body, pattern, failure) {
