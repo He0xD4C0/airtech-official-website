@@ -50,6 +50,8 @@ pub enum ConfigError {
     InvalidAnalyticsDimensionAllowlist(&'static str),
     #[error("AIRTEK_TRUSTED_PROXY_CIDRS contains an invalid IP/CIDR: {0}")]
     InvalidTrustedProxyCidr(String),
+    #[error("media configuration is invalid: {0}")]
+    InvalidMediaSettings(String),
     #[error("a devtools build requires DATABASE_URL or AIRTEK_ADMIN_BOOTSTRAP_TOKEN so an authenticated administrator can be established")]
     MissingDevtoolsAuthentication,
 }

@@ -1,5 +1,4 @@
 import { adminAuthApi } from './adminAuthApi'
-import { adminContentApi } from './adminContentApi'
 import { adminEngagementApi } from './adminEngagementApi'
 import { adminIdentityApi } from './adminIdentityApi'
 import { adminIntegrationApi } from './adminIntegrationApi'
@@ -11,7 +10,6 @@ export { productImportResult, waitForOperation } from './adminOperationsApi'
 
 export const adminApi = {
   ...adminAuthApi,
-  ...adminContentApi,
   ...adminProductApi,
   ...adminIntegrationApi,
   ...adminEngagementApi,

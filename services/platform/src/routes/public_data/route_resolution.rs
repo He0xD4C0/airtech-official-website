@@ -5,26 +5,22 @@ async fn resolve_route(
     validate_locale(&query.locale)?;
     validate_public_path(&query.path)?;
 
-    let page = published_content_by_path(&state, &query.path, &query.locale).await?;
-    if let Some(page) = page {
-        let data_class = if page.is_placeholder {
-            DataClass::DevelopmentFixture
-        } else {
-            DataClass::Editorial
-        };
-        let template_key =
-            page_template_key(&page).unwrap_or_else(|| template_key(page.kind).to_owned());
-        let indexable = page.seo.indexable && !page.is_placeholder;
+    if let Some(route) = load_v2_route(&state, &query.path, &query.locale).await? {
+        let placeholder = route.page.is_placeholder;
         return Ok(Json(RouteResolution {
             path: query.path,
-            template_key,
+            template_key: route.template_key,
             entity_type: "content".into(),
-            entity_id: Some(page.id),
+            entity_id: Some(route.entity_id),
             locale: query.locale,
-            published_revision: page.published_revision,
-            indexable,
-            data_class,
-            page: Some(page),
+            published_revision: Some(route.revision),
+            indexable: route.indexable && !placeholder,
+            data_class: if placeholder {
+                DataClass::DevelopmentFixture
+            } else {
+                DataClass::Editorial
+            },
+            page: Some(route.page),
         }));
     }
 

@@ -68,7 +68,80 @@ fn definition(
         allowed_blocks: allowed_blocks.to_vec(),
         routable,
         singleton_per_locale,
+        route_pattern: route_pattern(key).map(str::to_owned),
     }
+}
+
+/// Canonical path patterns are the single source of truth for both the public
+/// `public_routes` projection and the Admin canonical preview.
+pub fn route_pattern(key: ContentTemplateKey) -> Option<&'static str> {
+    use ContentTemplateKey as Template;
+    Some(match key {
+        Template::Home => "/{locale}",
+        Template::ProductIndex => "/{locale}/products",
+        Template::ProductFamily => "/{locale}/products/{slug}",
+        Template::Selector => "/{locale}/products/selector",
+        Template::Compare => "/{locale}/products/compare",
+        Template::SolutionIndex => "/{locale}/solutions",
+        Template::SolutionDetail => "/{locale}/solutions/{slug}",
+        Template::TechnologyIndex => "/{locale}/technology",
+        Template::TechnologyDetail => "/{locale}/technology/{slug}",
+        Template::ArticleIndex => "/{locale}/resources/articles",
+        Template::ArticleDetail => "/{locale}/resources/articles/{slug}",
+        Template::NewsIndex => "/{locale}/resources/news",
+        Template::NewsDetail => "/{locale}/resources/news/{slug}",
+        Template::FaqIndex => "/{locale}/resources/faqs",
+        Template::FaqDetail => "/{locale}/resources/faqs/{slug}",
+        Template::CaseStudyIndex => "/{locale}/resources/case-studies",
+        Template::CaseStudyDetail => "/{locale}/resources/case-studies/{slug}",
+        Template::DownloadIndex => "/{locale}/resources/downloads",
+        Template::DownloadDetail => "/{locale}/resources/downloads/{slug}",
+        Template::About => "/{locale}/company/about",
+        Template::Contact => "/{locale}/company/contact",
+        Template::RfqRouter => "/{locale}/request-a-quote",
+        Template::RfqForm => "/{locale}/request-a-quote/{slug}",
+        Template::Search => "/{locale}/search",
+        // Legal documents live directly under the locale root
+        // (`/en/privacy`, `/en/terms`, `/en/cookie-settings`).
+        Template::Legal => "/{locale}/{slug}",
+        Template::Navigation | Template::Footer | Template::GeneralInformation => return None,
+    })
+}
+
+/// Resolves the registry pattern into the canonical path published to
+/// `public_routes`. Returns `None` when the template is not routable, the
+/// locale is malformed, or a required slug segment is invalid.
+pub fn canonical_path(locale: &str, key: ContentTemplateKey, slug: Option<&str>) -> Option<String> {
+    if !valid_locale_segment(locale) {
+        return None;
+    }
+    let path = route_pattern(key)?.replace("{locale}", locale);
+    if !path.contains("{slug}") {
+        return Some(path);
+    }
+    let slug = slug?;
+    if !valid_route_segment(slug) {
+        return None;
+    }
+    Some(path.replace("{slug}", slug))
+}
+
+fn valid_locale_segment(value: &str) -> bool {
+    (2..=35).contains(&value.len())
+        && !value.starts_with('-')
+        && !value.ends_with('-')
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+}
+
+fn valid_route_segment(value: &str) -> bool {
+    (1..=180).contains(&value.len())
+        && !value.starts_with('-')
+        && !value.ends_with('-')
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
 }
 
 fn page(key: ContentTemplateKey, singleton_per_locale: bool) -> ContentTemplateDefinition {
@@ -305,5 +378,33 @@ mod tests {
             assert!(definition.singleton_per_locale);
             assert_eq!(definition.body_policy, CmsBodyPolicy::Forbidden);
         }
+    }
+
+    #[test]
+    fn route_patterns_match_the_routable_flag() {
+        for definition in template_registry() {
+            assert_eq!(
+                definition.route_pattern.is_some(),
+                definition.routable,
+                "template {:?} route pattern does not match its routable flag",
+                definition.key
+            );
+        }
+        assert_eq!(
+            canonical_path("en", ContentTemplateKey::NewsDetail, Some("spring-update")),
+            Some("/en/resources/news/spring-update".to_owned())
+        );
+        assert_eq!(
+            canonical_path("en", ContentTemplateKey::Home, None),
+            Some("/en".to_owned())
+        );
+        assert_eq!(
+            canonical_path("en", ContentTemplateKey::NewsDetail, Some("Not A Slug")),
+            None
+        );
+        assert_eq!(
+            canonical_path("en", ContentTemplateKey::Navigation, None),
+            None
+        );
     }
 }

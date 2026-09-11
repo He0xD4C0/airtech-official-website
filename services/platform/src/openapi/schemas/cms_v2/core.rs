@@ -415,6 +415,7 @@ fn add_template(s: &mut Map<String, Value>) {
                 "allowedBlocks",
                 "routable",
                 "singletonPerLocale",
+                "routePattern",
             ],
             json!({
                 "key": r("ContentTemplateKey"), "contentKind": r("CmsContentKind"),
@@ -426,7 +427,8 @@ fn add_template(s: &mut Map<String, Value>) {
                     "type": "array", "uniqueItems": true, "items": r("ContentBlockKind")
                 },
                 "routable": {"type": "boolean"},
-                "singletonPerLocale": {"type": "boolean"}
+                "singletonPerLocale": {"type": "boolean"},
+                "routePattern": nullable(json!({"type": "string"}))
             }),
         ),
     );

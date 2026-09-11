@@ -1909,7 +1909,7 @@
         "additionalProperties": false,
         "properties": {
           "content": {
-            "$ref": "#/components/schemas/ContentEntry"
+            "$ref": "#/components/schemas/PublicContentProjection"
           },
           "previewExpiresAt": {
             "format": "date-time",
@@ -2222,6 +2222,16 @@
           "routable": {
             "type": "boolean"
           },
+          "routePattern": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "singletonPerLocale": {
             "type": "boolean"
           }
@@ -2233,7 +2243,8 @@
           "requiredBlocks",
           "allowedBlocks",
           "routable",
-          "singletonPerLocale"
+          "singletonPerLocale",
+          "routePattern"
         ],
         "type": "object"
       },
@@ -4542,6 +4553,30 @@
         ],
         "type": "object"
       },
+      "MediaAssetReviewRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "description": "Required for every human clean or quarantine decision; surrounding whitespace is trimmed and the reason is recorded in the audit trail.",
+            "maxLength": 500,
+            "minLength": 1,
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "clean",
+              "quarantined"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "reason"
+        ],
+        "type": "object"
+      },
       "MediaAssetSummary": {
         "additionalProperties": false,
         "properties": {
@@ -5041,7 +5076,7 @@
             "type": "string"
           },
           "content": {
-            "$ref": "#/components/schemas/ContentEntry"
+            "$ref": "#/components/schemas/PublicContentProjection"
           },
           "coverMediaId": {
             "anyOf": [
@@ -6253,6 +6288,114 @@
         ],
         "type": "object"
       },
+      "PublicContentProjection": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TiptapDocument"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "composition": {
+            "$ref": "#/components/schemas/PageComposition"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isPlaceholder": {
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CmsContentKind"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "publishedRevision": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "resolvedLinks": {
+            "items": {
+              "$ref": "#/components/schemas/ResolvedLinkTarget"
+            },
+            "type": "array"
+          },
+          "resolvedRelations": {
+            "items": {
+              "$ref": "#/components/schemas/ResolvedRelationCard"
+            },
+            "type": "array"
+          },
+          "schemaVersion": {
+            "const": 2,
+            "type": "integer"
+          },
+          "seo": {
+            "$ref": "#/components/schemas/SeoInputV2"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "templateKey": {
+            "$ref": "#/components/schemas/ContentTemplateKey"
+          },
+          "title": {
+            "type": "string"
+          },
+          "typeFields": {
+            "$ref": "#/components/schemas/ContentTypeFields"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "id",
+          "kind",
+          "locale",
+          "templateKey",
+          "title",
+          "slug",
+          "summary",
+          "isPlaceholder",
+          "typeFields",
+          "body",
+          "composition",
+          "seo",
+          "publishedRevision",
+          "updatedAt",
+          "resolvedRelations",
+          "resolvedLinks"
+        ],
+        "type": "object"
+      },
       "PublicationStatus": {
         "enum": [
           "draft",
@@ -6494,6 +6637,81 @@
           "locale",
           "consent",
           "context"
+        ],
+        "type": "object"
+      },
+      "ResolvedLinkTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "contentId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "href": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contentId",
+          "href"
+        ],
+        "type": "object"
+      },
+      "ResolvedRelationCard": {
+        "additionalProperties": false,
+        "properties": {
+          "entityType": {
+            "enum": [
+              "content",
+              "product"
+            ],
+            "type": "string"
+          },
+          "eyebrow": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "href": {
+            "type": "string"
+          },
+          "relationId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "relationId",
+          "entityType",
+          "title",
+          "summary",
+          "href",
+          "eyebrow",
+          "tags"
         ],
         "type": "object"
       },
@@ -6742,7 +6960,7 @@
           "page": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ContentEntry"
+                "$ref": "#/components/schemas/PublicContentProjection"
               },
               {
                 "type": "null"
@@ -7291,7 +7509,7 @@
           "footer": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ContentEntry"
+                "$ref": "#/components/schemas/PublicContentProjection"
               },
               {
                 "type": "null"
@@ -7301,7 +7519,7 @@
           "generalInformation": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/GeneralInformation"
+                "$ref": "#/components/schemas/PublicContentProjection"
               },
               {
                 "type": "null"
@@ -7321,7 +7539,7 @@
           "navigation": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ContentEntry"
+                "$ref": "#/components/schemas/PublicContentProjection"
               },
               {
                 "type": "null"
@@ -12893,6 +13111,302 @@
         ]
       }
     },
+    "/api/admin/v1/media/assets/{id}/scan": {
+      "post": {
+        "operationId": "reviewAdminMediaAsset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MediaAssetReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaAssetSummary"
+                }
+              }
+            },
+            "description": "Media asset reviewed"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Record the human review decision for a media asset",
+        "tags": [
+          "adminContent"
+        ]
+      }
+    },
+    "/api/admin/v1/media/uploads": {
+      "post": {
+        "operationId": "uploadAdminMediaAsset",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "file": {
+                    "description": "Single PNG, JPEG, or WebP image up to 25 MiB. SVG is rejected.",
+                    "format": "binary",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaAssetSummary"
+                }
+              }
+            },
+            "description": "Media asset stored"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Upload one PNG, JPEG, or WebP object into the review pipeline",
+        "tags": [
+          "adminContent"
+        ]
+      }
+    },
     "/api/admin/v1/operations": {
       "get": {
         "operationId": "listBackgroundOperations",
@@ -17519,7 +18033,19 @@
             "name": "kind",
             "required": true,
             "schema": {
-              "$ref": "#/components/schemas/ContentKind"
+              "enum": [
+                "home",
+                "solutions",
+                "technology",
+                "articles",
+                "news",
+                "faqs",
+                "case-studies",
+                "downloads",
+                "company",
+                "legal"
+              ],
+              "type": "string"
             }
           },
           {
@@ -17551,7 +18077,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ContentEntry"
+                  "$ref": "#/components/schemas/PublicContentProjection"
                 }
               }
             },
@@ -17947,6 +18473,272 @@
         "summary": "Create or refresh a consented anonymous first-party visit",
         "tags": [
           "publicAnalytics"
+        ]
+      }
+    },
+    "/api/public/v1/media/{assetId}": {
+      "get": {
+        "operationId": "getPublicMediaAsset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assetId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Media object"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "summary": "Serve one reviewed, public media object",
+        "tags": [
+          "public"
+        ]
+      }
+    },
+    "/api/public/v1/media/{assetId}/download": {
+      "get": {
+        "operationId": "downloadPublicMediaAsset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assetId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Media attachment"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "summary": "Download one reviewed, public media object as an attachment",
+        "tags": [
+          "public"
         ]
       }
     },

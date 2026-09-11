@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ArrowRight, Boxes, Download, Eye, Filter, Search, ShieldCheck, SlidersHorizontal } from 'lucide-vue-next'
 import CursorPaginationControls from '@/components/CursorPaginationControls.vue'
 import DataStatePanel from '@/components/DataStatePanel.vue'
@@ -11,6 +11,7 @@ import type { ProductSummary } from '@/types/domain'
 
 const query = ref('')
 const familyFilter = ref('all')
+let searchTimer: ReturnType<typeof setTimeout> | undefined
 
 const familyNames = {
   centrifugal: 'Centrifugal fans',
@@ -21,7 +22,10 @@ const familyNames = {
 } as const
 
 const productPager = useCursorPagination(async (pagination) => {
-  const page = await adminApi.listProducts(pagination)
+  const page = await adminApi.listProducts({
+    ...pagination,
+    q: query.value.trim() || undefined,
+  })
   return {
     ...page,
     items: page.items.map((product): ProductSummary => ({
@@ -39,10 +43,9 @@ const productPager = useCursorPagination(async (pagination) => {
 })
 const loadError = computed(() => productPager.error.value ?? '')
 const products = computed(() => productPager.items.value)
-const filtered = computed(() => products.value.filter((product) => {
-  const matchesQuery = `${product.model} ${product.family}`.toLowerCase().includes(query.value.toLowerCase())
-  return matchesQuery && (familyFilter.value === 'all' || product.family === familyFilter.value)
-}))
+const filtered = computed(() => products.value.filter((product) => (
+  familyFilter.value === 'all' || product.family === familyFilter.value
+)))
 const familySummaries = computed(() => Array.from(
   products.value.reduce((counts, product) => counts.set(product.family, (counts.get(product.family) ?? 0) + 1), new Map<string, number>()),
   ([name, count]) => ({ name, count }),
@@ -56,6 +59,17 @@ const state = computed<'loading' | 'ready' | 'empty' | 'error' | 'forbidden'>(()
 
 onMounted(async () => {
   await productPager.first()
+})
+
+watch(query, () => {
+  if (searchTimer !== undefined) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    void productPager.first()
+  }, 300)
+})
+
+onBeforeUnmount(() => {
+  if (searchTimer !== undefined) clearTimeout(searchTimer)
 })
 
 const sourceBadge = (state: ProductSummary['sourceState']) => ({
@@ -125,7 +139,7 @@ const publishBadge = (state: ProductSummary['publishState']) => ({
         :can-previous="productPager.canPrevious.value"
         :can-next="productPager.canNext.value"
         :loading="productPager.loading.value"
-        label="条数据库记录（搜索作用于当前页）"
+        label="条数据库记录（搜索由服务端执行）"
         @previous="productPager.previous"
         @next="productPager.next"
       />

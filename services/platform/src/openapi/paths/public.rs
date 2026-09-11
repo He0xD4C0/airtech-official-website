@@ -69,14 +69,28 @@ pub(super) fn add_core(paths: &mut Map<String, Value>) {
                 [(
                     "200",
                     response_header(
-                        json_response("Published content", r("ContentEntry")),
+                        json_response("Published content", r("PublicContentProjection")),
                         "ETag",
                         "Immutable published revision tag",
                     ),
                 )],
             ),
             vec![
-                path_param("kind", r("ContentKind")),
+                path_param(
+                    "kind",
+                    string_enum(&[
+                        "home",
+                        "solutions",
+                        "technology",
+                        "articles",
+                        "news",
+                        "faqs",
+                        "case-studies",
+                        "downloads",
+                        "company",
+                        "legal",
+                    ]),
+                ),
                 path_param("slug", slug()),
                 query_param(
                     "locale",

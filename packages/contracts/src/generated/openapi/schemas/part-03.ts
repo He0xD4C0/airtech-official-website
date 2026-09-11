@@ -91,7 +91,7 @@ NewsDraftInput: {
 NewsEntry: {
             authorDisplayName: string | null;
             category: string;
-            content: components["schemas"]["ContentEntry"];
+            content: components["schemas"]["PublicContentProjection"];
             coverMediaId: string | null;
             dataClass: components["schemas"]["DataClass"];
             featured: boolean;
@@ -347,6 +347,29 @@ ProjectRfqRequest: {
         };
 /** @enum {string} */
         PublicationStatus: "draft" | "scheduled" | "published" | "archived";
+PublicContentProjection: {
+            body: components["schemas"]["TiptapDocument"] | null;
+            composition: components["schemas"]["PageComposition"];
+            /** Format: uuid */
+            id: string;
+            isPlaceholder: boolean;
+            kind: components["schemas"]["CmsContentKind"];
+            locale: string;
+            /** Format: int64 */
+            publishedRevision: number;
+            resolvedLinks: components["schemas"]["ResolvedLinkTarget"][];
+            resolvedRelations: components["schemas"]["ResolvedRelationCard"][];
+            /** @constant */
+            schemaVersion: 2;
+            seo: components["schemas"]["SeoInputV2"];
+            slug: string | null;
+            summary: string | null;
+            templateKey: components["schemas"]["ContentTemplateKey"];
+            title: string;
+            typeFields: components["schemas"]["ContentTypeFields"];
+            /** Format: date-time */
+            updatedAt: string;
+        };
 ReasonRequest: {
             reason: string;
         };
@@ -413,6 +436,22 @@ ReplacementRfqRequest: {
             locale: "en";
             sourcePath: string;
         };
+ResolvedLinkTarget: {
+            /** Format: uuid */
+            contentId: string;
+            href: string;
+        };
+ResolvedRelationCard: {
+            /** @enum {string} */
+            entityType: "content" | "product";
+            eyebrow: string | null;
+            href: string;
+            /** Format: uuid */
+            relationId: string;
+            summary: string | null;
+            tags: string[];
+            title: string;
+        };
 RestoreContentRevisionRequest: {
             reason: string;
         };
@@ -456,33 +495,4 @@ RichTextDocument: {
             schemaVersion: number;
         };
 RoleDefinition: components["schemas"]["AdminRoleRecord"];
-RollbackContentRequest: {
-            reason: string;
-            /** Format: int64 */
-            revision: number;
-        };
-RouteResolution: {
-            dataClass: components["schemas"]["DataClass"];
-            entityId: string | null;
-            entityType: string;
-            indexable: boolean;
-            locale: string;
-            page: components["schemas"]["ContentEntry"] | null;
-            path: string;
-            publishedRevision: number | null;
-            templateKey: string;
-        };
-SelectionRfqContext: {
-            additionalMessage?: string;
-            application: string;
-            control?: string;
-            dutyPoint: components["schemas"]["RfqDutyPoint"];
-            electrical?: components["schemas"]["RfqElectricalContext"];
-            environment?: string;
-            maximumDiameterMm?: number;
-            /** @enum {string} */
-            priority?: "efficiency" | "noise" | "size" | "headroom";
-            quantity?: components["schemas"]["RfqQuantity"];
-            requiredCertifications?: string[];
-        };
 }

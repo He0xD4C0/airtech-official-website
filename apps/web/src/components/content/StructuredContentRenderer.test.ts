@@ -1,15 +1,15 @@
 import { createSSRApp, h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { describe, expect, it } from 'vitest'
-import type { RichTextDocument } from '@airtek/contracts'
+import type { TiptapDocument } from '@airtek/contracts'
 import StructuredContentRenderer from './StructuredContentRenderer'
-import { hasRenderableRichText, safeImageUrl, safeLinkUrl } from '@/lib/richText'
+import { safeImageUrl, safeLinkUrl } from '@/lib/richText'
 
-function document(content: unknown[]): RichTextDocument {
-  return { schemaVersion: 1, doc: { type: 'doc', content } as never }
+function document(content: unknown[]): TiptapDocument {
+  return { type: 'doc', content } as TiptapDocument
 }
 
-async function render(documentValue: RichTextDocument): Promise<string> {
+async function render(documentValue: TiptapDocument): Promise<string> {
   return renderToString(createSSRApp({
     render: () => h(StructuredContentRenderer, { document: documentValue }),
   }))
@@ -78,9 +78,8 @@ describe('structured public content renderer', () => {
     expect(safeImageUrl('data:image/png;base64,AAAA')).toBeUndefined()
   })
 
-  it('uses only a non-empty schema-v1 doc as the published-body override', () => {
-    expect(hasRenderableRichText(document([{ type: 'paragraph', content: [{ type: 'text', text: 'Published' }] }]))).toBe(true)
-    expect(hasRenderableRichText(document([]))).toBe(false)
-    expect(hasRenderableRichText({ schemaVersion: 2, doc: { type: 'doc', content: [{ type: 'text', text: 'Old schema' }] } })).toBe(false)
+  it('marks the rendered native document as schema version 2', async () => {
+    const html = await render(document([{ type: 'paragraph', content: [{ type: 'text', text: 'Published' }] }]))
+    expect(html).toContain('data-schema-version="2"')
   })
 })

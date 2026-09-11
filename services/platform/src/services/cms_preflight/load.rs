@@ -21,6 +21,7 @@ pub async fn load_legacy_snapshot_from_connection(
 ) -> Result<LegacySnapshot, sqlx::Error> {
     Ok(LegacySnapshot {
         content_entries: load_content_entries(connection).await?,
+        known_content_ids: load_known_content_ids(connection).await?,
         content_revisions: load_content_revisions(connection).await?,
         news: load_news(connection).await?,
         news_working: load_news_working(connection).await?,
@@ -72,8 +73,20 @@ async fn load_public_routes(
     connection: &mut PgConnection,
 ) -> Result<Vec<LegacyPublicRoute>, sqlx::Error> {
     let rows = sqlx::query(
-        r#"SELECT id,entity_type,entity_id,locale,canonical_path,indexable
-           FROM public_routes ORDER BY canonical_path,id"#,
+        r#"SELECT route.id,route.entity_type,route.entity_id,route.locale,
+                  route.canonical_path,route.indexable
+           FROM public_routes route
+           WHERE route.entity_type <> 'content'
+              OR EXISTS (
+                   SELECT 1
+                   FROM content_entries entry
+                   WHERE entry.id=route.entity_id
+                     AND NOT EXISTS (
+                         SELECT 1 FROM content_drafts draft
+                         WHERE draft.content_id=entry.id
+                     )
+              )
+           ORDER BY route.canonical_path,route.id"#,
     )
     .fetch_all(connection)
     .await?;
@@ -97,7 +110,11 @@ async fn load_content_entries(
     let rows = sqlx::query(
         r#"SELECT id,kind,slug,locale,title,status,is_placeholder,data_origin,
                   current_revision,published_revision,scheduled_for,payload,updated_at
-           FROM content_entries ORDER BY id"#,
+           FROM content_entries entry
+           WHERE NOT EXISTS (
+               SELECT 1 FROM content_drafts draft WHERE draft.content_id=entry.id
+           )
+           ORDER BY id"#,
     )
     .fetch_all(connection)
     .await?;
@@ -122,12 +139,26 @@ async fn load_content_entries(
         .collect()
 }
 
+async fn load_known_content_ids(
+    connection: &mut PgConnection,
+) -> Result<Vec<uuid::Uuid>, sqlx::Error> {
+    sqlx::query_scalar("SELECT id FROM content_entries ORDER BY id")
+        .fetch_all(connection)
+        .await
+}
+
 async fn load_content_revisions(
     connection: &mut PgConnection,
 ) -> Result<Vec<LegacyContentRevision>, sqlx::Error> {
     let rows = sqlx::query(
-        r#"SELECT content_id,revision,payload,created_by,created_at
-           FROM content_revisions ORDER BY content_id,revision"#,
+        r#"SELECT revision.content_id,revision.revision,revision.payload,
+                  revision.created_by,revision.created_at
+           FROM content_revisions revision
+           JOIN content_entries entry ON entry.id=revision.content_id
+           WHERE NOT EXISTS (
+               SELECT 1 FROM content_drafts draft WHERE draft.content_id=entry.id
+           )
+           ORDER BY revision.content_id,revision.revision"#,
     )
     .fetch_all(connection)
     .await?;
@@ -146,9 +177,15 @@ async fn load_content_revisions(
 
 async fn load_news(connection: &mut PgConnection) -> Result<Vec<LegacyNews>, sqlx::Error> {
     let rows = sqlx::query(
-        r#"SELECT content_id,revision,content_kind,category,author_display_name,
-                  cover_media_asset_id,featured,publication_at,reading_minutes,data_origin
-           FROM news ORDER BY content_id,revision"#,
+        r#"SELECT news.content_id,news.revision,news.content_kind,news.category,
+                  news.author_display_name,news.cover_media_asset_id,news.featured,
+                  news.publication_at,news.reading_minutes,news.data_origin
+           FROM news
+           JOIN content_entries entry ON entry.id=news.content_id
+           WHERE NOT EXISTS (
+               SELECT 1 FROM content_drafts draft WHERE draft.content_id=entry.id
+           )
+           ORDER BY news.content_id,news.revision"#,
     )
     .fetch_all(connection)
     .await?;
@@ -174,10 +211,16 @@ async fn load_news_working(
     connection: &mut PgConnection,
 ) -> Result<Vec<LegacyNewsWorking>, sqlx::Error> {
     let rows = sqlx::query(
-        r#"SELECT content_id,content_kind,category,author_display_name,
-                  cover_media_asset_id,featured,publication_at,reading_minutes,
-                  data_origin,updated_at
-           FROM news_working ORDER BY content_id"#,
+        r#"SELECT working.content_id,working.content_kind,working.category,
+                  working.author_display_name,working.cover_media_asset_id,
+                  working.featured,working.publication_at,working.reading_minutes,
+                  working.data_origin,working.updated_at
+           FROM news_working working
+           JOIN content_entries entry ON entry.id=working.content_id
+           WHERE NOT EXISTS (
+               SELECT 1 FROM content_drafts draft WHERE draft.content_id=entry.id
+           )
+           ORDER BY working.content_id"#,
     )
     .fetch_all(connection)
     .await?;
@@ -205,7 +248,11 @@ async fn load_general_information(
     let rows = sqlx::query(
         r#"SELECT id,scope,locale,status,is_placeholder,data_origin,current_revision,
                   published_revision,scheduled_for,payload,updated_by,updated_at
-           FROM general_information ORDER BY id"#,
+           FROM general_information information
+           WHERE NOT EXISTS (
+               SELECT 1 FROM content_entries entry WHERE entry.id=information.id
+           )
+           ORDER BY id"#,
     )
     .fetch_all(connection)
     .await?;
@@ -233,10 +280,16 @@ async fn load_general_information_revisions(
     connection: &mut PgConnection,
 ) -> Result<Vec<LegacyGeneralInformationRevision>, sqlx::Error> {
     let rows = sqlx::query(
-        r#"SELECT general_information_id,revision,locale,is_placeholder,data_origin,
-                  payload,created_by,created_at
-           FROM general_information_revisions
-           ORDER BY general_information_id,revision"#,
+        r#"SELECT revision.general_information_id,revision.revision,revision.locale,
+                  revision.is_placeholder,revision.data_origin,revision.payload,
+                  revision.created_by,revision.created_at
+           FROM general_information_revisions revision
+           JOIN general_information information
+             ON information.id=revision.general_information_id
+           WHERE NOT EXISTS (
+               SELECT 1 FROM content_entries entry WHERE entry.id=information.id
+           )
+           ORDER BY revision.general_information_id,revision.revision"#,
     )
     .fetch_all(connection)
     .await?;
@@ -260,9 +313,21 @@ async fn load_content_relations(
     connection: &mut PgConnection,
 ) -> Result<Vec<LegacyContentRelation>, sqlx::Error> {
     let rows = sqlx::query(
-        r#"SELECT from_type,from_id,relation_type,to_type,to_id,sort_order
-           FROM content_relations
-           ORDER BY from_type,from_id,relation_type,to_type,to_id"#,
+        r#"SELECT relation.from_type,relation.from_id,relation.relation_type,
+                  relation.to_type,relation.to_id,relation.sort_order
+           FROM content_relations relation
+           WHERE relation.from_type <> 'content'
+              OR EXISTS (
+                   SELECT 1
+                   FROM content_entries entry
+                   WHERE entry.id=relation.from_id
+                     AND NOT EXISTS (
+                         SELECT 1 FROM content_drafts draft
+                         WHERE draft.content_id=entry.id
+                     )
+              )
+           ORDER BY relation.from_type,relation.from_id,relation.relation_type,
+                    relation.to_type,relation.to_id"#,
     )
     .fetch_all(connection)
     .await?;
@@ -316,7 +381,27 @@ async fn load_asset_references(
         r#"SELECT id,media_asset_id,content_id,content_revision,product_id,
                   product_revision,general_information_id,
                   general_information_revision,usage,locale,alt_text,sort_order
-           FROM asset_references ORDER BY id"#,
+           FROM asset_references reference
+           WHERE reference.product_id IS NOT NULL
+              OR EXISTS (
+                   SELECT 1
+                   FROM content_entries entry
+                   WHERE entry.id=reference.content_id
+                     AND NOT EXISTS (
+                         SELECT 1 FROM content_drafts draft
+                         WHERE draft.content_id=entry.id
+                     )
+              )
+              OR EXISTS (
+                   SELECT 1
+                   FROM general_information information
+                   WHERE information.id=reference.general_information_id
+                     AND NOT EXISTS (
+                         SELECT 1 FROM content_entries entry
+                         WHERE entry.id=information.id
+                     )
+              )
+           ORDER BY id"#,
     )
     .fetch_all(connection)
     .await?;

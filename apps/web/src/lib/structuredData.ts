@@ -1,6 +1,7 @@
 import { canonicalUrl, isIndexablePage } from '@/lib/seo'
-import { extractPublishedArticleMetadata, extractPublishedFaqContent } from '@/lib/publishedContent'
+import { asRichTextNode, richTextPlainText } from '@/lib/richText'
 import type { PublicPageModel, PublicSiteBootstrap } from '@/types/content'
+import { articleMetadataFrom } from './server/publicProjectionV2'
 
 type SchemaNode = Record<string, unknown>
 
@@ -18,24 +19,26 @@ function breadcrumbSchema(page: PublicPageModel, origin: string): SchemaNode | u
 }
 
 function faqPageSchema(page: PublicPageModel, origin: string, hasSite: boolean): SchemaNode | undefined {
-  const content = page.publishedContent
-  if (page.kind !== 'faq'
+  const projection = page.projection
+  if (!projection
+    || page.kind !== 'faq'
     || page.dataState !== 'published'
     || !isIndexablePage(page)
-    || content?.kind !== 'faq'
-    || content.status !== 'published'
-    || content.isPlaceholder) return undefined
-
-  const faq = extractPublishedFaqContent(content.body)
-  if (!faq.complete || !faq.items.length) return undefined
+    || projection.isPlaceholder
+    || projection.typeFields.type !== 'faq') return undefined
+  const items = projection.typeFields.items.map((item) => ({
+    question: item.question.trim(),
+    answer: richTextPlainText(asRichTextNode(item.answer)).trim(),
+  }))
+  if (!items.length || items.some((item) => !item.question || !item.answer)) return undefined
   return {
     '@type': 'FAQPage',
     name: page.title,
     ...(page.description ? { description: page.description } : {}),
     url: canonicalUrl(origin, page),
-    inLanguage: content.locale,
+    inLanguage: projection.locale,
     ...(hasSite ? { isPartOf: { '@id': `${origin}/#website` } } : {}),
-    mainEntity: faq.items.map((item) => ({
+    mainEntity: items.map((item) => ({
       '@type': 'Question',
       name: item.question,
       acceptedAnswer: {
@@ -66,19 +69,19 @@ function entitySchema(page: PublicPageModel, origin: string, hasSite: boolean): 
   const faq = faqPageSchema(page, origin, hasSite)
   if (faq) return faq
 
-  const content = page.publishedContent
-  if (content?.kind === 'article' || content?.kind === 'caseStudy') {
-    const metadata = extractPublishedArticleMetadata(content)
+  const projection = page.projection
+  if (projection && (projection.kind === 'article' || projection.kind === 'caseStudy')) {
+    const metadata = projection.kind === 'article' ? articleMetadataFrom(projection) : { outline: [] }
     return {
       '@type': 'Article',
-      headline: content.title,
-      ...((content.summary?.trim() || page.description) ? { description: content.summary?.trim() || page.description } : {}),
-      inLanguage: content.locale,
-      dateModified: content.updatedAt,
+      headline: page.title,
+      ...(page.description ? { description: page.description } : {}),
+      inLanguage: projection.locale,
+      dateModified: projection.updatedAt,
       ...(metadata.publishedAt ? { datePublished: metadata.publishedAt } : {}),
       ...(metadata.category ? { articleSection: metadata.category } : {}),
-      ...(metadata.author && metadata.authorType ? {
-        author: { '@type': metadata.authorType, name: metadata.author },
+      ...(metadata.author ? {
+        author: { '@type': metadata.authorType ?? 'Organization', name: metadata.author },
       } : {}),
       ...(hasSite ? { publisher: { '@id': `${origin}/#organization` } } : {}),
       mainEntityOfPage: canonical,

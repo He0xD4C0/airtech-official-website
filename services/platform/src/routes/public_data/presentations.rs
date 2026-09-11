@@ -1,18 +1,12 @@
 fn product_family_presentations(
-    general_information: Option<&GeneralInformation>,
+    categories: &[crate::models::ProductCategoryPresentationInput],
 ) -> Vec<ProductFamilyPresentation> {
-    let categories = general_information
-        .and_then(|information| information.payload.get("productCategories"))
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
     let mut presentations = categories
-        .into_iter()
+        .iter()
         .filter_map(|category| {
-            let code = category.get("code")?.as_str()?;
-            let code_enum = parse_product_family_code(code)?;
-            let slug = category.get("slug")?.as_str()?;
-            let name = category.get("name")?.as_str()?;
+            let code_enum = category.code;
+            let slug = category.slug.as_str();
+            let name = category.name.as_str();
             if !valid_slug(slug) || name.trim().is_empty() || name.len() > 120 {
                 return None;
             }
@@ -20,16 +14,8 @@ fn product_family_presentations(
                 code: code_enum,
                 slug: slug.to_owned(),
                 name: name.to_owned(),
-                description: category
-                    .get("description")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_owned(),
-                sort_order: category
-                    .get("sortOrder")
-                    .and_then(Value::as_i64)
-                    .and_then(|value| i32::try_from(value).ok())
-                    .unwrap_or(i32::MAX),
+                description: category.description.clone(),
+                sort_order: category.sort_order,
             })
         })
         .collect::<Vec<_>>();

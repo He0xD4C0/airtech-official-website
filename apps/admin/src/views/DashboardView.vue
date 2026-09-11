@@ -19,6 +19,7 @@ import DataStatePanel from '@/components/DataStatePanel.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { adminApi } from '@/services/adminApi'
+import { contentApi } from '@/services/contentApi'
 import { analyticsApiRange, analyticsRangeForPreset } from '@/services/analyticsDateRange'
 import { apiErrorMessage, apiProblemStatus } from '@/services/cursorPagination'
 import { useAuthStore } from '@/stores/auth'
@@ -75,7 +76,7 @@ async function loadDashboard(): Promise<void> {
   activities.value = []
   try {
     const requests: Array<Promise<void>> = []
-    if (auth.hasPermission('content.read')) requests.push(adminApi.listContent({ limit: 100 }).then((content) => {
+    if (auth.hasPermission('content.read')) requests.push(contentApi.listContent({ limit: 100 }).then((content) => {
       metrics.value.drafts = content.items.filter((entry) => entry.status !== 'published').length
       hasMore.value.drafts = Boolean(content.nextCursor)
     }))

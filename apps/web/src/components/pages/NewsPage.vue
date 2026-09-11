@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import PageHero from '@/components/common/PageHero.vue'
-import PublishedEditorialSection from '@/components/content/PublishedEditorialSection.vue'
-import CallToAction from '@/components/common/CallToAction.vue'
-import PageSlotSections from './PageSlotSections.vue'
+import PublicBlockRenderer from '@/components/blocks/PublicBlockRenderer.vue'
 import { getPublishedNews, type NewsEntryResponse } from '@/lib/api'
 import type { CardEntry, PublicPageModel } from '@/types/content'
 
@@ -39,6 +36,7 @@ function newsCard(entry: NewsEntryResponse): CardEntry | undefined {
   const content = entry.content
   if ((content.isPlaceholder && entry.dataClass !== 'developmentFixture')
     || !content.publishedRevision
+    || !content.slug
     || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(content.slug)) return undefined
   return {
     slug: content.slug,
@@ -96,8 +94,12 @@ function visibleDate(value: string): string { return value.slice(0, 10) }
 
 <template>
   <main id="main-content">
-    <PageHero :eyebrow="page.eyebrow" :title="page.title" :description="page.description" :breadcrumbs="page.breadcrumbs" />
-    <PublishedEditorialSection :content="page.publishedContent" />
+    <PublicBlockRenderer
+      v-if="page.projection"
+      :blocks="page.projection.composition.blocks"
+      :projection="page.projection"
+      :breadcrumbs="page.breadcrumbs"
+    />
     <section class="section shell">
       <div v-if="categories.length" class="filter-panel">
         <label>
@@ -128,14 +130,5 @@ function visibleDate(value: string): string { return value.slice(0, 10) }
       </nav>
       <p v-if="loading" class="catalog-loading" role="status">Loading published News records…</p>
     </section>
-    <PageSlotSections :sections="page.sections" />
-    <CallToAction
-      v-if="page.primaryCta"
-      :eyebrow="page.primaryCta.eyebrow"
-      :title="page.primaryCta.title"
-      :description="page.primaryCta.description"
-      :href="page.primaryCta.href"
-      :label="page.primaryCta.label"
-    />
   </main>
 </template>

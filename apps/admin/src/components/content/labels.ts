@@ -1,4 +1,4 @@
-import type { CmsContentKind, ContentBlockKind } from '@airtek/contracts'
+import type { CmsBodyPolicy, CmsContentKind, ContentBlockKind } from '@airtek/contracts'
 
 /** Shared CMS labels for the Admin editor. Single source so inspector panels and lists agree. */
 export const contentKindLabels: Record<CmsContentKind, string> = {
@@ -42,6 +42,16 @@ export const revisionKindLabels: Record<string, string> = {
   manual: '手动快照',
   publish: '发布',
   restore: '恢复',
+}
+
+export const bodyPolicyLabels: Record<CmsBodyPolicy, string> = {
+  required: '必需正文',
+  optional: '正文可选',
+  forbidden: '无正文',
+}
+
+export function bodyPolicyLabel(policy: CmsBodyPolicy): string {
+  return bodyPolicyLabels[policy] ?? policy
 }
 
 /** Tolerant lookup for API values that arrive as plain strings. */

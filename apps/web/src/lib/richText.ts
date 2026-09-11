@@ -1,4 +1,4 @@
-import type { JsonValue, RichTextDocument } from '@airtek/contracts'
+import type { JsonValue } from '@airtek/contracts'
 
 export interface RichTextNode {
   type: string
@@ -90,25 +90,4 @@ export function richTextPlainText(node: RichTextNode | undefined): string {
   if (!node) return ''
   if (node.type === 'text') return node.text ?? ''
   return (node.content ?? []).map(richTextPlainText).join(node.type === 'paragraph' ? ' ' : '')
-}
-
-function nodeHasVisibleContent(node: RichTextNode, depth = 0): boolean {
-  if (depth > 32) return false
-  if (node.type === 'text') return Boolean(node.text?.trim())
-  if (node.type === 'image') return Boolean(safeImageUrl(node.attrs?.src))
-  if (node.type === 'cta') return Boolean(richTextPlainText(node).trim() || (typeof node.attrs?.label === 'string' && node.attrs.label.trim()))
-  if (node.type === 'mathBlock') return Boolean(richTextPlainText(node).trim() || (typeof node.attrs?.expression === 'string' && node.attrs.expression.trim()))
-  if (node.type === 'entityBlock') return Boolean(
-    richTextPlainText(node).trim()
-    || (typeof node.attrs?.label === 'string' && node.attrs.label.trim())
-    || (typeof node.attrs?.reference === 'string' && node.attrs.reference.trim())
-    || safeImageUrl(node.attrs?.src),
-  )
-  return (node.content ?? []).some((child) => nodeHasVisibleContent(child, depth + 1))
-}
-
-export function hasRenderableRichText(document: RichTextDocument | undefined): boolean {
-  if (!document || document.schemaVersion !== 1) return false
-  const root = asRichTextNode(document.doc)
-  return root?.type === 'doc' && nodeHasVisibleContent(root)
 }

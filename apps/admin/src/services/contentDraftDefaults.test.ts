@@ -27,6 +27,7 @@ function template(overrides: Partial<ContentTemplateDefinition> = {}): ContentTe
     requiredBlocks: ['hero', 'body'],
     allowedBlocks: ['hero', 'body', 'media', 'cta'],
     routable: true,
+    routePattern: '/{locale}/resources/articles/{slug}',
     singletonPerLocale: false,
     ...overrides,
   }
@@ -58,6 +59,7 @@ describe('content draft defaults', () => {
         requiredBlocks: [],
         allowedBlocks: [],
         routable: false,
+        routePattern: null,
         singletonPerLocale: true,
       }),
       title: 'Navigation',
@@ -75,5 +77,6 @@ describe('content draft defaults', () => {
     expect(draft.draftVersion).toBe(1)
     expect(draft.slug).toBe('my-article')
     expect(draft.composition.blocks.map((block) => block.type)).toEqual(['hero', 'body'])
+    expect(new Set(draft.composition.blocks.map((block) => block.id)).size).toBe(2)
   })
 })

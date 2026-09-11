@@ -26,9 +26,10 @@ pub(super) fn convert_references(
     Vec<CmsV2AssetReferenceCandidate>,
 ) {
     let content_ids = snapshot
-        .content_entries
+        .known_content_ids
         .iter()
-        .map(|entry| entry.id)
+        .copied()
+        .chain(snapshot.content_entries.iter().map(|entry| entry.id))
         .collect::<BTreeSet<_>>();
     let content_revisions = snapshot
         .content_revisions

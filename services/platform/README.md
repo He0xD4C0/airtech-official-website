@@ -116,9 +116,10 @@ The development seed is the only writer allowed to establish
 `developmentFixture` ownership. When an editor clears a seeded record's
 placeholder flag, the content/News/General Information transaction changes its
 origin to `editorial`; that transition is one-way, and later seed runs use the
-retained ledger only to recognize and skip the taken-over record. News is
-excluded from generic Content mutations and is managed only through the
-dedicated News API so revision-specific metadata cannot drift from content.
+retained ledger only to recognize and skip the taken-over record. Content,
+News, General Information, Navigation, and Footer now share the unified CMS V2
+`/api/admin/v1/content` draft, snapshot, publish, diff, and restore lifecycle;
+the former dedicated News and General Information mutation APIs are removed.
 
 A devtools build refuses to start unless either PostgreSQL is configured for
 existing admin sessions or a sufficiently long setup bootstrap token is

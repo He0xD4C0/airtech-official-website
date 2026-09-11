@@ -51,6 +51,10 @@ pub struct Config {
     /// Reverse-proxy networks that are allowed to supply an X-Forwarded-For
     /// chain. An unlisted direct peer can never influence the client source.
     pub trusted_proxy_cidrs: Vec<IpCidr>,
+    /// Object-storage and review settings for the media upload pipeline. An
+    /// unconfigured deployment keeps the catalogue readable and refuses
+    /// uploads instead of writing objects it cannot serve.
+    pub media: MediaSettings,
     pub production: bool,
 }
 
@@ -103,6 +107,7 @@ impl fmt::Debug for Config {
                 &self.analytics_utm_campaign_allowlist.len(),
             )
             .field("trusted_proxy_cidrs", &self.trusted_proxy_cidrs)
+            .field("media_storage", &self.media.storage_kind_label())
             .field("production", &self.production)
             .finish()
     }

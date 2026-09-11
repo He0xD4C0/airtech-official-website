@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Globe2, Info, Link2, ShieldAlert } from 'lucide-vue-next'
-import type { CmsContentKind, ContentTemplateDefinition, MediaUseReference, SeoInputV2 } from '@airtek/contracts'
-import { canonicalPathForDraft, normalizeSlug } from '@/services/canonicalPath'
+import type { ContentTemplateDefinition, MediaUseReference, SeoInputV2 } from '@airtek/contracts'
+import { canonicalPathForDraft, normalizeSlug, routePatternUsesSlug } from '@/services/canonicalPath'
 import MediaAssetField from './fields/MediaAssetField.vue'
 
 const props = defineProps<{
   modelValue: SeoInputV2
   slug: string | null
   locale: string
-  kind: CmsContentKind
   template: ContentTemplateDefinition
   isPlaceholder: boolean
 }>()
@@ -23,16 +22,17 @@ const TITLE_LIMIT = 60
 const DESCRIPTION_LIMIT = 160
 
 const routable = computed(() => props.template.routable)
+const requiresSlug = computed(() => routePatternUsesSlug(props.template.routePattern))
 const indexable = computed(() => props.modelValue.indexable && !props.isPlaceholder && routable.value)
 
 const canonicalPath = computed(() => canonicalPathForDraft(
-  { kind: props.kind, locale: props.locale, slug: props.slug },
+  { locale: props.locale, slug: props.slug },
   props.template,
 ))
 
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 const slugError = computed(() => {
-  if (!routable.value) return ''
+  if (!routable.value || !requiresSlug.value) return ''
   const slug = normalizeSlug(props.slug)
   if (!slug) return '该模板可路由，slug 为发布必需字段。'
   if (!slugPattern.test(slug)) return 'slug 只允许小写字母、数字与连字符（例如 ie3-motors）。'
@@ -68,7 +68,7 @@ function toggleIndexable(enabled: boolean): void {
       <span>该模板是站点配置文档，没有公开路由，因此不需要 slug 或 canonical。</span>
     </p>
 
-    <label v-if="routable" class="field">
+    <label v-if="routable && requiresSlug" class="field">
       <span>Slug<small>只允许小写字母、数字与连字符</small></span>
       <input
         :value="slug ?? ''"

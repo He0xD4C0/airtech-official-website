@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import PageHero from '@/components/common/PageHero.vue'
-import CallToAction from '@/components/common/CallToAction.vue'
-import PublishedEditorialSection from '@/components/content/PublishedEditorialSection.vue'
-import PageSlotSections from './PageSlotSections.vue'
+import PublicBlockRenderer from '@/components/blocks/PublicBlockRenderer.vue'
 import { trackAnalyticsEvent } from '@/lib/analytics'
 import type { PublicPageModel } from '@/types/content'
 
@@ -31,8 +28,12 @@ function trackArticleSearch(): void {
 
 <template>
   <main id="main-content">
-    <PageHero :eyebrow="page.eyebrow" :title="page.title" :description="page.description" :breadcrumbs="page.breadcrumbs" />
-    <PublishedEditorialSection :content="page.publishedContent" />
+    <PublicBlockRenderer
+      v-if="page.projection"
+      :blocks="page.projection.composition.blocks"
+      :projection="page.projection"
+      :breadcrumbs="page.breadcrumbs"
+    />
     <section class="section shell">
       <div v-if="page.collection === 'articles' && entries.length" class="filter-panel article-filter-panel">
         <label>
@@ -62,14 +63,5 @@ function trackArticleSearch(): void {
         <button class="button secondary" type="button" @click="query = ''">Clear search</button>
       </div>
     </section>
-    <PageSlotSections :sections="page.sections" />
-    <CallToAction
-      v-if="page.primaryCta"
-      :eyebrow="page.primaryCta.eyebrow"
-      :title="page.primaryCta.title"
-      :description="page.primaryCta.description"
-      :href="page.primaryCta.href"
-      :label="page.primaryCta.label"
-    />
   </main>
 </template>

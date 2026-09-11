@@ -5,10 +5,7 @@ use airtek_platform::services::development_seed;
 use airtek_platform::{
     auth::AdminPrincipal,
     build_router,
-    models::{
-        ContentEntry, ContentKind, Product, ProductFamily, PublicationStatus, RichTextDocument,
-        SeoMetadata, SyncRun, SyncRunStatus,
-    },
+    models::{Product, ProductFamily, PublicationStatus, SyncRun, SyncRunStatus},
     AppState, Config,
 };
 use axum::{
@@ -22,6 +19,7 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use http_body_util::BodyExt;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
+#[cfg(feature = "devtools")]
 use sqlx::postgres::PgPoolOptions;
 use tower::ServiceExt;
 use uuid::Uuid;
@@ -70,5 +68,6 @@ include!("postgres_contract/rate_limit_and_admin_idempotency.rs");
 include!("postgres_contract/identity_mutation_atomicity.rs");
 include!("postgres_contract/settings_and_product_publish.rs");
 include!("postgres_contract/unified_content.rs");
+include!("postgres_contract/public_projection.rs");
 include!("postgres_contract/media_assets.rs");
 include!("postgres_contract/cms_round_trip.rs");

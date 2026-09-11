@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import type { CmsBodyPolicy, ContentDraftV2 } from '@airtek/contracts'
 import StructuredEditor from '@/components/StructuredEditor.vue'
-import { bodyPolicyLabel } from '@/services/contentTemplates'
+import { bodyPolicyLabel } from '@/components/content/labels'
 
 type BodyDocument = NonNullable<ContentDraftV2['body']>
 

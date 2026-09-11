@@ -154,6 +154,7 @@ pub async fn snapshot_content(
         ContentSnapshotIntent::Manual => ContentRevisionKindV2::Manual,
         ContentSnapshotIntent::Publish => ContentRevisionKindV2::Publish,
     };
+    let publishing = matches!(intent, ContentSnapshotIntent::Publish);
     insert_revision(
         &mut transaction,
         id,
@@ -164,9 +165,7 @@ pub async fn snapshot_content(
         &metadata.actor,
     )
     .await?;
-    let published_revision = matches!(intent, ContentSnapshotIntent::Publish)
-        .then_some(revision)
-        .or(before.published_revision);
+    let published_revision = publishing.then_some(revision).or(before.published_revision);
     let status = if published_revision.is_some() {
         CmsPublicationStatusV2::Published
     } else {
@@ -192,6 +191,9 @@ pub async fn snapshot_content(
         published_revision,
         ..before.clone()
     };
+    if publishing {
+        publish_public_route(&mut transaction, &record).await?;
+    }
     let action = match intent {
         ContentSnapshotIntent::Manual => "content.snapshot.create",
         ContentSnapshotIntent::Publish => "content.publish",

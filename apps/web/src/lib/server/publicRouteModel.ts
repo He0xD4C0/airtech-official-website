@@ -1,140 +1,172 @@
 import type { RouteProjectionResponse } from '@/lib/publicApiTypes'
-import type {
-  PageKind,
-  PublicPageModel,
-  PublicSiteBootstrap,
-  RfqType,
-} from '@/types/content'
-import {
-  breadcrumbsFrom,
-  isRecord,
-  pageSlots,
-  primaryCtaFrom,
-  relationshipEntries,
-  safeText,
-  sectionsFrom,
-} from './publicProjectionParsing'
+import type { PageKind, PublicPageModel, PublicSiteBootstrap, RfqType } from '@/types/content'
+import { safeText, slugPattern } from './publicProjectionParsing'
 import { PublicPageDataError } from './publicPageDataTypes'
+import {
+  breadcrumbsFromProjection,
+  newsMetadataFrom,
+  pageDescription,
+  pageEyebrow,
+  pageTitle,
+  primaryCtaFromBlocks,
+  relationshipEntriesFromProjection,
+  sectionsFromBlocks,
+} from './publicProjectionV2'
 
 interface TemplateResolution {
   kind: PageKind
   collection?: PublicPageModel['collection']
 }
 
-function templateResolution(route: RouteProjectionResponse): TemplateResolution {
-  const key = route.templateKey.toLowerCase()
-  const compact = key.replaceAll('-', '')
-  const entity = route.entityType.toLowerCase()
-  const indexLike = /(?:index|list|collection|landing)$/u.test(compact)
-  if (route.path === '/en/products') return { kind: 'catalog' }
-  if (route.path === '/en/products/selector') return { kind: 'selector' }
-  if (route.path === '/en/products/compare') return { kind: 'compare' }
-  if (/^\/en\/products\/[^/]+$/u.test(route.path)) return { kind: 'catalog' }
-  if (entity === 'product' || /^\/en\/products\/[^/]+\/[^/]+$/u.test(route.path)) return { kind: 'product-detail' }
-  if (route.path === '/en/request-a-quote') return { kind: 'rfq-router' }
-  if (/^\/en\/request-a-quote\/(?:product|selection|project|replacement)$/u.test(route.path)) return { kind: 'rfq-form' }
-  if (route.path === '/en/search') return { kind: 'search' }
-  if (route.path === '/en/company/about') return { kind: 'about' }
-  if (route.path === '/en/company/contact') return { kind: 'contact' }
-  if (route.path === '/en/resources/news') return { kind: 'news' }
-  if (/^\/en\/resources\/news\/[^/]+$/u.test(route.path)) return { kind: 'news-detail' }
-  if (route.path === '/en/resources/downloads') return { kind: 'downloads', collection: 'downloads' }
-  if (/^\/en\/resources\/downloads\/[^/]+$/u.test(route.path)) return { kind: 'detail', collection: 'downloads' }
-  if (key === 'home') return { kind: 'home' }
-  if (compact.includes('productdetail')) return { kind: 'product-detail' }
-  if (compact.includes('productfamily') || key === 'products' || compact.includes('productindex') || key === 'catalog') return { kind: 'catalog' }
-  if (key.includes('selector')) return { kind: 'selector' }
-  if (key.includes('compare')) return { kind: 'compare' }
-  if (key.includes('news')) return { kind: indexLike || route.path === '/en/resources/news' ? 'news' : 'news-detail' }
-  if (key.includes('faq')) return { kind: 'faq' }
-  if (key.includes('download')) return { kind: 'downloads', collection: 'downloads' }
-  if (key.includes('about')) return { kind: 'about' }
-  if (key.includes('contact')) return { kind: 'contact' }
-  if (key.includes('search')) return { kind: 'search' }
-  if (key.includes('legal') || entity === 'legal') return { kind: 'legal' }
-  if (key.includes('rfq')) return { kind: key.includes('form') ? 'rfq-form' : 'rfq-router' }
+const slugTemplates = new Set([
+  'productFamily', 'solutionDetail', 'technologyDetail', 'articleDetail', 'newsDetail',
+  'faqDetail', 'caseStudyDetail', 'downloadDetail', 'rfqForm', 'legal',
+])
 
-  for (const [token, collection] of [
-    ['solution', 'solutions'],
-    ['technology', 'technology'],
-    ['article', 'articles'],
-    ['case', 'cases'],
-  ] as const) {
-    if (key.includes(token) || entity.includes(token)) {
-      const basePath = collection === 'solutions'
-        ? '/en/solutions'
-        : collection === 'technology'
-          ? '/en/technology'
-          : collection === 'articles'
-            ? '/en/resources/articles'
-            : '/en/resources/case-studies'
-      return { kind: indexLike || route.path === basePath ? 'collection' : 'detail', collection }
-    }
+function templateResolution(templateKey: string): TemplateResolution {
+  switch (templateKey) {
+    case 'home': return { kind: 'home' }
+    case 'productIndex':
+    case 'productFamily': return { kind: 'catalog' }
+    case 'productDetail': return { kind: 'product-detail' }
+    case 'selector': return { kind: 'selector' }
+    case 'compare': return { kind: 'compare' }
+    case 'solutionIndex': return { kind: 'collection', collection: 'solutions' }
+    case 'solutionDetail': return { kind: 'detail', collection: 'solutions' }
+    case 'technologyIndex': return { kind: 'collection', collection: 'technology' }
+    case 'technologyDetail': return { kind: 'detail', collection: 'technology' }
+    case 'articleIndex': return { kind: 'collection', collection: 'articles' }
+    case 'articleDetail': return { kind: 'detail', collection: 'articles' }
+    case 'newsIndex': return { kind: 'news' }
+    case 'newsDetail': return { kind: 'news-detail' }
+    case 'faqIndex':
+    case 'faqDetail': return { kind: 'faq' }
+    case 'caseStudyIndex': return { kind: 'collection', collection: 'cases' }
+    case 'caseStudyDetail': return { kind: 'detail', collection: 'cases' }
+    case 'downloadIndex': return { kind: 'downloads', collection: 'downloads' }
+    case 'downloadDetail': return { kind: 'detail', collection: 'downloads' }
+    case 'about': return { kind: 'about' }
+    case 'contact': return { kind: 'contact' }
+    case 'rfqRouter': return { kind: 'rfq-router' }
+    case 'rfqForm': return { kind: 'rfq-form' }
+    case 'search': return { kind: 'search' }
+    case 'legal': return { kind: 'legal' }
+    default:
+      throw new PublicPageDataError(`The published route template "${templateKey}" is unsupported.`, 503)
   }
-  throw new PublicPageDataError(`The published route template "${route.templateKey}" is unsupported.`, 503)
 }
 
 function rfqType(path: string): RfqType | undefined {
-  const match = path.match(/^\/en\/request-a-quote\/(product|selection|project|replacement)$/u)
-  return match?.[1] as RfqType | undefined
+  const value = path.match(/^\/en\/request-a-quote\/(product|selection|project|replacement)$/u)?.[1]
+  if (value === 'product' || value === 'selection' || value === 'project' || value === 'replacement') {
+    return value
+  }
+  return undefined
 }
 
-export function pageFromRoute(route: RouteProjectionResponse, site: PublicSiteBootstrap): PublicPageModel {
-  const resolved = templateResolution(route)
-  const content = route.page
-  const slots = pageSlots(content)
-  const hero = isRecord(slots.hero) ? slots.hero : {}
-  const title = safeText(hero.title, 300) ?? safeText(content?.title, 300)
-  const description = safeText(hero.description, 1_000)
-    ?? safeText(content?.seo.description, 1_000)
-    ?? safeText(content?.summary, 1_000)
-    ?? site.defaultSeo.description
-  const externallyTitled = resolved.kind === 'product-detail' || resolved.kind === 'news-detail'
-  if (!title && !externallyTitled) {
+function validateProjectionSlug(route: RouteProjectionResponse): string | undefined {
+  const projection = route.page
+  if (!projection) return undefined
+  const slug = projection.slug
+  if (slug !== null && !slugPattern.test(slug)) {
+    throw new PublicPageDataError('The published page projection has an invalid slug.', 503)
+  }
+  if (!slugTemplates.has(projection.templateKey)) return slug ?? undefined
+  if (!slug || route.path.split('/').at(-1) !== slug) {
+    throw new PublicPageDataError('The published detail route has no matching CMS V2 slug.', 503)
+  }
+  return slug
+}
+
+function productPageFromRoute(
+  route: RouteProjectionResponse,
+  site: PublicSiteBootstrap,
+): PublicPageModel {
+  if (route.templateKey !== 'productDetail'
+    || route.page !== null
+    || !route.entityId
+    || !route.publishedRevision
+    || !/^\/en\/products\/[a-z0-9]+(?:-[a-z0-9]+)*\/[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(route.path)) {
+    throw new PublicPageDataError('The published product route projection is inconsistent.', 503)
+  }
+  return {
+    kind: 'product-detail',
+    canonicalPath: route.path,
+    title: '',
+    metaTitle: site.defaultSeo.title ?? '',
+    description: site.defaultSeo.description ?? '',
+    eyebrow: '',
+    breadcrumbs: [],
+    indexable: route.indexable && route.dataClass !== 'developmentFixture' && !site.isPlaceholder,
+    productFamilies: site.productFamilies,
+    motorTechnologies: site.motorTechnologies,
+    analyticsContext: {
+      contentKind: 'product',
+      contentId: route.entityId,
+      publishedRevision: route.publishedRevision,
+    },
+    dataClass: route.dataClass,
+  }
+}
+
+export function pageFromRoute(
+  route: RouteProjectionResponse,
+  site: PublicSiteBootstrap,
+): PublicPageModel {
+  if (route.entityType === 'product') return productPageFromRoute(route, site)
+  const projection = route.page
+  if (!projection
+    || route.entityType !== 'content'
+    || !route.entityId
+    || route.entityId !== projection.id
+    || route.publishedRevision !== projection.publishedRevision
+    || route.templateKey !== projection.templateKey
+    || route.locale !== projection.locale) {
+    throw new PublicPageDataError('The published content route projection is inconsistent.', 503)
+  }
+  const resolved = templateResolution(projection.templateKey)
+  const title = pageTitle(projection)
+  if (!title) {
     throw new PublicPageDataError('The published page projection is missing its required title.', 503)
   }
-  if (!content && resolved.kind !== 'product-detail' && resolved.kind !== 'news-detail') {
-    throw new PublicPageDataError('The published route has no page projection.', 503)
-  }
-  const contentRevision = content?.publishedRevision
-  const publishedRevision = route.publishedRevision ?? contentRevision
-  if (!publishedRevision) throw new PublicPageDataError('The published route has no revision.', 503)
-  const placeholder = content?.isPlaceholder === true
-  const analyticsEntityId = route.entityId ?? content?.id
+  const slug = validateProjectionSlug(route)
   const policyNoIndex = resolved.kind === 'compare'
     || resolved.kind === 'search'
     || resolved.kind === 'rfq-form'
-
   return {
     kind: resolved.kind,
     canonicalPath: route.path,
-    title: title ?? '',
-    metaTitle: safeText(content?.seo.title, 300) ?? title ?? site.defaultSeo.title ?? '',
-    description: description ?? '',
-    eyebrow: safeText(hero.eyebrow, 160) ?? safeText(slots.eyebrow, 160) ?? '',
-    breadcrumbs: breadcrumbsFrom(content, title ?? ''),
+    title,
+    metaTitle: safeText(projection.seo.title, 300) ?? title,
+    description: pageDescription(projection) ?? site.defaultSeo.description ?? '',
+    eyebrow: pageEyebrow(projection),
+    breadcrumbs: breadcrumbsFromProjection(projection, route.path),
     indexable: !policyNoIndex
       && route.indexable
       && route.dataClass !== 'developmentFixture'
       && !site.isPlaceholder
-      && !placeholder
-      && content?.seo.indexable !== false,
+      && !projection.isPlaceholder
+      && projection.seo.indexable,
     collection: resolved.collection,
-    slug: content?.slug === 'index' ? undefined : content?.slug,
+    slug,
     rfqType: resolved.kind === 'rfq-form' ? rfqType(route.path) : undefined,
-    entries: relationshipEntries(content),
-    dataState: placeholder ? 'placeholder' : 'published',
-    placeholderReason: placeholder ? 'This published record is explicitly marked as placeholder content.' : undefined,
-    publishedContent: content ?? undefined,
-    primaryCta: primaryCtaFrom(content),
-    sections: sectionsFrom(content),
+    entries: relationshipEntriesFromProjection(projection),
+    newsMetadata: newsMetadataFrom(projection),
+    dataState: projection.isPlaceholder ? 'placeholder' : 'published',
+    placeholderReason: projection.isPlaceholder
+      ? 'This published record is explicitly marked as placeholder content.'
+      : undefined,
+    projection,
+    blocks: projection.composition.blocks,
+    primaryCta: primaryCtaFromBlocks(projection),
+    sections: sectionsFromBlocks(projection),
     productFamilies: site.productFamilies,
     motorTechnologies: site.motorTechnologies,
-    analyticsContext: analyticsEntityId ? {
-      contentKind: route.entityType === 'product' ? 'product' : 'content',
-      contentId: analyticsEntityId,
-      publishedRevision,
-    } : undefined,
+    analyticsContext: {
+      contentKind: projection.kind === 'news' ? 'news' : 'content',
+      contentId: route.entityId,
+      publishedRevision: projection.publishedRevision,
+    },
     dataClass: route.dataClass,
   }
 }

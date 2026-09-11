@@ -415,7 +415,7 @@ ContentPreviewLink: {
             readonly url: string;
         };
 ContentPreviewResponse: {
-            content: components["schemas"]["ContentEntry"];
+            content: components["schemas"]["PublicContentProjection"];
             /** Format: date-time */
             previewExpiresAt: string;
         };
@@ -488,6 +488,7 @@ ContentTemplateDefinition: {
             key: components["schemas"]["ContentTemplateKey"];
             requiredBlocks: components["schemas"]["ContentBlockKind"][];
             routable: boolean;
+            routePattern: string | null;
             singletonPerLocale: boolean;
         };
 ContentTemplateDefinitionPage: {

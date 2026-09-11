@@ -2,14 +2,14 @@ import type {
   AcceptedResponse,
   AnalyticsConsentReceipt,
   AnalyticsEventReceipt,
-  ContentEntry,
+  DataClass,
   Product,
   ProductPage,
   SelectorResponse,
 } from '@airtek/contracts'
+import type { PublicContentProjection } from '@/types/projection'
 import { PUBLIC_PRODUCT_PAGE_SIZE } from './productPagination'
 import type {
-  GeneralInformationResponse,
   GuestVisitResponse,
   NewsEntryResponse,
   NewsPageResponse,
@@ -36,31 +36,102 @@ function nullableString(value: unknown): value is string | null {
   return value === null || typeof value === 'string'
 }
 
-function publishedContentResponse(value: unknown): ContentEntry {
+const contentKinds = new Set([
+  'home', 'page', 'solution', 'technology', 'article', 'news', 'faq', 'caseStudy',
+  'download', 'company', 'legal', 'generalInformation', 'navigation', 'footer',
+])
+const templateKeys = new Set([
+  'home', 'productIndex', 'productFamily', 'selector', 'compare', 'solutionIndex',
+  'solutionDetail', 'technologyIndex', 'technologyDetail', 'articleIndex',
+  'articleDetail', 'newsIndex', 'newsDetail', 'faqIndex', 'faqDetail',
+  'caseStudyIndex', 'caseStudyDetail', 'downloadIndex', 'downloadDetail', 'about',
+  'contact', 'rfqRouter', 'rfqForm', 'search', 'legal', 'navigation', 'footer',
+  'generalInformation',
+])
+const routeTemplateKeys = new Set([...templateKeys, 'productDetail'])
+const contentBlockKinds = new Set([
+  'hero', 'body', 'media', 'featureGrid', 'evidence', 'cta', 'relationCollection',
+  'faqCollection', 'downloadAsset', 'contactBlock',
+])
+const dataClasses = new Set<string>([
+  'editorial', 'feishu', 'verifiedCsv', 'developmentFixture',
+])
+
+function validDataClass(value: unknown): value is DataClass {
+  return typeof value === 'string' && dataClasses.has(value)
+}
+
+function validRouteEntityType(value: unknown): value is 'content' | 'product' {
+  return value === 'content' || value === 'product'
+}
+
+function validV2Block(value: unknown): boolean {
+  return isRecord(value)
+    && typeof value.id === 'string'
+    && typeof value.type === 'string'
+    && contentBlockKinds.has(value.type)
+}
+
+function validResolvedRelation(value: unknown): boolean {
+  return isRecord(value)
+    && typeof value.relationId === 'string'
+    && ['content', 'product'].includes(String(value.entityType))
+    && typeof value.title === 'string'
+    && nullableString(value.summary)
+    && typeof value.href === 'string'
+    && nullableString(value.eyebrow)
+    && Array.isArray(value.tags)
+    && value.tags.every((tag) => typeof tag === 'string')
+}
+
+function validResolvedLink(value: unknown): boolean {
+  return isRecord(value)
+    && typeof value.contentId === 'string'
+    && typeof value.href === 'string'
+}
+
+export function publicContentProjectionResponse(value: unknown): PublicContentProjection {
   if (!isRecord(value)
+    || value.schemaVersion !== 2
+    || 'payload' in value
+    || 'status' in value
+    || 'currentRevision' in value
     || typeof value.id !== 'string'
-    || typeof value.kind !== 'string'
-    || typeof value.slug !== 'string'
+    || !contentKinds.has(String(value.kind))
     || value.locale !== 'en'
+    || !templateKeys.has(String(value.templateKey))
     || typeof value.title !== 'string'
-    || !isRecord(value.body)
-    || value.body.schemaVersion !== 1
-    || !isRecord(value.body.doc)
-    || !isRecord(value.seo)
-    || value.status !== 'published'
+    || !nullableString(value.slug)
+    || (typeof value.slug === 'string' && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value.slug))
+    || !nullableString(value.summary)
     || typeof value.isPlaceholder !== 'boolean'
-    || !Number.isInteger(value.currentRevision)
+    || (value.body !== null && (!isRecord(value.body)
+      || value.body.type !== 'doc'
+      || !Array.isArray(value.body.content)))
+    || !isRecord(value.composition)
+    || !Array.isArray(value.composition.blocks)
+    || !value.composition.blocks.every(validV2Block)
+    || !isRecord(value.typeFields)
+    || typeof value.typeFields.type !== 'string'
+    || !contentKinds.has(value.typeFields.type)
+    || value.typeFields.type !== value.kind
+    || !isRecord(value.seo)
+    || typeof value.seo.indexable !== 'boolean'
     || !Number.isInteger(value.publishedRevision)
     || Number(value.publishedRevision) <= 0
     || typeof value.updatedAt !== 'string'
-    || !Number.isFinite(Date.parse(value.updatedAt))) {
-    throw new Error('The server returned an invalid published content record.')
+    || !Number.isFinite(Date.parse(value.updatedAt))
+    || !Array.isArray(value.resolvedRelations)
+    || !value.resolvedRelations.every(validResolvedRelation)
+    || !Array.isArray(value.resolvedLinks)
+    || !value.resolvedLinks.every(validResolvedLink)) {
+    throw new Error('The server returned an invalid CMS V2 public projection.')
   }
-  return value as unknown as ContentEntry
+  return value as unknown as PublicContentProjection
 }
 
-function optionalPublishedContent(value: unknown): ContentEntry | null {
-  return value === null ? null : publishedContentResponse(value)
+function optionalPublicContentProjection(value: unknown): PublicContentProjection | null {
+  return value === null ? null : publicContentProjectionResponse(value)
 }
 
 function productFamilyProjectionResponse(value: unknown): ProductFamilyProjectionResponse {
@@ -77,23 +148,6 @@ function productFamilyProjectionResponse(value: unknown): ProductFamilyProjectio
   return value as unknown as ProductFamilyProjectionResponse
 }
 
-function generalInformationResponse(value: unknown): GeneralInformationResponse {
-  if (!isRecord(value)
-    || typeof value.id !== 'string'
-    || value.locale !== 'en'
-    || !isRecord(value.payload)
-    || value.status !== 'published'
-    || !Number.isInteger(value.currentRevision)
-    || !Number.isInteger(value.publishedRevision)
-    || Number(value.publishedRevision) <= 0
-    || typeof value.isPlaceholder !== 'boolean'
-    || typeof value.updatedAt !== 'string'
-    || !Number.isFinite(Date.parse(value.updatedAt))) {
-    throw new Error('The server returned invalid General Information.')
-  }
-  return value as unknown as GeneralInformationResponse
-}
-
 export function siteBootstrapResponse(value: unknown): SiteBootstrapResponse {
   if (!isRecord(value)
     || !Array.isArray(value.productFamilies)
@@ -104,9 +158,9 @@ export function siteBootstrapResponse(value: unknown): SiteBootstrapResponse {
     throw new Error('The server returned an invalid public-site bootstrap.')
   }
   return {
-    generalInformation: value.generalInformation === null ? null : generalInformationResponse(value.generalInformation),
-    navigation: optionalPublishedContent(value.navigation),
-    footer: optionalPublishedContent(value.footer),
+    generalInformation: optionalPublicContentProjection(value.generalInformation),
+    navigation: optionalPublicContentProjection(value.navigation),
+    footer: optionalPublicContentProjection(value.footer),
     productFamilies: value.productFamilies.map(productFamilyProjectionResponse),
     motorTechnologies: [...new Set(value.motorTechnologies.map((item) => item.trim()))],
     generatedAt: value.generatedAt,
@@ -117,14 +171,31 @@ export function routeProjectionResponse(value: unknown): RouteProjectionResponse
   if (!isRecord(value)
     || typeof value.path !== 'string'
     || typeof value.templateKey !== 'string'
-    || !/^[A-Za-z][A-Za-z0-9-]{0,79}$/u.test(value.templateKey)
-    || typeof value.entityType !== 'string'
+    || !routeTemplateKeys.has(value.templateKey)
+    || !validRouteEntityType(value.entityType)
     || (value.entityId !== null && typeof value.entityId !== 'string')
     || value.locale !== 'en'
     || (value.publishedRevision !== null && (!Number.isInteger(value.publishedRevision) || Number(value.publishedRevision) <= 0))
     || typeof value.indexable !== 'boolean'
-    || !['editorial', 'feishu', 'verifiedCsv', 'developmentFixture'].includes(String(value.dataClass))) {
+    || !validDataClass(value.dataClass)) {
     throw new Error('The server returned an invalid public-route projection.')
+  }
+  const page = optionalPublicContentProjection(value.page)
+  if (value.entityType === 'content'
+    && (!page
+      || value.entityId !== page.id
+      || value.publishedRevision !== page.publishedRevision
+      || value.templateKey !== page.templateKey
+      || value.locale !== page.locale
+      || (value.indexable && (page.isPlaceholder || !page.seo.indexable)))) {
+    throw new Error('The server returned an inconsistent CMS V2 route projection.')
+  }
+  if (value.entityType === 'product'
+    && (value.templateKey !== 'productDetail'
+      || page !== null
+      || value.entityId === null
+      || value.publishedRevision === null)) {
+    throw new Error('The server returned an invalid product route projection.')
   }
   return {
     path: value.path,
@@ -134,8 +205,8 @@ export function routeProjectionResponse(value: unknown): RouteProjectionResponse
     locale: value.locale,
     publishedRevision: value.publishedRevision === null ? null : Number(value.publishedRevision),
     indexable: value.indexable,
-    dataClass: value.dataClass as RouteProjectionResponse['dataClass'],
-    page: optionalPublishedContent(value.page),
+    dataClass: value.dataClass,
+    page,
   }
 }
 
@@ -172,17 +243,23 @@ export function newsEntryResponse(value: unknown): NewsEntryResponse {
     || !nullableString(value.publishedAt)
     || (typeof value.publishedAt === 'string' && !Number.isFinite(Date.parse(value.publishedAt)))
     || typeof value.featured !== 'boolean'
-    || !['editorial', 'feishu', 'verifiedCsv', 'developmentFixture'].includes(String(value.dataClass))) {
+    || !validDataClass(value.dataClass)) {
     throw new Error('The server returned an invalid News projection.')
   }
+  const content = publicContentProjectionResponse(value.content)
+  if (content.kind !== 'news'
+    || content.templateKey !== 'newsDetail'
+    || !content.slug) {
+    throw new Error('The server returned a non-routable News projection.')
+  }
   return {
-    content: publishedContentResponse(value.content),
+    content,
     category: value.category,
     authorDisplayName: value.authorDisplayName,
     coverMediaId: value.coverMediaId,
     publishedAt: value.publishedAt,
     featured: value.featured,
-    dataClass: value.dataClass as NewsEntryResponse['dataClass'],
+    dataClass: value.dataClass,
   }
 }
 

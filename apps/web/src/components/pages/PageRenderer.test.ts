@@ -1,123 +1,158 @@
 import { createSSRApp, h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
+import { createPinia } from 'pinia'
 import { describe, expect, it } from 'vitest'
-import type { ContentEntry } from '@airtek/contracts'
+import type { ContentBlock, PublicContentProjection } from '@airtek/contracts'
 import PageRenderer from './PageRenderer.vue'
 import { publicPageFixture } from '@/test/publicPageFixture'
+import { publicProjectionFixture, tiptapDocument } from '@/test/publicProjectionFixture'
+import type { PublicPageModel } from '@/types/content'
 
-function publishedContent(
-  bodyContent: unknown[],
-  options: { kind?: ContentEntry['kind']; slug?: string; canonicalPath?: string; attrs?: Record<string, unknown> } = {},
-): ContentEntry {
-  return {
-    id: 'c8e0af27-6335-4e4d-b25d-a45867ed66f9',
-    kind: options.kind ?? 'home',
-    slug: options.slug ?? 'home',
-    locale: 'en',
-    title: 'Published home',
-    summary: 'Published summary',
-    body: { schemaVersion: 1, doc: { type: 'doc', ...(options.attrs ? { attrs: options.attrs } : {}), content: bodyContent } as never },
-    seo: { title: 'Published page | AIRTEKPOWER', description: 'Published summary', canonicalPath: options.canonicalPath ?? '/en', indexable: true },
-    status: 'published',
-    isPlaceholder: false,
-    currentRevision: 3,
-    publishedRevision: 2,
-    scheduledFor: null,
-    updatedAt: '2026-09-01T08:00:00Z',
-  }
+interface ProjectionOptions {
+  kind?: PublicContentProjection['kind']
+  templateKey?: PublicContentProjection['templateKey']
+  slug?: string | null
+  typeFields?: PublicContentProjection['typeFields']
+  extraBlocks?: ContentBlock[]
 }
 
-describe('published CMS page rendering', () => {
-  it('composes a non-empty Home body with database-projected taxonomy', async () => {
-    const page = {
-      ...publicPageFixture('/en'),
-      title: 'Published home',
-      publishedContent: publishedContent([
-        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'CMS body wins' }] },
-        { type: 'paragraph', content: [{ type: 'text', text: 'Visible without client JavaScript.' }] },
-      ]),
-      productFamilies: [{ code: 'axial' as const, slug: 'axial', name: 'Database family', description: 'Database family description', sortOrder: 1 }],
-      dataState: 'published' as const,
-    }
-    const html = await renderToString(createSSRApp({ render: () => h(PageRenderer, { page }) }))
+function projectionWithBody(bodyContent: unknown[], options: ProjectionOptions = {}): PublicContentProjection {
+  const body = tiptapDocument(bodyContent)
+  return publicProjectionFixture({
+    kind: options.kind ?? 'page',
+    templateKey: options.templateKey ?? 'home',
+    slug: options.slug ?? null,
+    body,
+    composition: {
+      blocks: [
+        ...(bodyContent.length
+          ? [{ type: 'body' as const, id: '11111111-1111-4111-8111-111111111111', width: 'standard' as const }]
+          : []),
+        ...(options.extraBlocks ?? []),
+      ],
+    },
+    typeFields: options.typeFields ?? { type: 'page' },
+  })
+}
 
-    expect(html).toContain('CMS body wins')
+function pageWithProjection(
+  path: string,
+  projection: PublicContentProjection,
+  overrides: Partial<PublicPageModel> = {},
+): PublicPageModel {
+  return publicPageFixture(path, {
+    projection,
+    blocks: projection.composition.blocks,
+    dataState: 'published',
+    ...overrides,
+  })
+}
+
+async function render(page: PublicPageModel): Promise<string> {
+  const app = createSSRApp({ render: () => h(PageRenderer, { page }) })
+  app.use(createPinia())
+  return renderToString(app)
+}
+
+describe('native V2 CMS page rendering', () => {
+  it('composes a Home document with database-projected taxonomy', async () => {
+    const projection = projectionWithBody([
+      { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'CMS V2 body wins' }] },
+      { type: 'paragraph', content: [{ type: 'text', text: 'Visible without client JavaScript.' }] },
+    ], { kind: 'home', templateKey: 'home', typeFields: { type: 'home' } })
+    const page = pageWithProjection('/en', projection, {
+      productFamilies: [{
+        code: 'axial', slug: 'axial', name: 'Database family',
+        description: 'Database family description', sortOrder: 1,
+      }],
+    })
+    const html = await render(page)
+
+    expect(html).toContain('CMS V2 body wins')
     expect(html).toContain('Visible without client JavaScript.')
     expect(html).toContain('Product families')
     expect(html).toContain('Database family')
     expect(html).not.toContain('class="home-hero"')
   })
 
-  it('does not resurrect the removed static Home scaffold when the published body is empty', async () => {
-    const page = { ...publicPageFixture('/en'), publishedContent: publishedContent([]), dataState: 'published' as const }
-    const html = await renderToString(createSSRApp({ render: () => h(PageRenderer, { page }) }))
-    expect(html).not.toContain('class="home-hero"')
+  it('does not resurrect the removed static Home scaffold when V2 composition is empty', async () => {
+    const projection = projectionWithBody([], { kind: 'home', templateKey: 'home', typeFields: { type: 'home' } })
+    expect(await render(pageWithProjection('/en', projection))).not.toContain('class="home-hero"')
   })
 
-  it('keeps route-specific collection, FAQ, download, About and Contact components after publication', async () => {
+  it('keeps specialized workspaces while rendering their native V2 documents', async () => {
     const scenarios: Array<{
       path: string
-      kind: ContentEntry['kind']
-      slug: string
+      options: ProjectionOptions
       marker: string
     }> = [
-      { path: '/en/resources/articles', kind: 'article', slug: 'index', marker: 'Editorial remains visible.' },
-      { path: '/en/resources/faqs', kind: 'faq', slug: 'index', marker: 'FAQ categories' },
-      { path: '/en/resources/downloads', kind: 'download', slug: 'index', marker: 'Search title, description, type or model' },
-      { path: '/en/company/about', kind: 'company', slug: 'about', marker: 'Editorial remains visible.' },
-      { path: '/en/company/contact', kind: 'company', slug: 'contact', marker: 'Business email' },
+      { path: '/en/resources/articles', options: { templateKey: 'articleIndex' }, marker: 'V2 editorial remains visible.' },
+      {
+        path: '/en/resources/faqs',
+        options: { kind: 'faq', templateKey: 'faqIndex', typeFields: { type: 'faq', items: [] } },
+        marker: 'FAQ categories',
+      },
+      {
+        path: '/en/resources/downloads',
+        options: { kind: 'download', templateKey: 'downloadIndex', typeFields: { type: 'download' } },
+        marker: 'Search title or description',
+      },
+      {
+        path: '/en/company/about',
+        options: { kind: 'company', templateKey: 'about', typeFields: { type: 'company' } },
+        marker: 'V2 editorial remains visible.',
+      },
+      {
+        path: '/en/company/contact',
+        options: { kind: 'company', templateKey: 'contact', typeFields: { type: 'company' } },
+        marker: 'Business email',
+      },
     ]
 
     for (const scenario of scenarios) {
-      const route = publicPageFixture(scenario.path)
-      const page = {
-        ...route,
-        publishedContent: publishedContent([
-          { type: 'paragraph', content: [{ type: 'text', text: 'Editorial remains visible.' }] },
-        ], { kind: scenario.kind, slug: scenario.slug, canonicalPath: scenario.path }),
-        dataState: 'published' as const,
-      }
-      const html = await renderToString(createSSRApp({ render: () => h(PageRenderer, { page }) }))
-      expect(html, scenario.path).toContain('Editorial remains visible.')
+      const projection = projectionWithBody([
+        { type: 'paragraph', content: [{ type: 'text', text: 'V2 editorial remains visible.' }] },
+      ], scenario.options)
+      const html = await render(pageWithProjection(scenario.path, projection))
+      expect(html, scenario.path).toContain('V2 editorial remains visible.')
       expect(html, scenario.path).toContain(scenario.marker)
     }
   })
 
-  it('continues to use the CMS body as the primary ordinary detail document', async () => {
+  it('uses the V2 body as the ordinary detail document', async () => {
     const path = '/en/resources/articles/reading-a-fan-curve'
-    const page = {
-      ...publicPageFixture(path),
-      publishedContent: publishedContent([
-        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Controlled article body' }] },
-      ], { kind: 'article', slug: 'reading-a-fan-curve', canonicalPath: path }),
-      dataState: 'published' as const,
-    }
-    const html = await renderToString(createSSRApp({ render: () => h(PageRenderer, { page }) }))
-    expect(html).toContain('Controlled article body')
+    const projection = projectionWithBody([
+      { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Controlled V2 article body' }] },
+    ], {
+      kind: 'article', templateKey: 'articleDetail', slug: 'reading-a-fan-curve',
+      typeFields: {
+        type: 'article', category: null, authorDisplayName: null,
+        publicationAt: null, cover: null, featured: false,
+      },
+    })
+    const html = await render(pageWithProjection(path, projection))
+    expect(html).toContain('Controlled V2 article body')
     expect(html).not.toContain('Read the axes before the line')
   })
 
-  it('keeps a published Download body and adds the controlled-file panel', async () => {
+  it('renders a controlled download only from a V2 downloadAsset block', async () => {
     const path = '/en/resources/downloads/approved-resource'
-    const page = {
-      ...publicPageFixture(path),
-      publishedContent: publishedContent([
-        { type: 'paragraph', content: [{ type: 'text', text: 'Controlled resource context.' }] },
-      ], {
-        kind: 'download', slug: 'approved-resource', canonicalPath: path,
-        attrs: {
-          resourceType: 'Manual', version: 'V2', applicableModels: ['MODEL-A'],
-          fileDescription: 'Published file description.', downloadUrl: '/media/public/manual.pdf',
-          fileStatus: { scan: 'clean', access: 'public' },
-        },
-      }),
-      dataState: 'published' as const,
-      indexable: true,
-    }
-    const html = await renderToString(createSSRApp({ render: () => h(PageRenderer, { page }) }))
+    const assetId = '22222222-2222-4222-8222-222222222222'
+    const projection = projectionWithBody([
+      { type: 'paragraph', content: [{ type: 'text', text: 'Controlled resource context.' }] },
+    ], {
+      kind: 'download', templateKey: 'downloadDetail', slug: 'approved-resource',
+      typeFields: { type: 'download', resourceType: 'Manual', versionLabel: 'V2', versionNotes: null },
+      extraBlocks: [{
+        type: 'downloadAsset', id: '33333333-3333-4333-8333-333333333333',
+        asset: { assetId, versionId: '44444444-4444-4444-8444-444444444444' },
+        label: 'Download resource', description: 'Published file description.',
+      }],
+    })
+    const html = await render(pageWithProjection(path, projection))
     expect(html).toContain('Controlled resource context.')
     expect(html).toContain('Published file description.')
-    expect(html).toContain('href="/media/public/manual.pdf"')
+    expect(html).toContain(`href="/media/${assetId}/download"`)
     expect(html).toContain('Download resource')
   })
 })

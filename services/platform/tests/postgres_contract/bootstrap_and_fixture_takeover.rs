@@ -4,17 +4,15 @@
 async fn site_bootstrap_reads_the_published_postgres_projection() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let pool = PgPoolOptions::new()
-        .max_connections(2)
-        .connect(&database_url)
-        .await
-        .expect("PostgreSQL connection");
+    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    sandbox.apply_current().await;
+    let pool = sandbox.pool().clone();
     support::assert_flyway_schema_current(&pool).await;
     development_seed::seed(&pool, "postgres-contract")
         .await
         .expect("idempotent development projection seed");
 
-    let state = postgres_state(&database_url);
+    let state = postgres_state(sandbox.connection_url());
     state.hydrate().await.expect("PostgreSQL hydration");
     let response = build_router(state)
         .oneshot(
@@ -31,4 +29,6 @@ async fn site_bootstrap_reads_the_published_postgres_projection() {
     assert!(bootstrap["navigation"].is_object());
     assert!(bootstrap["footer"].is_object());
     assert!(bootstrap["productFamilies"].is_array());
+
+    sandbox.cleanup().await;
 }

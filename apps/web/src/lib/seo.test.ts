@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { publicProjectionFixture } from '@/test/publicProjectionFixture'
 import { isIndexablePage, openGraphType, robotsDirective, shouldEmitStructuredData } from './seo'
 
 describe('public SEO policy', () => {
@@ -15,9 +16,9 @@ describe('public SEO policy', () => {
     expect(shouldEmitStructuredData(published)).toBe(true)
   })
 
-  it('uses article Open Graph semantics only for supported published editorial records', () => {
-    expect(openGraphType({ publishedContent: { kind: 'article' } as never })).toBe('article')
-    expect(openGraphType({ publishedContent: { kind: 'caseStudy' } as never })).toBe('article')
-    expect(openGraphType({ publishedContent: undefined })).toBe('website')
+  it('uses article Open Graph semantics only for native V2 editorial projections', () => {
+    expect(openGraphType({ projection: publicProjectionFixture({ kind: 'article' }) })).toBe('article')
+    expect(openGraphType({ projection: publicProjectionFixture({ kind: 'caseStudy' }) })).toBe('article')
+    expect(openGraphType({ projection: undefined })).toBe('website')
   })
 })

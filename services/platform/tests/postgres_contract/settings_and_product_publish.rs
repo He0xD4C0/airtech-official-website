@@ -3,15 +3,13 @@
 async fn platform_settings_compare_and_swap_is_atomic_across_instances() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let pool = PgPoolOptions::new()
-        .max_connections(4)
-        .connect(&database_url)
-        .await
-        .expect("PostgreSQL connection");
+    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    sandbox.apply_current().await;
+    let pool = sandbox.pool().clone();
     support::assert_flyway_schema_current(&pool).await;
 
-    let first_state = postgres_state(&database_url);
-    let second_state = postgres_state(&database_url);
+    let first_state = postgres_state(sandbox.connection_url());
+    let second_state = postgres_state(sandbox.connection_url());
     let before = first_state
         .platform_settings()
         .await
@@ -74,7 +72,7 @@ async fn platform_settings_compare_and_swap_is_atomic_across_instances() {
         1
     );
 
-    let after = postgres_state(&database_url)
+    let after = postgres_state(sandbox.connection_url())
         .platform_settings()
         .await
         .expect("settings after concurrent updates");
@@ -88,6 +86,8 @@ async fn platform_settings_compare_and_swap_is_atomic_across_instances() {
     .await
     .unwrap();
     assert_eq!(audit_count, 1);
+
+    sandbox.cleanup().await;
 }
 
 #[tokio::test]
@@ -95,11 +95,9 @@ async fn platform_settings_compare_and_swap_is_atomic_across_instances() {
 async fn product_publish_requires_an_atomic_accepted_postgres_evidence_chain() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let pool = PgPoolOptions::new()
-        .max_connections(4)
-        .connect(&database_url)
-        .await
-        .expect("PostgreSQL connection");
+    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    sandbox.apply_current().await;
+    let pool = sandbox.pool().clone();
     support::assert_flyway_schema_current(&pool).await;
 
     let now = chrono::Utc::now();
@@ -199,7 +197,7 @@ async fn product_publish_requires_an_atomic_accepted_postgres_evidence_chain() {
     .execute(&pool)
     .await
     .unwrap();
-    let seeded = postgres_state(&database_url);
+    let seeded = postgres_state(sandbox.connection_url());
     seeded.persist_product(&product).await.unwrap();
     seeded.hydrate().await.unwrap();
     let app = airtek_platform::routes::admin::router().with_state(seeded);
@@ -367,7 +365,7 @@ async fn product_publish_requires_an_atomic_accepted_postgres_evidence_chain() {
     .execute(&pool)
     .await
     .unwrap();
-    let blocked_state = postgres_state(&database_url);
+    let blocked_state = postgres_state(sandbox.connection_url());
     blocked_state.hydrate().await.unwrap();
     let blocked_app = airtek_platform::routes::admin::router().with_state(blocked_state);
     let blocked_idempotency_key = format!("postgres-publish-blocked-{product_id}");
@@ -393,4 +391,7 @@ async fn product_publish_requires_an_atomic_accepted_postgres_evidence_chain() {
         .await
         .unwrap();
     assert_eq!(still_draft, "draft");
+
+    drop(pool);
+    sandbox.cleanup().await;
 }

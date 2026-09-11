@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ContentPreviewResponse } from '@airtek/contracts'
-import StructuredContentRenderer from '@/components/content/StructuredContentRenderer'
+import PublicBlockRenderer from '@/components/blocks/PublicBlockRenderer.vue'
 
 defineProps<{ preview: ContentPreviewResponse }>()
 </script>
@@ -11,20 +11,14 @@ defineProps<{ preview: ContentPreviewResponse }>()
       <div class="shell content-preview-banner__inner">
         <strong>Preview · Not published</strong>
         <span>
-          Revision {{ preview.content.currentRevision }} · {{ preview.content.status }} · expires
+          Revision {{ preview.content.publishedRevision }} · Draft · expires
           <time :datetime="preview.previewExpiresAt">{{ preview.previewExpiresAt }}</time>
         </span>
       </div>
     </aside>
-    <header class="content-preview-hero">
-      <div class="shell">
-        <p class="eyebrow">Private content preview</p>
-        <h1>{{ preview.content.title }}</h1>
-        <p v-if="preview.content.summary" class="content-preview-summary">{{ preview.content.summary }}</p>
-      </div>
-    </header>
-    <section class="section shell content-preview-body" aria-label="Preview content">
-      <StructuredContentRenderer :document="preview.content.body" />
-    </section>
+    <PublicBlockRenderer
+      :blocks="preview.content.composition.blocks"
+      :projection="preview.content"
+    />
   </main>
 </template>

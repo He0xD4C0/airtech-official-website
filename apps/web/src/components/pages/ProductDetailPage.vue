@@ -4,7 +4,6 @@ import PageHero from '@/components/common/PageHero.vue'
 import DataNotice from '@/components/common/DataNotice.vue'
 import PqCurve from '@/components/product/PqCurve.vue'
 import CallToAction from '@/components/common/CallToAction.vue'
-import PublishedEditorialSection from '@/components/content/PublishedEditorialSection.vue'
 import PageSlotSections from './PageSlotSections.vue'
 import { useCompareStore } from '@/stores/compare'
 import type { PublicPageModel } from '@/types/content'
@@ -97,7 +96,6 @@ function curveConditions() {
       <div v-if="product?.specifications.length" id="product-panel-overview" class="tab-panel" role="tabpanel" :aria-labelledby="tabs.length > 1 ? 'product-tab-overview' : undefined" :hidden="enhancedTabs && activeTab !== 'overview'"><h2>Structured specifications</h2><div class="table-scroll"><table><tbody><tr v-for="spec in product.specifications" :key="spec.key"><th scope="row">{{ spec.label }}</th><td>{{ spec.value === undefined || spec.value === null ? spec.state : displayValue(spec.value) }} {{ spec.unit || '' }}<small v-if="spec.operatingCondition"> · {{ spec.operatingCondition }}</small></td></tr></tbody></table></div></div>
       <div v-if="verifiedCurve" id="product-panel-performance" class="tab-panel" role="tabpanel" :aria-labelledby="tabs.length > 1 ? 'product-tab-performance' : undefined" :hidden="enhancedTabs && activeTab !== 'performance'"><h2>Airflow and pressure</h2><PqCurve :points="verifiedCurve.points" :airflow-unit="verifiedCurve.airflowUnit" :pressure-unit="verifiedCurve.pressureUnit" :conditions="curveConditions()" /></div>
     </section>
-    <PublishedEditorialSection :content="page.publishedContent" />
     <PageSlotSections :sections="page.sections" />
     <CallToAction
       v-if="page.primaryCta"

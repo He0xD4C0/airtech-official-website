@@ -2,29 +2,35 @@ import { createSSRApp, h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ContentEntry } from '@airtek/contracts'
+import type { PublicContentProjection } from '@airtek/contracts'
 import { getPublishedNews } from '@/lib/api'
 import { publicPageFixture } from '@/test/publicPageFixture'
 import NewsPage from './NewsPage.vue'
 
 vi.mock('@/lib/api', () => ({ getPublishedNews: vi.fn() }))
 
-function news(slug: string, title: string): ContentEntry {
+function news(slug: string, title: string): PublicContentProjection {
   return {
     id: crypto.randomUUID(),
+    schemaVersion: 2,
     kind: 'news',
+    templateKey: 'newsDetail',
     slug,
     locale: 'en',
     title,
     summary: `${title} summary`,
-    body: { schemaVersion: 1, doc: { type: 'doc', content: [] } },
-    seo: { title, description: `${title} summary`, canonicalPath: `/en/resources/news/${slug}`, indexable: true },
-    status: 'published',
+    body: { type: 'doc', content: [] },
+    composition: { blocks: [] },
+    typeFields: {
+      type: 'news', category: 'Company', authorDisplayName: 'Editorial', cover: null,
+      publicationAt: '2026-09-02T00:00:00Z', featured: false,
+    },
+    seo: { title, description: `${title} summary`, indexable: true, socialImage: null },
     isPlaceholder: false,
-    currentRevision: 1,
     publishedRevision: 1,
-    scheduledFor: null,
     updatedAt: '2026-09-02T00:00:00Z',
+    resolvedRelations: [],
+    resolvedLinks: [],
   }
 }
 

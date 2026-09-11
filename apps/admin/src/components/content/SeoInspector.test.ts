@@ -20,6 +20,7 @@ const detailed: ContentTemplateDefinition = {
   key: 'newsDetail',
   contentKind: 'news',
   routable: true,
+  routePattern: '/{locale}/resources/news/{slug}',
   singletonPerLocale: false,
   requiredBlocks: [],
   allowedBlocks: ['body'],
@@ -30,6 +31,7 @@ const singleton: ContentTemplateDefinition = {
   key: 'generalInformation',
   contentKind: 'generalInformation',
   routable: false,
+  routePattern: null,
   singletonPerLocale: true,
   requiredBlocks: [],
   allowedBlocks: [],
@@ -37,12 +39,11 @@ const singleton: ContentTemplateDefinition = {
 }
 
 describe('SeoInspector', () => {
-  it('derives the canonical path from the kind, locale and slug instead of accepting input', async () => {
+  it('derives the canonical path from the template registry pattern instead of accepting input', async () => {
     const html = await renderToString(createSSRApp(SeoInspector, {
       modelValue: seo,
       slug: 'ie3-motors',
       locale: 'en',
-      kind: 'news',
       template: detailed,
       isPlaceholder: false,
     }))
@@ -57,7 +58,6 @@ describe('SeoInspector', () => {
       modelValue: seo,
       slug: 'ie3-motors',
       locale: 'en',
-      kind: 'news',
       template: detailed,
       isPlaceholder: true,
     }))
@@ -72,8 +72,7 @@ describe('SeoInspector', () => {
       modelValue: seo,
       slug: 'IE3 Motors/',
       locale: 'en',
-      kind: 'page',
-      template: { ...detailed, key: 'about', contentKind: 'page' },
+      template: detailed,
       isPlaceholder: false,
     }))
 
@@ -86,7 +85,6 @@ describe('SeoInspector', () => {
       modelValue: { ...seo, indexable: false },
       slug: null,
       locale: 'en',
-      kind: 'generalInformation',
       template: singleton,
       isPlaceholder: false,
     }))
@@ -94,5 +92,18 @@ describe('SeoInspector', () => {
     expect(html).toContain('没有公开路由')
     expect(html).not.toContain('Slug')
     expect(html).toContain('该内容没有公开 URL（无 canonical）')
+  })
+
+  it('does not request a slug when the registry pattern has no slug placeholder', async () => {
+    const html = await renderToString(createSSRApp(SeoInspector, {
+      modelValue: seo,
+      slug: null,
+      locale: 'en',
+      template: { ...detailed, key: 'about', contentKind: 'page', routePattern: '/{locale}/company/about' },
+      isPlaceholder: false,
+    }))
+
+    expect(html).toContain('/en/company/about')
+    expect(html).not.toContain('Slug<small>')
   })
 })

@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { trackAnalyticsEvent } from '@/lib/analytics'
+import { publicProjectionFixture } from '@/test/publicProjectionFixture'
 import type { PublicPageModel } from '@/types/content'
 import DownloadsPage from './DownloadsPage.vue'
 
@@ -15,16 +16,19 @@ const page: PublicPageModel = {
   eyebrow: 'Controlled resources',
   breadcrumbs: [],
   indexable: true,
+  projection: publicProjectionFixture({
+    kind: 'download',
+    templateKey: 'downloadIndex',
+    typeFields: { type: 'download' },
+  }),
   entries: [{
     slug: 'approved-record',
     title: 'Approved record',
     summary: 'A published controlled-resource record.',
     href: '/en/resources/downloads/approved-record',
-    download: { resourceType: 'Datasheet', version: 'V2', applicableModels: ['MODEL-A'], fileDescription: 'Published file.' },
   }, {
     slug: 'manual-record', title: 'Manual record', summary: 'A published manual.',
     href: '/en/resources/downloads/manual-record',
-    download: { resourceType: 'Manual', version: 'V1', applicableModels: ['MODEL-B'], fileDescription: 'Controlled manual.' },
   }],
 }
 
@@ -60,22 +64,14 @@ describe('downloads analytics', () => {
     expect(trackAnalyticsEvent).not.toHaveBeenCalledWith('downloadStarted', expect.anything())
   })
 
-  it('filters only by published type and model metadata and records filter analytics', async () => {
+  it('filters only on fields present in the V2 discovery contract', async () => {
     const wrapper = mount(DownloadsPage, { props: { page } })
-    const selects = wrapper.findAll('select')
-    await selects[0].setValue('Manual')
+    expect(wrapper.findAll('select')).toHaveLength(0)
+    const input = wrapper.get('input[type="search"]')
+    await input.setValue('published manual')
     expect(wrapper.text()).toContain('Manual record')
     expect(wrapper.text()).not.toContain('Approved record')
-    expect(trackAnalyticsEvent).toHaveBeenLastCalledWith('filterApplied', {
-      filterName: 'resourceType', resultCount: 1,
-    })
-
-    await selects[0].setValue('all')
-    await selects[1].setValue('MODEL-A')
-    expect(wrapper.text()).toContain('Approved record')
-    expect(wrapper.text()).not.toContain('Manual record')
-    expect(trackAnalyticsEvent).toHaveBeenLastCalledWith('filterApplied', {
-      filterName: 'applicableModel', resultCount: 1,
-    })
+    expect(wrapper.text()).not.toContain('Applicable model')
+    expect(wrapper.text()).not.toContain('Resource type')
   })
 })

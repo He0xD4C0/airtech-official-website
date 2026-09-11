@@ -34,6 +34,7 @@ const template: ContentTemplateDefinition = {
   requiredBlocks: ['hero', 'body'],
   allowedBlocks: ['hero', 'body', 'media', 'cta'],
   routable: true,
+  routePattern: '/{locale}/resources/articles/{slug}',
   singletonPerLocale: false,
 }
 
@@ -121,7 +122,7 @@ describe('content editor store', () => {
     await store.load('22222222-0000-4000-8000-000000000001')
     expect(store.loadState).toBe('ready')
     expect(store.template?.key).toBe('articleDetail')
-    expect(store.canonicalPath).toBe('/en/article')
+    expect(store.canonicalPath).toBe('/en/resources/articles/article')
     expect(store.saveState).toBe('idle')
   })
 

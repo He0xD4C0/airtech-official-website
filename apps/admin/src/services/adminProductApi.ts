@@ -11,10 +11,19 @@ import type {
   ProductPrivatePricing,
 } from './adminApiTypes'
 
+export interface ProductListRequest extends CursorPageRequest {
+  q?: string
+}
+
 export const adminProductApi = {
-  async listProducts(pagination?: CursorPageRequest): Promise<CursorPage<BackendProduct>> {
+  async listProducts(request: ProductListRequest = {}): Promise<CursorPage<BackendProduct>> {
     const result = await adminContractClient.get('/api/admin/v1/products', {
-      parameters: { query: cursorQuery(pagination) },
+      parameters: {
+        query: {
+          ...cursorQuery(request),
+          ...(request.q?.trim() ? { q: request.q.trim() } : {}),
+        },
+      },
     })
     return result.data
   },

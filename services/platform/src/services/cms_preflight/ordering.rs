@@ -2,6 +2,7 @@ use super::types::{CmsPreflightIssue, CmsPreflightSeverity, LegacySnapshot};
 
 pub(super) fn sort_snapshot(snapshot: &mut LegacySnapshot) {
     snapshot.content_entries.sort_by_key(|value| value.id);
+    snapshot.known_content_ids.sort();
     snapshot
         .content_revisions
         .sort_by_key(|value| (value.content_id, value.revision));

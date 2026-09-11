@@ -43,11 +43,7 @@ test.describe('Public SSR contract', () => {
     expect(response.headers().location).toBe('/en')
   })
 
-  // TODO(public-projection-cutover): the Admin API now publishes unified CMS V2
-  // revisions (`document`), while the public SSR still reads the legacy
-  // `content_revisions.payload`. Re-enable once publishing writes the public
-  // projection; the V2 fixtures created by global-setup are already in place.
-  test.fixme('renders title, navigation, canonical link and body without JavaScript', async ({ browser }) => {
+  test('renders title, navigation, canonical link and body without JavaScript', async ({ browser }) => {
     const context = await browser.newContext({ javaScriptEnabled: false })
     const page = await context.newPage()
 
@@ -59,7 +55,9 @@ test.describe('Public SSR contract', () => {
       await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/en$/u)
       await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible()
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('AIRTEKPOWER Development Preview')
-      await expect(page.locator('main#main-content')).toContainText('Database-backed content')
+      await expect(page.locator('main#main-content article.rich-content')).toHaveText(
+        'This development fixture verifies database-backed rendering. Replace it with reviewed editorial content before launch.',
+      )
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/iu)
       await expect(page.locator('main#main-content a[href="/en/request-a-quote"]').first()).toBeVisible()
     } finally {
@@ -74,8 +72,7 @@ test.describe('Public SSR contract', () => {
     }
   })
 
-  // TODO(public-projection-cutover): same dependency as the SSR rendering test above.
-  test.fixme('has no serious or critical automated accessibility violations on the SSR home page', async ({ page }) => {
+  test('has no serious or critical automated accessibility violations on the SSR home page', async ({ page }) => {
     const response = await page.goto(absolute(publicOrigin, '/en'))
     expect(response?.status()).toBe(200)
     await expect(page.locator('main#main-content')).toBeVisible()
@@ -85,6 +82,23 @@ test.describe('Public SSR contract', () => {
       .analyze()
 
     expect(severeAccessibilityViolations(results.violations)).toEqual([])
+  })
+
+  test('submits the public selector against published product data', async ({ page }) => {
+    await page.goto(absolute(publicOrigin, '/en/products/selector'))
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+
+    await page.getByLabel('Required airflow').fill('1000')
+    await page.getByLabel('Required pressure').fill('250')
+    const selectorResponse = page.waitForResponse((response) => (
+      new URL(response.url()).pathname === '/api/public/v1/selector'
+      && response.request().method() === 'POST'
+    ))
+    await page.getByRole('button', { name: 'Evaluate published records' }).click()
+
+    expect((await selectorResponse).status()).toBe(200)
+    await expect(page.getByRole('heading', { name: 'No validated candidates' })).toBeVisible()
+    await expect(page.getByText('No candidate was returned from the published projection.')).toBeVisible()
   })
 })
 

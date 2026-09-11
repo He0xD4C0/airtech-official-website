@@ -40,7 +40,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "dataClass",
             ],
             json!({
-                "content": r("ContentEntry"),
+                "content": r("PublicContentProjection"),
                 "category": {"type": "string"},
                 "authorDisplayName": nullable(json!({"type": "string"})),
                 "coverMediaId": nullable(uuid()),
@@ -156,6 +156,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             }),
         ),
     );
+    add_public_projection_schemas(s);
     s.insert(
         "SiteBootstrap".into(),
         object(
@@ -168,9 +169,9 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "generatedAt",
             ],
             json!({
-                "generalInformation": nullable(r("GeneralInformation")),
-                "navigation": nullable(r("ContentEntry")),
-                "footer": nullable(r("ContentEntry")),
+                "generalInformation": nullable(r("PublicContentProjection")),
+                "navigation": nullable(r("PublicContentProjection")),
+                "footer": nullable(r("PublicContentProjection")),
                 "productFamilies": array(r("ProductFamilyPresentation")),
                 "motorTechnologies": array(json!({"type": "string"})),
                 "generatedAt": timestamp()
@@ -200,7 +201,86 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "publishedRevision": nullable(revision()),
                 "indexable": {"type": "boolean"},
                 "dataClass": r("DataClass"),
-                "page": nullable(r("ContentEntry"))
+                "page": nullable(r("PublicContentProjection"))
+            }),
+        ),
+    );
+}
+
+fn add_public_projection_schemas(s: &mut Map<String, Value>) {
+    s.insert(
+        "ResolvedRelationCard".into(),
+        object(
+            &[
+                "relationId",
+                "entityType",
+                "title",
+                "summary",
+                "href",
+                "eyebrow",
+                "tags",
+            ],
+            json!({
+                "relationId": uuid(),
+                "entityType": string_enum(&["content", "product"]),
+                "title": {"type": "string"},
+                "summary": nullable(json!({"type": "string"})),
+                "href": {"type": "string"},
+                "eyebrow": nullable(json!({"type": "string"})),
+                "tags": array(json!({"type": "string"}))
+            }),
+        ),
+    );
+    s.insert(
+        "ResolvedLinkTarget".into(),
+        object(
+            &["contentId", "href"],
+            json!({
+                "contentId": uuid(),
+                "href": {"type": "string"}
+            }),
+        ),
+    );
+    s.insert(
+        "PublicContentProjection".into(),
+        object(
+            &[
+                "schemaVersion",
+                "id",
+                "kind",
+                "locale",
+                "templateKey",
+                "title",
+                "slug",
+                "summary",
+                "isPlaceholder",
+                "typeFields",
+                "body",
+                "composition",
+                "seo",
+                "publishedRevision",
+                "updatedAt",
+                "resolvedRelations",
+                "resolvedLinks",
+            ],
+            json!({
+                "schemaVersion": {"type": "integer", "const": 2},
+                "id": uuid(),
+                "kind": r("CmsContentKind"),
+                "locale": {"type": "string"},
+                "templateKey": r("ContentTemplateKey"),
+                "title": {"type": "string"},
+                "slug": nullable(json!({"type": "string"})),
+                "summary": nullable(json!({"type": "string"})),
+                "isPlaceholder": {"type": "boolean"},
+                "typeFields": r("ContentTypeFields"),
+                "body": nullable(r("TiptapDocument")),
+                "composition": r("PageComposition"),
+                "seo": r("SeoInputV2"),
+                "publishedRevision": revision(),
+                "updatedAt": timestamp(),
+                "resolvedRelations": array(r("ResolvedRelationCard")),
+                "resolvedLinks": array(r("ResolvedLinkTarget"))
             }),
         ),
     );

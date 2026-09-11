@@ -1,5 +1,8 @@
+use std::time::Instant;
+
 use super::listing::{apply_filter, ContentListFilter, ContentListOutcome};
 use super::*;
+use crate::services::list_filter_observability::observe_in_memory_filter;
 
 const RECORD_COLUMNS: &str = r#"entry.id,entry.status,entry.latest_revision,
     entry.cms_published_revision,entry.cms_created_at,draft.document,
@@ -23,7 +26,11 @@ pub async fn list_content(
         .into_iter()
         .map(|row| decode_record(&row))
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(apply_filter(records, &filter))
+    let input_records = records.len();
+    let started = Instant::now();
+    let outcome = apply_filter(records, &filter);
+    observe_in_memory_filter("admin.cms_content", input_records, started.elapsed());
+    Ok(outcome)
 }
 
 pub async fn get_content(state: &AppState, id: Uuid) -> Result<ContentRecordV2, ApiError> {

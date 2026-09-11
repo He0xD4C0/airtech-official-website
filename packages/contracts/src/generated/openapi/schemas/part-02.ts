@@ -466,6 +466,12 @@ LoginRequest: {
             /** Format: password */
             password: string;
         };
+MediaAssetReviewRequest: {
+            /** @description Required for every human clean or quarantine decision; surrounding whitespace is trimmed and the reason is recorded in the audit trail. */
+            reason: string;
+            /** @enum {string} */
+            status: "clean" | "quarantined";
+        };
 MediaAssetSummary: {
             /** @enum {string} */
             accessLevel: "public" | "authenticated" | "internal";

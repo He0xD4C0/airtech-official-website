@@ -86,7 +86,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         "ContentPreviewResponse".into(),
         object(
             &["content", "previewExpiresAt"],
-            json!({"content": r("ContentEntry"), "previewExpiresAt": timestamp()}),
+            json!({"content": r("PublicContentProjection"), "previewExpiresAt": timestamp()}),
         ),
     );
     s.insert(

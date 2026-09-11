@@ -2,21 +2,10 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { ImageIcon, LoaderCircle, RefreshCcw, Search, Trash2 } from 'lucide-vue-next'
 import type { AssetVersionReference, MediaUseReference } from '@airtek/contracts'
-import { contentApi } from '@/services/contentApi'
+import { contentApi, type MediaAssetSummary } from '@/services/contentApi'
 import { apiErrorMessage } from '@/services/cursorPagination'
 
 type MediaFieldValue = MediaUseReference | AssetVersionReference | null
-
-/** Minimal projection of the media asset endpoint, kept local so the field survives contract churn. */
-interface MediaAssetOption {
-  id: string
-  versionId: string
-  originalName: string
-  mediaType: string
-  byteSize: number
-  scanStatus: string
-  accessLevel: string
-}
 
 const props = withDefaults(defineProps<{
   modelValue: MediaFieldValue
@@ -33,7 +22,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: MediaFieldValue] }>()
 
 const dialogOpen = ref(false)
 const query = ref('')
-const options = ref<MediaAssetOption[]>([])
+const options = ref<MediaAssetSummary[]>([])
 const listState = ref<'idle' | 'loading' | 'ready' | 'empty' | 'error'>('idle')
 const listError = ref('')
 const searchInput = ref<HTMLInputElement | null>(null)
@@ -66,8 +55,12 @@ function mediaValue(assetId: string, versionId: string): MediaUseReference {
   }
 }
 
-function selectAsset(option: MediaAssetOption): void {
-  if (option.scanStatus !== 'clean') return
+function isSelectable(option: MediaAssetSummary): boolean {
+  return option.scanStatus === 'clean' && option.accessLevel === 'public'
+}
+
+function selectAsset(option: MediaAssetSummary): void {
+  if (!isSelectable(option)) return
   emit('update:modelValue', props.mode === 'asset'
     ? { assetId: option.id, versionId: option.versionId }
     : mediaValue(option.id, option.versionId))
@@ -104,7 +97,7 @@ async function loadOptions(): Promise<void> {
       q: query.value.trim() || undefined,
       limit: 50,
     })
-    options.value = page.items as unknown as MediaAssetOption[]
+    options.value = page.items
     listState.value = options.value.length ? 'ready' : 'empty'
   } catch (error) {
     options.value = []
@@ -210,7 +203,7 @@ defineExpose({ loadOptions })
           aria-describedby="media-asset-hint"
         >
           <h2 id="media-asset-title">选择{{ label }}</h2>
-          <p id="media-asset-hint" class="dialog-note">仅可选择扫描状态为 clean 的资产；其他状态需要先完成安全扫描。</p>
+          <p id="media-asset-hint" class="dialog-note">仅可选择已通过人工审核并标记为 clean 的公开资产。</p>
           <label class="search-field media-dialog__search">
             <Search :size="16" />
             <span class="sr-only">搜索媒体资产</span>
@@ -230,7 +223,7 @@ defineExpose({ loadOptions })
                 <button
                   class="media-dialog__option"
                   type="button"
-                  :disabled="option.scanStatus !== 'clean'"
+                  :disabled="!isSelectable(option)"
                   @click="selectAsset(option)"
                 >
                   <span>

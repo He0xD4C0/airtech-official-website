@@ -455,35 +455,34 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/operations": {
+"/api/admin/v1/media/assets/{id}/scan": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List predefined background operations */
-        get: operations["listBackgroundOperations"];
+        get?: never;
         put?: never;
-        /** Queue a predefined background operation */
-        post: operations["createBackgroundOperation"];
+        /** Record the human review decision for a media asset */
+        post: operations["reviewAdminMediaAsset"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/operations/{id}": {
+"/api/admin/v1/media/uploads": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get background operation status */
-        get: operations["getBackgroundOperation"];
+        get?: never;
         put?: never;
-        post?: never;
+        /** Upload one PNG, JPEG, or WebP object into the review pipeline */
+        post: operations["uploadAdminMediaAsset"];
         delete?: never;
         options?: never;
         head?: never;

@@ -2,72 +2,6 @@
 mod tests {
     use super::*;
 
-    fn site_information(payload: Value, is_placeholder: bool) -> GeneralInformation {
-        GeneralInformation {
-            id: Uuid::new_v4(),
-            locale: "en".into(),
-            payload,
-            status: PublicationStatus::Published,
-            current_revision: 1,
-            published_revision: Some(1),
-            is_placeholder,
-            updated_at: Utc::now(),
-        }
-    }
-
-    fn shell_content(kind: ContentKind, is_placeholder: bool) -> ContentEntry {
-        ContentEntry {
-            id: Uuid::new_v4(),
-            kind,
-            slug: match kind {
-                ContentKind::Navigation => "primary-navigation",
-                ContentKind::Footer => "primary-footer",
-                _ => unreachable!("site shell fixture only supports navigation and footer"),
-            }
-            .into(),
-            locale: "en".into(),
-            title: "Published site shell".into(),
-            summary: None,
-            body: crate::models::RichTextDocument {
-                schema_version: 1,
-                doc: json!({"type": "doc", "content": []}),
-            },
-            seo: crate::models::SeoMetadata::default(),
-            status: PublicationStatus::Published,
-            is_placeholder,
-            current_revision: 1,
-            published_revision: Some(1),
-            scheduled_for: None,
-            updated_at: Utc::now(),
-        }
-    }
-
-    async fn install_site_shell(
-        state: &AppState,
-        information: GeneralInformation,
-        navigation_placeholder: bool,
-        footer_placeholder: bool,
-    ) {
-        let navigation = shell_content(ContentKind::Navigation, navigation_placeholder);
-        let footer = shell_content(ContentKind::Footer, footer_placeholder);
-        let mut data = state.data.write().await;
-        data.published_general_information
-            .insert(information.id, information);
-        data.published_content.insert(navigation.id, navigation);
-        data.published_content.insert(footer.id, footer);
-    }
-
-    fn complete_site_information(is_placeholder: bool) -> GeneralInformation {
-        site_information(
-            json!({
-                "brandName": "AIRTEKPOWER",
-                "homePath": "/en",
-                "organization": {"name": "AIRTEKPOWER"}
-            }),
-            is_placeholder,
-        )
-    }
-
     fn guest_visit_fixture() -> CreateGuestVisit {
         CreateGuestVisit {
             anonymous_session_id: Uuid::new_v4(),
@@ -217,26 +151,14 @@ mod tests {
 
     #[test]
     fn configured_product_family_remains_visible_without_any_products() {
-        let information = GeneralInformation {
-            id: Uuid::new_v4(),
-            locale: "en".into(),
-            payload: json!({
-                "productCategories": [{
-                    "code": "axial",
-                    "slug": "axial",
-                    "name": "Axial fans",
-                    "description": "Configured category with an intentionally empty catalog.",
-                    "sortOrder": 2
-                }]
-            }),
-            status: PublicationStatus::Published,
-            current_revision: 1,
-            published_revision: Some(1),
-            is_placeholder: false,
-            updated_at: Utc::now(),
-        };
-
-        let presentations = product_family_presentations(Some(&information));
+        let categories = [crate::models::ProductCategoryPresentationInput {
+            code: ProductFamily::Axial,
+            slug: "axial".into(),
+            name: "Axial fans".into(),
+            description: "Configured category with an intentionally empty catalog.".into(),
+            sort_order: 2,
+        }];
+        let presentations = product_family_presentations(&categories);
         assert_eq!(presentations.len(), 1);
         assert_eq!(presentations[0].code, ProductFamily::Axial);
         assert_eq!(presentations[0].slug, "axial");
@@ -250,34 +172,4 @@ mod tests {
         assert_eq!(error.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 
-    #[tokio::test]
-    async fn public_discovery_rejects_an_incomplete_site_shell() {
-        let state = AppState::for_test();
-        install_site_shell(&state, site_information(json!({}), false), false, false).await;
-
-        let error = published_site_shell_has_placeholder(&state, "en")
-            .await
-            .expect_err("incomplete General Information must fail closed");
-        assert_eq!(error.status(), StatusCode::SERVICE_UNAVAILABLE);
-    }
-
-    #[tokio::test]
-    async fn public_discovery_returns_no_entries_for_a_placeholder_site_shell() {
-        let state = AppState::for_test();
-        install_site_shell(&state, complete_site_information(true), false, false).await;
-
-        assert!(published_site_shell_has_placeholder(&state, "en")
-            .await
-            .expect("placeholder lookup succeeds"));
-    }
-
-    #[tokio::test]
-    async fn public_discovery_accepts_a_complete_non_placeholder_site_shell() {
-        let state = AppState::for_test();
-        install_site_shell(&state, complete_site_information(false), false, false).await;
-
-        assert!(!published_site_shell_has_placeholder(&state, "en")
-            .await
-            .expect("complete site shell lookup succeeds"));
-    }
 }

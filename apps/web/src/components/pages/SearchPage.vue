@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import PageHero from '@/components/common/PageHero.vue'
-import PublishedEditorialSection from '@/components/content/PublishedEditorialSection.vue'
-import CallToAction from '@/components/common/CallToAction.vue'
-import PageSlotSections from './PageSlotSections.vue'
+import PublicBlockRenderer from '@/components/blocks/PublicBlockRenderer.vue'
 import { trackAnalyticsEvent } from '@/lib/analytics'
 import type { PublicPageModel } from '@/types/content'
 const props = defineProps<{ page: PublicPageModel }>()
@@ -34,17 +31,12 @@ function trackTypeFilter(): void {
 </script>
 <template>
   <main id="main-content">
-    <PageHero :eyebrow="page.eyebrow" :title="page.title" :description="page.description" :breadcrumbs="page.breadcrumbs" compact />
-    <PublishedEditorialSection :content="page.publishedContent" />
-    <section class="section shell search-layout"><div class="search-controls"><label><span>Search the public site</span><input v-model="query" autofocus type="search" placeholder="Search products, solutions or resources" @change="trackSearch"></label><label><span>Content type</span><select v-model="type" @change="trackTypeFilter"><option value="all">All published content</option><option v-for="entryType in types" :key="entryType" :value="entryType">{{ entryType }}</option></select></label></div><p class="result-count" role="status">{{ results.length }} results</p><div v-if="results.length" class="search-results"><article v-for="entry in results" :key="entry.href"><span>{{ entry.type }}</span><h2><a :href="entry.href">{{ entry.title }}</a></h2><p>{{ entry.summary }}</p></article></div><div v-else class="empty-state"><h2>No matching published content</h2><p>Search results only include the current public projection.</p></div></section>
-    <PageSlotSections :sections="page.sections" />
-    <CallToAction
-      v-if="page.primaryCta"
-      :eyebrow="page.primaryCta.eyebrow"
-      :title="page.primaryCta.title"
-      :description="page.primaryCta.description"
-      :href="page.primaryCta.href"
-      :label="page.primaryCta.label"
+    <PublicBlockRenderer
+      v-if="page.projection"
+      :blocks="page.projection.composition.blocks"
+      :projection="page.projection"
+      :breadcrumbs="page.breadcrumbs"
     />
+    <section class="section shell search-layout"><div class="search-controls"><label><span>Search the public site</span><input v-model="query" autofocus type="search" placeholder="Search products, solutions or resources" @change="trackSearch"></label><label><span>Content type</span><select v-model="type" @change="trackTypeFilter"><option value="all">All published content</option><option v-for="entryType in types" :key="entryType" :value="entryType">{{ entryType }}</option></select></label></div><p class="result-count" role="status">{{ results.length }} results</p><div v-if="results.length" class="search-results"><article v-for="entry in results" :key="entry.href"><span>{{ entry.type }}</span><h2><a :href="entry.href">{{ entry.title }}</a></h2><p>{{ entry.summary }}</p></article></div><div v-else class="empty-state"><h2>No matching published content</h2><p>Search results only include the current public projection.</p></div></section>
   </main>
 </template>

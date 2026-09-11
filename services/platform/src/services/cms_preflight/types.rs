@@ -10,6 +10,9 @@ pub(super) type CmsPreflightSource = crate::models::MigrationPreflightSource;
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LegacySnapshot {
     pub content_entries: Vec<LegacyContentEntry>,
+    /// All unified content identities, loaded only as relation/link target context.
+    /// Entries in this set are never converted unless they also appear above.
+    pub known_content_ids: Vec<Uuid>,
     pub content_revisions: Vec<LegacyContentRevision>,
     pub news: Vec<LegacyNews>,
     pub news_working: Vec<LegacyNewsWorking>,

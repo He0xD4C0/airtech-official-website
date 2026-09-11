@@ -36,6 +36,8 @@ fn documents_every_production_route() {
         "/api/admin/v1/feishu/conflicts",
         "/api/admin/v1/feishu/sync-runs",
         "/api/admin/v1/media/assets",
+        "/api/admin/v1/media/assets/{id}/scan",
+        "/api/admin/v1/media/uploads",
         "/api/admin/v1/operations",
         "/api/admin/v1/operations/{id}",
         "/api/admin/v1/operations/{id}/events",
@@ -63,6 +65,8 @@ fn documents_every_production_route() {
         "/api/public/v1/content/{kind}/{slug}",
         "/api/public/v1/discovery",
         "/api/public/v1/guest-visits",
+        "/api/public/v1/media/{assetId}",
+        "/api/public/v1/media/{assetId}/download",
         "/api/public/v1/news",
         "/api/public/v1/news/{slug}",
         "/api/public/v1/products",
@@ -163,6 +167,57 @@ fn database_driven_site_and_selector_facets_are_typed_without_fixed_values() {
         schemas["ProductImportRowError"],
         schemas["ProductImportError"]
     );
+}
+
+#[test]
+fn public_editorial_contract_is_cms_v2_only() {
+    let document = document();
+    let schemas = &document["components"]["schemas"];
+    assert_eq!(
+        schemas["NewsEntry"]["properties"]["content"]["$ref"],
+        "#/components/schemas/PublicContentProjection"
+    );
+    for property in ["generalInformation", "navigation", "footer"] {
+        assert_eq!(
+            schemas["SiteBootstrap"]["properties"][property]["anyOf"][0]["$ref"],
+            "#/components/schemas/PublicContentProjection"
+        );
+        assert_eq!(
+            schemas["SiteBootstrap"]["properties"][property]["anyOf"][1]["type"],
+            "null"
+        );
+    }
+    assert_eq!(
+        schemas["RouteResolution"]["properties"]["page"]["anyOf"][0]["$ref"],
+        "#/components/schemas/PublicContentProjection"
+    );
+    assert_eq!(
+        document["paths"]["/api/public/v1/content/{kind}/{slug}"]["get"]["responses"]["200"]
+            ["content"]["application/json"]["schema"]["$ref"],
+        "#/components/schemas/PublicContentProjection"
+    );
+    assert_eq!(
+        schemas["ContentPreviewResponse"]["properties"]["content"]["$ref"],
+        "#/components/schemas/PublicContentProjection"
+    );
+
+    let template_required = schemas["ContentTemplateDefinition"]["required"]
+        .as_array()
+        .expect("template required fields");
+    assert!(template_required.contains(&json!("routePattern")));
+}
+
+#[test]
+fn every_human_media_review_requires_a_non_empty_reason() {
+    let document = document();
+    let schema = &document["components"]["schemas"]["MediaAssetReviewRequest"];
+    let required = schema["required"].as_array().expect("required fields");
+    assert!(required.contains(&json!("status")));
+    assert!(required.contains(&json!("reason")));
+    assert_eq!(schema["properties"]["reason"]["type"], "string");
+    assert_eq!(schema["properties"]["reason"]["minLength"], 1);
+    assert_eq!(schema["properties"]["reason"]["maxLength"], 500);
+    assert_eq!(schema["properties"]["reason"]["pattern"], r"\S");
 }
 
 #[test]

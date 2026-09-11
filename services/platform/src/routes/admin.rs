@@ -38,6 +38,13 @@ pub fn router() -> Router<AppState> {
         .route("/content/templates", get(list_content_templates))
         .route("/media/assets", get(list_media_assets))
         .route(
+            "/media/uploads",
+            post(upload_media_asset).layer(axum::extract::DefaultBodyLimit::max(
+                crate::services::media::MAX_MEDIA_UPLOAD_BYTES + 64 * 1024,
+            )),
+        )
+        .route("/media/assets/{id}/scan", post(review_media_asset))
+        .route(
             "/content/{id}/draft",
             get(get_content_draft).patch(update_content_draft),
         )
@@ -78,6 +85,7 @@ include!("admin/temporary_overrides.rs");
 include!("admin/sync.rs");
 include!("admin/submissions.rs");
 include!("admin/analytics_overview.rs");
+include!("admin/media.rs");
 include!("admin/analytics_summary.rs");
 include!("admin/operations.rs");
 include!("admin/audit_and_validation.rs");

@@ -6,6 +6,35 @@
 import type { components } from '../components'
 
 export interface SchemasPart04 {
+RollbackContentRequest: {
+            reason: string;
+            /** Format: int64 */
+            revision: number;
+        };
+RouteResolution: {
+            dataClass: components["schemas"]["DataClass"];
+            entityId: string | null;
+            entityType: string;
+            indexable: boolean;
+            locale: string;
+            page: components["schemas"]["PublicContentProjection"] | null;
+            path: string;
+            publishedRevision: number | null;
+            templateKey: string;
+        };
+SelectionRfqContext: {
+            additionalMessage?: string;
+            application: string;
+            control?: string;
+            dutyPoint: components["schemas"]["RfqDutyPoint"];
+            electrical?: components["schemas"]["RfqElectricalContext"];
+            environment?: string;
+            maximumDiameterMm?: number;
+            /** @enum {string} */
+            priority?: "efficiency" | "noise" | "size" | "headroom";
+            quantity?: components["schemas"]["RfqQuantity"];
+            requiredCertifications?: string[];
+        };
 SelectionRfqRequest: {
             /** @enum {boolean} */
             consent: true;
@@ -93,12 +122,12 @@ SetupRequest: {
             password: string;
         };
 SiteBootstrap: {
-            footer: components["schemas"]["ContentEntry"] | null;
-            generalInformation: components["schemas"]["GeneralInformation"] | null;
+            footer: components["schemas"]["PublicContentProjection"] | null;
+            generalInformation: components["schemas"]["PublicContentProjection"] | null;
             /** Format: date-time */
             generatedAt: string;
             motorTechnologies: string[];
-            navigation: components["schemas"]["ContentEntry"] | null;
+            navigation: components["schemas"]["PublicContentProjection"] | null;
             productFamilies: components["schemas"]["ProductFamilyPresentation"][];
         };
 SocialLinkInput: {

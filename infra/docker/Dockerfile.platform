@@ -1,8 +1,21 @@
 FROM rust:1.98-slim-bookworm AS build
 
 WORKDIR /workspace
+ARG CARGO_REGISTRY_MIRROR
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
 COPY services/platform services/platform
-RUN cargo build --locked --release --manifest-path services/platform/Cargo.toml --features production --bin airtek-api --bin airtek-worker
+RUN if [ -n "${CARGO_REGISTRY_MIRROR}" ]; then \
+      mkdir -p /root/.cargo; \
+      { \
+        echo '[source.crates-io]'; \
+        echo 'replace-with = "airtek-mirror"'; \
+        echo '[source.airtek-mirror]'; \
+        echo "registry = \"${CARGO_REGISTRY_MIRROR}\""; \
+      } > /root/.cargo/config.toml; \
+    fi \
+    && cargo build --locked --release --manifest-path services/platform/Cargo.toml --features production --bin airtek-api --bin airtek-worker
 
 FROM debian:bookworm-slim
 RUN apt-get update \

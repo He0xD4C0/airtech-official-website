@@ -7,49 +7,6 @@ fn with_etag<T: serde::Serialize>(value: T, revision: i64) -> Response {
     response
 }
 
-async fn load_published_content_rows(
-    pool: &sqlx::PgPool,
-    kind: Option<ContentKind>,
-    slug: Option<&str>,
-    locale: Option<&str>,
-) -> Result<Vec<crate::models::ContentEntry>, ApiError> {
-    let kind = kind.map(|value| {
-        serde_json::to_value(value)
-            .ok()
-            .and_then(|value| value.as_str().map(str::to_owned))
-            .unwrap_or_default()
-    });
-    let rows = sqlx::query(
-        r#"SELECT payload,published_revision FROM published_content
-           WHERE ($1::text IS NULL OR kind=$1)
-             AND ($2::text IS NULL OR slug=$2)
-             AND ($3::text IS NULL OR locale=$3)
-           ORDER BY updated_at DESC,id"#,
-    )
-    .bind(kind)
-    .bind(slug)
-    .bind(locale)
-    .fetch_all(pool)
-    .await?;
-    rows.into_iter()
-        .map(|row| {
-            let mut entry: crate::models::ContentEntry =
-                serde_json::from_value(row.try_get("payload")?).map_err(|error| {
-                    tracing::error!(%error, "published content payload is invalid");
-                    ApiError::service_unavailable("Stored published content is invalid.")
-                })?;
-            let revision: i64 = row.try_get("published_revision")?;
-            entry.status = crate::models::PublicationStatus::Published;
-            entry.current_revision = revision;
-            entry.published_revision = Some(revision);
-            if entry.is_placeholder {
-                entry.seo.indexable = false;
-            }
-            Ok(entry)
-        })
-        .collect()
-}
-
 async fn load_published_product_rows(
     pool: &sqlx::PgPool,
     family: Option<ProductFamily>,
@@ -135,18 +92,18 @@ async fn load_published_product_rows(
         .collect()
 }
 
-fn parse_content_kind(value: &str) -> Result<ContentKind, ApiError> {
+fn parse_content_kind(value: &str) -> Result<CmsContentKind, ApiError> {
     match value {
-        "home" => Ok(ContentKind::Home),
-        "solutions" => Ok(ContentKind::Solution),
-        "technology" => Ok(ContentKind::Technology),
-        "articles" => Ok(ContentKind::Article),
-        "news" => Ok(ContentKind::News),
-        "faqs" => Ok(ContentKind::Faq),
-        "case-studies" => Ok(ContentKind::CaseStudy),
-        "downloads" => Ok(ContentKind::Download),
-        "company" => Ok(ContentKind::Company),
-        "legal" => Ok(ContentKind::Legal),
+        "home" => Ok(CmsContentKind::Home),
+        "solutions" => Ok(CmsContentKind::Solution),
+        "technology" => Ok(CmsContentKind::Technology),
+        "articles" => Ok(CmsContentKind::Article),
+        "news" => Ok(CmsContentKind::News),
+        "faqs" => Ok(CmsContentKind::Faq),
+        "case-studies" => Ok(CmsContentKind::CaseStudy),
+        "downloads" => Ok(CmsContentKind::Download),
+        "company" => Ok(CmsContentKind::Company),
+        "legal" => Ok(CmsContentKind::Legal),
         _ => Err(ApiError::not_found("Content kind was not found.")),
     }
 }

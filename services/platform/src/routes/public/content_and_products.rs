@@ -4,23 +4,15 @@ async fn get_content(
     Query(query): Query<ContentQuery>,
 ) -> Result<Response, ApiError> {
     let kind = parse_content_kind(&kind)?;
-    let entry = if let Some(pool) = &state.pool {
-        load_published_content_rows(pool, Some(kind), Some(&slug), Some(&query.locale))
-            .await?
-            .into_iter()
-            .next()
-    } else {
-        state
-            .data
-            .read()
-            .await
-            .published_content
-            .values()
-            .find(|entry| entry.kind == kind && entry.slug == slug && entry.locale == query.locale)
-            .cloned()
-    }
+    let entry = super::public_data::load_v2_content_by_kind_slug(
+        &state,
+        kind,
+        &slug,
+        &query.locale,
+    )
+    .await?
     .ok_or_else(|| ApiError::not_found("Published content was not found."))?;
-    let revision = entry.published_revision.unwrap_or(entry.current_revision);
+    let revision = entry.published_revision;
     Ok(with_etag(entry, revision))
 }
 

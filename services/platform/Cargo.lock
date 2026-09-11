@@ -24,9 +24,11 @@ dependencies = [
  "data-encoding",
  "dotenvy",
  "futures-util",
+ "hmac",
  "http-body-util",
  "portable-pty",
  "ring",
+ "rustls",
  "serde",
  "serde_json",
  "sha2",
@@ -40,6 +42,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+ "webpki-roots 1.0.9",
  "zeroize",
 ]
 

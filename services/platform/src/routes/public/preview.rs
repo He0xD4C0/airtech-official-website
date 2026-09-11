@@ -52,13 +52,13 @@ async fn load_content_preview(
     {
         return Err(content_preview_not_found());
     }
-    let content = state
-        .load_content_revision(verified.content_id, verified.revision)
-        .await?
-        .filter(|content| {
-            content.id == verified.content_id && content.current_revision == verified.revision
-        })
-        .ok_or_else(content_preview_not_found)?;
+    let content = super::public_data::load_v2_content_revision_preview(
+        state,
+        verified.content_id,
+        verified.revision,
+    )
+    .await?
+    .ok_or_else(content_preview_not_found)?;
     Ok(ContentPreviewResponse {
         content,
         preview_expires_at: verified.expires_at,

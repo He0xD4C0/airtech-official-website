@@ -1,4 +1,5 @@
-import type { ContentEntry, ContentPreviewResponse } from '@airtek/contracts'
+import type { ContentPreviewResponse } from '@airtek/contracts'
+import { isRecord, publicContentProjectionResponse } from '@/lib/publicApiDecoders'
 
 export interface ContentPreviewLoadOptions {
   baseUrl?: string
@@ -16,20 +17,6 @@ export class ContentPreviewLoadError extends Error {
 }
 
 const maximumTokenLength = 2_048
-const contentKinds = new Set([
-  'home',
-  'solution',
-  'technology',
-  'article',
-  'faq',
-  'caseStudy',
-  'download',
-  'company',
-  'legal',
-  'navigation',
-  'footer',
-])
-const contentStatuses = new Set(['draft', 'scheduled', 'published', 'archived'])
 
 function internalApiBaseUrl(): string {
   return process.env.PUBLIC_API_INTERNAL_URL || 'http://localhost:8080/api/public/v1'
@@ -41,56 +28,20 @@ function normalizedBaseUrl(value: string): string {
   return url.toString().replace(/\/$/u, '')
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function isNullableString(value: unknown): boolean {
-  return value === null || typeof value === 'string'
-}
-
-function isNullableRevision(value: unknown): boolean {
-  return value === null || (Number.isInteger(value) && Number(value) > 0)
-}
-
 function isTimestamp(value: unknown): value is string {
   return typeof value === 'string' && Number.isFinite(Date.parse(value))
 }
 
-function isContentEntry(value: unknown): value is ContentEntry {
-  return isRecord(value)
-    && typeof value.id === 'string'
-    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value.id)
-    && contentKinds.has(String(value.kind))
-    && typeof value.slug === 'string'
-    && value.slug.length >= 1
-    && value.slug.length <= 180
-    && value.locale === 'en'
-    && typeof value.title === 'string'
-    && value.title.trim().length > 0
-    && value.title.length <= 300
-    && isNullableString(value.summary)
-    && isRecord(value.body)
-    && value.body.schemaVersion === 1
-    && isRecord(value.body.doc)
-    && isRecord(value.seo)
-    && isNullableString(value.seo.title)
-    && isNullableString(value.seo.description)
-    && isNullableString(value.seo.canonicalPath)
-    && typeof value.seo.indexable === 'boolean'
-    && contentStatuses.has(String(value.status))
-    && typeof value.isPlaceholder === 'boolean'
-    && Number.isInteger(value.currentRevision)
-    && Number(value.currentRevision) > 0
-    && isNullableRevision(value.publishedRevision)
-    && (value.scheduledFor === null || isTimestamp(value.scheduledFor))
-    && isTimestamp(value.updatedAt)
-}
-
-function isContentPreviewResponse(value: unknown): value is ContentPreviewResponse {
-  return isRecord(value)
-    && isContentEntry(value.content)
-    && isTimestamp(value.previewExpiresAt)
+function parseContentPreviewResponse(value: unknown): ContentPreviewResponse | undefined {
+  if (!isRecord(value) || !isTimestamp(value.previewExpiresAt)) return undefined
+  try {
+    return {
+      content: publicContentProjectionResponse(value.content),
+      previewExpiresAt: value.previewExpiresAt,
+    }
+  } catch {
+    return undefined
+  }
 }
 
 export async function loadContentPreview(
@@ -126,6 +77,7 @@ export async function loadContentPreview(
   } catch {
     throw new ContentPreviewLoadError(404)
   }
-  if (!isContentPreviewResponse(value)) throw new ContentPreviewLoadError(404)
-  return value
+  const preview = parseContentPreviewResponse(value)
+  if (!preview) throw new ContentPreviewLoadError(404)
+  return preview
 }

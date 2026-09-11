@@ -7,6 +7,7 @@ import {
   apiControlHeaders,
   apiControlOrigin,
   adminOrigin,
+  adminSecondaryStorageStatePath,
   adminStorageStatePath,
   apiOrigin,
   browserCookiesForLocalGateway,
@@ -127,12 +128,7 @@ function placeholderBody(): Record<string, unknown> {
   }
 }
 
-/**
- * The public projection still reads the legacy revision payload, while the
- * Admin CMS stores unified V2 documents. Fixtures are therefore created as V2
- * drafts so the Admin acceptance flows exercise the real API; rendering the V2
- * revision on the public origin is part of the deferred projection cutover.
- */
+/** Converts the small legacy-shaped seed helper input into the canonical V2 draft. */
 function v2DraftFromLegacy(payload: Record<string, unknown>): Record<string, unknown> {
   const kind = String(payload.kind)
   const slots = record(record(record(payload.body).doc).attrs).pageSlots
@@ -296,6 +292,38 @@ async function seedPublicProjection(api: ApiContext, csrf: string): Promise<void
       description: 'This section is loaded from PostgreSQL and is intentionally non-indexable.',
     }],
   }))
+  await upsertAndPublish(api, csrf, {
+    schemaVersion: 2,
+    kind: 'page',
+    locale: 'en',
+    templateKey: 'selector',
+    title: 'Fan Selector Development Preview',
+    slug: 'fan-selector',
+    summary: 'Select only from validated published product records.',
+    isPlaceholder: true,
+    typeFields: { type: 'page' },
+    body: null,
+    composition: {
+      blocks: [{
+        type: 'hero',
+        id: randomUUID(),
+        eyebrow: 'Product discovery',
+        heading: 'Fan Selector Development Preview',
+        lead: 'No product candidate is inferred when validated published data is unavailable.',
+        media: null,
+        actions: [],
+        variant: 'standard',
+      }],
+    },
+    seo: {
+      title: 'Fan Selector | Development Preview',
+      description: 'Development fixture for the published-data selector workflow.',
+      indexable: false,
+      socialImage: null,
+    },
+    relations: [],
+    draftVersion: 1,
+  })
   await createAndPublishContent(api, csrf, content('navigation', 'primary', 'Primary navigation', null, {
     items: [
       { label: 'Home', href: '/en' },
@@ -369,6 +397,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
   }
 
   await mkdir(path.dirname(adminStorageStatePath), { recursive: true })
+  await mkdir(path.dirname(adminSecondaryStorageStatePath), { recursive: true })
   const setupApi = await request.newContext({
     baseURL: apiControlOrigin,
     extraHTTPHeaders: apiControlHeaders(),
@@ -426,6 +455,38 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
       ? { ...storageState, cookies: browserCookiesForLocalGateway(storageState.cookies) }
       : storageState
     await writeFile(adminStorageStatePath, `${JSON.stringify(browserStorageState, null, 2)}\n`, 'utf8')
+
+    // The concurrency acceptance test needs two distinct server-side sessions.
+    // Reusing one cookie across browser contexts makes their CSRF rotations
+    // invalidate each other before the stale ETag can reach the 409 boundary.
+    const secondaryApi = await request.newContext({
+      baseURL: apiControlOrigin,
+      extraHTTPHeaders: apiControlHeaders(),
+    })
+    try {
+      const secondaryLogin = await secondaryApi.post('/api/admin/v1/auth/login', {
+        data: {
+          email: administrator.email,
+          password: administrator.password,
+          otp: totp(secret),
+        },
+      })
+      if (!secondaryLogin.ok()) {
+        throw new Error(`Unable to create the second E2E admin session (${secondaryLogin.status()}): ${await secondaryLogin.text()}`)
+      }
+      const secondaryCookies = secureHostOnlyCookies(secondaryLogin, cookieHostname)
+      const secondaryStorageState = { cookies: secondaryCookies, origins: [] }
+      const secondaryBrowserStorageState = apiOrigin.startsWith('http://')
+        ? { ...secondaryStorageState, cookies: browserCookiesForLocalGateway(secondaryStorageState.cookies) }
+        : secondaryStorageState
+      await writeFile(
+        adminSecondaryStorageStatePath,
+        `${JSON.stringify(secondaryBrowserStorageState, null, 2)}\n`,
+        'utf8',
+      )
+    } finally {
+      await secondaryApi.dispose()
+    }
   } finally {
     await api?.dispose()
     await setupApi.dispose()

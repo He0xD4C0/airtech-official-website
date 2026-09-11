@@ -62,6 +62,16 @@ const environment = {
     ?? 'integration-test',
   AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS: process.env.AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS
     ?? 'admin-acceptance',
+  MINIO_ROOT_USER: 'airtek-e2e',
+  MINIO_ROOT_PASSWORD: 'airtek-e2e-local-only',
+  AIRTEK_MEDIA_STORAGE: 's3',
+  AIRTEK_MEDIA_S3_ENDPOINT: 'http://minio:9000',
+  AIRTEK_MEDIA_S3_REGION: 'us-east-1',
+  AIRTEK_MEDIA_S3_BUCKET: 'airtek-e2e-media',
+  AIRTEK_MEDIA_S3_ACCESS_KEY_ID: 'airtek-e2e',
+  AIRTEK_MEDIA_S3_SECRET_ACCESS_KEY: 'airtek-e2e-local-only',
+  AIRTEK_MEDIA_S3_KEY_PREFIX: 'media',
+  AIRTEK_MEDIA_S3_PATH_STYLE: 'true',
   E2E_PUBLIC_ORIGIN: publicOrigin,
   E2E_ADMIN_ORIGIN: adminOrigin,
   E2E_API_ORIGIN: apiOrigin,
@@ -84,9 +94,9 @@ function run(command, args, options = {}) {
 
 let testStatus = 1
 try {
-  run('docker', ['compose', 'down', '--volumes', '--remove-orphans'])
+  run('docker', ['compose', '--profile', 'object-storage', 'down', '--volumes', '--remove-orphans'])
   const upStatus = run('docker', [
-    'compose', 'up', '--build', '--detach', '--wait', '--wait-timeout', '300',
+    'compose', '--profile', 'object-storage', 'up', '--build', '--detach', '--wait', '--wait-timeout', '300',
   ])
   if (upStatus !== 0) {
     run('docker', ['compose', 'logs', '--no-color'])
@@ -98,6 +108,6 @@ try {
     process.exitCode = testStatus
   }
 } finally {
-  const downStatus = run('docker', ['compose', 'down', '--volumes', '--remove-orphans'])
+  const downStatus = run('docker', ['compose', '--profile', 'object-storage', 'down', '--volumes', '--remove-orphans'])
   if (downStatus !== 0 && (process.exitCode ?? 0) === 0) process.exitCode = downStatus
 }

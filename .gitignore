@@ -3,6 +3,7 @@ docs/Plan & Solution/~$*.xlsx
 tmp/
 node_modules/
 .pnpm-store/
+.prebuilt/
 dist/
 target/
 .env

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { PublishedArticleMetadata } from '@/lib/publishedContent'
+import type { ArticlePublicationMetadata } from '@/lib/articlePresentation'
 
-defineProps<{ metadata: PublishedArticleMetadata }>()
+defineProps<{ metadata: ArticlePublicationMetadata }>()
 </script>
 
 <template>

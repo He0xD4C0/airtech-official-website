@@ -13,9 +13,10 @@ pub(super) fn validate_candidate_targets(
     issues: &mut Vec<CmsPreflightIssue>,
 ) {
     let content_ids = snapshot
-        .content_entries
+        .known_content_ids
         .iter()
-        .map(|entry| entry.id)
+        .copied()
+        .chain(snapshot.content_entries.iter().map(|entry| entry.id))
         .collect::<BTreeSet<_>>();
     let product_ids = snapshot
         .products

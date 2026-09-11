@@ -10,22 +10,15 @@ async fn list_products(
     State(state): State<AppState>,
     Query(query): Query<ProductListQuery>,
 ) -> Result<Json<CursorPage<Product>>, ApiError> {
+    let needle = parse_query_text(query.q)?.map(|value| value.to_lowercase());
     let mut values = state.list_working_products().await?;
-    if let Some(raw) = query.q.as_deref() {
-        let needle = raw.trim().to_lowercase();
-        if !needle.is_empty() {
-            values.retain(|product| {
-                product.stable_id.to_lowercase().contains(&needle)
-                    || product
-                        .model
-                        .as_deref()
-                        .is_some_and(|model| model.to_lowercase().contains(&needle))
-                    || product.title.to_lowercase().contains(&needle)
-            });
-        }
+    let input_records = values.len();
+    let started = std::time::Instant::now();
+    if let Some(needle) = needle {
+        values.retain(|product| product_matches_query(product, &needle));
     }
     values.sort_by(|left, right| left.stable_id.cmp(&right.stable_id));
-    Ok(Json(paginate_by_id(
+    let page = paginate_by_id(
         "admin.products",
         values,
         CursorQuery {
@@ -33,7 +26,91 @@ async fn list_products(
             limit: query.limit,
         },
         |product| product.id,
-    )?))
+    )?;
+    crate::services::list_filter_observability::observe_in_memory_filter(
+        "admin.products",
+        input_records,
+        started.elapsed(),
+    );
+    Ok(Json(page))
+}
+
+fn product_matches_query(product: &Product, needle: &str) -> bool {
+    product.stable_id.to_lowercase().contains(needle)
+        || product
+            .model
+            .as_deref()
+            .is_some_and(|model| model.to_lowercase().contains(needle))
+        || product.title.to_lowercase().contains(needle)
+        || product_family_matches_query(product.family, needle)
+}
+
+fn product_family_matches_query(family: crate::models::ProductFamily, needle: &str) -> bool {
+    let (contract_name, display_name) = match family {
+        crate::models::ProductFamily::Centrifugal => ("centrifugal", "centrifugal fans"),
+        crate::models::ProductFamily::Axial => ("axial", "axial fans"),
+        crate::models::ProductFamily::CrossFlow => ("crossflow", "cross-flow fans"),
+        crate::models::ProductFamily::InlineDuct => ("inlineduct", "inline duct fans"),
+        crate::models::ProductFamily::Motors => ("motors", "motors"),
+    };
+    contract_name.contains(needle) || display_name.contains(needle)
+}
+
+#[cfg(test)]
+mod product_query_tests {
+    use super::*;
+
+    fn product() -> Product {
+        Product {
+            id: Uuid::nil(),
+            stable_id: "ATK-AF-001".into(),
+            model: Some("E2E-MODEL-001".into()),
+            slug: "atk-af-001".into(),
+            locale: "en".into(),
+            family: crate::models::ProductFamily::Axial,
+            subtype: None,
+            motor_technology: None,
+            title: "Verified axial fan".into(),
+            summary: None,
+            seo: Default::default(),
+            sort_order: 0,
+            related_content_ids: Vec::new(),
+            specifications: Vec::new(),
+            performance_curves: Vec::new(),
+            source_snapshot_id: Uuid::nil(),
+            source_revision: "test".into(),
+            current_revision: 1,
+            published_revision: None,
+            status: PublicationStatus::Draft,
+            indexable: false,
+            updated_at: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn product_query_matches_id_model_title_and_family_case_insensitively() {
+        let product = product();
+        assert!(product_matches_query(&product, "atk-af"));
+        assert!(product_matches_query(&product, "e2e-model"));
+        assert!(product_matches_query(&product, "verified axial"));
+        assert!(product_matches_query(&product, "axial fans"));
+        assert!(!product_matches_query(&product, "centrifugal"));
+
+        let mut cross_flow = product;
+        cross_flow.family = crate::models::ProductFamily::CrossFlow;
+        cross_flow.title = "Verified product".into();
+        assert!(product_matches_query(&cross_flow, "crossflow"));
+        assert!(product_matches_query(&cross_flow, "cross-flow fans"));
+    }
+
+    #[test]
+    fn product_query_reuses_the_bounded_admin_query_contract() {
+        assert_eq!(
+            parse_query_text(Some("  model  ".into())).unwrap(),
+            Some("model".into())
+        );
+        assert!(parse_query_text(Some("x".repeat(201))).is_err());
+    }
 }
 
 async fn publish_product(

@@ -5,13 +5,27 @@ function jsonResponse(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } })
 }
 
-const publishedContent = {
-  id: '792406a9-2f19-425e-8508-78a205c0c764', kind: 'article', slug: 'database-news', locale: 'en',
-  title: 'Database News', summary: 'Published from PostgreSQL.',
-  body: { schemaVersion: 1, doc: { type: 'doc', content: [] } },
-  seo: { title: 'Database News', description: 'Published from PostgreSQL.', canonicalPath: '/en/resources/news/database-news', indexable: true },
-  status: 'published', isPlaceholder: false, currentRevision: 2, publishedRevision: 1, scheduledFor: null,
-  updatedAt: '2026-09-01T08:00:00Z',
+function projection(overrides: Record<string, unknown> = {}) {
+  return {
+    schemaVersion: 2,
+    id: '792406a9-2f19-425e-8508-78a205c0c764',
+    kind: 'page',
+    templateKey: 'newsIndex',
+    locale: 'en',
+    title: 'Database News',
+    summary: 'Published from PostgreSQL.',
+    slug: null,
+    body: null,
+    composition: { blocks: [] },
+    typeFields: { type: 'page' },
+    seo: { title: 'Database News', description: 'Published from PostgreSQL.', indexable: true, socialImage: null },
+    isPlaceholder: false,
+    publishedRevision: 1,
+    updatedAt: '2026-09-01T08:00:00Z',
+    resolvedRelations: [],
+    resolvedLinks: [],
+    ...overrides,
+  }
 }
 
 describe('public API client', () => {
@@ -141,25 +155,48 @@ describe('public API client', () => {
   })
 
   it('loads the bootstrap, route and News projections through their canonical public endpoints', async () => {
+    const newsIndex = projection()
+    const publishedNews = projection({
+      id: crypto.randomUUID(),
+      kind: 'news',
+      templateKey: 'newsDetail',
+      slug: 'database-news',
+      typeFields: {
+        type: 'news', category: 'Company', authorDisplayName: 'Editorial',
+        cover: null, publicationAt: '2026-09-01T08:00:00Z', featured: true,
+      },
+    })
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
       if (url.includes('/site-bootstrap?')) return jsonResponse({
-        generalInformation: {
-          id: crypto.randomUUID(), locale: 'en', payload: {}, status: 'published', currentRevision: 1,
-          publishedRevision: 1, isPlaceholder: false, updatedAt: '2026-09-01T08:00:00Z',
-        },
-        navigation: { ...publishedContent, kind: 'navigation', slug: 'primary-navigation' },
-        footer: { ...publishedContent, kind: 'footer', slug: 'global-footer' },
+        generalInformation: projection({
+          id: crypto.randomUUID(), kind: 'generalInformation', templateKey: 'generalInformation',
+          typeFields: {
+            type: 'generalInformation', organizationName: 'AIRTEKPOWER', brandLine: null,
+            homePath: '/en', footerStatement: null, copyrightTemplate: null,
+            contact: { email: null, phone: null, addressLines: [], locality: null, region: null, postalCode: null, countryCode: null },
+            socialLinks: [], defaultSeo: { title: null, description: null, indexable: false, socialImage: null },
+            productCategories: [], navigationCta: null,
+          },
+        }),
+        navigation: projection({
+          id: crypto.randomUUID(), kind: 'navigation', templateKey: 'navigation',
+          typeFields: { type: 'navigation', items: [] },
+        }),
+        footer: projection({
+          id: crypto.randomUUID(), kind: 'footer', templateKey: 'footer',
+          typeFields: { type: 'footer', columns: [], legalLinks: [] },
+        }),
         productFamilies: [{ code: 'axial', slug: 'axial', name: 'Axial', description: 'Published family.', sortOrder: 1 }],
         motorTechnologies: ['EC'],
         generatedAt: '2026-09-01T08:00:00Z',
       })
       if (url.includes('/routes/resolve?')) return jsonResponse({
-        path: '/en/resources/news', templateKey: 'news-index', entityType: 'content', entityId: publishedContent.id,
-        locale: 'en', publishedRevision: 1, indexable: true, dataClass: 'editorial', page: publishedContent,
+        path: '/en/resources/news', templateKey: 'newsIndex', entityType: 'content', entityId: newsIndex.id,
+        locale: 'en', publishedRevision: 1, indexable: true, dataClass: 'editorial', page: newsIndex,
       })
       return jsonResponse({
-        items: [{ content: publishedContent, category: 'Company', authorDisplayName: 'Editorial', coverMediaId: null, publishedAt: '2026-09-01T08:00:00Z', featured: true, dataClass: 'editorial' }],
+        items: [{ content: publishedNews, category: 'Company', authorDisplayName: 'Editorial', coverMediaId: null, publishedAt: '2026-09-01T08:00:00Z', featured: true, dataClass: 'editorial' }],
         nextCursor: null,
       })
     }) as unknown as typeof fetch
@@ -168,7 +205,7 @@ describe('public API client', () => {
     const bootstrap = await client.getSiteBootstrap()
     expect(bootstrap.productFamilies[0]?.name).toBe('Axial')
     expect(bootstrap.motorTechnologies).toEqual(['EC'])
-    expect((await client.resolveRoute('/en/resources/news')).templateKey).toBe('news-index')
+    expect((await client.resolveRoute('/en/resources/news')).templateKey).toBe('newsIndex')
     expect((await client.listNews()).items[0]?.content.title).toBe('Database News')
   })
 

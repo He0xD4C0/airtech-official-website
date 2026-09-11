@@ -48,6 +48,13 @@ requireMatch(webDockerfile, /^FROM\s+node:22-alpine\s+AS\s+runtime$/mu, 'Public 
 requireMatch(webDockerfile, /^USER\s+node$/mu, 'Public Web runtime must use the non-root node user.')
 requireMatch(webDockerfile, /deploy\s+--prod\s+--legacy\s+\/runtime/u, 'Public Web runtime dependencies must be production-only.')
 requireMatch(webDockerfile, /ARG\s+VITE_PUBLIC_API_BASE_URL/u, 'Public Web Dockerfile must accept the browser API build argument.')
+for (const variable of ['NPM_CONFIG_REGISTRY', 'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY']) {
+  requireMatch(webDockerfile, new RegExp(`ARG\\s+${variable}`, 'u'), `Public Web Dockerfile must accept ${variable} during builds.`)
+}
+requireMatch(webDockerfile, /COREPACK_NPM_REGISTRY=\$\{NPM_CONFIG_REGISTRY\}/u, 'Public Web must route Corepack through the selected npm registry.')
+requireMatch(webDockerfile, /NODE_USE_ENV_PROXY=1/u, 'Public Web Node build must honor explicit proxy arguments.')
+requireMatch(webDockerfile, /NPM_CONFIG_REGISTRY=\$\{NPM_CONFIG_REGISTRY\}/u, 'Public Web dependencies must use the selected npm registry.')
+requireMatch(webDockerfile, /pnpm config set registry "\$\{NPM_CONFIG_REGISTRY\}" --location=project/u, 'Public Web must persist the selected registry for every pnpm build command.')
 requireMatch(webDockerfile, /^EXPOSE\s+3000$/mu, 'Public Web image must expose only its fixed application port 3000.')
 forbidMatch(webDockerfile, /ARG\s+PUBLIC_ENV__/u, 'Public Web Dockerfile still uses a non-exposed Vite environment prefix.')
 
@@ -57,6 +64,10 @@ requireMatch(webVite, /strictPort:\s*true/u, 'Public Vite must fail instead of s
 
 const platformDockerfile = read('infra/docker/Dockerfile.platform')
 requireMatch(platformDockerfile, /--features\s+production/u, 'Platform production image must compile only the production feature set.')
+for (const variable of ['CARGO_REGISTRY_MIRROR', 'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY']) {
+  requireMatch(platformDockerfile, new RegExp(`ARG\\s+${variable}`, 'u'), `Platform Dockerfile must accept ${variable} during builds.`)
+}
+requireMatch(platformDockerfile, /replace-with = "airtek-mirror"/u, 'Platform must configure a named Cargo mirror only when requested.')
 requireMatch(platformDockerfile, /^USER\s+10001$/mu, 'Platform runtime must remain non-root.')
 requireMatch(platformDockerfile, /^EXPOSE\s+8080$/mu, 'Platform image must expose only its fixed API port 8080.')
 forbidMatch(platformDockerfile, /airtekctl/u, 'Production Platform image must not build or copy airtekctl.')
@@ -197,6 +208,12 @@ requireMatch(flywayRuntime, /migration_type = 'SQL'/u, 'Runtime readiness must c
 const adminDockerfile = read('infra/docker/Dockerfile.admin')
 requireMatch(adminDockerfile, /\/etc\/nginx\/templates\/default\.conf\.template/u, 'Admin Nginx config must be rendered as an environment-aware template.')
 requireMatch(adminDockerfile, /^ENV\s+VITE_ENABLE_DEVTOOLS=false$/mu, 'Admin production image must force DevTools off.')
+for (const variable of ['NPM_CONFIG_REGISTRY', 'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY']) {
+  requireMatch(adminDockerfile, new RegExp(`ARG\\s+${variable}`, 'u'), `Admin Dockerfile must accept ${variable} during builds.`)
+}
+requireMatch(adminDockerfile, /COREPACK_NPM_REGISTRY=\$\{NPM_CONFIG_REGISTRY\}/u, 'Admin must route Corepack through the selected npm registry.')
+requireMatch(adminDockerfile, /pnpm config set registry "\$\{NPM_CONFIG_REGISTRY\}" --location=project/u, 'Admin must persist the selected registry for every pnpm build command.')
+requireMatch(adminDockerfile, /NODE_USE_ENV_PROXY=1/u, 'Admin Node build must honor explicit proxy arguments.')
 requireMatch(adminDockerfile, /^USER\s+nginx$/mu, 'Admin runtime must use the non-root nginx user.')
 requireMatch(adminDockerfile, /^EXPOSE\s+3100$/mu, 'Admin image must expose only its fixed application port 3100.')
 
@@ -257,6 +274,8 @@ for (const variable of ['AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY', 'AIRTEK_ANALYTI
 forbidMatch(serviceBlock(compose, 'postgres'), /^\s+ports:/mu, 'Base Compose must not publish PostgreSQL to the host.')
 forbidMatch(serviceBlock(compose, 'minio'), /^\s+ports:/mu, 'Base Compose must not publish MinIO API or console ports to the host.')
 requireMatch(serviceBlock(compose, 'minio'), /profiles:\s*\["object-storage"\]/u, 'Unused local object storage must remain opt-in.')
+requireMatch(serviceBlock(compose, 'minio-create-bucket'), /profiles:\s*\["object-storage"\]/u, 'Local bucket initialization must remain in the object-storage profile.')
+requireMatch(serviceBlock(compose, 'minio-create-bucket'), /mc mb --ignore-existing/u, 'Local object storage must create its private media bucket idempotently.')
 forbidMatch(serviceBlock(compose, 'platform-worker'), /^\s+(?:ports|expose):/mu, 'Worker must not expose or publish a listening port.')
 forbidMatch(serviceBlock(compose, 'public-web'), /DATABASE_URL/u, 'Public SSR must not receive database credentials.')
 forbidMatch(serviceBlock(compose, 'admin-web'), /DATABASE_URL/u, 'Admin SPA must not receive database credentials.')
@@ -265,6 +284,28 @@ requireMatch(compose, /AIRTEK_TRUSTED_PROXY_CIDRS:\s*\$\{AIRTEK_TRUSTED_PROXY_CI
 requireMatch(serviceBlock(compose, 'public-web'), /dockerfile:\s*infra\/docker\/Dockerfile\.web/u, 'Public must have its own image build.')
 requireMatch(serviceBlock(compose, 'admin-web'), /dockerfile:\s*infra\/docker\/Dockerfile\.admin/u, 'Admin must have its own image build.')
 requireMatch(serviceBlock(compose, 'platform-api'), /dockerfile:\s*infra\/docker\/Dockerfile\.platform/u, 'API must have its own process image boundary.')
+for (const service of ['public-web', 'admin-web']) {
+  const block = serviceBlock(compose, service)
+  requireMatch(block, /NPM_CONFIG_REGISTRY:\s*\$\{AIRTEK_NPM_REGISTRY:-https:\/\/registry\.npmjs\.org\}/u, `${service} must default to the official npm registry.`)
+  requireMatch(block, /HTTP_PROXY:\s*\$\{AIRTEK_BUILD_PROXY:-\}/u, `${service} must expose the optional build proxy.`)
+}
+for (const service of ['platform-api', 'platform-worker']) {
+  const block = serviceBlock(compose, service)
+  requireMatch(block, /CARGO_REGISTRY_MIRROR:\s*\$\{AIRTEK_CARGO_MIRROR:-\}/u, `${service} must expose the optional Cargo mirror.`)
+  requireMatch(block, /HTTPS_PROXY:\s*\$\{AIRTEK_BUILD_PROXY:-\}/u, `${service} must expose the optional build proxy.`)
+}
+for (const variable of [
+  'AIRTEK_MEDIA_STORAGE',
+  'AIRTEK_MEDIA_S3_ENDPOINT',
+  'AIRTEK_MEDIA_S3_REGION',
+  'AIRTEK_MEDIA_S3_BUCKET',
+  'AIRTEK_MEDIA_S3_ACCESS_KEY_ID',
+  'AIRTEK_MEDIA_S3_SECRET_ACCESS_KEY',
+  'AIRTEK_MEDIA_S3_KEY_PREFIX',
+  'AIRTEK_MEDIA_S3_PATH_STYLE',
+]) {
+  requireMatch(serviceBlock(compose, 'platform-api'), new RegExp(`${variable}:\\s*\\$\\{${variable}`, 'u'), `Local API must receive ${variable} from .env.`)
+}
 
 const debugCompose = read('compose.debug.yaml')
 for (const [variable, hostPort, containerPort] of [
@@ -345,6 +386,18 @@ for (const variable of [
   'AIRTEK_DATABASE_URL_INTERNAL',
   'DATABASE_URL',
   'AIRTEK_FLYWAY_BASE_IMAGE',
+  'AIRTEK_NPM_REGISTRY',
+  'AIRTEK_CARGO_MIRROR',
+  'AIRTEK_BUILD_PROXY',
+  'AIRTEK_MINIO_MC_IMAGE',
+  'AIRTEK_MEDIA_STORAGE',
+  'AIRTEK_MEDIA_S3_ENDPOINT',
+  'AIRTEK_MEDIA_S3_REGION',
+  'AIRTEK_MEDIA_S3_BUCKET',
+  'AIRTEK_MEDIA_S3_ACCESS_KEY_ID',
+  'AIRTEK_MEDIA_S3_SECRET_ACCESS_KEY',
+  'AIRTEK_MEDIA_S3_KEY_PREFIX',
+  'AIRTEK_MEDIA_S3_PATH_STYLE',
   'FLYWAY_URL',
   'FLYWAY_USER',
   'FLYWAY_PASSWORD',

@@ -63,6 +63,26 @@ impl MigrationSandbox {
             .connect_with(options)
             .await
             .expect("isolated PostgreSQL connection");
+        let pool_schema: String = sqlx::query_scalar("SELECT current_schema()")
+            .fetch_one(&pool)
+            .await
+            .expect("isolated pool schema");
+        assert_eq!(
+            pool_schema, schema,
+            "sandbox pool must not use public schema"
+        );
+
+        let url_probe = PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&connection_url)
+            .await
+            .expect("isolated PostgreSQL URL connection");
+        let url_schema: String = sqlx::query_scalar("SELECT current_schema()")
+            .fetch_one(&url_probe)
+            .await
+            .expect("isolated URL schema");
+        assert_eq!(url_schema, schema, "sandbox URL must not use public schema");
+        url_probe.close().await;
 
         Self {
             admin_pool,
@@ -78,6 +98,11 @@ impl MigrationSandbox {
 
     pub fn connection_url(&self) -> &str {
         &self.connection_url
+    }
+
+    pub async fn apply_current(&self) {
+        self.apply_version_range(1, airtek_platform::flyway::REQUIRED_SCHEMA_VERSION as u32)
+            .await;
     }
 
     pub async fn apply_version_range(&self, minimum: u32, maximum: u32) {

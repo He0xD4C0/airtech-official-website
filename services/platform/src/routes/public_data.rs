@@ -12,8 +12,6 @@ use axum::{
 };
 use chrono::{Duration, Utc};
 use serde::Deserialize;
-#[cfg(test)]
-use serde_json::json;
 use serde_json::Value;
 use sqlx::Row;
 use uuid::Uuid;
@@ -22,13 +20,16 @@ use crate::{
     config::Config,
     error::ApiError,
     models::{
-        ContentEntry, ContentKind, CreateGuestVisit, CursorPage, DataClass, GeneralInformation,
-        GuestVisit, NewsEntry, ProductFamily, ProductFamilyPresentation, PublicationStatus,
-        RouteResolution, SiteBootstrap,
+        CmsContentKind, ContentTypeFields, CreateGuestVisit, CursorPage, DataClass, GuestVisit,
+        NewsEntry, ProductFamilyPresentation, PublicContentProjection, RouteResolution,
+        SiteBootstrap,
     },
     routes::etag,
     state::AppState,
 };
+
+#[cfg(test)]
+use crate::models::ProductFamily;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -69,6 +70,7 @@ include!("public_data/motor_technologies.rs");
 include!("public_data/route_resolution.rs");
 include!("public_data/news_and_visits.rs");
 include!("public_data/published_loaders.rs");
+include!("public_data/v2_projection.rs");
 include!("public_data/presentations.rs");
 include!("public_data/privacy_validation.rs");
 include!("public_data/content_helpers.rs");

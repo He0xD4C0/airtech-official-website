@@ -50,6 +50,22 @@ server {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   }
 
+  # Reviewed media objects are served through the platform API so the public
+  # origin never exposes the object-storage endpoint or a shared bucket. The
+  # API decides access: only a clean, public, live asset is readable.
+  location ^~ /media/ {
+    proxy_pass http://platform-api:8080/api/public/v1/media/;
+    proxy_http_version 1.1;
+    # Preserve API/object-store backpressure instead of buffering an entire
+    # media response in gateway memory or a temporary file.
+    proxy_buffering off;
+    proxy_hide_header Content-Security-Policy;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  }
+
   location / {
     proxy_pass http://public-web:3000;
     proxy_http_version 1.1;

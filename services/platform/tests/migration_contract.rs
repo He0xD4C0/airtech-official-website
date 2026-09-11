@@ -260,3 +260,147 @@ async fn development_seed_remains_compatible_with_the_unified_schema() {
 
     sandbox.cleanup().await;
 }
+
+#[tokio::test]
+#[cfg(feature = "devtools")]
+#[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
+async fn mixed_legacy_migration_leaves_existing_v2_content_untouched() {
+    let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
+        .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
+    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    sandbox.apply_version_range(1, 11).await;
+    development_seed::seed(sandbox.pool(), "migration-contract")
+        .await
+        .expect("legacy fixtures");
+
+    let snapshot = cms_preflight::load_legacy_snapshot(sandbox.pool())
+        .await
+        .expect("legacy snapshot");
+    let plan = cms_preflight::plan_legacy_snapshot(snapshot, chrono::Utc::now());
+    assert!(plan.report.can_migrate, "fixture preflight must be clean");
+    let working = plan
+        .records
+        .iter()
+        .find(|record| {
+            record.role == airtek_platform::services::cms_preflight::CmsPreflightRecordRole::Working
+        })
+        .expect("working migration candidate");
+    let revision = plan
+        .records
+        .iter()
+        .find(|record| {
+            record.entity_id == working.entity_id
+                && record.source_revision == working.source_revision
+                && record.role
+                    == airtek_platform::services::cms_preflight::CmsPreflightRecordRole::Revision
+        })
+        .expect("revision migration candidate");
+    let content_id = working.entity_id;
+    let draft_document = serde_json::to_value(&working.candidate).unwrap();
+    let revision_document = serde_json::to_value(&revision.candidate).unwrap();
+    let template_key = serde_json::to_value(working.candidate.template_key)
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let invalid_legacy = json!({"legacy": "must remain untouched"});
+
+    sqlx::query(
+        r#"INSERT INTO content_drafts
+           (content_id,draft_version,document,updated_by,updated_at)
+           VALUES ($1,$2,$3,'existing-v2',now())"#,
+    )
+    .bind(content_id)
+    .bind(working.candidate.draft_version)
+    .bind(&draft_document)
+    .execute(sandbox.pool())
+    .await
+    .unwrap();
+    sqlx::query(
+        r#"UPDATE content_revisions
+           SET payload=$3,document=$4,source_draft_version=$2,
+               revision_kind='manual',reason='Existing V2 revision'
+           WHERE content_id=$1 AND revision=$2"#,
+    )
+    .bind(content_id)
+    .bind(revision.source_revision)
+    .bind(&invalid_legacy)
+    .bind(&revision_document)
+    .execute(sandbox.pool())
+    .await
+    .unwrap();
+    sqlx::query(
+        r#"UPDATE content_entries
+           SET payload=$2,template_key=$3,latest_revision=$4,
+               cms_published_revision=published_revision,cms_updated_by='existing-v2'
+           WHERE id=$1"#,
+    )
+    .bind(content_id)
+    .bind(&invalid_legacy)
+    .bind(&template_key)
+    .bind(revision.source_revision)
+    .execute(sandbox.pool())
+    .await
+    .unwrap();
+
+    let mixed_snapshot = cms_preflight::load_legacy_snapshot(sandbox.pool())
+        .await
+        .expect("mixed snapshot");
+    assert!(!mixed_snapshot
+        .content_entries
+        .iter()
+        .any(|entry| entry.id == content_id));
+    assert!(mixed_snapshot.known_content_ids.contains(&content_id));
+    let mixed_report = cms_preflight::analyze_legacy_snapshot(mixed_snapshot, chrono::Utc::now());
+    assert!(
+        mixed_report.can_migrate,
+        "existing V2 rows must not create legacy blockers: {:#?}",
+        mixed_report.issues
+    );
+
+    let mut config = Config::for_test();
+    config.database_url = Some(sandbox.connection_url().to_owned());
+    let state = AppState::new(config).expect("sandbox state");
+    cms_content::migrate_legacy_content(&state)
+        .await
+        .expect("only legacy rows migrate");
+
+    let actual_draft: Value =
+        sqlx::query_scalar("SELECT document FROM content_drafts WHERE content_id=$1")
+            .bind(content_id)
+            .fetch_one(sandbox.pool())
+            .await
+            .unwrap();
+    let actual_revision: (Value, Value, Option<String>) = sqlx::query_as(
+        r#"SELECT payload,document,reason FROM content_revisions
+           WHERE content_id=$1 AND revision=$2"#,
+    )
+    .bind(content_id)
+    .bind(revision.source_revision)
+    .fetch_one(sandbox.pool())
+    .await
+    .unwrap();
+    let actual_entry: (Value, String, i64, String) = sqlx::query_as(
+        r#"SELECT payload,template_key,latest_revision,cms_updated_by
+           FROM content_entries WHERE id=$1"#,
+    )
+    .bind(content_id)
+    .fetch_one(sandbox.pool())
+    .await
+    .unwrap();
+    assert_eq!(actual_draft, draft_document);
+    assert_eq!(
+        actual_revision,
+        (
+            invalid_legacy.clone(),
+            revision_document,
+            Some("Existing V2 revision".into())
+        )
+    );
+    assert_eq!(actual_entry.0, invalid_legacy);
+    assert_eq!(actual_entry.1, template_key);
+    assert_eq!(actual_entry.2, revision.source_revision);
+    assert_eq!(actual_entry.3, "existing-v2");
+
+    sandbox.cleanup().await;
+}

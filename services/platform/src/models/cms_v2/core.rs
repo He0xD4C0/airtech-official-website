@@ -95,6 +95,9 @@ pub struct ContentTemplateDefinition {
     pub allowed_blocks: Vec<ContentBlockKind>,
     pub routable: bool,
     pub singleton_per_locale: bool,
+    /// Locale-relative canonical path pattern owned by the platform registry.
+    /// `{locale}` and `{slug}` are the only supported tokens.
+    pub route_pattern: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]

@@ -3,11 +3,9 @@
 async fn preview_ticket_revalidates_postgres_identity_session_and_permission() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let pool = PgPoolOptions::new()
-        .max_connections(4)
-        .connect(&database_url)
-        .await
-        .expect("PostgreSQL connection");
+    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    sandbox.apply_current().await;
+    let pool = sandbox.pool().clone();
     support::assert_flyway_schema_current(&pool).await;
 
     let user_id = Uuid::new_v4();
@@ -58,57 +56,95 @@ async fn preview_ticket_revalidates_postgres_identity_session_and_permission() {
     .await
     .unwrap();
 
-    let state = postgres_state(&database_url);
-    let content = ContentEntry {
-        id: Uuid::new_v4(),
-        kind: ContentKind::Article,
-        slug: format!("preview-pg-{suffix}"),
-        locale: "en".into(),
-        title: "PostgreSQL-bound private preview".into(),
-        summary: None,
-        body: RichTextDocument {
-            schema_version: 1,
-            doc: json!({"type":"doc","content":[]}),
+    let state = postgres_state(sandbox.connection_url());
+    let content_id = Uuid::new_v4();
+    let slug = format!("preview-pg-{suffix}");
+    let updated_at = chrono::Utc::now();
+    let legacy_payload = json!({
+        "id": content_id,
+        "kind": "article",
+        "slug": slug,
+        "locale": "en",
+        "title": "LEGACY PAYLOAD MUST NOT RENDER",
+        "summary": null,
+        "body": {"schemaVersion": 1, "doc": {"type": "doc", "content": []}},
+        "seo": {"title": null, "description": null, "canonicalPath": null, "indexable": false},
+        "status": "draft",
+        "isPlaceholder": false,
+        "currentRevision": 1,
+        "publishedRevision": null,
+        "scheduledFor": null,
+        "updatedAt": updated_at
+    });
+    let document = json!({
+        "schemaVersion": 2,
+        "kind": "article",
+        "locale": "en",
+        "templateKey": "articleDetail",
+        "title": "PostgreSQL-bound CMS V2 private preview",
+        "slug": slug,
+        "summary": "Exact immutable V2 revision",
+        "isPlaceholder": false,
+        "typeFields": {
+            "type": "article", "category": "Engineering",
+            "authorDisplayName": "AIRTEKPOWER", "publicationAt": null,
+            "cover": null, "featured": false
         },
-        seo: SeoMetadata::default(),
-        status: PublicationStatus::Draft,
-        is_placeholder: false,
-        current_revision: 1,
-        published_revision: None,
-        scheduled_for: None,
-        updated_at: chrono::Utc::now(),
-    };
-    let legacy_payload = serde_json::to_value(&content).unwrap();
+        "body": {"type": "doc", "content": [{"type": "paragraph"}]},
+        "composition": {"blocks": [
+            {"type": "hero", "id": Uuid::new_v4(), "eyebrow": "Preview",
+             "heading": "V2 preview heading", "lead": null, "media": null,
+             "actions": [], "variant": "standard"},
+            {"type": "body", "id": Uuid::new_v4(), "width": "standard"}
+        ]},
+        "seo": {"title": null, "description": null, "indexable": false, "socialImage": null},
+        "relations": [],
+        "draftVersion": 1
+    });
     sqlx::query(
         r#"INSERT INTO content_entries
            (id,kind,slug,locale,title,status,is_placeholder,current_revision,
             published_revision,scheduled_for,payload,updated_at,data_origin,
             template_key,latest_revision,cms_published_revision,cms_created_at,cms_updated_by)
-           VALUES ($1,'article',$2,'en',$3,'draft',false,1,NULL,NULL,$4,$5,
-                   'editorial','articleDetail',0,NULL,$5,'postgres-contract')"#,
+           VALUES ($1,'article',$2,'en',$3,'draft',false,2,NULL,NULL,$4,$5,
+                   'editorial','articleDetail',2,NULL,$5,'postgres-contract')"#,
     )
-    .bind(content.id)
-    .bind(&content.slug)
-    .bind(&content.title)
+    .bind(content_id)
+    .bind(&slug)
+    .bind("PostgreSQL-bound CMS V2 private preview")
     .bind(&legacy_payload)
-    .bind(content.updated_at)
+    .bind(updated_at)
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        r#"INSERT INTO content_revisions
+           (content_id,revision,payload,document,source_draft_version,revision_kind,
+            reason,created_by,created_at)
+           VALUES ($1,1,$2,$3,1,'manual','Preview the exact CMS V2 revision',
+                   'postgres-contract',$4)"#,
+    )
+    .bind(content_id)
+    .bind(&legacy_payload)
+    .bind(document)
+    .bind(updated_at)
     .execute(&pool)
     .await
     .unwrap();
     sqlx::query(
         r#"INSERT INTO content_revisions
            (content_id,revision,payload,created_by,created_at)
-           VALUES ($1,1,$2,'postgres-contract',$3)"#,
+           VALUES ($1,2,$2,'postgres-contract',$3)"#,
     )
-    .bind(content.id)
-    .bind(legacy_payload)
-    .bind(content.updated_at)
+    .bind(content_id)
+    .bind(&legacy_payload)
+    .bind(updated_at)
     .execute(&pool)
     .await
     .unwrap();
     let token = airtek_platform::preview_token::issue(
         state.config.preview_signing_key.as_ref().unwrap(),
-        content.id,
+        content_id,
         1,
         user_id,
         session_id,
@@ -116,15 +152,25 @@ async fn preview_ticket_revalidates_postgres_identity_session_and_permission() {
     )
     .unwrap()
     .token;
+    let legacy_only_token = airtek_platform::preview_token::issue(
+        state.config.preview_signing_key.as_ref().unwrap(),
+        content_id,
+        2,
+        user_id,
+        session_id,
+        600,
+    )
+    .unwrap()
+    .token;
     let app = build_router(state);
-    let preview_request = || {
+    let preview_request = |preview_token: &str| {
         Request::get("/api/public/v1/content-preview")
-            .header(header::AUTHORIZATION, format!("Bearer {token}"))
+            .header(header::AUTHORIZATION, format!("Bearer {preview_token}"))
             .body(Body::empty())
             .unwrap()
     };
 
-    let valid = app.clone().oneshot(preview_request()).await.unwrap();
+    let valid = app.clone().oneshot(preview_request(&token)).await.unwrap();
     assert_eq!(valid.status(), StatusCode::OK);
     assert_eq!(
         valid.headers().get(header::CACHE_CONTROL).unwrap(),
@@ -134,6 +180,25 @@ async fn preview_ticket_revalidates_postgres_identity_session_and_permission() {
         valid.headers().get("x-robots-tag").unwrap(),
         "noindex, nofollow, noarchive"
     );
+    let preview: Value =
+        serde_json::from_slice(&valid.into_body().collect().await.unwrap().to_bytes()).unwrap();
+    assert_eq!(preview["content"]["schemaVersion"], 2);
+    assert_eq!(
+        preview["content"]["title"],
+        "PostgreSQL-bound CMS V2 private preview"
+    );
+    assert_eq!(preview["content"]["publishedRevision"], 1);
+    assert!(preview["content"].get("payload").is_none());
+    assert!(preview["content"].get("currentRevision").is_none());
+    assert_eq!(
+        app.clone()
+            .oneshot(preview_request(&legacy_only_token))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::NOT_FOUND,
+        "a signed token must not revive a payload-only legacy revision"
+    );
 
     sqlx::query("UPDATE users SET status='disabled' WHERE id=$1")
         .bind(user_id)
@@ -142,7 +207,7 @@ async fn preview_ticket_revalidates_postgres_identity_session_and_permission() {
         .unwrap();
     assert_eq!(
         app.clone()
-            .oneshot(preview_request())
+            .oneshot(preview_request(&token))
             .await
             .unwrap()
             .status(),
@@ -160,7 +225,7 @@ async fn preview_ticket_revalidates_postgres_identity_session_and_permission() {
         .unwrap();
     assert_eq!(
         app.clone()
-            .oneshot(preview_request())
+            .oneshot(preview_request(&token))
             .await
             .unwrap()
             .status(),
@@ -177,9 +242,11 @@ async fn preview_ticket_revalidates_postgres_identity_session_and_permission() {
         .await
         .unwrap();
     assert_eq!(
-        app.oneshot(preview_request()).await.unwrap().status(),
+        app.oneshot(preview_request(&token)).await.unwrap().status(),
         StatusCode::NOT_FOUND
     );
+
+    sandbox.cleanup().await;
 }
 
 #[tokio::test]
@@ -187,11 +254,9 @@ async fn preview_ticket_revalidates_postgres_identity_session_and_permission() {
 async fn invitation_acceptance_is_one_time_atomic_and_hash_only() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let pool = PgPoolOptions::new()
-        .max_connections(4)
-        .connect(&database_url)
-        .await
-        .expect("PostgreSQL connection");
+    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    sandbox.apply_current().await;
+    let pool = sandbox.pool().clone();
     support::assert_flyway_schema_current(&pool).await;
 
     let inviter_id = Uuid::new_v4();
@@ -287,7 +352,7 @@ async fn invitation_acceptance_is_one_time_atomic_and_hash_only() {
     )
     .await;
 
-    let app = build_router(postgres_state(&database_url));
+    let app = build_router(postgres_state(sandbox.connection_url()));
     let request_id = Uuid::new_v4();
     let accepted = app
         .clone()
@@ -429,4 +494,6 @@ async fn invitation_acceptance_is_one_time_atomic_and_hash_only() {
         .await
         .unwrap();
     assert_eq!(conflict.status(), StatusCode::CONFLICT);
+
+    sandbox.cleanup().await;
 }

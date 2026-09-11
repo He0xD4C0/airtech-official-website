@@ -11,6 +11,7 @@ const template: ContentTemplateDefinition = {
   requiredBlocks: ['hero', 'body'],
   allowedBlocks: ['hero', 'body', 'media', 'cta'],
   routable: true,
+  routePattern: '/{locale}/resources/articles/{slug}',
   singletonPerLocale: false,
 }
 
@@ -72,6 +73,7 @@ describe('CompositionEditor', () => {
       requiredBlocks: [],
       allowedBlocks: [],
       routable: false,
+      routePattern: null,
       singletonPerLocale: true,
     })
 

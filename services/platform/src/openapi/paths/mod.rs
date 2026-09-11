@@ -8,6 +8,7 @@ mod admin_identity;
 mod admin_operations;
 #[cfg(feature = "devtools")]
 mod devtools;
+mod media;
 mod public;
 
 use serde_json::{Map, Value};
@@ -18,6 +19,7 @@ pub(super) fn add_all(paths: &mut Map<String, Value>) {
 
     admin_auth::add_paths(paths);
     admin_content::add_paths(paths);
+    media::add_paths(paths);
     admin_catalog::add_publication_and_sync(paths);
     admin_analytics::add_overview(paths);
 

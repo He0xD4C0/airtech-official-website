@@ -50,12 +50,9 @@ async fn get_news(
     let news = load_published_news(&state, &query.locale, None)
         .await?
         .into_iter()
-        .find(|entry| entry.content.slug == slug)
+        .find(|entry| entry.content.slug.as_deref() == Some(slug.as_str()))
         .ok_or_else(|| ApiError::not_found("Published news was not found."))?;
-    let revision = news
-        .content
-        .published_revision
-        .unwrap_or(news.content.current_revision);
+    let revision = news.content.published_revision;
     let mut response = Json(news).into_response();
     response.headers_mut().insert(
         header::ETAG,

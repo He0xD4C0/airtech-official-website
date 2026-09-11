@@ -261,7 +261,7 @@ onMounted(load)
 
     <section class="panel product-detail-section" aria-labelledby="assets-heading">
       <header class="panel__header"><div><p class="eyebrow">ASSET RESOLUTION</p><h2 id="assets-heading">附件缺失清单</h2></div><StatusBadge :label="`${product.missingAssets?.length ?? 0} 个未解析`" :tone="product.missingAssets?.length ? 'warning' : 'success'" /></header>
-      <div v-if="product.missingAssets?.length" class="data-table-wrap"><table class="data-table"><thead><tr><th>类型</th><th>来源文件名</th><th>状态</th></tr></thead><tbody><tr v-for="asset in product.missingAssets" :key="`${asset.assetType}-${asset.sourceReference}`"><td>{{ asset.assetType }}</td><td><code>{{ asset.sourceReference }}</code></td><td><StatusBadge label="等待上传与扫描" tone="warning" /></td></tr></tbody></table></div><p v-else class="product-empty-copy">当前产品没有未解析附件引用；实际文件仍须通过媒体扫描状态才能公开。</p>
+      <div v-if="product.missingAssets?.length" class="data-table-wrap"><table class="data-table"><thead><tr><th>类型</th><th>来源文件名</th><th>状态</th></tr></thead><tbody><tr v-for="asset in product.missingAssets" :key="`${asset.assetType}-${asset.sourceReference}`"><td>{{ asset.assetType }}</td><td><code>{{ asset.sourceReference }}</code></td><td><StatusBadge label="等待上传与人工审核" tone="warning" /></td></tr></tbody></table></div><p v-else class="product-empty-copy">当前产品没有未解析附件引用；实际文件仍须通过媒体人工审核才能公开。</p>
     </section>
 
     <section class="panel product-detail-section" aria-labelledby="conditions-heading">

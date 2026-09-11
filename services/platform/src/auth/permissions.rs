@@ -62,6 +62,8 @@ pub fn required_permission(path: &str, method: &axum::http::Method) -> Option<&'
         })
     } else if path.contains("/feishu/") {
         Some("integration.run")
+    } else if path.contains("/media/") {
+        Some(if write { "media.write" } else { "content.read" })
     } else if path.contains("/rfqs") || path.contains("/contacts") {
         Some("rfq.read")
     } else if path.contains("/analytics") {

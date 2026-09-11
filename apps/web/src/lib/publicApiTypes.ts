@@ -2,7 +2,6 @@ import type {
   CreateGuestVisit,
   DiscoveryDocument,
   DiscoveryEntry,
-  GeneralInformation,
   GuestVisit,
   NewsEntry,
   NewsPage,
@@ -24,7 +23,6 @@ export type PublishedNewsListQuery = NonNullable<
   operations['listPublishedNews']['parameters']['query']
 >
 export type ProductFamilyProjectionResponse = ProductFamilyPresentation
-export type GeneralInformationResponse = GeneralInformation
 export type SiteBootstrapResponse = SiteBootstrap
 export type RouteProjectionResponse = RouteResolution
 export type NewsEntryResponse = NewsEntry

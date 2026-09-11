@@ -3,11 +3,9 @@
 async fn public_rate_limit_survives_an_api_restart() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let pool = PgPoolOptions::new()
-        .max_connections(2)
-        .connect(&database_url)
-        .await
-        .expect("PostgreSQL connection");
+    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    sandbox.apply_current().await;
+    let pool = sandbox.pool().clone();
     support::assert_flyway_schema_current(&pool).await;
     let baseline_contacts = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM contact_requests")
         .fetch_one(&pool)
@@ -17,7 +15,7 @@ async fn public_rate_limit_survives_an_api_restart() {
     let run_id = Uuid::new_v4();
     let unique_source = Ipv6Addr::from(u128::from_be_bytes(*run_id.as_bytes()));
     let peer = SocketAddr::new(unique_source.into(), 41_000);
-    let first_state = postgres_state(&database_url);
+    let first_state = postgres_state(sandbox.connection_url());
     first_state.hydrate().await.expect("first hydration");
     let first_app = build_router(first_state);
     for index in 0..5 {
@@ -29,7 +27,7 @@ async fn public_rate_limit_survives_an_api_restart() {
         assert_eq!(response.status(), StatusCode::CREATED);
     }
 
-    let restarted_state = postgres_state(&database_url);
+    let restarted_state = postgres_state(sandbox.connection_url());
     restarted_state.hydrate().await.expect("restart hydration");
     let restarted_app = build_router(restarted_state.clone());
     let blocked = restarted_app
@@ -58,6 +56,9 @@ async fn public_rate_limit_survives_an_api_restart() {
     let summary = summary.into_body().collect().await.unwrap().to_bytes();
     let summary: serde_json::Value = serde_json::from_slice(&summary).unwrap();
     assert_eq!(summary["contactCount"], baseline_contacts + 5);
+
+    drop(first_app);
+    sandbox.cleanup().await;
 }
 
 #[tokio::test]
@@ -65,11 +66,9 @@ async fn public_rate_limit_survives_an_api_restart() {
 async fn admin_idempotency_serializes_instances_and_survives_restart() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let pool = PgPoolOptions::new()
-        .max_connections(2)
-        .connect(&database_url)
-        .await
-        .expect("PostgreSQL connection");
+    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    sandbox.apply_current().await;
+    let pool = sandbox.pool().clone();
     support::assert_flyway_schema_current(&pool).await;
 
     let run_id = Uuid::new_v4();
@@ -108,8 +107,10 @@ async fn admin_idempotency_serializes_instances_and_survives_restart() {
             .unwrap()
     };
 
-    let first = airtek_platform::routes::admin::router().with_state(postgres_state(&database_url));
-    let second = airtek_platform::routes::admin::router().with_state(postgres_state(&database_url));
+    let first = airtek_platform::routes::admin::router()
+        .with_state(postgres_state(sandbox.connection_url()));
+    let second = airtek_platform::routes::admin::router()
+        .with_state(postgres_state(sandbox.connection_url()));
     let (first, replay) = tokio::join!(
         first.oneshot(request(body.clone())),
         second.oneshot(request(body.clone())),
@@ -124,8 +125,8 @@ async fn admin_idempotency_serializes_instances_and_survives_restart() {
     let created: serde_json::Value = serde_json::from_slice(&first).unwrap();
     let content_id = Uuid::parse_str(created["id"].as_str().unwrap()).unwrap();
 
-    let restarted =
-        airtek_platform::routes::admin::router().with_state(postgres_state(&database_url));
+    let restarted = airtek_platform::routes::admin::router()
+        .with_state(postgres_state(sandbox.connection_url()));
     let replay_after_restart = restarted
         .clone()
         .oneshot(request(body.clone()))
@@ -156,4 +157,6 @@ async fn admin_idempotency_serializes_instances_and_survives_restart() {
     .unwrap();
     assert_eq!(content_count, 1);
     assert_eq!(audit_count, 1);
+
+    sandbox.cleanup().await;
 }

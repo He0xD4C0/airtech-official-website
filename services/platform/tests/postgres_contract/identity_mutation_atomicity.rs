@@ -3,11 +3,9 @@
 async fn identity_mutations_are_idempotent_and_commit_with_their_audit_records() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let pool = PgPoolOptions::new()
-        .max_connections(6)
-        .connect(&database_url)
-        .await
-        .expect("PostgreSQL connection");
+    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    sandbox.apply_current().await;
+    let pool = sandbox.pool().clone();
     support::assert_flyway_schema_current(&pool).await;
 
     let run_id = Uuid::new_v4();
@@ -70,7 +68,7 @@ async fn identity_mutations_are_idempotent_and_commit_with_their_audit_records()
     };
     let app = airtek_platform::routes::admin_data::router()
         .layer(Extension(principal))
-        .with_state(postgres_state(&database_url));
+        .with_state(postgres_state(sandbox.connection_url()));
 
     let user_key = format!("identity-user-{run_id}");
     let user_request = |actor: &str, key: &str, revision: i64, display_name: &str| {
@@ -493,4 +491,6 @@ async fn identity_mutations_are_idempotent_and_commit_with_their_audit_records()
         .execute(&pool)
         .await
         .unwrap();
+
+    sandbox.cleanup().await;
 }

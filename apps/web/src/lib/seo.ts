@@ -18,8 +18,9 @@ export function shouldEmitStructuredData(page: Pick<PublicPageModel, 'indexable'
   return isIndexablePage(page)
 }
 
-export function openGraphType(page: Pick<PublicPageModel, 'publishedContent'>): 'article' | 'website' {
-  return page.publishedContent?.kind === 'article' || page.publishedContent?.kind === 'caseStudy'
-    ? 'article'
-    : 'website'
+export function openGraphType(
+  page: Pick<PublicPageModel, 'projection'>,
+): 'article' | 'website' {
+  const kind = page.projection?.kind
+  return kind === 'article' || kind === 'caseStudy' ? 'article' : 'website'
 }

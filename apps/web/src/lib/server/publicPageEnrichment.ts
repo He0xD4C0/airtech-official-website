@@ -10,16 +10,19 @@ import { isSearchablePublicPath } from '@/lib/publicPaths'
 import { PUBLIC_PRODUCT_PAGE_SIZE } from '@/lib/productPagination'
 import type { CardEntry, PublicPageModel } from '@/types/content'
 import {
-  breadcrumbsFrom,
-  isRecord,
-  pageSlots,
-  primaryCtaFrom,
-  relationshipEntries,
   safeText,
-  sectionsFrom,
   slugPattern,
-  verifiedProductRelationshipEntries,
 } from './publicProjectionParsing'
+import {
+  breadcrumbsFromProjection,
+  newsMetadataFrom,
+  pageDescription,
+  pageEyebrow,
+  pageTitle,
+  primaryCtaFromBlocks,
+  relationshipEntriesFromProjection,
+  sectionsFromBlocks,
+} from './publicProjectionV2'
 import { PublicPageDataError, type PublicPageDataOptions } from './publicPageDataTypes'
 
 function validDetailPath(path: string, prefix: string): boolean {
@@ -91,7 +94,7 @@ function newsCard(entry: NewsEntryResponse): CardEntry | undefined {
   const developmentFixture = entry.dataClass === 'developmentFixture'
   if ((entry.content.isPlaceholder && !developmentFixture) || !entry.content.publishedRevision) return undefined
   const slug = entry.content.slug
-  if (!slugPattern.test(slug)) return undefined
+  if (!slug || !slugPattern.test(slug)) return undefined
   return {
     slug,
     title: entry.content.title,
@@ -128,7 +131,7 @@ export async function enrichPage(
       page.category = family.slug
       page.slug = product.slug
       page.title = product.title
-      page.metaTitle = product.seo.title?.trim() || route.page?.seo.title?.trim() || product.title
+      page.metaTitle = product.seo.title?.trim() || product.title
       page.description = product.seo.description?.trim() || product.summary?.trim() || page.description
       page.eyebrow = product.model?.trim() || product.stableId
       page.indexable = page.indexable && product.indexable
@@ -151,20 +154,25 @@ export async function enrichPage(
       const slug = route.path.split('/').at(-1)
       if (!slug || !slugPattern.test(slug)) throw new PublicPageDataError('The News route is invalid.', 404)
       const news = await client.getNews(slug)
-      if (news.content.slug !== slug) throw new PublicPageDataError('The published News route does not match its record.', 404)
-      if (!news.content.publishedRevision) throw new PublicPageDataError('The published News record has no revision.', 503)
-      page.publishedContent = news.content
+      if (news.content.slug !== slug
+        || news.content.id !== route.entityId
+        || news.content.publishedRevision !== route.publishedRevision) {
+        throw new PublicPageDataError('The published News route does not match its CMS V2 record.', 503)
+      }
       page.slug = slug
-      page.title = news.content.title
-      page.metaTitle = news.content.seo.title?.trim() || news.content.title
-      page.description = news.content.seo.description?.trim() || news.content.summary?.trim() || page.description
-      const newsSlots = pageSlots(news.content)
-      const newsHero = isRecord(newsSlots.hero) ? newsSlots.hero : {}
-      page.eyebrow = safeText(newsHero.eyebrow, 160) ?? news.category ?? page.eyebrow
-      page.breadcrumbs = breadcrumbsFrom(news.content, news.content.title)
-      page.primaryCta = primaryCtaFrom(news.content)
-      page.sections = sectionsFrom(news.content)
-      page.entries = relationshipEntries(news.content)
+      const projection = news.content
+      const title = pageTitle(projection)
+      if (!title) throw new PublicPageDataError('The published News projection has no title.', 503)
+      page.projection = projection
+      page.blocks = projection.composition.blocks
+      page.title = title
+      page.metaTitle = safeText(projection.seo.title, 300) ?? page.title
+      page.description = pageDescription(projection) ?? page.description
+      page.eyebrow = pageEyebrow(projection) || news.category || page.eyebrow
+      page.breadcrumbs = breadcrumbsFromProjection(projection, route.path)
+      page.primaryCta = primaryCtaFromBlocks(projection)
+      page.sections = sectionsFromBlocks(projection)
+      page.entries = relationshipEntriesFromProjection(projection)
       page.indexable = page.indexable
         && !news.content.isPlaceholder
         && news.dataClass !== 'developmentFixture'
@@ -174,7 +182,7 @@ export async function enrichPage(
       page.placeholderReason = news.content.isPlaceholder
         ? 'This published record is explicitly marked as placeholder content.'
         : undefined
-      page.newsMetadata = {
+      page.newsMetadata = newsMetadataFrom(projection) ?? {
         category: news.category ?? undefined,
         author: news.authorDisplayName ?? undefined,
         coverMediaId: news.coverMediaId ?? undefined,
@@ -192,11 +200,6 @@ export async function enrichPage(
     } else if (page.kind === 'rfq-form' && page.rfqType === 'product' && options.productSlug && slugPattern.test(options.productSlug)) {
       const product = await client.getProduct(options.productSlug, options.productFamily)
       page.productContext = productContext(product)
-    }
-    const relatedProducts = await verifiedProductRelationshipEntries(route.page, client, page.productFamilies ?? [])
-    if (relatedProducts.length) {
-      const existing = new Set((page.entries ?? []).map((entry) => entry.href))
-      page.entries = [...(page.entries ?? []), ...relatedProducts.filter((entry) => !existing.has(entry.href))]
     }
     return page
   } catch (cause) {

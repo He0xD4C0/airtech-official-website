@@ -1,5 +1,5 @@
-import type { ContentEntry, Product, ProductContext } from '@airtek/contracts'
-import type { PublishedDownloadListMetadata } from '@/lib/downloadResources'
+import type { ContentBlock, Product, ProductContext } from '@airtek/contracts'
+import type { PublicContentProjection } from '@/types/projection'
 
 export type PageKind =
   | 'home'
@@ -33,7 +33,6 @@ export interface CardEntry {
   href: string
   status?: string
   tags?: string[]
-  download?: PublishedDownloadListMetadata
   category?: string
   author?: string
   publishedAt?: string
@@ -123,8 +122,8 @@ export interface PublicPageModel {
   entries?: CardEntry[]
   dataState?: 'published' | 'placeholder'
   placeholderReason?: string
-  requiresPublishedContent?: boolean
-  publishedContent?: ContentEntry
+  projection?: PublicContentProjection
+  blocks?: ContentBlock[]
   publishedProducts?: Product[]
   productNextCursor?: string | null
   newsNextCursor?: string | null

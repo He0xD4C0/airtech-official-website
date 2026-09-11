@@ -6,6 +6,41 @@
 import type { operations } from '../operations'
 
 export interface PathsPart02 {
+"/api/admin/v1/operations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List predefined background operations */
+        get: operations["listBackgroundOperations"];
+        put?: never;
+        /** Queue a predefined background operation */
+        post: operations["createBackgroundOperation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/operations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get background operation status */
+        get: operations["getBackgroundOperation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/operations/{id}/events": {
         parameters: {
             query?: never;
@@ -437,49 +472,15 @@ export interface PathsPart02 {
         patch?: never;
         trace?: never;
     };
-"/api/public/v1/news": {
+"/api/public/v1/media/{assetId}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List published News records */
-        get: operations["listPublishedNews"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/news/{slug}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get one published News record */
-        get: operations["getPublishedNews"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/products": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List published products */
-        get: operations["listPublishedProducts"];
+        /** Serve one reviewed, public media object */
+        get: operations["getPublicMediaAsset"];
         put?: never;
         post?: never;
         delete?: never;

@@ -66,6 +66,7 @@ impl Config {
                 .as_deref()
                 .unwrap_or_default(),
         )?;
+        let media = MediaSettings::from_env().map_err(ConfigError::InvalidMediaSettings)?;
         if admin_bootstrap_token
             .as_ref()
             .is_some_and(|token| token.len() < 24)
@@ -104,6 +105,7 @@ impl Config {
             analytics_utm_medium_allowlist,
             analytics_utm_campaign_allowlist,
             trusted_proxy_cidrs,
+            media,
             production,
         })
     }
@@ -137,6 +139,7 @@ impl Config {
                 .map(str::to_owned)
                 .collect(),
             trusted_proxy_cidrs: Vec::new(),
+            media: MediaSettings::disabled(),
             production: false,
         }
     }

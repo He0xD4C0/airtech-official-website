@@ -27,6 +27,7 @@ import TypeFieldsPanel from '@/components/content/TypeFieldsPanel.vue'
 import DataStatePanel from '@/components/DataStatePanel.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { blockKindLabels, contentKindLabels, contentStatusLabels } from '@/components/content/labels'
+import { routePatternUsesSlug } from '@/services/canonicalPath'
 import { defaultBlock, newDraftId } from '@/services/contentDraftDefaults'
 import { apiErrorMessage } from '@/services/cursorPagination'
 import { useAuthStore } from '@/stores/auth'
@@ -37,7 +38,6 @@ const MANUAL_SNAPSHOT_REASON = 'Create a manual snapshot from the Admin CMS edit
 const DEFAULT_PUBLISH_REASON = 'Publish the current Admin CMS draft'
 
 const emit = defineEmits<{ reload: [] }>()
-
 const router = useRouter()
 const auth = useAuthStore()
 const ui = useUiStore()
@@ -53,7 +53,6 @@ const mediaDialogKind = ref<ContentBlockKind | null>(null)
 const diff = ref<ContentDiffV2 | null>(null)
 const diffLoading = ref(false)
 const diffError = ref('')
-
 const draft = computed(() => store.draft)
 const template = computed(() => store.template)
 const blocks = computed<ContentBlock[]>(() => draft.value?.composition.blocks ?? [])
@@ -80,7 +79,9 @@ const publishIssues = computed(() => {
   const definition = template.value
   if (!current || !definition) return []
   const issues: string[] = []
-  if (definition.routable && !(current.slug ?? '').trim()) issues.push('发布前必须填写 slug。')
+  if (routePatternUsesSlug(definition.routePattern) && !(current.slug ?? '').trim()) {
+    issues.push('发布前必须填写 slug。')
+  }
   if (!current.title.trim()) issues.push('发布前必须填写标题。')
   const kinds = new Set(current.composition.blocks.map((block) => block.type))
   for (const required of definition.requiredBlocks) {
@@ -321,7 +322,6 @@ async function loadRevisions(): Promise<void> {
       <span>检测到并发编辑，自动保存已停止。</span>
       <button class="button button--quiet" type="button" @click="store.reopenConflict()">查看差异</button>
     </div>
-
     <div v-if="store.saveError" class="save-error" role="alert">
       <ShieldAlert :size="17" />
       <span>{{ store.saveError }}</span>
@@ -421,7 +421,6 @@ async function loadRevisions(): Promise<void> {
             :model-value="draft.seo"
             :slug="draft.slug ?? null"
             :locale="draft.locale"
-            :kind="draft.kind"
             :template="template"
             :is-placeholder="draft.isPlaceholder"
             @update:model-value="updateSeo"
@@ -458,7 +457,6 @@ async function loadRevisions(): Promise<void> {
       @reload="reloadConflict"
       @close="store.dismissConflict()"
     />
-
     <ContentPublishDialog
       :open="publishOpen"
       :is-placeholder="draft.isPlaceholder"
@@ -469,7 +467,6 @@ async function loadRevisions(): Promise<void> {
       @confirm="publish"
       @close="publishOpen = false"
     />
-
     <ContentMediaBlockDialog
       :kind="mediaDialogKind"
       @confirm="confirmMediaBlock"
@@ -477,7 +474,6 @@ async function loadRevisions(): Promise<void> {
     />
   </div>
 </template>
-
 <style scoped>
 .content-editor { display: flex; flex-direction: column; gap: 1rem; }
 .content-editor__topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; }

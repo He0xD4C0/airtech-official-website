@@ -11,8 +11,11 @@ export const adminOrigin = process.env.E2E_ADMIN_ORIGIN
 export const apiOrigin = process.env.E2E_API_ORIGIN
   ?? `http://api.airtek.test:${gatewayPort}`
 export const apiControlOrigin = process.env.E2E_API_CONTROL_ORIGIN ?? apiOrigin
+export const gatewayControlOrigin = process.env.E2E_GATEWAY_CONTROL_ORIGIN ?? publicOrigin
 export const adminStorageStatePath = process.env.E2E_ADMIN_STORAGE_STATE
   ?? path.resolve('test-results/playwright/e2e-admin-storage-state.json')
+export const adminSecondaryStorageStatePath = process.env.E2E_ADMIN_SECONDARY_STORAGE_STATE
+  ?? path.resolve('test-results/playwright/e2e-admin-secondary-storage-state.json')
 
 export const administrator = {
   displayName: 'AIRTEK E2E Administrator',
@@ -37,6 +40,12 @@ export function apiControlHeaders(): Record<string, string> {
     Origin: adminOrigin,
     ...(new URL(apiControlOrigin).host === new URL(apiOrigin).host ? {} : { Host: new URL(apiOrigin).host }),
   }
+}
+
+export function gatewayHostHeaders(origin: string): Record<string, string> {
+  return new URL(gatewayControlOrigin).host === new URL(origin).host
+    ? {}
+    : { Host: new URL(origin).host }
 }
 
 export function browserCookiesForLocalGateway<T extends { domain: string; secure: boolean }>(cookies: T[]): T[] {

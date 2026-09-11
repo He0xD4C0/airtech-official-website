@@ -1,5 +1,5 @@
 import { Fragment, defineComponent, h, type PropType, type VNodeChild } from 'vue'
-import type { RichTextDocument } from '@airtek/contracts'
+import type { TiptapDocument } from '@airtek/contracts'
 import {
   asRichTextNode,
   richTextPlainText,
@@ -8,7 +8,7 @@ import {
   type RichTextMark,
   type RichTextNode,
 } from '@/lib/richText'
-import { articleOutlineHeadingTitle, extractArticleOutline } from '@/lib/publishedContent'
+import { articleOutlineHeadingTitle, extractArticleOutline } from '@/lib/articlePresentation'
 
 const maximumDepth = 32
 const maximumNodes = 2_000
@@ -191,19 +191,18 @@ function renderNode(node: RichTextNode, state: RenderState, depth: number, key: 
 export default defineComponent({
   name: 'StructuredContentRenderer',
   props: {
-    document: { type: Object as PropType<RichTextDocument>, required: true },
+    document: { type: Object as PropType<TiptapDocument>, required: true },
   },
   setup(props) {
     return () => {
-      if (props.document.schemaVersion !== 1) return null
-      const root = asRichTextNode(props.document.doc)
+      const root = asRichTextNode(props.document)
       if (!root || root.type !== 'doc') return null
       const state: RenderState = {
         count: 0,
         headingIds: extractArticleOutline(props.document).map((item) => item.id),
         headingIndex: 0,
       }
-      return h('article', { class: 'rich-content prose', 'data-schema-version': '1' }, renderChildren(root, state, 0))
+      return h('article', { class: 'rich-content prose', 'data-schema-version': '2' }, renderChildren(root, state, 0))
     }
   },
 })

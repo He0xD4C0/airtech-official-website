@@ -8,6 +8,7 @@ import DataStatePanel from '@/components/DataStatePanel.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { contentKindLabel } from '@/components/content/labels'
 import { contentApi } from '@/services/contentApi'
+import { routePatternUsesSlug } from '@/services/canonicalPath'
 import { draftFromTemplate } from '@/services/contentDraftDefaults'
 import { useContentEditorStore } from '@/stores/contentEditor'
 import { useUiStore } from '@/stores/ui'
@@ -32,6 +33,7 @@ const routableTemplates = computed(() => templates.value.filter((template) => te
 const selectedTemplate = computed(() => (
   routableTemplates.value.find((template) => template.key === selectedKey.value) ?? null
 ))
+const requiresSlug = computed(() => routePatternUsesSlug(selectedTemplate.value?.routePattern))
 const groups = computed(() => {
   const grouped = new Map<string, ContentTemplateDefinition[]>()
   for (const template of routableTemplates.value) {
@@ -67,7 +69,7 @@ async function submit(): Promise<void> {
     const draft = draftFromTemplate({
       template,
       title: title.value.trim(),
-      slug: slug.value.trim() || null,
+      slug: requiresSlug.value ? slug.value.trim() || null : null,
       isPlaceholder: isPlaceholder.value,
     })
     const id = await store.create(draft)
@@ -123,7 +125,7 @@ onMounted(loadTemplates)
         <label class="field"><span>标题</span>
           <input v-model="title" maxlength="200" required placeholder="公开页面标题" />
         </label>
-        <label v-if="selectedTemplate && selectedTemplate.routable" class="field"><span>Slug（可选，发布前必须填写）</span>
+        <label v-if="requiresSlug" class="field"><span>Slug（可选，发布前必须填写）</span>
           <input v-model="slug" maxlength="200" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="lowercase-with-hyphens" />
         </label>
         <label class="toggle-row">

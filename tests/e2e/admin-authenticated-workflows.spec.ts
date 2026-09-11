@@ -80,7 +80,13 @@ test.describe('Authenticated Admin workflows against Rust and PostgreSQL', () =>
     await expect(page.getByText(/1 条有效记录/u)).toBeVisible()
 
     await page.goto(absolute(adminOrigin, '/products'))
+    const productSearch = page.waitForResponse((response) => {
+      const url = new URL(response.url())
+      return url.pathname === '/api/admin/v1/products'
+        && url.searchParams.get('q') === 'E2E-MODEL-001'
+    })
     await page.getByPlaceholder('搜索稳定 ID、型号或家族').fill('E2E-MODEL-001')
+    expect((await productSearch).status()).toBe(200)
     await page.getByRole('link', { name: '查看产品 E2E-MODEL-001' }).click()
     await expect(page.getByRole('heading', { name: '网站展示与 SEO' })).toBeVisible()
     await page.getByLabel('公开标题').fill('E2E portal product title')

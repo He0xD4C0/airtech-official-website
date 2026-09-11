@@ -18,8 +18,8 @@ use crate::{
     error::ApiError,
     idempotency::{begin as begin_idempotency, IdempotencyOutcome},
     models::{
-        AcceptedResponse, AnalyticsConsentReceipt, AnalyticsEventReceipt, ContactRequest,
-        ContentKind, ContentPreviewResponse, CreateAnalyticsConsent, CreateAnalyticsEvent,
+        AcceptedResponse, AnalyticsConsentReceipt, AnalyticsEventReceipt, CmsContentKind,
+        ContactRequest, ContentPreviewResponse, CreateAnalyticsConsent, CreateAnalyticsEvent,
         CreateContactRequest, CreateRfqRequest, CursorPage, Product, ProductFamily, ProductQuery,
         RfqJourney, RfqSubmission, SelectorRequest, SelectorResponse,
     },
@@ -39,6 +39,8 @@ pub fn router() -> Router<AppState> {
         .route("/products", get(list_products))
         .route("/products/{slug}", get(get_product))
         .route("/discovery", get(discovery))
+        .route("/media/{assetId}", get(get_public_media))
+        .route("/media/{assetId}/download", get(download_public_media))
         .route("/selector", post(select_products))
         .route("/contact", post(create_contact))
         .route("/rfqs", post(create_rfq))
@@ -55,6 +57,7 @@ include!("public/discovery.rs");
 include!("public/content_and_products.rs");
 include!("public/submissions.rs");
 include!("public/published_data.rs");
+include!("public/media.rs");
 include!("public/selector_and_rfq_validation.rs");
 include!("public/rfq_context_validation.rs");
 include!("public/contact_validation.rs");

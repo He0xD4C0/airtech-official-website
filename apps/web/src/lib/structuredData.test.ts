@@ -1,19 +1,40 @@
 import { describe, expect, it } from 'vitest'
-import type { ContentEntry } from '@airtek/contracts'
+import type { PublicContentProjection } from '@airtek/contracts'
 import { publicPageFixture } from '@/test/publicPageFixture'
+import { publicProjectionFixture, tiptapDocument } from '@/test/publicProjectionFixture'
 import { buildPublicStructuredData } from './structuredData'
 
-function content(kind: ContentEntry['kind'], bodyContent: unknown[], attrs?: Record<string, unknown>): ContentEntry {
-  const slug = kind === 'faq' ? 'technical' : 'published-article'
-  const canonicalPath = kind === 'faq' ? '/en/resources/faqs/technical' : '/en/resources/articles/published-article'
-  return {
-    id: '09738e61-263b-4330-8c76-0fb9d1e280a4', kind, slug, locale: 'en',
-    title: kind === 'faq' ? 'Technical FAQ' : 'Published article', summary: 'Published summary.',
-    body: { schemaVersion: 1, doc: { type: 'doc', ...(attrs ? { attrs } : {}), content: bodyContent } },
-    seo: { title: null, description: null, canonicalPath, indexable: true }, status: 'published',
-    isPlaceholder: false, currentRevision: 2, publishedRevision: 1, scheduledFor: null,
-    updatedAt: '2026-09-01T08:00:00Z',
-  }
+type FaqItems = Extract<PublicContentProjection['typeFields'], { type: 'faq' }>['items']
+
+function faqProjection(
+  items: FaqItems,
+  overrides: Partial<PublicContentProjection> = {},
+): PublicContentProjection {
+  return publicProjectionFixture({
+    kind: 'faq',
+    templateKey: 'faqDetail',
+    slug: 'technical',
+    title: 'Technical FAQ',
+    typeFields: { type: 'faq', items },
+    composition: {
+      blocks: [{
+        type: 'faqCollection',
+        id: '11111111-1111-4111-8111-111111111111',
+        heading: 'Questions',
+      }],
+    },
+    ...overrides,
+  })
+}
+
+function faqItems(answerContent: unknown[] = [
+  { type: 'paragraph', content: [{ type: 'text', text: 'Only a complete published answer.' }] },
+]): FaqItems {
+  return [{
+    id: '22222222-2222-4222-8222-222222222222',
+    question: 'What is published?',
+    answer: tiptapDocument(answerContent),
+  }]
 }
 
 function graphTypes(value: Record<string, unknown>): string[] {
@@ -21,16 +42,11 @@ function graphTypes(value: Record<string, unknown>): string[] {
 }
 
 describe('public structured data', () => {
-  const faqBody = [
-    { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'What is published?' }] },
-    { type: 'paragraph', content: [{ type: 'text', text: 'Only a complete published answer.' }] },
-  ]
-
-  it('emits FAQPage only for a complete, indexable, non-placeholder published FAQ', () => {
-    const page = {
-      ...publicPageFixture('/en/resources/faqs/technical'),
-      publishedContent: content('faq', faqBody), dataState: 'published' as const, indexable: true,
-    }
+  it('emits FAQPage only from a complete native V2 FAQ projection', () => {
+    const projection = faqProjection(faqItems())
+    const page = publicPageFixture('/en/resources/faqs/technical', {
+      projection, dataState: 'published', indexable: true,
+    })
     const schema = buildPublicStructuredData(page, 'https://www.example.test')
     expect(graphTypes(schema)).toContain('FAQPage')
     const faq = (schema['@graph'] as Array<Record<string, unknown>>).find((node) => node['@type'] === 'FAQPage')
@@ -44,47 +60,67 @@ describe('public structured data', () => {
     ['placeholder', { dataState: 'placeholder' as const, indexable: true }],
     ['non-indexable', { dataState: 'published' as const, indexable: false }],
   ])('does not emit FAQPage for a %s page', (_label, policy) => {
-    const page = { ...publicPageFixture('/en/resources/faqs/technical'), ...policy, publishedContent: content('faq', faqBody) }
+    const projection = faqProjection(faqItems(), {
+      isPlaceholder: policy.dataState === 'placeholder',
+    })
+    const page = publicPageFixture('/en/resources/faqs/technical', { ...policy, projection })
     expect(graphTypes(buildPublicStructuredData(page, 'https://www.example.test'))).not.toContain('FAQPage')
   })
 
-  it('does not emit FAQPage when one question is incomplete', () => {
-    const incomplete = [...faqBody, { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Missing answer?' }] }]
-    const page = {
-      ...publicPageFixture('/en/resources/faqs/technical'), dataState: 'published' as const, indexable: true,
-      publishedContent: content('faq', incomplete),
-    }
+  it('does not emit FAQPage when any native V2 question is incomplete', () => {
+    const projection = faqProjection([
+      ...faqItems(),
+      {
+        id: '33333333-3333-4333-8333-333333333333',
+        question: 'Missing answer?',
+        answer: tiptapDocument([]),
+      },
+    ])
+    const page = publicPageFixture('/en/resources/faqs/technical', {
+      projection, dataState: 'published', indexable: true,
+    })
     expect(graphTypes(buildPublicStructuredData(page, 'https://www.example.test'))).not.toContain('FAQPage')
   })
 
-  it('does not emit FAQPage for content explicitly marked as placeholder', () => {
-    const page = {
-      ...publicPageFixture('/en/resources/faqs/technical'), dataState: 'published' as const, indexable: true,
-      publishedContent: { ...content('faq', faqBody), isPlaceholder: true },
-    }
-    expect(graphTypes(buildPublicStructuredData(page, 'https://www.example.test'))).not.toContain('FAQPage')
-  })
-
-  it('adds only explicit safe article publication metadata', () => {
-    const page = {
-      ...publicPageFixture('/en/resources/articles/published-article'), dataState: 'published' as const, indexable: true,
-      publishedContent: content('article', [
-        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Evidence' }] },
-      ], { author: 'Engineering Team', authorType: 'Organization', publishedAt: '2026-08-30', category: 'Engineering notes' }),
-    }
+  it('adds article metadata only from native V2 type fields', () => {
+    const projection = publicProjectionFixture({
+      kind: 'article',
+      templateKey: 'articleDetail',
+      slug: 'published-article',
+      typeFields: {
+        type: 'article',
+        authorDisplayName: 'Engineering Team',
+        publicationAt: '2026-08-30T00:00:00Z',
+        category: 'Engineering notes',
+        cover: null,
+        featured: false,
+      },
+    })
+    const page = publicPageFixture('/en/resources/articles/published-article', {
+      projection, dataState: 'published', indexable: true,
+    })
     const graph = buildPublicStructuredData(page, 'https://www.example.test')['@graph'] as Array<Record<string, unknown>>
     const article = graph.find((node) => node['@type'] === 'Article')
     expect(article).toMatchObject({
-      datePublished: '2026-08-30', articleSection: 'Engineering notes',
+      datePublished: '2026-08-30T00:00:00Z',
+      articleSection: 'Engineering notes',
       author: { '@type': 'Organization', name: 'Engineering Team' },
     })
   })
 
-  it('does not invent a structured author type when only an author label is present', () => {
-    const page = {
-      ...publicPageFixture('/en/resources/articles/published-article'), dataState: 'published' as const, indexable: true,
-      publishedContent: content('article', [], { author: 'Unclassified editorial byline' }),
-    }
+  it('does not invent an article author when the V2 field is absent', () => {
+    const projection = publicProjectionFixture({
+      kind: 'article',
+      templateKey: 'articleDetail',
+      slug: 'published-article',
+      typeFields: {
+        type: 'article', category: null, authorDisplayName: null,
+        publicationAt: null, cover: null, featured: false,
+      },
+    })
+    const page = publicPageFixture('/en/resources/articles/published-article', {
+      projection, dataState: 'published', indexable: true,
+    })
     const graph = buildPublicStructuredData(page, 'https://www.example.test')['@graph'] as Array<Record<string, unknown>>
     const article = graph.find((node) => node['@type'] === 'Article')
     expect(article).not.toHaveProperty('author')

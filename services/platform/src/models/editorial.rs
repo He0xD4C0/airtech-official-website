@@ -132,7 +132,7 @@ pub struct NewsDraftInput {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewsEntry {
-    pub content: ContentEntry,
+    pub content: PublicContentProjection,
     pub category: String,
     pub author_display_name: Option<String>,
     pub cover_media_id: Option<Uuid>,
@@ -177,9 +177,9 @@ pub struct ProductFamilyPresentation {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SiteBootstrap {
-    pub general_information: Option<GeneralInformation>,
-    pub navigation: Option<ContentEntry>,
-    pub footer: Option<ContentEntry>,
+    pub general_information: Option<PublicContentProjection>,
+    pub navigation: Option<PublicContentProjection>,
+    pub footer: Option<PublicContentProjection>,
     pub product_families: Vec<ProductFamilyPresentation>,
     pub motor_technologies: Vec<String>,
     pub generated_at: DateTime<Utc>,
@@ -196,7 +196,7 @@ pub struct RouteResolution {
     pub published_revision: Option<i64>,
     pub indexable: bool,
     pub data_class: DataClass,
-    pub page: Option<ContentEntry>,
+    pub page: Option<PublicContentProjection>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -219,6 +219,6 @@ pub struct ContentPreviewLink {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ContentPreviewResponse {
-    pub content: ContentEntry,
+    pub content: PublicContentProjection,
     pub preview_expires_at: DateTime<Utc>,
 }
