@@ -187,9 +187,15 @@ jobs:
               checksum bytea NOT NULL,
               execution_time bigint NOT NULL
           );
-          CREATE TABLE public.content_entries (id bigint PRIMARY KEY);
-          CREATE TABLE public.jobs (id bigint PRIMARY KEY);
+          SQL
 
+          for migration in \
+            services/platform/migrations/V000{1..9}__*.sql \
+            services/platform/migrations/V0010__*.sql; do
+            run_psql airtek_sqlx_adoption < "${migration}"
+          done
+
+          run_psql airtek_sqlx_adoption <<'SQL'
           INSERT INTO public._sqlx_migrations
               (version, description, success, checksum, execution_time)
           VALUES
