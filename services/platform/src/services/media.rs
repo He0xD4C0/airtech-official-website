@@ -14,9 +14,7 @@ mod s3;
 mod storage;
 mod upload;
 
-pub use config::{
-    MediaSettings, MediaStorageKind, MediaStorageSettings, MAX_MEDIA_UPLOAD_BYTES,
-};
+pub use config::{MediaSettings, MediaStorageKind, MediaStorageSettings, MAX_MEDIA_UPLOAD_BYTES};
 pub use delivery::deliver_media_asset;
 pub use upload::{
     parse_upload_body, review_media_asset, sniff_media_type, upload_media_asset, ParsedUpload,
