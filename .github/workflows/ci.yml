@@ -135,12 +135,12 @@ jobs:
             --set "runtime_password=${AIRTEK_RUNTIME_DATABASE_PASSWORD}" <<'SQL'
           CREATE ROLE airtek_runtime LOGIN PASSWORD :'runtime_password';
           SQL
-          docker exec ${{ job.services.postgres.id }} psql --username airtek --dbname airtek --set ON_ERROR_STOP=1 --command "CREATE SEQUENCE public.ci_runtime_grant_sequence"
       - name: Build the non-root Flyway migrations image
         run: docker build --file infra/docker/Dockerfile.flyway --tag airtek-flyway:ci .
       - name: Apply Flyway migrations twice and validate history
         run: |
           docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE airtek-flyway:ci migrate
+          docker exec ${{ job.services.postgres.id }} psql --username airtek --dbname airtek --set ON_ERROR_STOP=1 --command "CREATE SEQUENCE public.ci_runtime_grant_sequence"
           docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE airtek-flyway:ci migrate
           docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE airtek-flyway:ci validate
           docker exec ${{ job.services.postgres.id }} psql --username airtek --dbname airtek --set ON_ERROR_STOP=1 --command "DO \$\$ BEGIN IF NOT has_table_privilege('airtek_runtime', 'public.content_entries', 'SELECT') OR NOT has_sequence_privilege('airtek_runtime', 'public.ci_runtime_grant_sequence', 'USAGE') OR NOT has_database_privilege('airtek_runtime', current_database(), 'TEMPORARY') OR NOT has_table_privilege('airtek_runtime', 'public.flyway_schema_history', 'SELECT') OR has_table_privilege('airtek_runtime', 'public.flyway_schema_history', 'INSERT') OR has_table_privilege('airtek_runtime', 'public.flyway_schema_history', 'TRUNCATE') OR NOT has_schema_privilege('airtek_runtime', 'public', 'USAGE') OR has_schema_privilege('airtek_runtime', 'public', 'CREATE') THEN RAISE EXCEPTION 'runtime role boundary is invalid'; END IF; END \$\$"
