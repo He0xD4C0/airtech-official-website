@@ -36,6 +36,23 @@ fn add_enums_and_requests(s: &mut Map<String, Value>) {
             json!({"reason": {"type": "string", "minLength": 10, "maxLength": 2000}}),
         ),
     );
+    s.insert(
+        "UnpublishContentRequest".into(),
+        object(
+            &["expectedPublishedRevision", "reason"],
+            json!({
+                "expectedPublishedRevision": revision(),
+                "reason": {"type": "string", "minLength": 1, "maxLength": 2000}
+            }),
+        ),
+    );
+    s.insert(
+        "ArchiveContentRequest".into(),
+        object(
+            &["reason"],
+            json!({"reason": {"type": "string", "minLength": 10, "maxLength": 2000}}),
+        ),
+    );
 }
 
 fn add_records(s: &mut Map<String, Value>) {
@@ -108,38 +125,6 @@ fn add_records(s: &mut Map<String, Value>) {
             json!({"items": array(r("ContentTemplateDefinition"))}),
         ),
     );
-    s.insert(
-        "MediaAssetSummary".into(),
-        object(
-            &[
-                "id",
-                "versionId",
-                "originalName",
-                "mediaType",
-                "byteSize",
-                "scanStatus",
-                "accessLevel",
-                "createdAt",
-            ],
-            json!({
-                "id": uuid(),
-                "versionId": uuid(),
-                "originalName": {"type": "string", "minLength": 1, "maxLength": 500},
-                "mediaType": {"type": "string", "minLength": 1, "maxLength": 120},
-                "byteSize": {"type": "integer", "minimum": 0},
-                "scanStatus": {
-                    "type": "string",
-                    "enum": ["pending", "clean", "quarantined", "failed"]
-                },
-                "accessLevel": {
-                    "type": "string",
-                    "enum": ["public", "authenticated", "internal"]
-                },
-                "createdAt": timestamp()
-            }),
-        ),
-    );
-    s.insert("MediaAssetSummaryPage".into(), page("MediaAssetSummary"));
     s.insert("ContentRevisionV2Page".into(), page("ContentRevisionV2"));
 }
 

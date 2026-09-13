@@ -24,6 +24,7 @@ const preview = {
     updatedAt: '2026-09-01T08:00:00Z',
     resolvedRelations: [],
     resolvedLinks: [],
+    resolvedMedia: [],
   },
   previewExpiresAt: '2026-09-01T08:10:00Z',
 }

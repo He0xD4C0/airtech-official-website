@@ -6,6 +6,10 @@
 
 use crate::services::cms_content::{resolve_content_links, resolve_relation_cards};
 
+mod resolved_media {
+    include!("v2_projection_media.rs");
+}
+
 async fn build_v2_projection(
     pool: &sqlx::PgPool,
     id: Uuid,
@@ -13,6 +17,7 @@ async fn build_v2_projection(
     updated_at: chrono::DateTime<Utc>,
     document: Value,
     locale: &str,
+    resolve_media: bool,
 ) -> Result<Option<PublicContentProjection>, ApiError> {
     let draft: crate::models::ContentDraftV2 =
         serde_json::from_value(document).map_err(|error| {
@@ -34,6 +39,8 @@ async fn build_v2_projection(
     let mut connection = pool.acquire().await?;
     let resolved_relations = resolve_relation_cards(&mut connection, locale, &draft).await?;
     let resolved_links = resolve_content_links(&mut connection, locale, &draft).await?;
+    drop(connection);
+    let resolved_media = resolve_projection_media(pool, id, revision, resolve_media).await?;
     Ok(Some(PublicContentProjection {
         schema_version: crate::models::CMS_V2_SCHEMA_VERSION,
         id,
@@ -52,7 +59,21 @@ async fn build_v2_projection(
         updated_at,
         resolved_relations,
         resolved_links,
+        resolved_media,
     }))
+}
+
+async fn resolve_projection_media(
+    pool: &sqlx::PgPool,
+    content_id: Uuid,
+    revision: i64,
+    enabled: bool,
+) -> Result<Vec<crate::models::ResolvedMedia>, ApiError> {
+    if enabled {
+        resolved_media::resolve_published_media(pool, content_id, revision).await
+    } else {
+        Ok(Vec::new())
+    }
 }
 
 fn public_projection_pool(state: &AppState) -> Result<&sqlx::PgPool, ApiError> {
@@ -95,6 +116,7 @@ pub(crate) async fn load_v2_content_revision_preview(
         row.try_get("created_at")?,
         row.try_get("document")?,
         &locale,
+        false,
     )
     .await
 }
@@ -140,6 +162,7 @@ pub(crate) async fn load_v2_content_by_kind_slug(
         row.try_get("created_at")?,
         row.try_get("document")?,
         locale,
+        true,
     )
     .await?;
     let route_path: String = row.try_get("canonical_path")?;
@@ -182,6 +205,7 @@ async fn load_v2_singleton(
         row.try_get("created_at")?,
         row.try_get("document")?,
         locale,
+        true,
     )
     .await
 }
@@ -223,6 +247,7 @@ async fn load_v2_news(
             row.try_get("created_at")?,
             row.try_get("document")?,
             locale,
+            true,
         )
         .await?;
         if let Some(projection) = projection {
@@ -330,9 +355,11 @@ async fn load_v2_route(
         row.try_get("created_at")?,
         row.try_get("document")?,
         locale,
+        true,
     )
     .await?;
-    let projection = projection.filter(|projection| projection_has_canonical_path(projection, path));
+    let projection =
+        projection.filter(|projection| projection_has_canonical_path(projection, path));
     projection
         .map(|projection| {
             let template_key = serde_json::to_value(projection.template_key)

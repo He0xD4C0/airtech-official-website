@@ -4,17 +4,24 @@ import {
   absolute,
   adminOrigin,
   adminStorageStatePath,
-  gatewayControlOrigin,
-  gatewayHostHeaders,
-  publicOrigin,
+  apiOrigin,
   runAdminWorkflows,
 } from './support/environment'
 
-/** A real 1x1 PNG so the upload path exercises magic-byte validation. */
-const ONE_PIXEL_PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
+const RASTER_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEklEQVR4nGP4z8DAAMH///8HACDtBftEyeG3AAAAAElFTkSuQmCC',
   'base64',
 )
+
+interface MediaAsset {
+  id: string
+  publicUrl: string
+  downloadUrl: string
+  originalName: string
+  mediaType: string
+  byteSize: number
+  sha256: string
+}
 
 function severeViolations(
   violations: Awaited<ReturnType<AxeBuilder['analyze']>>['violations'],
@@ -22,185 +29,109 @@ function severeViolations(
   return violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')
 }
 
-async function analyzeStable(page: Page): Promise<Awaited<ReturnType<AxeBuilder['analyze']>>> {
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.waitForTimeout(400)
-  return new AxeBuilder({ page }).analyze()
+async function uploadFromBrowser(
+  page: Page,
+  key: string,
+  fileName: string,
+  bytes: Buffer,
+): Promise<{ status: number; body: unknown }> {
+  return await page.evaluate(async ({ apiBase, idempotencyKey, name, base64 }) => {
+    const session = await fetch(`${apiBase}/api/admin/v1/auth/session`, { credentials: 'include' })
+    const csrf = session.headers.get('x-csrf-token')
+    if (!csrf) throw new Error('Admin session did not provide a CSRF token.')
+    const raw = atob(base64)
+    const data = new Uint8Array(raw.length)
+    for (let index = 0; index < raw.length; index += 1) data[index] = raw.charCodeAt(index)
+    const form = new FormData()
+    form.append('file', new File([data], name, { type: 'image/png' }))
+    const response = await fetch(`${apiBase}/api/admin/v1/media/assets`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Idempotency-Key': idempotencyKey, 'X-CSRF-Token': csrf },
+      body: form,
+    })
+    return { status: response.status, body: await response.json() as unknown }
+  }, { apiBase: apiOrigin, idempotencyKey: key, name: fileName, base64: bytes.toString('base64') })
 }
 
-test.describe('Media upload pipeline', () => {
+test.describe('direct public media upload', () => {
   test.skip(!runAdminWorkflows, 'Run through pnpm test:e2e:stack so uploads use a disposable stack.')
   test.describe.configure({ mode: 'serial' })
   test.use({ storageState: adminStorageStatePath })
 
-  test('uploads, reviews, publishes, serves, and revokes a public media object', async ({ page, browser }, testInfo) => {
-    test.setTimeout(120_000)
-    const suffix = `${testInfo.workerIndex}-${testInfo.retry}-${Date.now().toString(36)}`
-    const fileName = `e2e-media-${suffix}.png`
+  test('returns 201 and serves the private-bucket object publicly immediately', async ({ page }, testInfo) => {
+    const fileName = `e2e-direct-${testInfo.workerIndex}-${Date.now().toString(36)}.png`
     await page.goto(absolute(adminOrigin, '/media'))
-    await expect(page.getByRole('heading', { name: '媒体中心' })).toBeVisible()
-    await expect(page.locator('.media-toolbar')).toBeVisible()
+    await expect(page.getByRole('heading', { name: '媒体库', exact: true })).toBeVisible()
 
-    const uploadResponse = page.waitForResponse((response) => (
-      response.url().includes('/api/admin/v1/media/uploads')
+    const responsePromise = page.waitForResponse((response) => (
+      new URL(response.url()).pathname === '/api/admin/v1/media/assets'
       && response.request().method() === 'POST'
     ))
     await page.setInputFiles('input[type="file"]', {
       name: fileName,
       mimeType: 'image/png',
-      buffer: ONE_PIXEL_PNG,
+      buffer: RASTER_PNG,
     })
-    const response = await uploadResponse
-    expect(response.status()).toBe(201)
-    const asset = await response.json() as { id: string, scanStatus: string }
+    const uploadResponse = await responsePromise
+    expect(uploadResponse.status()).toBe(201)
+    const asset = await uploadResponse.json() as MediaAsset
+    expect(asset).toMatchObject({ originalName: fileName, mediaType: 'image/png', byteSize: RASTER_PNG.byteLength })
+    expect(asset.sha256).toMatch(/^[a-f0-9]{64}$/u)
+
+    const publicResponse = await page.request.get(absolute(apiOrigin, asset.publicUrl))
+    expect(publicResponse.status()).toBe(200)
+    expect(publicResponse.headers()['content-type']).toBe('image/png')
+    expect((await publicResponse.body()).equals(RASTER_PNG)).toBe(true)
+    const downloadResponse = await page.request.get(absolute(apiOrigin, asset.downloadUrl))
+    expect(downloadResponse.status()).toBe(200)
+    expect(downloadResponse.headers()['content-disposition']).toContain('attachment')
 
     const row = page.locator('table.data-table tbody tr', { hasText: fileName })
     await expect(row).toBeVisible()
-    if (asset.scanStatus !== 'clean') {
-      await row.getByRole('button', { name: '标记可用' }).click()
-      const approval = page.getByRole('dialog', { name: new RegExp(`标记 ${fileName} 为可用`) })
-      await approval.getByRole('textbox').fill('E2E administrator verified the uploaded raster image.')
-      await approval.getByRole('button', { name: '确认可用' }).click()
-      await expect(approval).toHaveCount(0)
-      await expect(row.locator('.status-badge')).toHaveText('clean')
+    const detail = page.getByRole('dialog', { name: fileName })
+    if (!await detail.isVisible()) {
+      await row.getByRole('button', { name: new RegExp(fileName, 'u') }).click()
     }
+    await expect(detail.getByText(asset.sha256)).toBeVisible()
+    await expect(detail.getByText('暂无已发布内容引用。')).toBeVisible()
 
-    const objectUrl = absolute(gatewayControlOrigin, `/media/${asset.id}`)
-    const publicHeaders = gatewayHostHeaders(publicOrigin)
-    const served = await page.request.get(objectUrl, { headers: publicHeaders })
-    expect(served.status()).toBe(200)
-    expect(served.headers()['content-type']).toBe('image/png')
-    expect(served.headers()['cache-control']).toContain('immutable')
-    expect(
-      served.headers()['x-content-type-options']
-        ?.split(',')
-        .map((value) => value.trim()),
-    ).toEqual(expect.arrayContaining(['nosniff']))
-    const notModified = await page.request.get(objectUrl, {
-      headers: { ...publicHeaders, 'If-None-Match': served.headers().etag ?? '' },
-    })
-    expect(notModified.status()).toBe(304)
-
-    const download = await page.request.get(
-      absolute(gatewayControlOrigin, `/media/${asset.id}/download`),
-      { headers: publicHeaders },
-    )
-    expect(download.status()).toBe(200)
-    expect(download.headers()['content-disposition']).toContain('attachment')
-
-    await row.getByRole('button', { name: '隔离' }).click()
-    const dialog = page.getByRole('dialog', { name: new RegExp(`隔离 ${fileName}`) })
-    await expect(dialog).toBeVisible()
-    await dialog.getByRole('button', { name: '确认隔离' }).click()
-    await expect(dialog.getByRole('alert')).toHaveText('人工审核决定必须填写原因。')
-    await dialog.getByRole('textbox').fill('E2E verification quarantines the fixture.')
-    await dialog.getByRole('button', { name: '确认隔离' }).click()
-    await expect(dialog).toHaveCount(0)
-    await expect(row.locator('.status-badge')).toHaveText('quarantined')
-
-    const revoked = await page.request.get(objectUrl, { headers: publicHeaders })
-    expect(revoked.status()).toBe(404)
-
-    await row.getByRole('button', { name: '标记可用' }).click()
-    const approval = page.getByRole('dialog', { name: new RegExp(`标记 ${fileName} 为可用`) })
-    await approval.getByRole('button', { name: '确认可用' }).click()
-    await expect(approval.getByRole('alert')).toHaveText('人工审核决定必须填写原因。')
-    await approval.getByRole('textbox').fill('E2E administrator re-approved the reviewed fixture.')
-    await approval.getByRole('button', { name: '确认可用' }).click()
-    await expect(approval).toHaveCount(0)
-    await expect(row.locator('.status-badge')).toHaveText('clean')
-    expect((await page.request.get(objectUrl, { headers: publicHeaders })).status()).toBe(200)
-
-    const slug = `e2e-media-article-${suffix}`
-    const canonicalPath = `/en/resources/articles/${slug}`
-    const articleTitle = `E2E media SSR ${suffix}`
-    const mediaAlt = `Verified uploaded AIRTEK media ${suffix}`
-    const mediaCaption = `Uploaded media caption ${suffix}`
-
-    await page.goto(absolute(adminOrigin, '/content/new'))
-    await page.locator('input[type="radio"][value="articleDetail"]').check()
-    await page.getByLabel('标题', { exact: true }).fill(articleTitle)
-    await page.getByLabel(/Slug/u).fill(slug)
-    await page.getByRole('button', { name: '创建草稿' }).click()
-    await expect(page.getByRole('heading', { name: '基本信息' })).toBeVisible()
-
-    await page.getByRole('button', { name: '添加媒体区块' }).click()
-    const blockDialog = page.getByRole('dialog', { name: '选择媒体资产' }).first()
-    await expect(blockDialog).toBeVisible()
-    await blockDialog.getByRole('button', { name: '选择', exact: true }).click()
-
-    const libraryDialog = page.getByRole('dialog', { name: '选择媒体资产' }).last()
-    await expect(libraryDialog).toBeVisible()
-    await libraryDialog.getByPlaceholder('按文件名搜索').fill(fileName)
-    const assetOption = libraryDialog.locator('button.media-dialog__option', { hasText: fileName })
-    await expect(assetOption).toBeEnabled({ timeout: 10_000 })
-    await assetOption.click()
-    await expect(page.getByRole('dialog', { name: '选择媒体资产' })).toHaveCount(1)
-    await blockDialog.getByRole('button', { name: '加入区块' }).click()
-
-    const inspector = page.locator('aside[aria-label="编辑器检查器"]')
-    await expect(inspector.getByRole('tab', { name: '区块' })).toHaveAttribute('aria-selected', 'true')
-    await inspector.getByLabel('替代文本', { exact: true }).fill(mediaAlt)
-    await inspector.getByLabel('图注', { exact: true }).fill(mediaCaption)
-    await expect(inspector.getByRole('checkbox', { name: /^装饰性媒体/u })).not.toBeChecked()
-
-    await page.getByLabel('分类').fill('E2E acceptance')
-    await page.getByLabel('作者显示名').fill('AIRTEKPOWER E2E')
-    const body = page.locator('[contenteditable="true"]').first()
-    await body.click()
-    await body.fill(`Media pipeline browser acceptance body ${suffix}.`)
-    const placeholder = page.getByRole('checkbox', { name: /^占位内容/u })
-    if (await placeholder.isChecked()) await placeholder.uncheck()
-    await expect(page.locator('.save-state')).toContainText('已保存', { timeout: 15_000 })
-
-    await page.getByRole('button', { name: '发布', exact: true }).click()
-    const publishDialog = page.getByRole('dialog', { name: '发布内容' })
-    await expect(publishDialog.getByRole('button', { name: '确认发布' })).toBeEnabled()
-    await publishDialog.getByRole('button', { name: '确认发布' }).click()
-    await expect(page.getByText('内容已发布')).toBeVisible()
-
-    const ssr = await page.request.get(absolute(gatewayControlOrigin, canonicalPath), {
-      headers: publicHeaders,
-    })
-    expect(ssr.status()).toBe(200)
-    const ssrMarkup = await ssr.text()
-    expect(ssrMarkup).toContain(`src="/media/${asset.id}"`)
-    expect(ssrMarkup).toContain(mediaAlt)
-    expect(ssrMarkup).toContain(mediaCaption)
-    expect(ssrMarkup).toContain(articleTitle)
-
-    const publicContext = await browser.newContext({ javaScriptEnabled: false })
-    const publicPage = await publicContext.newPage()
-    try {
-      const publishedResponse = await publicPage.goto(absolute(publicOrigin, canonicalPath))
-      expect(publishedResponse?.status()).toBe(200)
-      await expect(publicPage).toHaveTitle(articleTitle)
-      await expect(publicPage.getByRole('heading', { level: 1, name: articleTitle })).toBeVisible()
-      const image = publicPage.locator(`img[src="/media/${asset.id}"]`)
-      await expect(image).toHaveAttribute('alt', mediaAlt)
-      await expect(publicPage.locator('figcaption', { hasText: mediaCaption })).toBeVisible()
-    } finally {
-      await publicContext.close()
-    }
+    const accessibility = await new AxeBuilder({ page }).analyze()
+    expect(severeViolations(accessibility.violations)).toEqual([])
   })
 
-  test('rejects unsupported bytes and keeps the media page accessible', async ({ page }) => {
+  test('replays the same actor/key/file and rejects key reuse for another file', async ({ page }, testInfo) => {
     await page.goto(absolute(adminOrigin, '/media'))
-    await expect(page.getByRole('heading', { name: '媒体中心' })).toBeVisible()
+    const key = `e2e-idempotent-${testInfo.workerIndex}-${Date.now().toString(36)}`
+    const fileName = `${key}.png`
+    const first = await uploadFromBrowser(page, key, fileName, RASTER_PNG)
+    const replay = await uploadFromBrowser(page, key, fileName, RASTER_PNG)
+    const conflictBytes = Buffer.concat([RASTER_PNG, Buffer.from([0])])
+    const conflict = await uploadFromBrowser(page, key, `different-${fileName}`, conflictBytes)
 
-    const uploadResponse = page.waitForResponse((response) => (
-      response.url().includes('/api/admin/v1/media/uploads')
+    expect(first.status).toBe(201)
+    expect(replay.status).toBe(201)
+    expect((replay.body as MediaAsset).id).toBe((first.body as MediaAsset).id)
+    expect(conflict.status).toBe(409)
+    expect(conflict.body).toMatchObject({
+      status: 409,
+      type: 'https://api.airtekpower.example/problems/media_idempotency_conflict',
+    })
+  })
+
+  test('rejects forged image bytes and keeps the media page usable', async ({ page }) => {
+    await page.goto(absolute(adminOrigin, '/media'))
+    const responsePromise = page.waitForResponse((response) => (
+      new URL(response.url()).pathname === '/api/admin/v1/media/assets'
       && response.request().method() === 'POST'
     ))
     await page.setInputFiles('input[type="file"]', {
-      name: 'e2e-not-an-image.svg',
-      mimeType: 'image/svg+xml',
-      buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script/></svg>'),
+      name: 'forged.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'),
     })
-    expect((await uploadResponse).status()).toBe(415)
-    await expect(page.getByRole('status').first()).toContainText('PNG')
-
-    const accessibility = await analyzeStable(page)
-    expect(severeViolations(accessibility.violations)).toEqual([])
+    expect((await responsePromise).status()).toBe(415)
+    await expect(page.getByRole('status')).toContainText('PNG')
+    await expect(page.getByRole('heading', { name: '媒体库', exact: true })).toBeVisible()
   })
 })

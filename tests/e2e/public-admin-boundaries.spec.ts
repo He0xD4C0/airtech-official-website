@@ -11,6 +11,8 @@ const publicOrigin = process.env.E2E_PUBLIC_ORIGIN
 const adminOrigin = process.env.E2E_ADMIN_ORIGIN
   ?? `http://${urlHost}:${process.env.AIRTEK_ADMIN_HOST_PORT ?? '3100'}`
 const gatewayControlOrigin = process.env.E2E_GATEWAY_CONTROL_ORIGIN
+const publicGatewayHost = process.env.E2E_PUBLIC_GATEWAY_HOST
+const adminGatewayHost = process.env.E2E_ADMIN_GATEWAY_HOST
 
 function absolute(origin: string, pathname: string): string {
   return new URL(pathname, `${origin.replace(/\/$/u, '')}/`).toString()
@@ -23,9 +25,14 @@ function gatewayGet(
   options: { maxRedirects?: number } = {},
 ): Promise<APIResponse> {
   if (!gatewayControlOrigin) return request.get(absolute(origin, pathname), options)
+  const gatewayHost = origin === publicOrigin
+    ? publicGatewayHost
+    : origin === adminOrigin
+      ? adminGatewayHost
+      : undefined
   return request.get(absolute(gatewayControlOrigin, pathname), {
     ...options,
-    headers: { Host: new URL(origin).host },
+    headers: { Host: gatewayHost || new URL(origin).host },
   })
 }
 

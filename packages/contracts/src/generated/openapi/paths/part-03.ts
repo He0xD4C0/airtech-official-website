@@ -6,6 +6,40 @@
 import type { operations } from '../operations'
 
 export interface PathsPart03 {
+"/api/public/v1/guest-visits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create or refresh a consented anonymous first-party visit */
+        post: operations["createGuestVisit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/public/v1/media/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Serve a live media asset without authentication */
+        get: operations["getPublicMediaAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/public/v1/media/{assetId}/download": {
         parameters: {
             query?: never;
@@ -13,7 +47,7 @@ export interface PathsPart03 {
             path?: never;
             cookie?: never;
         };
-        /** Download one reviewed, public media object as an attachment */
+        /** Download a live media asset without authentication */
         get: operations["downloadPublicMediaAsset"];
         put?: never;
         post?: never;
@@ -168,6 +202,23 @@ export interface PathsPart03 {
         };
         /** Report process liveness */
         get: operations["getLiveness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/internal/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Return internal low-cardinality OpenMetrics telemetry */
+        get: operations["getInternalMetrics"];
         put?: never;
         post?: never;
         delete?: never;

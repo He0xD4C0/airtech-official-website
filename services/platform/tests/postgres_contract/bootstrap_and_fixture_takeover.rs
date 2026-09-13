@@ -12,8 +12,18 @@ async fn site_bootstrap_reads_the_published_postgres_projection() {
         .await
         .expect("idempotent development projection seed");
 
-    let state = postgres_state(sandbox.connection_url());
+    let state = postgres_direct_media_state(sandbox.connection_url());
     state.hydrate().await.expect("PostgreSQL hydration");
+    let dependency_report = airtek_platform::services::cms_dependency_backfill::run(
+        &pool,
+        airtek_platform::services::cms_dependency_backfill::DependencyBackfillMode::Apply,
+    )
+    .await
+    .expect("development projections receive dependency snapshots");
+    assert!(
+        dependency_report.can_release(),
+        "development dependency backfill must be release-safe: {dependency_report:#?}"
+    );
     let response = build_router(state)
         .oneshot(
             Request::get("/api/public/v1/site-bootstrap?locale=en")

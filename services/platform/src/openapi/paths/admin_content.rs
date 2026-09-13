@@ -3,13 +3,72 @@
 use serde_json::{json, Map, Value};
 
 use super::super::support::*;
+use crate::error::CONTENT_DEPENDENCY_CONFLICT;
 
 pub(super) fn add_paths(paths: &mut Map<String, Value>) {
     add_collection_paths(paths);
     add_draft_paths(paths);
     add_snapshot_path(paths);
+    add_unpublish_path(paths);
+    add_archive_path(paths);
     add_revision_paths(paths);
     add_media_paths(paths);
+}
+
+fn add_archive_path(paths: &mut Map<String, Value>) {
+    add(
+        paths,
+        "/api/admin/v1/content/{id}/archive",
+        "post",
+        admin(
+            params(
+                body(
+                    op(
+                        "archiveAdminContentV2",
+                        "Archive content only after it has been explicitly unpublished",
+                        "adminContent",
+                        [("200", content_response("Content archived"))],
+                    ),
+                    r("ArchiveContentRequest"),
+                ),
+                vec![
+                    path_param("id", uuid()),
+                    draft_if_match_param(),
+                    idempotency_param(),
+                ],
+            ),
+            true,
+        ),
+    );
+}
+
+fn add_unpublish_path(paths: &mut Map<String, Value>) {
+    add(
+        paths,
+        "/api/admin/v1/content/{id}/unpublish",
+        "post",
+        with_problem_example(
+            admin(
+                params(
+                    body(
+                        op(
+                            "unpublishAdminContentV2",
+                            "Explicitly unpublish content while preserving its draft and immutable history",
+                            "adminContent",
+                            [("200", content_response("Content unpublished"))],
+                        ),
+                        r("UnpublishContentRequest"),
+                    ),
+                    vec![path_param("id", uuid()), draft_if_match_param(), idempotency_param()],
+                ),
+                true,
+            ),
+            "409",
+            CONTENT_DEPENDENCY_CONFLICT,
+            "Content dependency conflict",
+            "Active published content still depends on this target.",
+        ),
+    );
 }
 
 fn add_media_paths(paths: &mut Map<String, Value>) {
@@ -23,10 +82,7 @@ fn add_media_paths(paths: &mut Map<String, Value>) {
                     "listAdminMediaAssets",
                     "List media library assets for the unified content editor",
                     "adminContent",
-                    [(
-                        "200",
-                        json_response("Media assets", r("MediaAssetSummaryPage")),
-                    )],
+                    [("200", json_response("Media assets", r("MediaAssetPage")))],
                 ),
                 media_asset_params(),
             ),
@@ -41,16 +97,6 @@ fn media_asset_params() -> Vec<Value> {
         "q",
         false,
         json!({"type": "string", "maxLength": 200, "description": "Case-insensitive original name search."}),
-    ));
-    values.push(query_param(
-        "scanStatus",
-        false,
-        json!({"type": "string", "enum": ["pending", "clean", "quarantined", "failed"]}),
-    ));
-    values.push(query_param(
-        "accessLevel",
-        false,
-        json!({"type": "string", "enum": ["public", "authenticated", "internal"]}),
     ));
     values
 }
@@ -189,20 +235,26 @@ fn add_snapshot_path(paths: &mut Map<String, Value>) {
         paths,
         "/api/admin/v1/content/{id}/snapshots",
         "post",
-        admin(
-            params(
-                body(
-                    op(
-                        "createAdminContentSnapshotV2",
-                        "Create an immutable manual or published revision from the current draft",
-                        "adminContent",
-                        [("201", content_response("Content snapshot created"))],
+        with_problem_example(
+            admin(
+                params(
+                    body(
+                        op(
+                            "createAdminContentSnapshotV2",
+                            "Create an immutable manual or published revision from the current draft",
+                            "adminContent",
+                            [("201", content_response("Content snapshot created"))],
+                        ),
+                        r("CreateContentSnapshotRequest"),
                     ),
-                    r("CreateContentSnapshotRequest"),
+                    mutation_params(false),
                 ),
-                mutation_params(false),
+                true,
             ),
-            true,
+            "422",
+            CONTENT_DEPENDENCY_CONFLICT,
+            "Content dependency conflict",
+            "One or more publication dependencies failed validation.",
         ),
     );
 }

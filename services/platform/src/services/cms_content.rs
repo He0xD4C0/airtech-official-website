@@ -22,14 +22,18 @@ mod listing;
 mod migration;
 mod mutations;
 mod publication;
+mod publication_mutations;
 mod storage;
 mod validation;
 
 pub use diff::diff_content;
 pub use listing::{ContentListFilter, ContentListOutcome, ContentSortField, SortDirection};
 pub use migration::migrate_legacy_content;
-pub use mutations::{create_content, restore_revision, save_draft, snapshot_content};
+pub use mutations::{
+    archive_content, create_content, restore_revision, save_draft, snapshot_content,
+};
 pub use publication::{publish_public_route, resolve_content_links, resolve_relation_cards};
+pub use publication_mutations::unpublish_content;
 pub use storage::{get_content, list_content, list_revisions};
 
 #[derive(Clone, Debug)]

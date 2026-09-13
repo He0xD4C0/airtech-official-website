@@ -3,6 +3,14 @@ set -eu
 
 runtime_role=${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:-}
 allow_shared_role=${AIRTEK_FLYWAY_ALLOW_SHARED_ROLE:-false}
+schema_target=${AIRTEK_FLYWAY_TARGET:-}
+case "$schema_target" in
+  15 ) ;;
+  * )
+    echo "AIRTEK_FLYWAY_TARGET must be 15." >&2
+    exit 64
+    ;;
+esac
 case "$runtime_role" in
   [a-z_]* ) ;;
   * )
@@ -64,7 +72,7 @@ exec flyway \
   -skipDefaultCallbacks=false \
   -skipDefaultResolvers=false \
   -skipExecutingMigrations=false \
-  -target=latest \
+  "-target=$schema_target" \
   -validateMigrationNaming=true \
   -validateOnMigrate=true \
   -placeholderReplacement=true \

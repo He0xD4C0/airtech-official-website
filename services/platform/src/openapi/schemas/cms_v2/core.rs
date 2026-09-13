@@ -282,10 +282,7 @@ fn tiptap_node(
 fn add_assets(s: &mut Map<String, Value>) {
     s.insert(
         "AssetVersionReference".into(),
-        object(
-            &["assetId", "versionId"],
-            json!({"assetId": uuid(), "versionId": uuid()}),
-        ),
+        object(&["assetId"], json!({"assetId": uuid()})),
     );
     s.insert(
         "MediaUseReference".into(),

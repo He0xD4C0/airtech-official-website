@@ -13,7 +13,7 @@ devtools = ["dep:clap", "dep:portable-pty", "axum/ws"]
 [dependencies]
 async-trait = "0.1"
 argon2 = { version = "0.5", features = ["std"] }
-axum = { version = "0.8", features = ["http2", "json", "macros"] }
+axum = { version = "0.8", features = ["http2", "json", "macros", "multipart"] }
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5", features = ["derive", "env"], optional = true }
@@ -42,6 +42,7 @@ zeroize = "1.8"
 
 [dev-dependencies]
 http-body-util = "0.1"
+tokio = { version = "1", features = ["test-util"] }
 
 [[bin]]
 name = "airtek-api"
@@ -54,4 +55,3 @@ path = "src/bin/worker.rs"
 [[bin]]
 name = "airtekctl"
 path = "src/bin/airtekctl.rs"
-required-features = ["devtools"]

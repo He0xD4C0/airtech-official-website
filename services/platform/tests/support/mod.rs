@@ -13,6 +13,8 @@ use sqlx::{
 };
 use uuid::Uuid;
 
+static MIGRATION_SANDBOX_CLEANUP_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 pub async fn assert_flyway_schema_current(pool: &PgPool) {
     let status = airtek_platform::flyway::read_status(pool)
         .await
@@ -125,6 +127,10 @@ impl MigrationSandbox {
 
     pub async fn cleanup(self) {
         self.pool.close().await;
+        // Each isolated schema contains the complete platform schema. Serializing
+        // DROP SCHEMA avoids exhausting PostgreSQL's shared lock table while the
+        // contract tests themselves continue to run with the default parallelism.
+        let _cleanup_guard = MIGRATION_SANDBOX_CLEANUP_LOCK.lock().await;
         sqlx::query(&format!("DROP SCHEMA {} CASCADE", self.schema))
             .execute(&self.admin_pool)
             .await

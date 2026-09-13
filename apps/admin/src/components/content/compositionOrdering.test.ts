@@ -14,7 +14,7 @@ function block(type: ContentBlockKind, id: string): ContentBlock {
       return {
         type,
         id,
-        media: { asset: { assetId: 'asset-1', versionId: 'version-1' }, altText: null, decorative: true },
+        media: { asset: { assetId: 'asset-1' }, altText: null, decorative: true },
         caption: null,
         layout: 'inline',
       }

@@ -28,12 +28,55 @@ fn super_admin_permissions() -> Vec<String> {
     values
 }
 
+const MEDIA_ASSET_LIST_PERMISSIONS: &[&str] = &["content.read", "media.write"];
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AdminPermissionPolicy {
+    Exact(&'static str),
+    Any(&'static [&'static str]),
+}
+
+impl AdminPermissionPolicy {
+    pub fn allows(self, principal: &AdminPrincipal) -> bool {
+        match self {
+            Self::Exact(permission) => principal.has_permission(permission),
+            Self::Any(permissions) => permissions
+                .iter()
+                .any(|permission| principal.has_permission(permission)),
+        }
+    }
+
+    pub fn denied_detail(self) -> String {
+        match self {
+            Self::Exact(permission) => format!("The `{permission}` permission is required."),
+            Self::Any(_) => "One of the listed permissions is required.".into(),
+        }
+    }
+}
+
+pub fn permission_policy(
+    path: &str,
+    method: &axum::http::Method,
+) -> Option<AdminPermissionPolicy> {
+    if path.ends_with("/media/assets") && *method == axum::http::Method::GET {
+        Some(AdminPermissionPolicy::Any(MEDIA_ASSET_LIST_PERMISSIONS))
+    } else {
+        required_permission(path, method).map(AdminPermissionPolicy::Exact)
+    }
+}
+
 pub fn required_permission(path: &str, method: &axum::http::Method) -> Option<&'static str> {
     let write = !matches!(
         *method,
         axum::http::Method::GET | axum::http::Method::HEAD | axum::http::Method::OPTIONS
     );
-    if (path.contains("/content/")
+    if path.ends_with("/media/assets") && !write {
+        // `permission_policy` handles the read-only union before reaching this
+        // exact-permission mapper.
+        None
+    } else if path.contains("/media/") {
+        Some(if write { "media.write" } else { "content.read" })
+    } else if (path.contains("/content/")
         || path.contains("/news/")
         || path.contains("/general-information/"))
         && (path.ends_with("/publish") || path.ends_with("/rollback"))
@@ -62,8 +105,6 @@ pub fn required_permission(path: &str, method: &axum::http::Method) -> Option<&'
         })
     } else if path.contains("/feishu/") {
         Some("integration.run")
-    } else if path.contains("/media/") {
-        Some(if write { "media.write" } else { "content.read" })
     } else if path.contains("/rfqs") || path.contains("/contacts") {
         Some("rfq.read")
     } else if path.contains("/analytics") {

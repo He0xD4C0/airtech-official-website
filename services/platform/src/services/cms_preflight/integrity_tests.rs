@@ -9,7 +9,6 @@ use super::{
     analyze_legacy_snapshot,
     conversion::{convert_content, ContentSource},
     integrity::validate_candidate_targets,
-    references::stable_media_version_id,
     tests::{legacy_entry, timestamp},
     types::{
         CmsPreflightRecordRole, LegacyAssetReference, LegacyContentEntry, LegacyContentRevision,
@@ -17,7 +16,7 @@ use super::{
     },
 };
 
-fn asset(id: Uuid, scan_status: &str) -> LegacyMediaAsset {
+fn asset(id: Uuid, deleted: bool) -> LegacyMediaAsset {
     LegacyMediaAsset {
         id,
         storage_key: format!("media/{id}"),
@@ -25,11 +24,9 @@ fn asset(id: Uuid, scan_status: &str) -> LegacyMediaAsset {
         media_type: "image/png".into(),
         byte_size: 1,
         checksum: "checksum".into(),
-        scan_status: scan_status.into(),
-        access_level: "public".into(),
         metadata: json!({}),
         created_at: timestamp(),
-        deleted_at: None,
+        deleted_at: deleted.then(timestamp),
     }
 }
 
@@ -44,8 +41,7 @@ fn with_media(mut entry: LegacyContentEntry, media_id: Uuid) -> LegacyContentEnt
             json!({
                 "media": {
                     "asset": {
-                        "assetId": media_id,
-                        "versionId": stable_media_version_id(media_id)
+                        "assetId": media_id
                     },
                     "altText": "Diagram",
                     "decorative": false
@@ -58,7 +54,7 @@ fn with_media(mut entry: LegacyContentEntry, media_id: Uuid) -> LegacyContentEnt
 }
 
 #[test]
-fn embedded_media_state_blocks_published_but_only_warns_for_draft() {
+fn deleted_media_blocks_published_but_only_warns_for_draft() {
     let media_id = Uuid::from_u128(1_100);
     let draft = with_media(
         legacy_entry(Uuid::from_u128(1_101), "home", "draft", None),
@@ -67,7 +63,7 @@ fn embedded_media_state_blocks_published_but_only_warns_for_draft() {
     let draft_report = analyze_legacy_snapshot(
         LegacySnapshot {
             content_entries: vec![draft],
-            media_assets: vec![asset(media_id, "quarantined")],
+            media_assets: vec![asset(media_id, true)],
             ..LegacySnapshot::default()
         },
         timestamp(),
@@ -95,7 +91,7 @@ fn embedded_media_state_blocks_published_but_only_warns_for_draft() {
         LegacySnapshot {
             content_entries: vec![published],
             content_revisions: vec![revision],
-            media_assets: vec![asset(media_id, "quarantined")],
+            media_assets: vec![asset(media_id, true)],
             ..LegacySnapshot::default()
         },
         timestamp(),
@@ -205,7 +201,7 @@ fn product_asset_reference_requires_an_existing_product() {
     let media_id = Uuid::from_u128(1_500);
     let report = analyze_legacy_snapshot(
         LegacySnapshot {
-            media_assets: vec![asset(media_id, "clean")],
+            media_assets: vec![asset(media_id, false)],
             asset_references: vec![LegacyAssetReference {
                 id: Uuid::from_u128(1_501),
                 media_asset_id: media_id,

@@ -33,6 +33,7 @@ use crate::{
         validate_product_master, validate_source_owned_alignment,
         validate_verified_csv_product_master, workflow_error,
     },
+    services::request_metrics::RequestMetrics,
 };
 
 mod analytics;
@@ -146,6 +147,7 @@ pub struct AppState {
     pub pool: Option<PgPool>,
     pub data: Arc<RwLock<PlatformData>>,
     pub auth_hash_slots: Arc<Semaphore>,
+    pub request_metrics: Arc<RequestMetrics>,
     idempotency_locks: Arc<Mutex<HashMap<String, Weak<Mutex<()>>>>>,
     idempotency_database_slots: Arc<Semaphore>,
     #[cfg(feature = "devtools")]

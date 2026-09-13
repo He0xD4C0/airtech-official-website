@@ -23,6 +23,7 @@
     "db:validate": "docker compose run --rm flyway-migrate validate",
     "check:production": "pnpm build:production && node scripts/assert-production-isolation.mjs",
     "check:deployment": "node scripts/assert-deployment-config.mjs",
+    "check:media-boundary": "node scripts/assert-direct-media-boundary.mjs",
     "check:isolation": "node scripts/smoke-isolation.mjs",
     "generate:contracts": "node scripts/generate-openapi.mjs && pnpm --filter @airtek/contracts typecheck",
     "check:contracts": "node scripts/generate-openapi.mjs --check && pnpm --filter @airtek/contracts typecheck"

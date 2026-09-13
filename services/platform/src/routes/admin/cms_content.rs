@@ -1,5 +1,5 @@
 use crate::models::{
-    CmsContentKind, CmsPublicationStatusV2, ContentTemplateDefinition, MediaAssetSummary,
+    CmsContentKind, CmsPublicationStatusV2, ContentTemplateDefinition,
 };
 use crate::pagination::paginate_by_id_scoped;
 use crate::services::cms_content::{ContentListFilter, ContentSortField, SortDirection};
@@ -19,15 +19,15 @@ struct MediaAssetListQuery {
     cursor: Option<String>,
     limit: Option<usize>,
     q: Option<String>,
-    scan_status: Option<String>,
-    access_level: Option<String>,
 }
 
 async fn list_media_assets(
     State(state): State<AppState>,
+    Extension(principal): Extension<AdminPrincipal>,
     Query(query): Query<MediaAssetListQuery>,
-) -> Result<Json<CursorPage<MediaAssetSummary>>, ApiError> {
-    let filter = MediaAssetFilter::parse(query.q, query.scan_status, query.access_level)?;
+) -> Result<Json<media_assets::MediaAssetPage>, ApiError> {
+    require_media_read(&principal)?;
+    let filter = MediaAssetFilter::parse(query.q)?;
     let page = media_assets::list_media_assets(
         &state,
         filter,
@@ -97,13 +97,26 @@ async fn list_content(
     let (filter, pagination) = query.into_parts()?;
     let outcome = cms_content::list_content(&state, filter.clone()).await?;
     let scope = format!("admin.content.v2|{}", filter.cursor_scope());
+    let pagination_started = std::time::Instant::now();
     let page = paginate_by_id_scoped(&scope, outcome.records, pagination, |entry| entry.id)?;
-    Ok(Json(ContentRecordListPage {
+    let pagination_elapsed = pagination_started.elapsed();
+    let response = ContentRecordListPage {
         items: page.items,
         next_cursor: page.next_cursor,
         total: outcome.total,
         counts: outcome.counts,
-    }))
+    };
+    let estimated_payload_bytes = serde_json::to_vec(&response)
+        .map_err(|_| ApiError::internal("Unable to measure the content list response."))?
+        .len();
+    crate::services::list_filter_observability::observe_list(
+        "admin.cms_content",
+        outcome.observation,
+        pagination_elapsed,
+        response.items.len(),
+        estimated_payload_bytes,
+    );
+    Ok(Json(response))
 }
 
 async fn list_content_templates() -> Result<Json<ContentTemplateListPage>, ApiError> {
@@ -311,6 +324,53 @@ async fn create_content_snapshot(
     )
     .await?;
     Ok(cms_content_response(StatusCode::CREATED, &entry))
+}
+
+async fn unpublish_content(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Extension(principal): Extension<AdminPrincipal>,
+    headers: HeaderMap,
+    Json(request): Json<UnpublishContentRequest>,
+) -> Result<Response, ApiError> {
+    if !principal.has_permission("content.publish") {
+        return Err(ApiError::forbidden(
+            "The `content.publish` permission is required.",
+        ));
+    }
+    let expected = parse_content_if_match(&headers)?;
+    let actor_name = actor(&headers);
+    let idempotency = match begin_idempotency(
+        &state,
+        "admin.content.v2.unpublish",
+        &headers,
+        &json!({
+            "actor": actor_name,
+            "id": id,
+            "ifMatch": expected,
+            "request": request,
+        }),
+    )
+    .await?
+    {
+        IdempotencyOutcome::Replay(replay) => {
+            let status = replay.status()?;
+            let entry: ContentRecordV2 = replay.decode()?;
+            return Ok(cms_content_response(status, &entry));
+        }
+        IdempotencyOutcome::Fresh(context) => context,
+    };
+    let entry = cms_content::unpublish_content(
+        &state,
+        id,
+        expected,
+        request.expected_published_revision,
+        request.reason,
+        mutation_metadata(&headers, actor_name),
+        idempotency,
+    )
+    .await?;
+    Ok(cms_content_response(StatusCode::OK, &entry))
 }
 
 async fn list_content_revisions(

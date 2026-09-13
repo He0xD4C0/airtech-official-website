@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde_json::{json, Map, Value};
 use uuid::Uuid;
 
-use super::{conversion::issue, references::stable_media_version_id, types::*};
+use super::{conversion::issue, types::*};
 
 pub(super) fn news_metadata_equal(working: &LegacyNewsWorking, revision: &LegacyNews) -> bool {
     working.content_kind == revision.content_kind
@@ -177,7 +177,6 @@ fn news_fields(
         json!({
             "asset": {
                 "assetId": asset_id,
-                "versionId": stable_media_version_id(asset_id),
             },
             "altText": null,
             "decorative": false,

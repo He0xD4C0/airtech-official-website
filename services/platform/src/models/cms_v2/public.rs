@@ -28,6 +28,17 @@ pub struct ResolvedLinkTarget {
     pub href: String,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ResolvedMedia {
+    pub asset_id: Uuid,
+    pub public_url: String,
+    pub download_url: String,
+    pub media_type: String,
+    pub byte_size: i64,
+    pub original_name: String,
+}
+
 /// Published CMS V2 document plus the server-resolved navigation surface.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -49,4 +60,5 @@ pub struct PublicContentProjection {
     pub updated_at: DateTime<Utc>,
     pub resolved_relations: Vec<ResolvedRelationCard>,
     pub resolved_links: Vec<ResolvedLinkTarget>,
+    pub resolved_media: Vec<ResolvedMedia>,
 }

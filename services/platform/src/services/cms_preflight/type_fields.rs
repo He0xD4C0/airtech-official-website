@@ -200,12 +200,12 @@ fn download_fields(
 
 fn validate_file_status(
     value: Option<&Value>,
-    seed: &Map<String, Value>,
+    _seed: &Map<String, Value>,
     context: IssueContext,
     issues: &mut Vec<CmsPreflightIssue>,
 ) {
     let Some(value) = value else { return };
-    let Some(object) = value.as_object() else {
+    if !value.is_object() {
         issues.push(blocking(
             context,
             CmsPreflightIssueCode::TypeFieldMismatch,
@@ -213,37 +213,6 @@ fn validate_file_status(
             "Download fileStatus must be an object.",
         ));
         return;
-    };
-    for key in object
-        .keys()
-        .filter(|key| !matches!(key.as_str(), "scan" | "access"))
-    {
-        issues.push(blocking(
-            context,
-            CmsPreflightIssueCode::TypeFieldMismatch,
-            &format!("body.doc.attrs.fileStatus.{key}"),
-            "Unknown fileStatus field has no CMS V2 mapping.",
-        ));
-    }
-    let actual_scan = seed.get("assetScanStatus").and_then(Value::as_str);
-    let actual_access = seed.get("assetAccessLevel").and_then(Value::as_str);
-    for (field, actual) in [("scan", actual_scan), ("access", actual_access)] {
-        let legacy = object.get(field).and_then(Value::as_str);
-        if object.contains_key(field) && legacy.is_none() {
-            issues.push(blocking(
-                context,
-                CmsPreflightIssueCode::TypeFieldMismatch,
-                &format!("body.doc.attrs.fileStatus.{field}"),
-                "Download file status values must be strings.",
-            ));
-        } else if legacy.is_some() && legacy != actual {
-            issues.push(blocking(
-                context,
-                CmsPreflightIssueCode::MissingMediaVersion,
-                &format!("body.doc.attrs.fileStatus.{field}"),
-                "Legacy file status disagrees with the referenced media asset.",
-            ));
-        }
     }
     issues.push(issue(
         CmsPreflightSeverity::Warning,
@@ -252,7 +221,7 @@ fn validate_file_status(
         Some(context.entity_id),
         Some(context.revision),
         "body.doc.attrs.fileStatus",
-        "Legacy fileStatus is removed; CMS V2 derives availability from the media version.",
+        "Legacy fileStatus is removed; CMS V2 uses the referenced public media asset.",
     ));
 }
 

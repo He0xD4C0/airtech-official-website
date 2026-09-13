@@ -4,6 +4,8 @@ import type {
   ContentRecordV2,
   ContentRevisionV2,
   ContentTemplateDefinition,
+  MediaAsset,
+  MediaAssetPage,
   Product,
 } from '@airtek/contracts'
 import { adminContractClient, draftEtag, randomRequestId } from './adminApiTransport'
@@ -30,31 +32,12 @@ export interface ContentListPage {
   counts: Record<string, number>
 }
 
-export type MediaScanStatus = 'pending' | 'clean' | 'quarantined' | 'failed'
-export type MediaAccessLevel = 'public' | 'authenticated' | 'internal'
-
-export interface MediaAssetSummary {
-  id: string
-  versionId: string
-  originalName: string
-  mediaType: string
-  byteSize: number
-  scanStatus: MediaScanStatus
-  accessLevel: MediaAccessLevel
-  createdAt: string
-}
+export type MediaAssetSummary = MediaAsset
 
 export interface MediaAssetQuery {
   q?: string
-  scanStatus?: MediaScanStatus
-  accessLevel?: MediaAccessLevel
   cursor?: string
   limit?: number
-}
-
-export interface MediaAssetPage {
-  items: MediaAssetSummary[]
-  nextCursor: string | null
 }
 
 export interface ProductSearchQuery {
@@ -159,6 +142,43 @@ export const contentApi = {
     return draftResults(result.data, result.etag)
   },
 
+  async archiveContent(
+    id: string,
+    draftVersion: number,
+    reason: string,
+  ): Promise<DraftRecordResult> {
+    const result = await adminContractClient.post('/api/admin/v1/content/{id}/archive', {
+      parameters: {
+        path: { id },
+        header: {
+          'Idempotency-Key': randomRequestId(),
+          'If-Match': draftEtag(draftVersion),
+        },
+      },
+      body: { reason },
+    })
+    return draftResults(result.data, result.etag)
+  },
+
+  async unpublishContent(
+    id: string,
+    draftVersion: number,
+    expectedPublishedRevision: number,
+    reason: string,
+  ): Promise<DraftRecordResult> {
+    const result = await adminContractClient.post('/api/admin/v1/content/{id}/unpublish', {
+      parameters: {
+        path: { id },
+        header: {
+          'Idempotency-Key': randomRequestId(),
+          'If-Match': draftEtag(draftVersion),
+        },
+      },
+      body: { expectedPublishedRevision, reason },
+    })
+    return draftResults(result.data, result.etag)
+  },
+
   async listRevisions(id: string, limit = 100): Promise<ContentRevisionV2[]> {
     const result = await adminContractClient.get('/api/admin/v1/content/{id}/revisions', {
       parameters: { path: { id }, query: { limit } },
@@ -203,8 +223,6 @@ export const contentApi = {
       parameters: {
         query: queryWithoutUndefined({
           q: query.q?.trim() || undefined,
-          scanStatus: query.scanStatus,
-          accessLevel: query.accessLevel,
           cursor: query.cursor,
           limit: query.limit,
         }),

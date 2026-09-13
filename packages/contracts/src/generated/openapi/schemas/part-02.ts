@@ -6,6 +6,8 @@
 import type { components } from '../components'
 
 export interface SchemasPart02 {
+/** @enum {string} */
+        ContentTemplateKey: "home" | "productIndex" | "productFamily" | "selector" | "compare" | "solutionIndex" | "solutionDetail" | "technologyIndex" | "technologyDetail" | "articleIndex" | "articleDetail" | "newsIndex" | "newsDetail" | "faqIndex" | "faqDetail" | "caseStudyIndex" | "caseStudyDetail" | "downloadIndex" | "downloadDetail" | "about" | "contact" | "rfqRouter" | "rfqForm" | "search" | "legal" | "navigation" | "footer" | "generalInformation";
 ContentTypeFields: {
             /** @constant */
             type: "home";
@@ -152,6 +154,13 @@ CtaBlock: {
         CtaVariant: "standard" | "emphasized";
 /** @enum {string} */
         DataClass: "editorial" | "feishu" | "verifiedCsv" | "developmentFixture";
+DependencyProblemIssue: {
+            code: string;
+            detail: string;
+            failedGate: string;
+            path: string;
+            targetId: string | null;
+        };
 DiscoveryDocument: {
             entries: components["schemas"]["DiscoveryEntry"][];
             /** Format: date-time */
@@ -466,29 +475,23 @@ LoginRequest: {
             /** Format: password */
             password: string;
         };
-MediaAssetReviewRequest: {
-            /** @description Required for every human clean or quarantine decision; surrounding whitespace is trimmed and the reason is recorded in the audit trail. */
-            reason: string;
-            /** @enum {string} */
-            status: "clean" | "quarantined";
-        };
-MediaAssetSummary: {
-            /** @enum {string} */
-            accessLevel: "public" | "authenticated" | "internal";
+MediaAsset: {
             byteSize: number;
             /** Format: date-time */
             createdAt: string;
+            downloadUrl: string;
             /** Format: uuid */
             id: string;
-            mediaType: string;
-            originalName: string;
             /** @enum {string} */
-            scanStatus: "pending" | "clean" | "quarantined" | "failed";
-            /** Format: uuid */
-            versionId: string;
+            mediaType: "image/png" | "image/jpeg" | "image/webp";
+            originalName: string;
+            publicUrl: string;
+            sha256: string;
+            uploadedBy: string;
         };
-MediaAssetSummaryPage: {
-            items: components["schemas"]["MediaAssetSummary"][];
+MediaAssetPage: {
+            items: components["schemas"]["MediaAsset"][];
             nextCursor: string | null;
+            total: number;
         };
 }

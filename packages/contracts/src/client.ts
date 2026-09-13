@@ -18,6 +18,7 @@ export type ContractOperation<
 
 type RequestMediaBody<RequestBody> = RequestBody extends { content: infer Content }
   ? Content extends { 'application/json': infer Json } ? Json
+    : Content extends { 'multipart/form-data': unknown } ? FormData
     : Content extends Record<string, unknown> ? Content[keyof Content]
       : never
   : never

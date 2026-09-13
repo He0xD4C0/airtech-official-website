@@ -9,6 +9,7 @@ fn cms_principal() -> AdminPrincipal {
             "content.read".into(),
             "content.write".into(),
             "content.publish".into(),
+            "media.write".into(),
         ],
         session_id: Uuid::new_v4(),
         session_token_hash: vec![1; 32],
@@ -115,7 +116,7 @@ async fn unified_cms_round_trips_all_configuration_content_and_revisions() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
     let sandbox = support::MigrationSandbox::create(&database_url).await;
-    sandbox.apply_version_range(1, 11).await;
+    sandbox.apply_version_range(1, 14).await;
     let pool = sandbox.pool();
     let state = postgres_state(sandbox.connection_url());
     let app = airtek_platform::routes::admin::router()
@@ -311,7 +312,7 @@ async fn unified_cms_list_filters_sort_and_counts_cover_more_than_one_page() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
     let sandbox = support::MigrationSandbox::create(&database_url).await;
-    sandbox.apply_version_range(1, 11).await;
+    sandbox.apply_version_range(1, 14).await;
     let state = postgres_state(sandbox.connection_url());
     let app = airtek_platform::routes::admin::router()
         .layer(Extension(cms_principal()))

@@ -5,17 +5,23 @@ ARG CARGO_REGISTRY_MIRROR
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
 ARG NO_PROXY
+ARG AIRTEK_PLATFORM_FEATURES=production
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse \
+    CARGO_HTTP_TIMEOUT=120 \
+    CARGO_NET_RETRY=5
 COPY services/platform services/platform
-RUN if [ -n "${CARGO_REGISTRY_MIRROR}" ]; then \
-      mkdir -p /root/.cargo; \
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    if [ -n "${CARGO_REGISTRY_MIRROR}" ]; then \
+      mkdir -p "${CARGO_HOME}"; \
       { \
         echo '[source.crates-io]'; \
         echo 'replace-with = "airtek-mirror"'; \
         echo '[source.airtek-mirror]'; \
         echo "registry = \"${CARGO_REGISTRY_MIRROR}\""; \
-      } > /root/.cargo/config.toml; \
+      } > "${CARGO_HOME}/config.toml"; \
     fi \
-    && cargo build --locked --release --manifest-path services/platform/Cargo.toml --features production --bin airtek-api --bin airtek-worker
+    && cargo build --locked --release --manifest-path services/platform/Cargo.toml --features "$AIRTEK_PLATFORM_FEATURES" --bin airtek-api --bin airtek-worker --bin airtekctl
 
 FROM debian:bookworm-slim
 RUN apt-get update \
@@ -24,6 +30,7 @@ RUN apt-get update \
     && useradd --system --uid 10001 --create-home airtek
 COPY --from=build /workspace/services/platform/target/release/airtek-api /usr/local/bin/airtek-api
 COPY --from=build /workspace/services/platform/target/release/airtek-worker /usr/local/bin/airtek-worker
+COPY --from=build /workspace/services/platform/target/release/airtekctl /usr/local/bin/airtekctl
 USER 10001
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/airtek-api"]

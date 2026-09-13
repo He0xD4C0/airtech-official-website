@@ -5,7 +5,6 @@ use crate::models::{ContentBlock, MigrationPreflightIssueCode};
 
 use super::{
     conversion::convert_content,
-    references::stable_media_version_id,
     tests::{content_payload, source},
 };
 
@@ -14,7 +13,6 @@ fn embedded(asset_id: Uuid, description: serde_json::Value) -> serde_json::Value
         "downloadAsset": {
             "asset": {
                 "assetId": asset_id,
-                "versionId": stable_media_version_id(asset_id)
             },
             "label": "File",
             "description": description
@@ -26,7 +24,6 @@ fn seed(asset_id: Uuid) -> Map<String, serde_json::Value> {
     json!({
         "asset": {
             "assetId": asset_id,
-            "versionId": stable_media_version_id(asset_id)
         }
     })
     .as_object()

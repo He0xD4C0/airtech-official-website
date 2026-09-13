@@ -90,7 +90,7 @@ fn round_trip_document(kind: &str, suffix: &str) -> Value {
                 "composition": {"blocks": [
                     hero,
                     {"type": "downloadAsset", "id": Uuid::new_v4(),
-                     "asset": {"assetId": Uuid::new_v4(), "versionId": Uuid::new_v4()},
+                     "asset": {"assetId": Uuid::new_v4()},
                      "label": "Datasheet", "description": null}
                 ]}
             }),
@@ -194,7 +194,7 @@ async fn unified_cms_round_trips_every_content_kind_without_loss() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
     let sandbox = support::MigrationSandbox::create(&database_url).await;
-    sandbox.apply_version_range(1, 11).await;
+    sandbox.apply_version_range(1, 14).await;
     let state = postgres_state(sandbox.connection_url());
     let app = airtek_platform::routes::admin::router()
         .layer(Extension(cms_principal()))

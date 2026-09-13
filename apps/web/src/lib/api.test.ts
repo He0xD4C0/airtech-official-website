@@ -24,6 +24,7 @@ function projection(overrides: Record<string, unknown> = {}) {
     updatedAt: '2026-09-01T08:00:00Z',
     resolvedRelations: [],
     resolvedLinks: [],
+    resolvedMedia: [],
     ...overrides,
   }
 }

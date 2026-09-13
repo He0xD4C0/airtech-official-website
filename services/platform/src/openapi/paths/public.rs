@@ -30,6 +30,24 @@ pub(super) fn add_core(paths: &mut Map<String, Value>) {
     );
     add(
         paths,
+        "/internal/metrics",
+        "get",
+        op(
+            "getInternalMetrics",
+            "Return internal low-cardinality OpenMetrics telemetry",
+            "system",
+            [(
+                "200",
+                text_response(
+                    "OpenMetrics telemetry",
+                    "application/openmetrics-text",
+                    json!({"type": "string"}),
+                ),
+            )],
+        ),
+    );
+    add(
+        paths,
         "/openapi.json",
         "get",
         op(

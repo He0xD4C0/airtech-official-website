@@ -197,7 +197,7 @@ async fn product_publish_requires_an_atomic_accepted_postgres_evidence_chain() {
     .execute(&pool)
     .await
     .unwrap();
-    let seeded = postgres_state(sandbox.connection_url());
+    let seeded = postgres_direct_media_state(sandbox.connection_url());
     seeded.persist_product(&product).await.unwrap();
     seeded.hydrate().await.unwrap();
     let app = airtek_platform::routes::admin::router().with_state(seeded);
@@ -365,7 +365,7 @@ async fn product_publish_requires_an_atomic_accepted_postgres_evidence_chain() {
     .execute(&pool)
     .await
     .unwrap();
-    let blocked_state = postgres_state(sandbox.connection_url());
+    let blocked_state = postgres_direct_media_state(sandbox.connection_url());
     blocked_state.hydrate().await.unwrap();
     let blocked_app = airtek_platform::routes::admin::router().with_state(blocked_state);
     let blocked_idempotency_key = format!("postgres-publish-blocked-{product_id}");

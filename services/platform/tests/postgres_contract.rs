@@ -1,4 +1,7 @@
-use std::net::{Ipv6Addr, SocketAddr};
+use std::{
+    net::{Ipv6Addr, SocketAddr},
+    path::PathBuf,
+};
 
 #[cfg(feature = "devtools")]
 use airtek_platform::services::development_seed;
@@ -56,6 +59,25 @@ fn postgres_state(database_url: &str) -> AppState {
     AppState::new(config).expect("PostgreSQL test state")
 }
 
+fn postgres_direct_media_state(database_url: &str) -> AppState {
+    use airtek_platform::services::media::{MediaStorageKind, MediaStorageSettings};
+
+    let mut config = Config::for_test();
+    config.database_url = Some(database_url.to_owned());
+    config.media.storage = Some(MediaStorageSettings {
+        kind: MediaStorageKind::S3,
+        local_root: PathBuf::from("/unused"),
+        endpoint: "https://s3.example.test".into(),
+        region: "us-east-1".into(),
+        bucket: "postgres-contract".into(),
+        access_key_id: "test-access".into(),
+        secret_access_key: "test-secret".into(),
+        key_prefix: "media".into(),
+        path_style: true,
+    });
+    AppState::new(config).expect("PostgreSQL direct-media test state")
+}
+
 #[cfg(feature = "devtools")]
 async fn response_json(response: Response) -> Value {
     let bytes = response.into_body().collect().await.unwrap().to_bytes();
@@ -69,5 +91,8 @@ include!("postgres_contract/identity_mutation_atomicity.rs");
 include!("postgres_contract/settings_and_product_publish.rs");
 include!("postgres_contract/unified_content.rs");
 include!("postgres_contract/public_projection.rs");
+include!("postgres_contract/cms_publication_lifecycle.rs");
+include!("postgres_contract/cms_archive_lifecycle.rs");
+include!("postgres_contract/cms_publication_concurrency.rs");
 include!("postgres_contract/media_assets.rs");
 include!("postgres_contract/cms_round_trip.rs");

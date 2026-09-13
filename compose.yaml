@@ -17,8 +17,7 @@ services:
     restart: unless-stopped
 
   minio:
-    image: ${AIRTEK_MINIO_IMAGE:-quay.io/minio/minio:latest}
-    profiles: ["object-storage"]
+    image: ${AIRTEK_MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e}
     command: server /data --console-address :9001
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-airtek}
@@ -28,24 +27,53 @@ services:
       - "9001"
     volumes:
       - object-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
     restart: unless-stopped
 
   minio-create-bucket:
-    image: ${AIRTEK_MINIO_MC_IMAGE:-quay.io/minio/mc:latest}
-    profiles: ["object-storage"]
+    image: ${AIRTEK_MINIO_MC_IMAGE:-quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
+        set -eu
         until mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"; do sleep 1; done
         mc mb --ignore-existing "local/$${AIRTEK_MEDIA_S3_BUCKET}"
         mc anonymous set none "local/$${AIRTEK_MEDIA_S3_BUCKET}"
+        render_policy() {
+          source="$$1"
+          target="$$2"
+          while IFS= read -r line; do
+            case "$$line" in
+              *REPLACE_MEDIA_BUCKET*)
+                before="$${line%%REPLACE_MEDIA_BUCKET*}"
+                after="$${line#*REPLACE_MEDIA_BUCKET}"
+                printf '%s%s%s\n' "$$before" "$${AIRTEK_MEDIA_S3_BUCKET}" "$$after"
+                ;;
+              *) printf '%s\n' "$$line" ;;
+            esac
+          done < "$$source" > "$$target"
+        }
+        render_policy /policies/media-api.json /tmp/media-api.json
+        mc admin policy create local airtek-media-api /tmp/media-api.json
+        mc admin user add local "$${AIRTEK_MEDIA_API_S3_ACCESS_KEY_ID}" "$${AIRTEK_MEDIA_API_S3_SECRET_ACCESS_KEY}" || \
+          mc admin user enable local "$${AIRTEK_MEDIA_API_S3_ACCESS_KEY_ID}"
+        mc admin policy attach local airtek-media-api --user "$${AIRTEK_MEDIA_API_S3_ACCESS_KEY_ID}"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-airtek}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-local-development-only}
       AIRTEK_MEDIA_S3_BUCKET: ${AIRTEK_MEDIA_S3_BUCKET:-airtek-media}
+      AIRTEK_MEDIA_API_S3_ACCESS_KEY_ID: ${AIRTEK_MEDIA_API_S3_ACCESS_KEY_ID:-airtek-media-api}
+      AIRTEK_MEDIA_API_S3_SECRET_ACCESS_KEY: ${AIRTEK_MEDIA_API_S3_SECRET_ACCESS_KEY:-local-api-media-only}
+    volumes:
+      - ./infra/object-storage/media-api-policy.json:/policies/media-api.json:ro
     depends_on:
       minio:
-        condition: service_started
+        condition: service_healthy
     restart: "no"
 
   flyway-migrate:
@@ -60,6 +88,7 @@ services:
       FLYWAY_USER: ${FLYWAY_USER:-airtek}
       FLYWAY_PASSWORD: ${FLYWAY_PASSWORD:-airtek}
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: ${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:-airtek}
+      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:-15}
       # Local compatibility for the existing single-role development volume.
       # The production boundary cannot pass this override.
       AIRTEK_FLYWAY_ALLOW_SHARED_ROLE: "true"
@@ -73,6 +102,7 @@ services:
       context: .
       dockerfile: infra/docker/Dockerfile.platform
       args:
+        AIRTEK_PLATFORM_FEATURES: ${AIRTEK_PLATFORM_FEATURES:-devtools}
         CARGO_REGISTRY_MIRROR: ${AIRTEK_CARGO_MIRROR:-}
         HTTP_PROXY: ${AIRTEK_BUILD_PROXY:-}
         HTTPS_PROXY: ${AIRTEK_BUILD_PROXY:-}
@@ -80,8 +110,8 @@ services:
     environment:
       AIRTEK_API_HOST: ${AIRTEK_API_HOST:-0.0.0.0}
       DATABASE_URL: ${AIRTEK_DATABASE_URL_INTERNAL:-postgres://airtek:airtek@postgres:5432/airtek}
-      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:-http://www.localhost:8088}
-      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:-http://admin.localhost:8088}
+      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:-http://localhost:3000}
+      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:-http://localhost:3100}
       AIRTEK_ADMIN_BOOTSTRAP_TOKEN: ${AIRTEK_ADMIN_BOOTSTRAP_TOKEN:-local-development-bootstrap-change-me}
       AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:-}
       AIRTEK_PREVIEW_SIGNING_KEY: ${AIRTEK_PREVIEW_SIGNING_KEY:-}
@@ -98,12 +128,12 @@ services:
       AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES: ${AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES:-}
       AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS: ${AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS:-}
       AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS: ${AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS:-}
-      AIRTEK_MEDIA_STORAGE: ${AIRTEK_MEDIA_STORAGE:-}
+      AIRTEK_MEDIA_STORAGE: ${AIRTEK_MEDIA_STORAGE:-s3}
       AIRTEK_MEDIA_S3_ENDPOINT: ${AIRTEK_MEDIA_S3_ENDPOINT:-http://minio:9000}
       AIRTEK_MEDIA_S3_REGION: ${AIRTEK_MEDIA_S3_REGION:-us-east-1}
       AIRTEK_MEDIA_S3_BUCKET: ${AIRTEK_MEDIA_S3_BUCKET:-airtek-media}
-      AIRTEK_MEDIA_S3_ACCESS_KEY_ID: ${AIRTEK_MEDIA_S3_ACCESS_KEY_ID:-airtek}
-      AIRTEK_MEDIA_S3_SECRET_ACCESS_KEY: ${AIRTEK_MEDIA_S3_SECRET_ACCESS_KEY:-local-development-only}
+      AIRTEK_MEDIA_S3_ACCESS_KEY_ID: ${AIRTEK_MEDIA_API_S3_ACCESS_KEY_ID:-airtek-media-api}
+      AIRTEK_MEDIA_S3_SECRET_ACCESS_KEY: ${AIRTEK_MEDIA_API_S3_SECRET_ACCESS_KEY:-local-api-media-only}
       AIRTEK_MEDIA_S3_KEY_PREFIX: ${AIRTEK_MEDIA_S3_KEY_PREFIX:-media}
       AIRTEK_MEDIA_S3_PATH_STYLE: ${AIRTEK_MEDIA_S3_PATH_STYLE:-true}
       # Only this fixed gateway address may supply X-Forwarded-For to the API.
@@ -116,7 +146,6 @@ services:
         condition: service_completed_successfully
       minio-create-bucket:
         condition: service_completed_successfully
-        required: false
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/readyz"]
       interval: 5s
@@ -130,6 +159,7 @@ services:
       context: .
       dockerfile: infra/docker/Dockerfile.platform
       args:
+        AIRTEK_PLATFORM_FEATURES: ${AIRTEK_PLATFORM_FEATURES:-devtools}
         CARGO_REGISTRY_MIRROR: ${AIRTEK_CARGO_MIRROR:-}
         HTTP_PROXY: ${AIRTEK_BUILD_PROXY:-}
         HTTPS_PROXY: ${AIRTEK_BUILD_PROXY:-}
@@ -138,8 +168,8 @@ services:
     environment:
       AIRTEK_API_HOST: ${AIRTEK_API_HOST:-0.0.0.0}
       DATABASE_URL: ${AIRTEK_DATABASE_URL_INTERNAL:-postgres://airtek:airtek@postgres:5432/airtek}
-      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:-http://www.localhost:8088}
-      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:-http://admin.localhost:8088}
+      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:-http://localhost:3000}
+      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:-http://localhost:3100}
       AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:-}
       AIRTEK_PREVIEW_SIGNING_KEY: ${AIRTEK_PREVIEW_SIGNING_KEY:-}
       AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: ${AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY:-}
@@ -159,6 +189,7 @@ services:
     depends_on:
       flyway-migrate:
         condition: service_completed_successfully
+    mem_limit: 768m
     restart: unless-stopped
 
   public-web:
@@ -170,12 +201,12 @@ services:
         HTTP_PROXY: ${AIRTEK_BUILD_PROXY:-}
         HTTPS_PROXY: ${AIRTEK_BUILD_PROXY:-}
         NO_PROXY: ${NO_PROXY:-}
-        VITE_PUBLIC_API_BASE_URL: ${VITE_PUBLIC_API_BASE_URL:-http://api.localhost:8088/api/public/v1}
-        VITE_PUBLIC_ORIGIN: ${VITE_PUBLIC_ORIGIN:-http://www.localhost:8088}
+        VITE_PUBLIC_API_BASE_URL: ${VITE_PUBLIC_API_BASE_URL:-http://localhost:8080/api/public/v1}
+        VITE_PUBLIC_ORIGIN: ${VITE_PUBLIC_ORIGIN:-http://localhost:3000}
     environment:
       PUBLIC_API_INTERNAL_URL: ${PUBLIC_API_INTERNAL_URL:-http://platform-api:8080/api/public/v1}
-      PUBLIC_API_BROWSER_ORIGIN: ${PUBLIC_API_BROWSER_ORIGIN:-http://api.localhost:8088}
-      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://www.localhost:8088}
+      PUBLIC_API_BROWSER_ORIGIN: ${PUBLIC_API_BROWSER_ORIGIN:-http://localhost:8080}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:3000}
     ports:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_PUBLIC_HOST_PORT:-3000}:3000"
     depends_on:
@@ -198,9 +229,9 @@ services:
         HTTP_PROXY: ${AIRTEK_BUILD_PROXY:-}
         HTTPS_PROXY: ${AIRTEK_BUILD_PROXY:-}
         NO_PROXY: ${NO_PROXY:-}
-        VITE_ADMIN_API_BASE_URL: ${VITE_ADMIN_API_BASE_URL:-http://api.localhost:8088/api/admin/v1}
+        VITE_ADMIN_API_BASE_URL: ${VITE_ADMIN_API_BASE_URL:-http://localhost:8080/api/admin/v1}
     environment:
-      ADMIN_API_ORIGIN: ${API_BROWSER_ORIGIN:-http://api.localhost:8088}
+      ADMIN_API_ORIGIN: ${API_BROWSER_ORIGIN:-http://localhost:8080}
     ports:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_ADMIN_HOST_PORT:-3100}:3100"
     depends_on:

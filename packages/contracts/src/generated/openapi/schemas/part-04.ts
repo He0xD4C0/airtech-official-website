@@ -6,6 +6,41 @@
 import type { components } from '../components'
 
 export interface SchemasPart04 {
+RfqDutyPoint: {
+            airflow: number;
+            /** @enum {string} */
+            airflowUnit: "m3/h" | "m³/h" | "CFM" | "cfm";
+            pressure: number;
+            /** @enum {string} */
+            pressureUnit: "Pa" | "pa" | "kPa" | "kpa" | "inH2O" | "inh2o";
+        };
+RfqElectricalContext: {
+            frequencyHz?: number;
+            voltage?: string;
+        };
+/** @enum {string} */
+        RfqJourney: "product" | "selection" | "project" | "replacement";
+RfqQuantity: number | string;
+RfqSubmission: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            request: components["schemas"]["CreateRfqRequest"];
+            /** Format: date-time */
+            retentionUntil: string;
+            status: string;
+            /** Format: date-time */
+            submittedAt: string;
+        };
+RfqSubmissionPage: {
+            items: components["schemas"]["RfqSubmission"][];
+            nextCursor: string | null;
+        };
+RichTextDocument: {
+            doc: unknown;
+            schemaVersion: number;
+        };
+RoleDefinition: components["schemas"]["AdminRoleRecord"];
 RollbackContentRequest: {
             reason: string;
             /** Format: int64 */
@@ -144,6 +179,13 @@ SpecValue: {
             unit: string | null;
             value: unknown | null;
         };
+/** @enum {string} */
+        StableProblemCode: "media_idempotency_conflict" | "media_decode_failed" | "content_dependency_conflict";
+/**
+         * Format: uri
+         * @enum {string}
+         */
+        StableProblemType: "https://api.airtekpower.example/problems/media_idempotency_conflict" | "https://api.airtekpower.example/problems/media_decode_failed" | "https://api.airtekpower.example/problems/content_dependency_conflict";
 StartSyncRequest: {
             cursor?: string | null;
             /** @default false */
@@ -307,6 +349,11 @@ TotpEnrollment: {
             /** @constant */
             periodSeconds: 30;
             readonly secret: string;
+        };
+UnpublishContentRequest: {
+            /** Format: int64 */
+            expectedPublishedRevision: number;
+            reason: string;
         };
 UpdateAdminRole: {
             displayName?: string;

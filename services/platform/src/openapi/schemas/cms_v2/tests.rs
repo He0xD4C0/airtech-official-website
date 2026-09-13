@@ -272,10 +272,9 @@ fn every_declared_object_schema_rejects_unknown_properties() {
 }
 
 #[test]
-fn media_versions_are_always_explicit() {
+fn media_assets_are_always_explicit() {
     let reference = AssetVersionReference {
         asset_id: Uuid::from_u128(20),
-        version_id: Uuid::from_u128(21),
     };
     assert_object_shape(
         &schemas()["AssetVersionReference"],

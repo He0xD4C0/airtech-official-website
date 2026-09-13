@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
 use crate::models::{CmsContentKind, CmsPublicationStatusV2, ContentRecordV2};
+use crate::services::list_filter_observability::ListObservation;
 
 use super::enum_label;
 
@@ -66,6 +67,7 @@ pub struct ContentListOutcome {
     pub counts: BTreeMap<String, usize>,
     /// Total of the `query + status` selection, independent of paging.
     pub total: usize,
+    pub(crate) observation: ListObservation,
 }
 
 pub fn apply_filter(
@@ -93,6 +95,7 @@ pub fn apply_filter(
         records: matching,
         counts,
         total,
+        observation: ListObservation::default(),
     }
 }
 

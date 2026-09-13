@@ -30,13 +30,13 @@ const blocks: ContentBlock[] = [
     variant: 'standard',
   },
   { type: 'body', id: bodyId, width: 'standard' },
-  { type: 'media', id: mediaId, media: { asset: { assetId: mediaId, versionId: mediaId }, altText: 'Fan photo', decorative: false }, caption: 'Media caption', layout: 'inline' },
+  { type: 'media', id: mediaId, media: { asset: { assetId: mediaId }, altText: 'Fan photo', decorative: false }, caption: 'Media caption', layout: 'inline' },
   { type: 'featureGrid', id: gridId, heading: 'Capabilities', items: [{ id: gridId, title: 'Airflow', description: 'Feature copy', icon: null }] },
   { type: 'evidence', id: evidenceId, heading: 'Evidence', items: [{ id: evidenceId, label: 'Tested', statement: 'Verified statement', sourceNote: 'Report 2026' }] },
   { type: 'cta', id: ctaId, eyebrow: 'Next', heading: 'Talk to engineering', body: 'CTA body', action: { label: 'Request a quote', target: { targetType: 'route', path: '/en/request-a-quote' } }, variant: 'standard' },
   { type: 'relationCollection', id: relationId, heading: 'Related', relationIds: [relationCardId], presentation: 'cards' },
   { type: 'faqCollection', id: faqId, heading: 'FAQ' },
-  { type: 'downloadAsset', id: downloadId, asset: { assetId: downloadId, versionId: downloadId }, label: 'Datasheet', description: 'PDF' },
+  { type: 'downloadAsset', id: downloadId, asset: { assetId: downloadId }, label: 'Download image', description: 'Published image' },
   { type: 'contactBlock', id: contactId, heading: 'Contact', channels: ['email', 'phone'], action: { label: 'Write to us', target: { targetType: 'route', path: '/en/company/contact' } } },
 ]
 
@@ -72,6 +72,20 @@ const projection: PublicContentProjection = {
     contentId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
     href: '/en/company/contact',
   }],
+  resolvedMedia: [
+    {
+      assetId: mediaId,
+      publicUrl: `/api/public/v1/media/${mediaId}`,
+      downloadUrl: `/api/public/v1/media/${mediaId}/download`,
+      mediaType: 'image/webp', byteSize: 1024, originalName: 'fan.webp',
+    },
+    {
+      assetId: downloadId,
+      publicUrl: `/api/public/v1/media/${downloadId}`,
+      downloadUrl: `/api/public/v1/media/${downloadId}/download`,
+      mediaType: 'image/png', byteSize: 2048, originalName: 'diagram.png',
+    },
+  ],
 }
 
 async function render(): Promise<string> {
@@ -86,7 +100,7 @@ describe('PublicBlockRenderer', () => {
     expect(html).toContain('Published hero')
     expect(html).toContain('href="/en/company/contact"')
     expect(html).toContain(developmentBodyCopy)
-    expect(html).toContain('src="/media/88888888-8888-4888-8888-888888888888"')
+    expect(html).toContain('src="http://localhost:8080/api/public/v1/media/88888888-8888-4888-8888-888888888888"')
     expect(html).toContain('Media caption')
     expect(html).toContain('Airflow')
     expect(html).toContain('Verified statement')
@@ -94,8 +108,8 @@ describe('PublicBlockRenderer', () => {
     expect(html).toContain('Related article')
     expect(html).toContain('What is airflow?')
     expect(html).toContain('Answer copy')
-    expect(html).toContain('href="/media/99999999-9999-4999-8999-999999999999/download"')
-    expect(html).toContain('Datasheet')
+    expect(html).toContain('href="http://localhost:8080/api/public/v1/media/99999999-9999-4999-8999-999999999999/download"')
+    expect(html).toContain('Download image')
     expect(html).toContain('Email')
     expect(html).toContain('Write to us')
   })

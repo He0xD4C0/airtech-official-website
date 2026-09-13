@@ -1,5 +1,7 @@
 pub mod cms_content;
+pub mod cms_dependency_backfill;
 pub mod cms_preflight;
+pub mod cms_publication_dependencies;
 pub mod cms_templates;
 #[cfg(feature = "devtools")]
 pub mod development_seed;
@@ -10,4 +12,5 @@ pub mod media_assets;
 pub mod product_facts;
 pub mod product_import;
 pub mod product_publication;
+pub mod request_metrics;
 pub mod selector;

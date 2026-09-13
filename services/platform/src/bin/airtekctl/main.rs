@@ -37,6 +37,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 return Err("CMS V2 migration preflight found blocking issues".into());
             }
         }
+        Command::Cms {
+            action: CmsAction::Dependencies { check, apply },
+        } => {
+            let mode = if check {
+                DependencyBackfillMode::Check
+            } else if apply {
+                DependencyBackfillMode::Apply
+            } else {
+                unreachable!("clap requires exactly one dependency mode")
+            };
+            let report = cms_dependency_backfill::run(&pool, mode).await?;
+            let can_release = report.can_release();
+            print_json(serde_json::to_value(report)?)?;
+            if !can_release {
+                return Err("CMS publication dependency backfill found blocking issues".into());
+            }
+        }
         Command::Sync { action } => match action {
             SyncAction::DryRun {
                 mapping_version,

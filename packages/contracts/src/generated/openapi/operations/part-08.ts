@@ -6,16 +6,13 @@
 import type { components } from '../components'
 
 export interface OperationsPart08 {
-listAdminMediaAssets: {
+listFeishuSyncRuns: {
         parameters: {
             query?: {
-                accessLevel?: "public" | "authenticated" | "internal";
                 /** @description Opaque endpoint-scoped cursor returned by the previous page. */
                 cursor?: string;
                 /** @description Page size; values outside 1 through 100 return Problem Details 400. */
                 limit?: number;
-                q?: string;
-                scanStatus?: "pending" | "clean" | "quarantined" | "failed";
             };
             header?: never;
             path?: never;
@@ -23,13 +20,13 @@ listAdminMediaAssets: {
         };
         requestBody?: never;
         responses: {
-            /** @description Media assets */
+            /** @description Sync runs */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MediaAssetSummaryPage"];
+                    "application/json": components["schemas"]["SyncRunPage"];
                 };
             };
             /** @description Malformed request */
@@ -124,28 +121,145 @@ listAdminMediaAssets: {
             };
         };
     };
-reviewAdminMediaAsset: {
+startFeishuSyncRun: {
         parameters: {
             query?: never;
-            header?: never;
-            path: {
-                id: string;
+            header: {
+                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
+                "Idempotency-Key": string;
             };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["MediaAssetReviewRequest"];
+                "application/json": components["schemas"]["StartSyncRequest"];
             };
         };
         responses: {
-            /** @description Media asset reviewed */
+            /** @description Sync run queued */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncRun"];
+                };
+            };
+            /** @description Malformed request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Admin session required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Permission, CSRF, origin, or TOTP check failed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Resource or route not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Concurrent or domain conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Required service is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+listAdminMediaAssets: {
+        parameters: {
+            query?: {
+                /** @description Opaque endpoint-scoped cursor returned by the previous page. */
+                cursor?: string;
+                /** @description Page size; values outside 1 through 100 return Problem Details 400. */
+                limit?: number;
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Media assets */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MediaAssetSummary"];
+                    "application/json": components["schemas"]["MediaAssetPage"];
                 };
             };
             /** @description Malformed request */
@@ -243,7 +357,10 @@ reviewAdminMediaAsset: {
 uploadAdminMediaAsset: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
+                "Idempotency-Key": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -252,20 +369,20 @@ uploadAdminMediaAsset: {
                 "multipart/form-data": {
                     /**
                      * Format: binary
-                     * @description Single PNG, JPEG, or WebP image up to 25 MiB. SVG is rejected.
+                     * @description Exactly one PNG, JPEG, or WebP file up to 25 MiB.
                      */
                     file: string;
                 };
             };
         };
         responses: {
-            /** @description Media asset stored */
+            /** @description Public media asset */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MediaAssetSummary"];
+                    "application/json": components["schemas"]["MediaAsset"];
                 };
             };
             /** @description Malformed request */
@@ -313,8 +430,8 @@ uploadAdminMediaAsset: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
-            /** @description Validation failed */
-            422: {
+            /** @description The file exceeds 25 MiB */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -322,110 +439,12 @@ uploadAdminMediaAsset: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
-            /** @description If-Match precondition required */
-            428: {
+            415: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Authentication rate limit exceeded */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Required service is unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-        };
-    };
-listBackgroundOperations: {
-        parameters: {
-            query?: {
-                /** @description Opaque endpoint-scoped cursor returned by the previous page. */
-                cursor?: string;
-                /** @description Page size; values outside 1 through 100 return Problem Details 400. */
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Collection */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BackgroundOperationPage"];
-                };
-            };
-            /** @description Malformed request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Admin session required */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Permission, CSRF, origin, or TOTP check failed */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Resource or route not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Concurrent or domain conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                    "application/problem+json": unknown;
                 };
             };
             /** @description Validation failed */

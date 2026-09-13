@@ -77,7 +77,11 @@ const workspaceChildren: RouteRecordRaw[] = [
     path: 'media',
     name: 'media',
     component: () => import('@/views/MediaView.vue'),
-    meta: { title: '媒体中心', requiresAuth: true, permission: 'media.write' },
+    meta: {
+      title: '媒体中心',
+      requiresAuth: true,
+      permission: 'media.write',
+    },
   },
   {
     path: 'rfqs',
@@ -241,6 +245,11 @@ router.beforeEach(async (to) => {
   const permission = to.meta.permission as Permission | undefined
   if (permission && !auth.hasPermission(permission)) {
     return { name: 'forbidden', query: { permission, from: to.fullPath } }
+  }
+
+  const permissionsAny = to.meta.permissionsAny as readonly Permission[] | undefined
+  if (permissionsAny?.length && !permissionsAny.some((candidate) => auth.hasPermission(candidate))) {
+    return { name: 'forbidden', query: { permission: permissionsAny.join('|'), from: to.fullPath } }
   }
 
   return true

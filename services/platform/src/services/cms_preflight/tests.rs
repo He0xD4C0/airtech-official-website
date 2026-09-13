@@ -14,7 +14,6 @@ use super::{
     conversion::{convert_content, ContentSource},
     general_information::{convert_general_information, GeneralInformationSource},
     news::news_working_fields,
-    references::stable_media_version_id,
     types::*,
 };
 
@@ -119,9 +118,7 @@ fn maps_download_metadata_asset_description_and_product_ids() {
         json!({}),
     );
     let seed = json!({
-        "asset": {"assetId": asset_id, "versionId": stable_media_version_id(asset_id)},
-        "assetScanStatus": "clean",
-        "assetAccessLevel": "public",
+        "asset": {"assetId": asset_id},
         "productIds": [product_id]
     })
     .as_object()
@@ -295,7 +292,7 @@ fn candidate_integrity_blocks_missing_relation_and_media() {
         "media".into(),
         json!({
             "media": {
-                "asset": {"assetId": missing_media, "versionId": stable_media_version_id(missing_media)},
+                "asset": {"assetId": missing_media},
                 "altText": "Diagram",
                 "decorative": false
             },

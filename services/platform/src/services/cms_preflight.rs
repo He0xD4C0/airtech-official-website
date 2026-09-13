@@ -23,7 +23,6 @@ mod types;
 
 pub use analyze::{analyze_legacy_snapshot, plan_legacy_snapshot, LegacyMigrationPlan};
 pub use load::{load_legacy_snapshot, load_legacy_snapshot_from_connection};
-pub(crate) use references::stable_media_version_id;
 pub use types::{
     CmsPreflightRecord, CmsPreflightRecordRole, LegacyAssetReference, LegacyContentEntry,
     LegacyContentRelation, LegacyContentRevision, LegacyGeneralInformation,

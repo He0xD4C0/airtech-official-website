@@ -16,7 +16,7 @@ use super::{
     integrity::validate_candidate_targets,
     news::{check_orphan_news, news_metadata_equal, news_revision_fields, news_working_fields},
     ordering::{sort_issues, sort_snapshot},
-    references::{convert_references, stable_media_version_id},
+    references::convert_references,
     routes::validate_public_routes,
     singletons::validate_singleton_templates,
     support::stable_id,
@@ -475,16 +475,7 @@ fn add_download_asset_seed(
             "asset".into(),
             json!({
                 "assetId": reference.media_asset_id,
-                "versionId": stable_media_version_id(reference.media_asset_id),
             }),
         );
-        if let Some(asset) = snapshot
-            .media_assets
-            .iter()
-            .find(|asset| asset.id == reference.media_asset_id)
-        {
-            seed.insert("assetScanStatus".into(), json!(asset.scan_status));
-            seed.insert("assetAccessLevel".into(), json!(asset.access_level));
-        }
     }
 }

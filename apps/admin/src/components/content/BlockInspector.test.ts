@@ -44,7 +44,7 @@ describe('BlockInspector', () => {
       caption: null,
       layout: 'inline',
       media: {
-        asset: { assetId: '44444444-4444-4444-8444-444444444444', versionId: '55555555-5555-4555-8555-555555555555' },
+        asset: { assetId: '44444444-4444-4444-8444-444444444444' },
         altText: null,
         decorative: false,
       },
@@ -61,7 +61,7 @@ describe('BlockInspector', () => {
     const html = await render({
       type: 'downloadAsset',
       id: '66666666-6666-4666-8666-666666666666',
-      asset: { assetId: '77777777-7777-4777-8777-777777777777', versionId: '88888888-8888-4888-8888-888888888888' },
+      asset: { assetId: '77777777-7777-4777-8777-777777777777' },
       label: '',
       description: null,
     })

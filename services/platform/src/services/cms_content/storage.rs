@@ -2,7 +2,6 @@ use std::time::Instant;
 
 use super::listing::{apply_filter, ContentListFilter, ContentListOutcome};
 use super::*;
-use crate::services::list_filter_observability::observe_in_memory_filter;
 
 const RECORD_COLUMNS: &str = r#"entry.id,entry.status,entry.latest_revision,
     entry.cms_published_revision,entry.cms_created_at,draft.document,
@@ -14,22 +13,33 @@ pub async fn list_content(
     state: &AppState,
     filter: ContentListFilter,
 ) -> Result<ContentListOutcome, ApiError> {
+    let request_started = Instant::now();
     let pool = require_postgres(state)?;
     let query = format!(
         "SELECT {RECORD_COLUMNS} FROM content_entries entry \
          JOIN content_drafts draft ON draft.content_id=entry.id \
          ORDER BY draft.updated_at DESC,entry.id"
     );
-    let records = sqlx::query(&query)
-        .fetch_all(pool)
-        .await?
+    let fetch_started = Instant::now();
+    let rows = sqlx::query(&query).fetch_all(pool).await?;
+    let db_fetch = fetch_started.elapsed();
+    let input_records = rows.len();
+    let decode_started = Instant::now();
+    let records = rows
         .into_iter()
         .map(|row| decode_record(&row))
         .collect::<Result<Vec<_>, _>>()?;
-    let input_records = records.len();
-    let started = Instant::now();
-    let outcome = apply_filter(records, &filter);
-    observe_in_memory_filter("admin.cms_content", input_records, started.elapsed());
+    let json_decode = decode_started.elapsed();
+    let filter_started = Instant::now();
+    let mut outcome = apply_filter(records, &filter);
+    outcome.observation = crate::services::list_filter_observability::ListObservation {
+        request_started,
+        db_fetch,
+        json_decode,
+        filter_sort: filter_started.elapsed(),
+        loaded: input_records,
+        matched: outcome.records.len(),
+    };
     Ok(outcome)
 }
 

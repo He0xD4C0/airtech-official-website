@@ -6,6 +6,40 @@
 import type { operations } from '../operations'
 
 export interface PathsPart02 {
+"/api/admin/v1/media/assets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one public media asset */
+        get: operations["getAdminMediaAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/media/assets/{id}/references": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List CMS publication snapshots that reference a media asset */
+        get: operations["listAdminMediaAssetReferences"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/operations": {
         parameters: {
             query?: never;
@@ -447,40 +481,6 @@ export interface PathsPart02 {
         };
         /** List canonical indexable published URLs for sitemap generation */
         get: operations["getPublicDiscovery"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/guest-visits": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create or refresh a consented anonymous first-party visit */
-        post: operations["createGuestVisit"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/media/{assetId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Serve one reviewed, public media object */
-        get: operations["getPublicMediaAsset"];
         put?: never;
         post?: never;
         delete?: never;

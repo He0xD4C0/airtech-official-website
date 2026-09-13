@@ -95,8 +95,18 @@ pub fn build_router(state: AppState) -> Router {
         ))
         .layer(PropagateRequestIdLayer::new(request_id.clone()))
         .layer(SetRequestIdLayer::new(request_id, MakeRequestUuid))
+        .layer(middleware::from_fn_with_state(state.clone(), track_request))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
+}
+
+async fn track_request(State(state): State<AppState>, request: Request, next: Next) -> Response {
+    state.request_metrics.begin();
+    let response = next.run(request).await;
+    state
+        .request_metrics
+        .finish(response.status().is_server_error());
+    response
 }
 
 async fn require_admin(
@@ -111,7 +121,7 @@ async fn require_admin(
     ) {
         crate::auth::verify_csrf(request.headers(), &principal)?;
     }
-    let permission = crate::auth::required_permission(request.uri().path(), request.method())
+    let permission = crate::auth::permission_policy(request.uri().path(), request.method())
         .ok_or_else(|| {
             ApiError::forbidden("This admin route has no RBAC policy and is denied by default.")
         })?;
@@ -120,10 +130,8 @@ async fn require_admin(
             "This account must enable TOTP before accessing Admin business data.",
         ));
     }
-    if !principal.has_permission(permission) {
-        return Err(ApiError::forbidden(format!(
-            "The `{permission}` permission is required."
-        )));
+    if !permission.allows(&principal) {
+        return Err(ApiError::forbidden(permission.denied_detail()));
     }
     request.headers_mut().remove("x-airtek-actor");
     request.headers_mut().insert(

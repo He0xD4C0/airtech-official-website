@@ -72,7 +72,7 @@ async fn publishing_cms_v2_content_writes_the_canonical_route_and_serves_the_pro
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
     let sandbox = support::MigrationSandbox::create(&database_url).await;
-    sandbox.apply_version_range(1, 11).await;
+    sandbox.apply_version_range(1, 14).await;
     let pool = sandbox.pool();
     let state = postgres_state(sandbox.connection_url());
     let admin = airtek_platform::routes::admin::router()
@@ -238,11 +238,11 @@ async fn publishing_cms_v2_content_writes_the_canonical_route_and_serves_the_pro
 #[tokio::test]
 #[cfg(feature = "devtools")]
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
-async fn publishing_blocks_relations_to_unpublished_content_and_non_public_media() {
+async fn publishing_blocks_unpublished_content_relations_and_missing_media() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
     let sandbox = support::MigrationSandbox::create(&database_url).await;
-    sandbox.apply_version_range(1, 11).await;
+    sandbox.apply_version_range(1, 14).await;
     let state = postgres_state(sandbox.connection_url());
     let admin = airtek_platform::routes::admin::router()
         .layer(Extension(cms_principal()))
@@ -292,15 +292,18 @@ async fn publishing_blocks_relations_to_unpublished_content_and_non_public_media
     .await;
     assert_eq!(blocked.status(), StatusCode::UNPROCESSABLE_ENTITY);
     let blocked = response_json(blocked).await;
-    let detail = blocked["detail"].as_str().unwrap();
-    assert!(
-        detail.contains(&block_id.to_string()),
-        "detail names the block: {detail}"
+    let relation_path = "/relations/0/target/contentId";
+    assert_eq!(
+        blocked["type"],
+        "https://api.airtekpower.example/problems/content_dependency_conflict"
     );
-    assert!(
-        detail.contains(&unpublished_id.to_string()),
-        "detail names the unpublished target: {detail}"
-    );
+    assert!(blocked["errors"][relation_path][0]
+        .as_str()
+        .unwrap()
+        .starts_with("contentNotPublished:"));
+    assert_eq!(blocked["issues"][0]["path"], relation_path);
+    assert_eq!(blocked["issues"][0]["failedGate"], "contentPublished");
+    assert_eq!(blocked["issues"][0]["targetId"], unpublished_id.to_string());
 
     let mut asset_document =
         projection_news_document(&format!("media-{}", Uuid::new_v4().simple()), true);
@@ -320,7 +323,7 @@ async fn publishing_blocks_relations_to_unpublished_content_and_non_public_media
             "type": "media",
             "id": media_block_id,
             "media": {
-                "asset": {"assetId": Uuid::new_v4(), "versionId": Uuid::new_v4()},
+                "asset": {"assetId": Uuid::new_v4()},
                 "altText": "Publication guard fixture",
                 "decorative": false
             },
@@ -340,11 +343,18 @@ async fn publishing_blocks_relations_to_unpublished_content_and_non_public_media
     .await;
     assert_eq!(rejected.status(), StatusCode::UNPROCESSABLE_ENTITY);
     let rejected = response_json(rejected).await;
-    let detail = rejected["detail"].as_str().unwrap();
-    assert!(
-        detail.contains(&format!("Media block {media_block_id}")),
-        "detail names the media block: {detail}"
+    let media_path = "/composition/blocks/1/media/asset/assetId";
+    assert_eq!(
+        rejected["type"],
+        "https://api.airtekpower.example/problems/content_dependency_conflict"
     );
+    assert!(rejected["errors"][media_path][0]
+        .as_str()
+        .unwrap()
+        .starts_with("mediaMissing:"));
+    assert_eq!(rejected["issues"][0]["path"], media_path);
+    assert_eq!(rejected["issues"][0]["failedGate"], "mediaExists");
+    assert!(rejected["issues"][0]["targetId"].is_string());
 
     drop(admin);
     sandbox.cleanup().await;
@@ -357,7 +367,7 @@ async fn concurrent_canonical_route_claim_returns_conflict_with_the_existing_ent
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
     let sandbox = support::MigrationSandbox::create(&database_url).await;
-    sandbox.apply_version_range(1, 11).await;
+    sandbox.apply_version_range(1, 14).await;
     let state = postgres_state(sandbox.connection_url());
     let admin = airtek_platform::routes::admin::router()
         .layer(Extension(cms_principal()))

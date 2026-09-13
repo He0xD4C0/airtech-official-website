@@ -58,6 +58,13 @@ enum Command {
 enum CmsAction {
     /// Emit a read-only CMS V2 migration report and fail when blockers are present.
     Preflight,
+    /// Check or backfill exact dependency snapshots for published CMS V2 revisions.
+    Dependencies {
+        #[arg(long, required_unless_present = "apply", conflicts_with = "apply")]
+        check: bool,
+        #[arg(long, required_unless_present = "check", conflicts_with = "check")]
+        apply: bool,
+    },
 }
 
 #[derive(Subcommand)]

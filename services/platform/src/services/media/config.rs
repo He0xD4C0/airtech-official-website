@@ -244,31 +244,27 @@ mod tests {
                 required[missing].0
             );
         }
-        let settings = from_values(
-            &[
-                ("AIRTEK_MEDIA_STORAGE", "s3"),
-                ("AIRTEK_MEDIA_S3_ENDPOINT", "http://minio:9000"),
-                ("AIRTEK_MEDIA_S3_BUCKET", "airtek-media"),
-                ("AIRTEK_MEDIA_S3_ACCESS_KEY_ID", "access"),
-                ("AIRTEK_MEDIA_S3_SECRET_ACCESS_KEY", "   "),
-            ],
-        )
+        let settings = from_values(&[
+            ("AIRTEK_MEDIA_STORAGE", "s3"),
+            ("AIRTEK_MEDIA_S3_ENDPOINT", "http://minio:9000"),
+            ("AIRTEK_MEDIA_S3_BUCKET", "airtek-media"),
+            ("AIRTEK_MEDIA_S3_ACCESS_KEY_ID", "access"),
+            ("AIRTEK_MEDIA_S3_SECRET_ACCESS_KEY", "   "),
+        ])
         .expect("blank required S3 value disables storage");
         assert!(settings.storage.is_none());
     }
 
     #[test]
     fn complete_s3_configuration_enables_storage() {
-        let settings = from_values(
-            &[
-                ("AIRTEK_MEDIA_STORAGE", "s3"),
-                ("AIRTEK_MEDIA_S3_ENDPOINT", "http://minio:9000"),
-                ("AIRTEK_MEDIA_S3_BUCKET", "airtek-media"),
-                ("AIRTEK_MEDIA_S3_ACCESS_KEY_ID", "access"),
-                ("AIRTEK_MEDIA_S3_SECRET_ACCESS_KEY", "secret"),
-                ("AIRTEK_MEDIA_S3_PATH_STYLE", "false"),
-            ],
-        )
+        let settings = from_values(&[
+            ("AIRTEK_MEDIA_STORAGE", "s3"),
+            ("AIRTEK_MEDIA_S3_ENDPOINT", "http://minio:9000"),
+            ("AIRTEK_MEDIA_S3_BUCKET", "airtek-media"),
+            ("AIRTEK_MEDIA_S3_ACCESS_KEY_ID", "access"),
+            ("AIRTEK_MEDIA_S3_SECRET_ACCESS_KEY", "secret"),
+            ("AIRTEK_MEDIA_S3_PATH_STYLE", "false"),
+        ])
         .expect("complete S3 configuration");
         let storage = settings.storage.expect("S3 is enabled");
         assert_eq!(storage.kind, MediaStorageKind::S3);

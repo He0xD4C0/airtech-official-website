@@ -69,6 +69,31 @@ mod tests {
             required_permission("/api/admin/v1/analytics/overview", &axum::http::Method::GET),
             Some("analytics.read")
         );
+        assert_eq!(
+            required_permission(
+                "/api/admin/v1/media/assets/00000000-0000-0000-0000-000000000001/references",
+                &axum::http::Method::GET
+            ),
+            Some("content.read")
+        );
+        assert_eq!(
+            required_permission("/api/admin/v1/media/assets", &axum::http::Method::GET),
+            None
+        );
+        assert_eq!(
+            permission_policy("/api/admin/v1/media/assets", &axum::http::Method::GET),
+            Some(AdminPermissionPolicy::Any(&[
+                "content.read",
+                "media.write"
+            ]))
+        );
+        assert_eq!(
+            permission_policy(
+                "/api/admin/v1/media/assets",
+                &axum::http::Method::POST
+            ),
+            Some(AdminPermissionPolicy::Exact("media.write"))
+        );
     }
 
     #[test]

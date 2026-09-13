@@ -2,7 +2,8 @@
 mod tests {
     use super::{
         is_public_projection_topic, product_import_id_from_job_payload, resolve_integer_setting,
-        retention_job_is_due,
+        retention_job_is_due, COMPLETE_JOB_SQL, FAIL_JOB_SQL, JOB_LEASE_RENEW_INTERVAL,
+        JOB_LEASE_SECONDS, RENEW_JOB_LEASE_SQL,
     };
     use chrono::{Duration, Utc};
     use serde_json::json;
@@ -31,6 +32,7 @@ mod tests {
     fn every_publication_topic_has_a_request_time_projection_consumer() {
         for topic in [
             "public.content.published",
+            "public.content.unpublished",
             "public.product.published",
             "public.news.published",
             "public.generalInformation.published",
@@ -98,5 +100,14 @@ mod tests {
             Some(("failed", now - Duration::hours(25))),
             now
         ));
+    }
+
+    #[test]
+    fn lease_renewal_has_headroom_and_all_lifecycle_writes_are_owner_fenced() {
+        assert!(JOB_LEASE_RENEW_INTERVAL.as_secs() * 2 < JOB_LEASE_SECONDS as u64);
+        for statement in [RENEW_JOB_LEASE_SQL, COMPLETE_JOB_SQL, FAIL_JOB_SQL] {
+            assert!(statement.contains("status='running'"));
+            assert!(statement.contains("lease_owner=$"));
+        }
     }
 }

@@ -13,9 +13,10 @@ Build and scan five immutable artifacts:
   browser origins passed as Vite build arguments.
 - Admin Web from `infra/docker/Dockerfile.admin`, with the final Admin API
   browser origin passed at build time. Its production build forces DevTools off.
-- Platform from `infra/docker/Dockerfile.platform`. It supplies the API and
-  Worker only; it contains neither schema migration tools, `airtekctl`, nor
-  PTY/WebSocket dependencies.
+- Platform from `infra/docker/Dockerfile.platform`. It supplies the API,
+  Worker, and the production-allowlisted `airtekctl` operations entrypoint; it
+  contains neither schema migration tools nor DevTools PTY/WebSocket
+  dependencies.
 - Migrations from `infra/docker/Dockerfile.flyway`, pinned to Flyway `13.4.0`.
   It is an independent, non-root one-shot artifact and is the sole owner of
   PostgreSQL schema versions.
@@ -60,6 +61,22 @@ Before deployment:
 9. Verify Search Console and webmaster files only on the Public origin. Admin
    and API must keep their crawl-denial and sitemap `404` behavior.
 
+## Direct media object identity
+
+Provision one private object-store identity from
+`infra/object-storage/media-api-policy.json`, replacing the bucket placeholder
+before attachment. It grants only GetObject, PutObject, and DeleteObject beneath
+the configured `media/*` prefix. DeleteObject is used solely to compensate an
+object whose catalogue transaction failed. The identity cannot list the bucket,
+alter bucket policy, or make the bucket public.
+
+The browser never receives object-store credentials or provider URLs. Successful
+PNG, JPEG, and WebP uploads are immediately served without authentication by
+the platform's public media route. Production must provide a private HTTPS
+endpoint, scoped credentials, monitoring, backups, and a smoke test that covers
+upload, immediate GET, idempotent replay, conflict, and database-failure
+compensation.
+
 Run configuration and repository assertions before promotion:
 
 ```sh
@@ -68,6 +85,20 @@ docker compose --env-file infra/deploy/production.env.example -f compose.product
 pnpm check:production
 pnpm check:contracts
 ```
+
+## Deployment order
+
+The current schema target is V15. Deploy the migration artifact first, then the
+API and ordinary Worker, and finally Admin and Public Web. V13 defines direct
+public media, V14 defines immutable CMS dependency snapshots, and V15 defines
+Admin workflow fields, notes, and indexes. These migrations are forward-only;
+application rollback does not roll back PostgreSQL.
+
+Before promotion, verify a fresh database migrates directly to V15 and a
+controlled legacy SQLx v1-v10 database passes
+`baseline -> migrate -> validate`. The current development environment is
+disposable, but production data must be backed up and restored in an isolated
+target before takeover.
 
 Run the non-root `flyway-migrate` artifact as a one-shot task before API and
 Worker start; both services wait for its successful completion. Database schema

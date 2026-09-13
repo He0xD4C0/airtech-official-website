@@ -134,6 +134,86 @@ pub async fn save_draft(
     Ok(record)
 }
 
+pub async fn archive_content(
+    state: &AppState,
+    id: Uuid,
+    expected: i64,
+    reason: String,
+    metadata: MutationMetadata,
+    idempotency: IdempotencyContext,
+) -> Result<ContentRecordV2, ApiError> {
+    validate_reason(&reason)?;
+    let pool = require_postgres(state)?;
+    let mut transaction = pool.begin().await?;
+    let before = lock_record(&mut transaction, id).await?;
+    ensure_version(&before, expected, "archiving")?;
+    let has_public_route = sqlx::query_scalar::<_, bool>(
+        r#"SELECT EXISTS (
+             SELECT 1 FROM public_routes
+             WHERE entity_type='content' AND entity_id=$1
+           )"#,
+    )
+    .bind(id)
+    .fetch_one(&mut *transaction)
+    .await?;
+    if before.published_revision.is_some() || has_public_route {
+        transaction.rollback().await?;
+        return Err(ApiError::conflict(
+            "Content must be explicitly unpublished before it can be archived.",
+        )
+        .with_code("content_must_be_unpublished"));
+    }
+    if before.status == CmsPublicationStatusV2::Archived {
+        transaction.rollback().await?;
+        return Err(ApiError::conflict("The content is already archived."));
+    }
+    let result = sqlx::query(
+        r#"UPDATE content_entries
+           SET status='archived',cms_updated_by=$2
+           WHERE id=$1 AND cms_published_revision IS NULL"#,
+    )
+    .bind(id)
+    .bind(&metadata.actor)
+    .execute(&mut *transaction)
+    .await?;
+    if result.rows_affected() != 1 {
+        transaction.rollback().await?;
+        return Err(ApiError::conflict(
+            "Content publication changed while archiving; reload and retry.",
+        ));
+    }
+    let record = ContentRecordV2 {
+        status: CmsPublicationStatusV2::Archived,
+        ..before.clone()
+    };
+    insert_audit(
+        &mut transaction,
+        &metadata,
+        "content.archive",
+        id,
+        Some(json_value(&before)?),
+        Some(json_value(&record)?),
+        &reason,
+    )
+    .await?;
+    sqlx::query(
+        r#"INSERT INTO outbox_events
+           (id,topic,aggregate_type,aggregate_id,payload)
+           VALUES ($1,'content.archived','content',$2,$3)"#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(id)
+    .bind(serde_json::json!({
+        "entityId": id,
+        "latestRevision": record.latest_revision,
+        "locale": record.draft.locale
+    }))
+    .execute(&mut *transaction)
+    .await?;
+    finish(transaction, idempotency, &record, StatusCode::OK).await?;
+    Ok(record)
+}
+
 #[allow(clippy::too_many_arguments)]
 pub async fn snapshot_content(
     state: &AppState,
@@ -144,28 +224,34 @@ pub async fn snapshot_content(
     metadata: MutationMetadata,
     idempotency: IdempotencyContext,
 ) -> Result<ContentRecordV2, ApiError> {
+    if intent == ContentSnapshotIntent::Publish {
+        return super::publication_mutations::publish_content(
+            state,
+            id,
+            expected,
+            reason,
+            metadata,
+            idempotency,
+        )
+        .await;
+    }
     let pool = require_postgres(state)?;
     let mut transaction = pool.begin().await?;
     let before = lock_record(&mut transaction, id).await?;
     ensure_version(&before, expected, "creating a snapshot")?;
-    validate_snapshot(&before.draft, intent, &reason)?;
+    validate_snapshot(&before.draft, ContentSnapshotIntent::Manual, &reason)?;
     let revision = before.latest_revision.unwrap_or(0) + 1;
-    let revision_kind = match intent {
-        ContentSnapshotIntent::Manual => ContentRevisionKindV2::Manual,
-        ContentSnapshotIntent::Publish => ContentRevisionKindV2::Publish,
-    };
-    let publishing = matches!(intent, ContentSnapshotIntent::Publish);
     insert_revision(
         &mut transaction,
         id,
         revision,
         &before.draft,
-        revision_kind,
+        ContentRevisionKindV2::Manual,
         &reason,
         &metadata.actor,
     )
     .await?;
-    let published_revision = publishing.then_some(revision).or(before.published_revision);
+    let published_revision = before.published_revision;
     let status = if published_revision.is_some() {
         CmsPublicationStatusV2::Published
     } else {
@@ -191,17 +277,10 @@ pub async fn snapshot_content(
         published_revision,
         ..before.clone()
     };
-    if publishing {
-        publish_public_route(&mut transaction, &record).await?;
-    }
-    let action = match intent {
-        ContentSnapshotIntent::Manual => "content.snapshot.create",
-        ContentSnapshotIntent::Publish => "content.publish",
-    };
     insert_audit(
         &mut transaction,
         &metadata,
-        action,
+        "content.snapshot.create",
         id,
         Some(json_value(&before)?),
         Some(json_value(&record)?),

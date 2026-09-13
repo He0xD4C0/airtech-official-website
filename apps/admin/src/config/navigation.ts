@@ -30,6 +30,7 @@ export interface NavItem {
   to: string
   icon: Component
   permission?: Permission
+  permissionsAny?: readonly Permission[]
   devOnly?: boolean
 }
 
@@ -51,7 +52,12 @@ export const navigation: NavGroup[] = [
       { label: 'General Information', to: '/site/general-information', icon: Building2, permission: 'content.write' },
       { label: 'Navigation', to: '/site/navigation', icon: Waypoints, permission: 'content.write' },
       { label: 'Footer', to: '/site/footer', icon: SlidersHorizontal, permission: 'content.write' },
-      { label: '媒体中心', to: '/media', icon: Library, permission: 'media.write' },
+      {
+        label: '媒体中心',
+        to: '/media',
+        icon: Library,
+        permission: 'media.write',
+      },
     ],
   },
   {

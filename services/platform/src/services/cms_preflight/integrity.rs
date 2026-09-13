@@ -5,7 +5,7 @@ use crate::models::{
     LinkTargetReference, MediaUseReference, NavigationItem, RelationTargetReference,
 };
 
-use super::{conversion::issue, references::stable_media_version_id, types::*};
+use super::{conversion::issue, types::*};
 
 pub(super) fn validate_candidate_targets(
     records: &mut Vec<CmsPreflightRecord>,
@@ -95,22 +95,7 @@ fn validate_record(
             ));
             continue;
         };
-        if asset.version_id != stable_media_version_id(asset.asset_id) {
-            valid = false;
-            issues.push(issue(
-                CmsPreflightSeverity::Blocking,
-                CmsPreflightIssueCode::MissingMediaVersion,
-                source,
-                Some(record.entity_id),
-                Some(record.source_revision),
-                &format!("{path}.versionId"),
-                "Candidate media reference does not use the deterministic migrated version ID.",
-            ));
-        }
-        if legacy.deleted_at.is_some()
-            || legacy.scan_status != "clean"
-            || legacy.access_level != "public"
-        {
+        if legacy.deleted_at.is_some() {
             let published = record_is_published(record, snapshot);
             valid &= !published;
             issues.push(issue(
@@ -124,7 +109,7 @@ fn validate_record(
                 Some(record.entity_id),
                 Some(record.source_revision),
                 &path,
-                "Candidate media is deleted, not clean, or not public.",
+                "Candidate media was deleted.",
             ));
         }
     }

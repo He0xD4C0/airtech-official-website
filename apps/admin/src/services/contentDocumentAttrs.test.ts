@@ -28,7 +28,7 @@ describe('content document root attributes', () => {
       resourceType: 'Datasheet',
       fileDescription: 'Published controlled document.',
       downloadUrl: '/media/public/document.pdf?revision=3',
-      fileStatus: { scan: 'clean', access: 'public', executable: true },
+      legacyStatus: { unsafe: true },
       iframe: '<iframe src="https://invalid.example"></iframe>',
     })
     expect(attrs).toEqual({
@@ -37,7 +37,6 @@ describe('content document root attributes', () => {
       resourceType: 'Datasheet',
       fileDescription: 'Published controlled document.',
       downloadUrl: '/media/public/document.pdf?revision=3',
-      fileStatus: { scan: 'clean', access: 'public' },
     })
     expect(sanitizeContentDocumentAttrs('download', JSON.parse(JSON.stringify(attrs)))).toEqual(attrs)
   })

@@ -126,8 +126,6 @@ pub struct LegacyMediaAsset {
     pub media_type: String,
     pub byte_size: i64,
     pub checksum: String,
-    pub scan_status: String,
-    pub access_level: String,
     pub metadata: Value,
     pub created_at: DateTime<Utc>,
     pub deleted_at: Option<DateTime<Utc>>,
@@ -196,14 +194,12 @@ pub(super) struct CmsV2RelationCandidate {
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct CmsV2MediaVersionCandidate {
     pub asset_id: Uuid,
-    pub version_id: Uuid,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct CmsV2AssetReferenceCandidate {
     pub source_id: Uuid,
     pub asset_id: Uuid,
-    pub version_id: Uuid,
     pub owner_type: String,
     pub owner_id: Uuid,
     pub owner_revision: i64,

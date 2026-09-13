@@ -32,6 +32,37 @@ async fn password_only_session_is_limited_to_totp_enrollment() {
 }
 
 #[tokio::test]
+async fn media_writer_can_read_the_media_catalogue() {
+    let state = AppState::for_test();
+    let app = build_router(state.clone());
+    let session = setup_admin(&app).await;
+    state
+        .data
+        .write()
+        .await
+        .admin_users
+        .values_mut()
+        .next()
+        .expect("bootstrap administrator")
+        .permissions = vec!["media.write".into()];
+
+    let response = app
+        .oneshot(
+            Request::get("/api/admin/v1/media/assets")
+            .header(header::COOKIE, &session.cookie)
+            .body(Body::empty())
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        response.status(),
+        StatusCode::SERVICE_UNAVAILABLE,
+        "media.write must pass both RBAC layers before the no-PostgreSQL fixture fails"
+    );
+}
+
+#[tokio::test]
 async fn invitation_acceptance_is_unauthenticated_but_admin_origin_bound_and_strictly_typed() {
     let app = build_router(AppState::for_test());
     let body = json!({

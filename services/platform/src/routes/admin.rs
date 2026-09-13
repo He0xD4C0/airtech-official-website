@@ -1,7 +1,7 @@
 use std::{cmp::Reverse, collections::BTreeMap, convert::Infallible, time::Duration};
 
 use axum::{
-    extract::{rejection::JsonRejection, Extension, Path, Query, State},
+    extract::{rejection::JsonRejection, Extension, Multipart, Path, Query, State},
     http::{header, HeaderMap, HeaderValue, StatusCode},
     response::{sse::Event, sse::KeepAlive, IntoResponse, Response, Sse},
     routing::{get, post},
@@ -20,11 +20,12 @@ use crate::{
     idempotency::{begin as begin_idempotency, IdempotencyOutcome},
     models::{
         AnalyticsBusinessOutcomes, AnalyticsConsentedMetrics, AnalyticsOverview,
-        AnalyticsOverviewRange, AuditEvent, BackgroundOperation, ContentDraftV2, ContentRecordV2,
-        ContentRevisionV2, ContentSnapshotIntent, CreateContentSnapshotRequest,
-        CreateOperationRequest, CreateTemporaryOverride, CursorPage, OperationKind,
-        OperationStatus, Product, PublicationStatus, RestoreContentRevisionRequest,
-        StartSyncRequest, SyncRun, SyncRunStatus, TemporaryOverride, UpdatePlatformSettings,
+        AnalyticsOverviewRange, ArchiveContentRequest, AuditEvent, BackgroundOperation,
+        ContentDraftV2, ContentRecordV2, ContentRevisionV2, ContentSnapshotIntent,
+        CreateContentSnapshotRequest, CreateOperationRequest, CreateTemporaryOverride, CursorPage,
+        OperationKind, OperationStatus, Product, PublicationStatus, RestoreContentRevisionRequest,
+        StartSyncRequest, SyncRun, SyncRunStatus, TemporaryOverride, UnpublishContentRequest,
+        UpdatePlatformSettings,
     },
     pagination::{paginate_by_id, CursorQuery},
     routes::{actor, etag, parse_if_match},
@@ -36,19 +37,23 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/content", get(list_content).post(create_content))
         .route("/content/templates", get(list_content_templates))
-        .route("/media/assets", get(list_media_assets))
         .route(
-            "/media/uploads",
-            post(upload_media_asset).layer(axum::extract::DefaultBodyLimit::max(
-                crate::services::media::MAX_MEDIA_UPLOAD_BYTES + 64 * 1024,
-            )),
+            "/media/assets",
+            get(list_media_assets).post(upload_media_asset).layer(
+                axum::extract::DefaultBodyLimit::max(
+                    crate::services::media::MAX_MEDIA_UPLOAD_BYTES + 64 * 1024,
+                ),
+            ),
         )
-        .route("/media/assets/{id}/scan", post(review_media_asset))
+        .route("/media/assets/{id}", get(get_media_asset))
+        .route("/media/assets/{id}/references", get(list_media_references))
         .route(
             "/content/{id}/draft",
             get(get_content_draft).patch(update_content_draft),
         )
         .route("/content/{id}/snapshots", post(create_content_snapshot))
+        .route("/content/{id}/unpublish", post(unpublish_content))
+        .route("/content/{id}/archive", post(archive_content))
         .route("/content/{id}/revisions", get(list_content_revisions))
         .route("/content/{id}/diff", get(get_content_diff))
         .route(
@@ -80,6 +85,7 @@ pub fn router() -> Router<AppState> {
 
 include!("admin/settings.rs");
 include!("admin/cms_content.rs");
+include!("admin/cms_content_lifecycle.rs");
 include!("admin/products.rs");
 include!("admin/temporary_overrides.rs");
 include!("admin/sync.rs");

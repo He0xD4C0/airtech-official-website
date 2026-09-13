@@ -90,6 +90,17 @@ function validResolvedLink(value: unknown): boolean {
     && typeof value.href === 'string'
 }
 
+function validResolvedMedia(value: unknown): boolean {
+  return isRecord(value)
+    && typeof value.assetId === 'string'
+    && typeof value.publicUrl === 'string'
+    && typeof value.downloadUrl === 'string'
+    && typeof value.originalName === 'string'
+    && typeof value.mediaType === 'string'
+    && Number.isInteger(value.byteSize)
+    && Number(value.byteSize) >= 0
+}
+
 export function publicContentProjectionResponse(value: unknown): PublicContentProjection {
   if (!isRecord(value)
     || value.schemaVersion !== 2
@@ -124,7 +135,9 @@ export function publicContentProjectionResponse(value: unknown): PublicContentPr
     || !Array.isArray(value.resolvedRelations)
     || !value.resolvedRelations.every(validResolvedRelation)
     || !Array.isArray(value.resolvedLinks)
-    || !value.resolvedLinks.every(validResolvedLink)) {
+    || !value.resolvedLinks.every(validResolvedLink)
+    || !Array.isArray(value.resolvedMedia)
+    || !value.resolvedMedia.every(validResolvedMedia)) {
     throw new Error('The server returned an invalid CMS V2 public projection.')
   }
   return value as unknown as PublicContentProjection

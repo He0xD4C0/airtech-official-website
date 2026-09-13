@@ -1,14 +1,16 @@
 #[tokio::test]
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
 async fn retention_materializes_once_before_fk_safe_raw_deletion() {
-    let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
+    let admin_database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
+    let sandbox = support::MigrationSandbox::create(&admin_database_url).await;
+    sandbox.apply_current().await;
+    let database_url = sandbox.connection_url().to_owned();
     let pool = PgPoolOptions::new()
         .max_connections(2)
         .connect(&database_url)
         .await
         .expect("PostgreSQL connection");
-    support::assert_flyway_schema_current(&pool).await;
     let unconstrained_event_error = sqlx::query(
         r#"INSERT INTO analytics_events
                (id,event_name,source_path,locale,properties,occurred_at)
@@ -469,4 +471,6 @@ async fn retention_materializes_once_before_fk_safe_raw_deletion() {
         .await
         .expect("restore retention setting");
     }
+    pool.close().await;
+    sandbox.cleanup().await;
 }

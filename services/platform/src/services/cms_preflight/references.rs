@@ -1,21 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use super::{conversion::issue, types::*};
-
-pub(crate) fn stable_media_version_id(asset_id: Uuid) -> Uuid {
-    let mut digest = Sha256::new();
-    digest.update(b"airtek-cms-v2-media-version\0");
-    digest.update(asset_id.as_bytes());
-    let hash = digest.finalize();
-    let mut bytes = [0_u8; 16];
-    bytes.copy_from_slice(&hash[..16]);
-    bytes[6] = (bytes[6] & 0x0f) | 0x80;
-    bytes[8] = (bytes[8] & 0x3f) | 0x80;
-    Uuid::from_bytes(bytes)
-}
 
 pub(super) fn convert_references(
     snapshot: &LegacySnapshot,
@@ -55,10 +42,7 @@ pub(super) fn convert_references(
     let media_versions = snapshot
         .media_assets
         .iter()
-        .map(|asset| CmsV2MediaVersionCandidate {
-            asset_id: asset.id,
-            version_id: stable_media_version_id(asset.id),
-        })
+        .map(|asset| CmsV2MediaVersionCandidate { asset_id: asset.id })
         .collect();
     let relations = convert_content_relations(snapshot, &content_ids, &product_ids, issues);
     let asset_references = snapshot
@@ -264,8 +248,7 @@ fn convert_asset_reference(
         return None;
     };
     let published = owner_is_published(snapshot, owner_type, owner_id, owner_revision);
-    if asset.deleted_at.is_some() || asset.scan_status != "clean" || asset.access_level != "public"
-    {
+    if asset.deleted_at.is_some() {
         issues.push(issue(
             if published {
                 CmsPreflightSeverity::Blocking
@@ -277,7 +260,7 @@ fn convert_asset_reference(
             Some(reference.id),
             Some(owner_revision),
             "mediaAssetId",
-            "Referenced media is deleted, not clean, or not public.",
+            "Referenced media was deleted.",
         ));
     }
     if asset.media_type.starts_with("image/")
@@ -304,7 +287,6 @@ fn convert_asset_reference(
     Some(CmsV2AssetReferenceCandidate {
         source_id: reference.id,
         asset_id: reference.media_asset_id,
-        version_id: stable_media_version_id(reference.media_asset_id),
         owner_type: owner_type.into(),
         owner_id,
         owner_revision,

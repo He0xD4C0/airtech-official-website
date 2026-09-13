@@ -247,27 +247,35 @@ createAdminContentV2: {
             };
         };
     };
-getAdminContentDiffV2: {
+archiveAdminContentV2: {
         parameters: {
-            query: {
-                baseRevision: number;
-                targetRevision?: number;
+            query?: never;
+            header: {
+                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
+                "Idempotency-Key": string;
+                /** @description Current draft ETag. Creation requires draft-0. */
+                "If-Match": string;
             };
-            header?: never;
             path: {
                 id: string;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArchiveContentRequest"];
+            };
+        };
         responses: {
-            /** @description Content diff */
+            /** @description Content archived */
             200: {
                 headers: {
+                    /** @description Current draft-N entity tag */
+                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContentDiffV2"];
+                    "application/json": components["schemas"]["ContentRecordV2"];
                 };
             };
             /** @description Malformed request */
@@ -362,9 +370,12 @@ getAdminContentDiffV2: {
             };
         };
     };
-getAdminContentDraftV2: {
+getAdminContentDiffV2: {
         parameters: {
-            query?: never;
+            query: {
+                baseRevision: number;
+                targetRevision?: number;
+            };
             header?: never;
             path: {
                 id: string;
@@ -373,15 +384,13 @@ getAdminContentDraftV2: {
         };
         requestBody?: never;
         responses: {
-            /** @description Current content draft */
+            /** @description Content diff */
             200: {
                 headers: {
-                    /** @description Current draft-N entity tag */
-                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContentRecordV2"];
+                    "application/json": components["schemas"]["ContentDiffV2"];
                 };
             };
             /** @description Malformed request */

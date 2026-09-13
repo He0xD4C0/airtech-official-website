@@ -22,6 +22,7 @@ impl AppState {
             pool,
             data: Arc::new(RwLock::new(PlatformData::default())),
             auth_hash_slots: Arc::new(Semaphore::new(4)),
+            request_metrics: Arc::new(RequestMetrics::default()),
             idempotency_locks: Arc::new(Mutex::new(HashMap::new())),
             // A guard holds one PostgreSQL transaction while the business
             // mutation uses other pool connections. Keep ample pool headroom.

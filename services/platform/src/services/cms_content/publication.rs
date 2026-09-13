@@ -18,7 +18,6 @@ use crate::{
         LinkTargetReference, NavigationItem, RelationTargetReference, ResolvedLinkTarget,
         ResolvedRelationCard, ResolvedRelationEntityType,
     },
-    services::cms_preflight::stable_media_version_id,
     services::cms_templates::{canonical_path, template_definition},
 };
 
@@ -392,17 +391,10 @@ async fn validate_published_media(
     draft: &ContentDraftV2,
 ) -> Result<()> {
     for (label, reference) in collect_media_references(draft) {
-        if reference.version_id != stable_media_version_id(reference.asset_id) {
-            return Err(publication_blocked(format!(
-                "{label} references media asset {} with a stale version; select the asset again from the media library.",
-                reference.asset_id
-            )));
-        }
-        let row =
-            sqlx::query("SELECT scan_status,access_level,deleted_at FROM media_assets WHERE id=$1")
-                .bind(reference.asset_id)
-                .fetch_optional(&mut *connection)
-                .await?;
+        let row = sqlx::query("SELECT deleted_at FROM media_assets WHERE id=$1")
+            .bind(reference.asset_id)
+            .fetch_optional(&mut *connection)
+            .await?;
         let Some(row) = row else {
             return Err(publication_blocked(format!(
                 "{label} references media asset {}, which does not exist.",
@@ -410,11 +402,9 @@ async fn validate_published_media(
             )));
         };
         let deleted: Option<DateTime<Utc>> = row.try_get("deleted_at")?;
-        let scan_status: String = row.try_get("scan_status")?;
-        let access_level: String = row.try_get("access_level")?;
-        if deleted.is_some() || scan_status != "clean" || access_level != "public" {
+        if deleted.is_some() {
             return Err(publication_blocked(format!(
-                "{label} references media asset {} that is not public and clean (scan status {scan_status}, access level {access_level}).",
+                "{label} references media asset {} that was deleted.",
                 reference.asset_id
             )));
         }

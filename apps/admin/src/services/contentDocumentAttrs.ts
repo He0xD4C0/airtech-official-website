@@ -1,20 +1,7 @@
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/u
 const COLLAPSIBLE_WHITESPACE = /\s+/gu
 
-const DOWNLOAD_SCAN_STATUSES = new Set([
-  'clean',
-  'pending',
-  'scanning',
-  'quarantined',
-  'blocked',
-  'failed',
-  'missing',
-] as const)
-const DOWNLOAD_ACCESS_STATUSES = new Set(['public', 'private', 'restricted'] as const)
-
 export type ArticleAuthorType = 'Person' | 'Organization'
-export type DownloadScanStatus = 'clean' | 'pending' | 'scanning' | 'quarantined' | 'blocked' | 'failed' | 'missing'
-export type DownloadAccessStatus = 'public' | 'private' | 'restricted'
 
 export interface ArticleDocumentAttrs extends Record<string, unknown> {
   author?: string
@@ -29,10 +16,6 @@ export interface DownloadDocumentAttrs extends Record<string, unknown> {
   resourceType?: string
   fileDescription?: string
   downloadUrl?: string
-  fileStatus?: {
-    scan?: DownloadScanStatus
-    access?: DownloadAccessStatus
-  }
 }
 
 export type SafeDocumentAttrs = Record<string, unknown>
@@ -113,20 +96,12 @@ function downloadAttrs(attrs: Record<string, unknown>): DownloadDocumentAttrs {
   const resourceType = safeText(attrs.resourceType, 80)
   const fileDescription = safeText(attrs.fileDescription, 500)
   const downloadUrl = safePublicDownloadUrl(attrs.downloadUrl)
-  const rawFileStatus = isRecord(attrs.fileStatus) ? attrs.fileStatus : {}
-  const scan = typeof rawFileStatus.scan === 'string' && DOWNLOAD_SCAN_STATUSES.has(rawFileStatus.scan as DownloadScanStatus)
-    ? rawFileStatus.scan as DownloadScanStatus
-    : undefined
-  const access = typeof rawFileStatus.access === 'string' && DOWNLOAD_ACCESS_STATUSES.has(rawFileStatus.access as DownloadAccessStatus)
-    ? rawFileStatus.access as DownloadAccessStatus
-    : undefined
   return {
     ...(version ? { version } : {}),
     ...(applicableModels ? { applicableModels } : {}),
     ...(resourceType ? { resourceType } : {}),
     ...(fileDescription ? { fileDescription } : {}),
     ...(downloadUrl ? { downloadUrl } : {}),
-    ...(scan || access ? { fileStatus: { ...(scan ? { scan } : {}), ...(access ? { access } : {}) } } : {}),
   }
 }
 

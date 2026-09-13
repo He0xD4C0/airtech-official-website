@@ -139,9 +139,12 @@ session, time, byte count and a fixed reason, but deliberately excludes command
 text and PTY output. `airtekctl` reports provider work only as queued; the worker
 fails it explicitly when a Feishu, search or cache provider is not configured.
 
-Production artifacts must be built with `--features production`. The crate rejects
-`production,devtools` at compile time and the CLI binary is not compiled unless the
-`devtools` feature is present.
+Production artifacts must be built with `--features production`. The crate
+rejects `production,devtools` at compile time. The production Platform image
+contains API, Worker, and a restricted `airtekctl` that accepts only diagnostics,
+CMS/media preflight, dependency backfill, and media backfill operations. The
+broader seed, provider-sync, cache, job, and PTY tooling remains gated by
+`devtools` and is absent from production.
 
 ## OpenAPI contract
 
@@ -157,8 +160,9 @@ pnpm check:contracts
 ```
 
 The exporter is a Cargo example rather than a shipped runtime binary. The
-production Platform container contains only the selected API and Worker
-executables; schema migration ships as a separate non-root Flyway artifact.
+production Platform container contains the selected API and Worker plus the
+restricted operations CLI; schema migration ships as a separate non-root Flyway
+artifact.
 
 ## Boundaries
 
@@ -169,9 +173,11 @@ executables; schema migration ships as a separate non-root Flyway artifact.
 - `/robots.txt`: disallows the complete API origin.
 - sitemap paths are deliberately unregistered and return `404`.
 
-All exact product data must arrive through a traceable Feishu source snapshot,
-validation, staging, conflict handling and publication. Demo product values are not
-authoritative and are not present in this service.
+All exact product data must arrive through a traceable, owner-approved Product
+Master snapshot, validation, staging, conflict handling, and publication.
+Future Feishu synchronization is an input to that governed flow, not proof of a
+current approved snapshot. Demo product values are not authoritative and are
+not present in this service.
 
 Content and products keep mutable working records separately from immutable
 published revision snapshots. Publishing or rolling back atomically switches the

@@ -50,15 +50,19 @@ server {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   }
 
-  # Reviewed media objects are served through the platform API so the public
-  # origin never exposes the object-storage endpoint or a shared bucket. The
-  # API decides access: only a clean, public, live asset is readable.
+  # Direct media objects are served through the platform API so the public
+  # origin never exposes the object-storage endpoint or a shared bucket. Every
+  # non-deleted upload is readable from its permanent application URL.
   location ^~ /media/ {
     proxy_pass http://platform-api:8080/api/public/v1/media/;
     proxy_http_version 1.1;
     # Preserve API/object-store backpressure instead of buffering an entire
     # media response in gateway memory or a temporary file.
     proxy_buffering off;
+    # Enforce client-socket write progress at the transport boundary. Axum can
+    # observe response-body polling/backpressure but cannot confirm receipt by
+    # the downstream socket itself.
+    send_timeout 30s;
     proxy_hide_header Content-Security-Policy;
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-Host $host;
@@ -133,6 +137,7 @@ server {
 
   location ~* ^/sitemap(?:-[^/]+)?\.xml$ { return 404; }
   location ^~ /api/devtools/ { return 404; }
+  location ^~ /internal/ { return 404; }
 
   location / {
     proxy_pass http://platform-api:8080;

@@ -57,6 +57,7 @@ function projection(overrides: Partial<PublicContentProjection> = {}): PublicCon
       tags: ['airflow'],
     }],
     resolvedLinks: [],
+    resolvedMedia: [],
     ...overrides,
   }
 }

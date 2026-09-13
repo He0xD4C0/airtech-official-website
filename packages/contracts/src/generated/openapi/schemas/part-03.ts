@@ -6,6 +6,21 @@
 import type { components } from '../components'
 
 export interface SchemasPart03 {
+MediaAssetReference: {
+            /** Format: uuid */
+            contentId: string;
+            /** Format: int64 */
+            contentRevision: number;
+            contentStatus: string;
+            contentTitle: string;
+            /** @enum {string} */
+            dependencyKind: "mediaInline" | "mediaDownload";
+            referencePath: string;
+        };
+MediaAssetReferencePage: {
+            items: components["schemas"]["MediaAssetReference"][];
+            nextCursor: string | null;
+        };
 MediaBlock: {
             caption?: string | null;
             /** Format: uuid */
@@ -146,11 +161,15 @@ ProblemDetails: {
                 [key: string]: string[];
             };
             instance?: string | null;
+            issues?: components["schemas"]["DependencyProblemIssue"][];
             /** Format: uuid */
             requestId: string;
             status: number;
             title: string;
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @description Stable application problem URIs are enumerated by StableProblemType. Numeric fallback URIs remain valid for generic protocol failures.
+             */
             type: string;
         };
 Product: {
@@ -358,6 +377,7 @@ PublicContentProjection: {
             /** Format: int64 */
             publishedRevision: number;
             resolvedLinks: components["schemas"]["ResolvedLinkTarget"][];
+            resolvedMedia: components["schemas"]["ResolvedMedia"][];
             resolvedRelations: components["schemas"]["ResolvedRelationCard"][];
             /** @constant */
             schemaVersion: 2;
@@ -441,6 +461,16 @@ ResolvedLinkTarget: {
             contentId: string;
             href: string;
         };
+ResolvedMedia: {
+            /** Format: uuid */
+            assetId: string;
+            byteSize: number;
+            downloadUrl: string;
+            /** @enum {string} */
+            mediaType: "image/png" | "image/jpeg" | "image/webp";
+            originalName: string;
+            publicUrl: string;
+        };
 ResolvedRelationCard: {
             /** @enum {string} */
             entityType: "content" | "product";
@@ -460,39 +490,4 @@ RevisionRequest: {
             /** Format: int64 */
             revision: number;
         };
-RfqDutyPoint: {
-            airflow: number;
-            /** @enum {string} */
-            airflowUnit: "m3/h" | "m³/h" | "CFM" | "cfm";
-            pressure: number;
-            /** @enum {string} */
-            pressureUnit: "Pa" | "pa" | "kPa" | "kpa" | "inH2O" | "inh2o";
-        };
-RfqElectricalContext: {
-            frequencyHz?: number;
-            voltage?: string;
-        };
-/** @enum {string} */
-        RfqJourney: "product" | "selection" | "project" | "replacement";
-RfqQuantity: number | string;
-RfqSubmission: {
-            /** Format: uuid */
-            id: string;
-            reference: string;
-            request: components["schemas"]["CreateRfqRequest"];
-            /** Format: date-time */
-            retentionUntil: string;
-            status: string;
-            /** Format: date-time */
-            submittedAt: string;
-        };
-RfqSubmissionPage: {
-            items: components["schemas"]["RfqSubmission"][];
-            nextCursor: string | null;
-        };
-RichTextDocument: {
-            doc: unknown;
-            schemaVersion: number;
-        };
-RoleDefinition: components["schemas"]["AdminRoleRecord"];
 }

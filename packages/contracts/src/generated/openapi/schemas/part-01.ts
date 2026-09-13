@@ -204,11 +204,12 @@ AnalyticsSummary: {
             /** @constant */
             source: "firstParty";
         };
+ArchiveContentRequest: {
+            reason: string;
+        };
 AssetVersionReference: {
             /** Format: uuid */
             assetId: string;
-            /** Format: uuid */
-            versionId: string;
         };
 AuditEvent: {
             action: string;
@@ -494,6 +495,4 @@ ContentTemplateDefinition: {
 ContentTemplateDefinitionPage: {
             items: components["schemas"]["ContentTemplateDefinition"][];
         };
-/** @enum {string} */
-        ContentTemplateKey: "home" | "productIndex" | "productFamily" | "selector" | "compare" | "solutionIndex" | "solutionDetail" | "technologyIndex" | "technologyDetail" | "articleIndex" | "articleDetail" | "newsIndex" | "newsDetail" | "faqIndex" | "faqDetail" | "caseStudyIndex" | "caseStudyDetail" | "downloadIndex" | "downloadDetail" | "about" | "contact" | "rfqRouter" | "rfqForm" | "search" | "legal" | "navigation" | "footer" | "generalInformation";
 }

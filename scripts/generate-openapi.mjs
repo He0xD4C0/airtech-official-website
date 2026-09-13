@@ -133,6 +133,7 @@ function assertRequiredDataContracts(document) {
     ['get', '/api/admin/v1/content/{id}/draft', 'getAdminContentDraftV2'],
     ['patch', '/api/admin/v1/content/{id}/draft', 'updateAdminContentDraftV2'],
     ['post', '/api/admin/v1/content/{id}/snapshots', 'createAdminContentSnapshotV2'],
+    ['post', '/api/admin/v1/content/{id}/unpublish', 'unpublishAdminContentV2'],
     ['get', '/api/admin/v1/content/{id}/revisions', 'listAdminContentRevisionsV2'],
     ['get', '/api/admin/v1/content/{id}/diff', 'getAdminContentDiffV2'],
     ['post', '/api/admin/v1/content/{id}/revisions/{revision}/restore', 'restoreAdminContentRevisionV2'],

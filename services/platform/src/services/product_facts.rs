@@ -153,8 +153,8 @@ pub async fn project_product_facts(
             sqlx::query(
                 r#"INSERT INTO product_assets
                    (id,product_id,asset_type,locale,revision,storage_key,checksum,
-                    scan_status,access_level,source_reference)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)"#,
+                    source_reference)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8)"#,
             )
             .bind(id)
             .bind(product_id)
@@ -163,8 +163,6 @@ pub async fn project_product_facts(
             .bind(required_text(asset, "revision")?)
             .bind(required_text(asset, "storageKey")?)
             .bind(required_text(asset, "checksum")?)
-            .bind(required_text(asset, "scanStatus")?)
-            .bind(required_text(asset, "accessLevel")?)
             .bind(
                 optional_text(asset, "sourceReference")?
                     .unwrap_or_else(|| fallback_source_reference.to_owned()),

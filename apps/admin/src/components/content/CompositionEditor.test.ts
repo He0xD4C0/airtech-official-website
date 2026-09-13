@@ -32,7 +32,7 @@ function media(id: string): ContentBlock {
   return {
     type: 'media',
     id,
-    media: { asset: { assetId: 'asset-1', versionId: 'version-1' }, altText: 'Product photo', decorative: false },
+    media: { asset: { assetId: 'asset-1' }, altText: 'Product photo', decorative: false },
     caption: null,
     layout: 'inline',
   }

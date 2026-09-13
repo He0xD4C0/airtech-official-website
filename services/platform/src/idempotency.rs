@@ -1,5 +1,6 @@
 use axum::http::{HeaderMap, StatusCode};
 use serde::{de::DeserializeOwned, Serialize};
+use serde_json::Value;
 use sha2::{Digest, Sha256};
 use sqlx::{Postgres, Transaction};
 
@@ -57,6 +58,26 @@ impl IdempotencyContext {
     ) -> Result<StagedIdempotency, ApiError> {
         let response = serde_json::to_value(response)
             .map_err(|_| ApiError::internal("Idempotency response serialization failed."))?;
+        if !self
+            .stage_value_in_transaction(transaction, &response, status)
+            .await?
+        {
+            return Err(ApiError::conflict(
+                "This Idempotency-Key is already active for another request.",
+            ));
+        }
+        Ok(StagedIdempotency { guard: self.guard })
+    }
+
+    /// Stage an already serialized response without consuming the guard. A
+    /// SERIALIZABLE caller can therefore retry an aborted transaction and only
+    /// release the idempotency lock after one attempt commits.
+    pub(crate) async fn stage_value_in_transaction(
+        &self,
+        transaction: &mut Transaction<'_, Postgres>,
+        response: &Value,
+        status: StatusCode,
+    ) -> Result<bool, sqlx::Error> {
         let key_hash = format!("{:x}", Sha256::digest(self.key.as_bytes()));
         let result = sqlx::query(
             r#"INSERT INTO idempotency_keys
@@ -71,17 +92,16 @@ impl IdempotencyContext {
         )
         .bind(self.scope)
         .bind(key_hash)
-        .bind(self.request_hash)
+        .bind(&self.request_hash)
         .bind(i32::from(status.as_u16()))
         .bind(response)
         .execute(&mut **transaction)
         .await?;
-        if result.rows_affected() != 1 {
-            return Err(ApiError::conflict(
-                "This Idempotency-Key is already active for another request.",
-            ));
-        }
-        Ok(StagedIdempotency { guard: self.guard })
+        Ok(result.rows_affected() == 1)
+    }
+
+    pub(crate) async fn finish_after_commit(self) -> Result<(), ApiError> {
+        self.guard.finish().await
     }
 }
 
@@ -111,6 +131,40 @@ pub async fn begin<T: Serialize>(
     request: &T,
 ) -> Result<IdempotencyOutcome, ApiError> {
     let key = idempotency_key(headers)?;
+    begin_with_key(state, scope, key, request).await
+}
+
+/// Coordinate an idempotent mutation independently for each authenticated
+/// subject. This is used for file uploads where two users may legitimately
+/// choose the same client-generated key.
+pub async fn begin_for_subject<T: Serialize>(
+    state: &AppState,
+    scope: &'static str,
+    subject: &str,
+    key: &str,
+    request: &T,
+) -> Result<IdempotencyOutcome, ApiError> {
+    let qualified_key = format!("{subject}\0{key}");
+    begin_with_key(state, scope, qualified_key, request)
+        .await
+        .map_err(|error| {
+            if error.status() == StatusCode::CONFLICT {
+                ApiError::conflict(
+                    "This Idempotency-Key was already used by this user for a different file.",
+                )
+                .with_code(crate::error::MEDIA_IDEMPOTENCY_CONFLICT)
+            } else {
+                error
+            }
+        })
+}
+
+async fn begin_with_key<T: Serialize>(
+    state: &AppState,
+    scope: &'static str,
+    key: String,
+    request: &T,
+) -> Result<IdempotencyOutcome, ApiError> {
     let request = serde_json::to_value(request)
         .map_err(|_| ApiError::internal("Idempotency request serialization failed."))?;
     let request_hash = json_hash(&request);

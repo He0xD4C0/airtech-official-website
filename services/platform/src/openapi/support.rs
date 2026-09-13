@@ -143,6 +143,29 @@ pub(super) fn problem_response(description: &str) -> Value {
     json!({"description": description, "content": {"application/problem+json": {"schema": r("ProblemDetails")}}})
 }
 
+pub(super) fn with_problem_example(
+    mut operation: Value,
+    status: &str,
+    code: &str,
+    title: &str,
+    detail: &str,
+) -> Value {
+    let status_number = status
+        .parse::<u16>()
+        .expect("OpenAPI problem example status is numeric");
+    operation["responses"][status]["content"]["application/problem+json"]["examples"][code] = json!({
+        "summary": title,
+        "value": {
+            "type": crate::error::problem_type_uri(code),
+            "title": title,
+            "status": status_number,
+            "detail": detail,
+            "requestId": "00000000-0000-4000-8000-000000000000"
+        }
+    });
+    operation
+}
+
 pub(super) fn session_response(description: &str) -> Value {
     let mut response = json_response(description, r("SessionUser"));
     response["headers"] = json!({

@@ -16,10 +16,16 @@ pub async fn run_one_pending_job(state: &AppState) -> Result<(), ApiError> {
     .await
 }
 
+/// Dispatch at most one durable outbox event through the same path used by the
+/// long-running worker.
+pub async fn run_one_pending_outbox_event(pool: &PgPool) -> Result<(), ApiError> {
+    claim_outbox_event(pool).await
+}
+
 async fn claim_outbox_event(pool: &PgPool) -> Result<(), ApiError> {
     let mut transaction = pool.begin().await?;
     let row = sqlx::query(
-        r#"SELECT id, topic, aggregate_id, payload
+        r#"SELECT id, topic, aggregate_id, payload, attempts, max_attempts
            FROM outbox_events
            WHERE (status='pending' AND available_at <= now())
               OR (status='processing' AND locked_at < now() - interval '5 minutes')
@@ -73,17 +79,18 @@ async fn claim_outbox_event(pool: &PgPool) -> Result<(), ApiError> {
         return Ok(());
     }
 
-    tracing::error!(%id, %topic, "unknown outbox topic");
-    sqlx::query(
+    let outbox_status = sqlx::query_scalar::<_, String>(
         r#"UPDATE outbox_events
            SET status=CASE WHEN attempts >= max_attempts THEN 'failed' ELSE 'pending' END,
                available_at=now() + (attempts * interval '30 seconds'), locked_at=NULL,
                processed_at=CASE WHEN attempts >= max_attempts THEN now() ELSE NULL END
-           WHERE id=$1"#,
+           WHERE id=$1
+           RETURNING status"#,
     )
     .bind(id)
-    .execute(pool)
+    .fetch_one(pool)
     .await?;
+    tracing::error!(event = %id, %topic, %outbox_status, "unknown outbox topic");
     Ok(())
 }
 
@@ -91,6 +98,7 @@ fn is_public_projection_topic(topic: &str) -> bool {
     matches!(
         topic,
         "public.content.published"
+            | "public.content.unpublished"
             | "public.product.published"
             | "public.news.published"
             | "public.generalInformation.published"
@@ -104,11 +112,19 @@ async fn claim_and_run(
     approved_product_master: Option<&crate::config::ApprovedProductMaster>,
 ) -> Result<(), ApiError> {
     let mut transaction = pool.begin().await?;
+    if terminalize_one_expired_exhausted_job(&mut transaction).await? {
+        transaction.commit().await?;
+        return Ok(());
+    }
+    let lease_owner = format!("worker:{}", Uuid::new_v4());
     let row = sqlx::query(
         r#"SELECT id, job_type, payload, attempts, max_attempts
            FROM jobs
            WHERE (status = 'queued' AND available_at <= now() AND attempts < max_attempts)
-              OR (status = 'running' AND updated_at < now() - interval '5 minutes')
+              OR (status = 'running' AND attempts < max_attempts AND (
+                    lease_expires_at < now()
+                    OR (lease_expires_at IS NULL AND updated_at < now() - interval '5 minutes')
+                 ))
            ORDER BY created_at
            FOR UPDATE SKIP LOCKED
            LIMIT 1"#,
@@ -120,14 +136,23 @@ async fn claim_and_run(
         return Ok(());
     };
     let id: Uuid = row.try_get("id")?;
+    let lease = ClaimedJobLease {
+        job_id: id,
+        owner: lease_owner,
+    };
     let job_type: String = row.try_get("job_type")?;
     let payload: Value = row.try_get("payload")?;
     let attempts: i32 = row.try_get::<i32, _>("attempts")? + 1;
     let max_attempts: i32 = row.try_get("max_attempts")?;
     sqlx::query(
-        "UPDATE jobs SET status='running', attempts=attempts+1, updated_at=now() WHERE id=$1",
+        r#"UPDATE jobs SET status='running', attempts=attempts+1,
+           lease_owner=$2,
+           lease_expires_at=now() + ($3 * interval '1 second'),updated_at=now()
+           WHERE id=$1"#,
     )
     .bind(id)
+    .bind(&lease.owner)
+    .bind(JOB_LEASE_SECONDS)
     .execute(&mut *transaction)
     .await?;
     sqlx::query("UPDATE operation_runs SET status='running', updated_at=now() WHERE id=$1")
@@ -147,111 +172,124 @@ async fn claim_and_run(
     }
     transaction.commit().await?;
 
-    let result = execute_job(
+    let result = execute_with_job_lease(
         pool,
-        &job_type,
-        payload,
-        guest_raw_retention_days,
-        guest_aggregate_retention_months,
-        approved_product_master,
+        &lease,
+        execute_job(
+            pool,
+            &job_type,
+            payload,
+            guest_raw_retention_days,
+            guest_aggregate_retention_months,
+            approved_product_master,
+        ),
     )
-    .await;
+    .await?;
+    let LeasedExecution::Finished(result) = result else {
+        tracing::warn!(job_id = %id, job_type = %job_type, "job execution stopped after its lease was lost");
+        return Ok(());
+    };
     match result {
         Ok(output) => {
-            let mut transaction = pool.begin().await?;
-            sqlx::query(
-                "UPDATE jobs SET status='completed', result=$2, updated_at=now() WHERE id=$1",
-            )
-            .bind(id)
-            .bind(&output)
-            .execute(&mut *transaction)
-            .await?;
-            sqlx::query(
-                "UPDATE operation_runs SET status='completed', result=$2, updated_at=now() WHERE id=$1",
-            )
-            .bind(id)
-            .bind(&output)
-            .execute(&mut *transaction)
-            .await?;
-            if job_type == "feishuSync" {
-                sqlx::query(
-                    r#"UPDATE sync_runs
-                       SET status='completed', completed_at=now(),
-                           payload=(jsonb_set(
-                               jsonb_set(payload, '{status}', '"completed"', true),
-                               '{completedAt}', to_jsonb(now()), true
-                           ) - 'error')
-                       WHERE id=$1"#,
-                )
-                .bind(id)
-                .execute(&mut *transaction)
-                .await?;
+            if !persist_job_success(pool, &lease, &job_type, &output).await? {
+                tracing::warn!(job_id = %id, job_type = %job_type, "discarded completed job result after lease ownership changed");
             }
-            transaction.commit().await?;
         }
         Err(detail) => {
-            let output = json!({"error": &detail});
-            let retrying = attempts < max_attempts;
-            let status = if retrying { "queued" } else { "failed" };
-            let mut transaction = pool.begin().await?;
-            sqlx::query(
-                r#"UPDATE jobs SET status=$2, result=$3, last_error=$4,
-                   available_at=CASE WHEN $2='queued' THEN now() + ($5 * interval '30 seconds') ELSE available_at END,
-                   updated_at=now() WHERE id=$1"#,
+            if !persist_job_failure(
+                pool,
+                &lease,
+                &job_type,
+                attempts,
+                max_attempts,
+                &detail,
             )
-            .bind(id)
-            .bind(status)
-            .bind(&output)
-            .bind(&detail)
-            .bind(attempts)
-            .execute(&mut *transaction)
-            .await?;
-            sqlx::query(
-                "UPDATE operation_runs SET status=$2, result=$3, updated_at=now() WHERE id=$1",
-            )
-            .bind(id)
-            .bind(status)
-            .bind(&output)
-            .execute(&mut *transaction)
-            .await?;
-            if job_type == "feishuSync" {
-                let statement = if retrying {
-                    r#"UPDATE sync_runs
-                       SET status='queued',
-                           payload=jsonb_set(payload, '{status}', '"queued"', true)
-                               || jsonb_build_object('error', $2::text)
-                       WHERE id=$1"#
-                } else {
-                    r#"UPDATE sync_runs
-                       SET status='failed', completed_at=now(),
-                           payload=jsonb_set(
-                               jsonb_set(payload, '{status}', '"failed"', true),
-                               '{completedAt}', to_jsonb(now()), true
-                           ) || jsonb_build_object('error', $2::text)
-                       WHERE id=$1"#
-                };
-                sqlx::query(statement)
-                    .bind(id)
-                    .bind(&detail)
-                    .execute(&mut *transaction)
-                    .await?;
+            .await?
+            {
+                tracing::warn!(job_id = %id, job_type = %job_type, "discarded failed job result after lease ownership changed");
             }
-            if job_type == "productImport" {
-                sqlx::query(
-                    r#"UPDATE product_import_runs
-                       SET status=CASE WHEN $2 THEN 'readyToPublish' ELSE 'failed' END,
-                           completed_at=CASE WHEN $2 THEN NULL ELSE now() END
-                       WHERE id=$1 AND status <> 'completed'"#,
-                )
-                .bind(id)
-                .bind(retrying)
-                .execute(&mut *transaction)
-                .await?;
-            }
-            transaction.commit().await?;
         }
     }
     Ok(())
+}
+
+const EXPIRED_ATTEMPT_BUDGET_ERROR: &str =
+    "job_lease_expired: the prior worker exhausted the attempt budget without a durable result";
+
+/// Finalize one abandoned last attempt before claiming new work. The row lock
+/// and old-owner predicate make the job, operation, and related state one
+/// owner-fenced transaction. A worker that eventually returns with the stale
+/// owner can no longer overwrite this terminal result.
+async fn terminalize_one_expired_exhausted_job(
+    transaction: &mut Transaction<'_, Postgres>,
+) -> Result<bool, ApiError> {
+    let row = sqlx::query(
+        r#"SELECT id,job_type,payload,lease_owner
+           FROM jobs
+           WHERE status='running' AND attempts >= max_attempts
+             AND (
+               lease_expires_at < now()
+               OR (lease_expires_at IS NULL AND updated_at < now() - interval '5 minutes')
+             )
+           ORDER BY created_at
+           FOR UPDATE SKIP LOCKED
+           LIMIT 1"#,
+    )
+    .fetch_optional(&mut **transaction)
+    .await?;
+    let Some(row) = row else {
+        return Ok(false);
+    };
+
+    let id: Uuid = row.try_get("id")?;
+    let job_type: String = row.try_get("job_type")?;
+    let prior_owner: Option<String> = row.try_get("lease_owner")?;
+    let output = json!({"error": EXPIRED_ATTEMPT_BUDGET_ERROR});
+    let updated = sqlx::query(
+        r#"UPDATE jobs
+           SET status='failed',result=$2,last_error=$3,
+               lease_owner=NULL,lease_expires_at=NULL,
+               updated_at=now()
+           WHERE id=$1 AND status='running'
+             AND lease_owner IS NOT DISTINCT FROM $4
+             AND attempts >= max_attempts
+             AND (
+               lease_expires_at < now()
+               OR (lease_expires_at IS NULL AND updated_at < now() - interval '5 minutes')
+             )"#,
+    )
+    .bind(id)
+    .bind(&output)
+    .bind(EXPIRED_ATTEMPT_BUDGET_ERROR)
+    .bind(prior_owner.as_deref())
+    .execute(&mut **transaction)
+    .await?;
+    if updated.rows_affected() != 1 {
+        return Err(ApiError::internal(
+            "The exhausted job changed while its terminal state was being persisted.",
+        ));
+    }
+
+    sqlx::query("UPDATE operation_runs SET status='failed',result=$2,updated_at=now() WHERE id=$1")
+        .bind(id)
+        .bind(&output)
+        .execute(&mut **transaction)
+        .await?;
+    persist_related_failure(
+        transaction,
+        id,
+        &job_type,
+        false,
+        EXPIRED_ATTEMPT_BUDGET_ERROR,
+    )
+    .await?;
+    tracing::error!(
+        job_id = %id,
+        job_type = %job_type,
+        prior_owner = ?prior_owner,
+        "expired job attempt budget exhausted; job finalized without re-execution"
+    );
+    Ok(true)
 }
 
 async fn execute_job(

@@ -350,7 +350,7 @@ async fn load_media_assets(
 ) -> Result<Vec<LegacyMediaAsset>, sqlx::Error> {
     let rows = sqlx::query(
         r#"SELECT id,storage_key,original_name,media_type,byte_size,checksum,
-                  scan_status,access_level,metadata,created_at,deleted_at
+                  metadata,created_at,deleted_at
            FROM media_assets ORDER BY id"#,
     )
     .fetch_all(connection)
@@ -364,8 +364,6 @@ async fn load_media_assets(
                 media_type: row.try_get("media_type")?,
                 byte_size: row.try_get("byte_size")?,
                 checksum: row.try_get("checksum")?,
-                scan_status: row.try_get("scan_status")?,
-                access_level: row.try_get("access_level")?,
                 metadata: row.try_get("metadata")?,
                 created_at: row.try_get("created_at")?,
                 deleted_at: row.try_get("deleted_at")?,

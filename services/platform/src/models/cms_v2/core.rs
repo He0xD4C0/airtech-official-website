@@ -120,7 +120,6 @@ pub struct TiptapDocument {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AssetVersionReference {
     pub asset_id: Uuid,
-    pub version_id: Uuid,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]

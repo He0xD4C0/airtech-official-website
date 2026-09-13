@@ -28,7 +28,11 @@ const navigationBadges = ref<Record<string, string>>({})
 const visibleNavigation = computed(() => navigation
   .map((group) => ({
     ...group,
-    items: group.items.filter((item) => (!item.devOnly || __AIRTEK_DEVTOOLS__) && auth.hasPermission(item.permission)),
+    items: group.items.filter((item) => (
+      (!item.devOnly || __AIRTEK_DEVTOOLS__)
+      && auth.hasPermission(item.permission)
+      && (!item.permissionsAny?.length || item.permissionsAny.some((permission) => auth.hasPermission(permission)))
+    )),
   }))
   .filter((group) => group.items.length > 0))
 

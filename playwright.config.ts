@@ -9,6 +9,7 @@ try {
 
 const hostResolverRules = process.env.E2E_HOST_RESOLVER_RULES
 const adminOrigin = process.env.E2E_ADMIN_ORIGIN
+const mutableAdminStack = process.env.E2E_RUN_ADMIN_WORKFLOWS === 'true'
 const browserArgs = hostResolverRules
   ? [
       `--host-resolver-rules=${hostResolverRules}`,
@@ -26,10 +27,13 @@ export default defineConfig({
   globalSetup: './tests/e2e/global-setup.ts',
   globalTeardown: './tests/e2e/global-teardown.ts',
   outputDir: 'test-results/playwright',
-  fullyParallel: true,
+  // Authenticated mutations rotate a single CSRF token stored in the shared
+  // admin session. The disposable full stack intentionally reuses that session,
+  // so run it serially instead of invalidating sibling workers' tokens.
+  fullyParallel: !mutableAdminStack,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
-  ...(process.env.CI ? { workers: 1 } : {}),
+  ...(process.env.CI || mutableAdminStack ? { workers: 1 } : {}),
   reporter: process.env.CI
     ? [['line'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]
     : [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],

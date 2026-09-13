@@ -9,6 +9,20 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
+pub const MEDIA_IDEMPOTENCY_CONFLICT: &str = "media_idempotency_conflict";
+pub const MEDIA_DECODE_FAILED: &str = "media_decode_failed";
+pub const CONTENT_DEPENDENCY_CONFLICT: &str = "content_dependency_conflict";
+
+pub const STABLE_DOMAIN_PROBLEM_CODES: [&str; 3] = [
+    MEDIA_IDEMPOTENCY_CONFLICT,
+    MEDIA_DECODE_FAILED,
+    CONTENT_DEPENDENCY_CONFLICT,
+];
+
+pub fn problem_type_uri(code: &str) -> String {
+    format!("https://api.airtekpower.example/problems/{code}")
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProblemDetails {
@@ -21,12 +35,15 @@ pub struct ProblemDetails {
     pub request_id: Uuid,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub errors: BTreeMap<String, Vec<String>>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub issues: Vec<Value>,
 }
 
 #[derive(Debug)]
 pub struct ApiError {
     status: StatusCode,
     problem: Box<ProblemDetails>,
+    retry_after_seconds: Option<u32>,
 }
 
 impl std::fmt::Display for ApiError {
@@ -46,17 +63,16 @@ impl ApiError {
         Self {
             status,
             problem: Box::new(ProblemDetails {
-                problem_type: format!(
-                    "https://api.airtekpower.example/problems/{}",
-                    status.as_u16()
-                ),
+                problem_type: problem_type_uri(&status.as_u16().to_string()),
                 title: title.into(),
                 status: status.as_u16(),
                 detail: detail.into(),
                 instance: None,
                 request_id: Uuid::new_v4(),
                 errors: BTreeMap::new(),
+                issues: Vec::new(),
             }),
+            retry_after_seconds: None,
         }
     }
 
@@ -126,6 +142,21 @@ impl ApiError {
         self.problem.instance = Some(instance.into());
         self
     }
+
+    pub fn with_code(mut self, code: &str) -> Self {
+        self.problem.problem_type = problem_type_uri(code);
+        self
+    }
+
+    pub fn with_issues(mut self, issues: Vec<Value>) -> Self {
+        self.problem.issues = issues;
+        self
+    }
+
+    pub fn with_retry_after(mut self, seconds: u32) -> Self {
+        self.retry_after_seconds = Some(seconds);
+        self
+    }
 }
 
 impl IntoResponse for ApiError {
@@ -136,9 +167,10 @@ impl IntoResponse for ApiError {
             HeaderValue::from_static("application/problem+json"),
         );
         if self.status == StatusCode::SERVICE_UNAVAILABLE {
-            response
-                .headers_mut()
-                .insert(header::RETRY_AFTER, HeaderValue::from_static("5"));
+            let retry_after = self.retry_after_seconds.unwrap_or(5).to_string();
+            if let Ok(value) = HeaderValue::from_str(&retry_after) {
+                response.headers_mut().insert(header::RETRY_AFTER, value);
+            }
             response.headers_mut().insert(
                 header::CACHE_CONTROL,
                 HeaderValue::from_static("no-store, max-age=0"),
@@ -167,6 +199,8 @@ pub fn json_hash(value: &Value) -> String {
 
 #[cfg(test)]
 mod tests {
+    use http_body_util::BodyExt;
+
     use super::*;
 
     #[test]
@@ -182,5 +216,17 @@ mod tests {
             response.headers().get("x-robots-tag").unwrap(),
             "noindex, nofollow, noarchive"
         );
+    }
+
+    #[tokio::test]
+    async fn stable_domain_problem_codes_have_canonical_type_uris() {
+        for code in STABLE_DOMAIN_PROBLEM_CODES {
+            let response = ApiError::conflict("contract test")
+                .with_code(code)
+                .into_response();
+            let body = response.into_body().collect().await.unwrap().to_bytes();
+            let problem: serde_json::Value = serde_json::from_slice(&body).unwrap();
+            assert_eq!(problem["type"], problem_type_uri(code));
+        }
     }
 }

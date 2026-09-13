@@ -835,21 +835,30 @@
         ],
         "type": "object"
       },
+      "ArchiveContentRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 10,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
       "AssetVersionReference": {
         "additionalProperties": false,
         "properties": {
           "assetId": {
             "format": "uuid",
             "type": "string"
-          },
-          "versionId": {
-            "format": "uuid",
-            "type": "string"
           }
         },
         "required": [
-          "assetId",
-          "versionId"
+          "assetId"
         ],
         "type": "object"
       },
@@ -3123,6 +3132,44 @@
         ],
         "type": "string"
       },
+      "DependencyProblemIssue": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "detail": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "failedGate": {
+            "type": "string"
+          },
+          "path": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "targetId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "path",
+          "failedGate",
+          "targetId",
+          "detail"
+        ],
+        "type": "object"
+      },
       "DiscoveryDocument": {
         "additionalProperties": false,
         "properties": {
@@ -4553,47 +4600,20 @@
         ],
         "type": "object"
       },
-      "MediaAssetReviewRequest": {
+      "MediaAsset": {
         "additionalProperties": false,
         "properties": {
-          "reason": {
-            "description": "Required for every human clean or quarantine decision; surrounding whitespace is trimmed and the reason is recorded in the audit trail.",
-            "maxLength": 500,
-            "minLength": 1,
-            "pattern": "\\S",
-            "type": "string"
-          },
-          "status": {
-            "enum": [
-              "clean",
-              "quarantined"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "status",
-          "reason"
-        ],
-        "type": "object"
-      },
-      "MediaAssetSummary": {
-        "additionalProperties": false,
-        "properties": {
-          "accessLevel": {
-            "enum": [
-              "public",
-              "authenticated",
-              "internal"
-            ],
-            "type": "string"
-          },
           "byteSize": {
-            "minimum": 0,
+            "maximum": 26214400,
+            "minimum": 1,
             "type": "integer"
           },
           "createdAt": {
             "format": "date-time",
+            "type": "string"
+          },
+          "downloadUrl": {
+            "pattern": "^/api/public/v1/media/[0-9a-f-]+/download$",
             "type": "string"
           },
           "id": {
@@ -4601,47 +4621,124 @@
             "type": "string"
           },
           "mediaType": {
-            "maxLength": 120,
-            "minLength": 1,
-            "type": "string"
-          },
-          "originalName": {
-            "maxLength": 500,
-            "minLength": 1,
-            "type": "string"
-          },
-          "scanStatus": {
             "enum": [
-              "pending",
-              "clean",
-              "quarantined",
-              "failed"
+              "image/png",
+              "image/jpeg",
+              "image/webp"
             ],
             "type": "string"
           },
-          "versionId": {
-            "format": "uuid",
+          "originalName": {
+            "maxLength": 180,
+            "minLength": 1,
+            "type": "string"
+          },
+          "publicUrl": {
+            "pattern": "^/api/public/v1/media/[0-9a-f-]+$",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "uploadedBy": {
+            "maxLength": 320,
+            "minLength": 1,
             "type": "string"
           }
         },
         "required": [
           "id",
-          "versionId",
+          "publicUrl",
+          "downloadUrl",
           "originalName",
           "mediaType",
           "byteSize",
-          "scanStatus",
-          "accessLevel",
+          "sha256",
+          "uploadedBy",
           "createdAt"
         ],
         "type": "object"
       },
-      "MediaAssetSummaryPage": {
+      "MediaAssetPage": {
         "additionalProperties": false,
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/MediaAssetSummary"
+              "$ref": "#/components/schemas/MediaAsset"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "total"
+        ],
+        "type": "object"
+      },
+      "MediaAssetReference": {
+        "additionalProperties": false,
+        "properties": {
+          "contentId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "contentRevision": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "contentStatus": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "contentTitle": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "dependencyKind": {
+            "enum": [
+              "mediaInline",
+              "mediaDownload"
+            ],
+            "type": "string"
+          },
+          "referencePath": {
+            "pattern": "^/",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contentId",
+          "contentRevision",
+          "contentTitle",
+          "contentStatus",
+          "dependencyKind",
+          "referencePath"
+        ],
+        "type": "object"
+      },
+      "MediaAssetReferencePage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MediaAssetReference"
             },
             "type": "array"
           },
@@ -5376,6 +5473,12 @@
               }
             ]
           },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/DependencyProblemIssue"
+            },
+            "type": "array"
+          },
           "requestId": {
             "format": "uuid",
             "type": "string"
@@ -5389,8 +5492,14 @@
             "type": "string"
           },
           "type": {
+            "description": "Stable application problem URIs are enumerated by StableProblemType. Numeric fallback URIs remain valid for generic protocol failures.",
             "format": "uri",
-            "type": "string"
+            "type": "string",
+            "x-stable-domain-types": [
+              "https://api.airtekpower.example/problems/media_idempotency_conflict",
+              "https://api.airtekpower.example/problems/media_decode_failed",
+              "https://api.airtekpower.example/problems/content_dependency_conflict"
+            ]
           }
         },
         "required": [
@@ -6328,6 +6437,12 @@
             },
             "type": "array"
           },
+          "resolvedMedia": {
+            "items": {
+              "$ref": "#/components/schemas/ResolvedMedia"
+            },
+            "type": "array"
+          },
           "resolvedRelations": {
             "items": {
               "$ref": "#/components/schemas/ResolvedRelationCard"
@@ -6392,7 +6507,8 @@
           "publishedRevision",
           "updatedAt",
           "resolvedRelations",
-          "resolvedLinks"
+          "resolvedLinks",
+          "resolvedMedia"
         ],
         "type": "object"
       },
@@ -6654,6 +6770,48 @@
         "required": [
           "contentId",
           "href"
+        ],
+        "type": "object"
+      },
+      "ResolvedMedia": {
+        "additionalProperties": false,
+        "properties": {
+          "assetId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "byteSize": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "downloadUrl": {
+            "pattern": "^/api/public/v1/media/",
+            "type": "string"
+          },
+          "mediaType": {
+            "enum": [
+              "image/png",
+              "image/jpeg",
+              "image/webp"
+            ],
+            "type": "string"
+          },
+          "originalName": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "publicUrl": {
+            "pattern": "^/api/public/v1/media/",
+            "type": "string"
+          }
+        },
+        "required": [
+          "assetId",
+          "publicUrl",
+          "downloadUrl",
+          "mediaType",
+          "byteSize",
+          "originalName"
         ],
         "type": "object"
       },
@@ -7645,6 +7803,23 @@
         ],
         "type": "object"
       },
+      "StableProblemCode": {
+        "enum": [
+          "media_idempotency_conflict",
+          "media_decode_failed",
+          "content_dependency_conflict"
+        ],
+        "type": "string"
+      },
+      "StableProblemType": {
+        "enum": [
+          "https://api.airtekpower.example/problems/media_idempotency_conflict",
+          "https://api.airtekpower.example/problems/media_decode_failed",
+          "https://api.airtekpower.example/problems/content_dependency_conflict"
+        ],
+        "format": "uri",
+        "type": "string"
+      },
       "StartSyncRequest": {
         "additionalProperties": false,
         "properties": {
@@ -8444,6 +8619,26 @@
           "algorithm",
           "digits",
           "periodSeconds"
+        ],
+        "type": "object"
+      },
+      "UnpublishContentRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expectedPublishedRevision": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "expectedPublishedRevision",
+          "reason"
         ],
         "type": "object"
       },
@@ -11472,6 +11667,183 @@
         ]
       }
     },
+    "/api/admin/v1/content/{id}/archive": {
+      "post": {
+        "operationId": "archiveAdminContentV2",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Current draft ETag. Creation requires draft-0.",
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "pattern": "^\\\"draft-[0-9]+\\\"$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchiveContentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentRecordV2"
+                }
+              }
+            },
+            "description": "Content archived",
+            "headers": {
+              "ETag": {
+                "description": "Current draft-N entity tag",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Archive content only after it has been explicitly unpublished",
+        "tags": [
+          "adminContent"
+        ]
+      }
+    },
     "/api/admin/v1/content/{id}/diff": {
       "get": {
         "operationId": "getAdminContentDiffV2",
@@ -12413,6 +12785,18 @@
           "422": {
             "content": {
               "application/problem+json": {
+                "examples": {
+                  "content_dependency_conflict": {
+                    "summary": "Content dependency conflict",
+                    "value": {
+                      "detail": "One or more publication dependencies failed validation.",
+                      "requestId": "00000000-0000-4000-8000-000000000000",
+                      "status": 422,
+                      "title": "Content dependency conflict",
+                      "type": "https://api.airtekpower.example/problems/content_dependency_conflict"
+                    }
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -12468,6 +12852,195 @@
           }
         ],
         "summary": "Create an immutable manual or published revision from the current draft",
+        "tags": [
+          "adminContent"
+        ]
+      }
+    },
+    "/api/admin/v1/content/{id}/unpublish": {
+      "post": {
+        "operationId": "unpublishAdminContentV2",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Current draft ETag. Creation requires draft-0.",
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "pattern": "^\\\"draft-[0-9]+\\\"$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnpublishContentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentRecordV2"
+                }
+              }
+            },
+            "description": "Content unpublished",
+            "headers": {
+              "ETag": {
+                "description": "Current draft-N entity tag",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "content_dependency_conflict": {
+                    "summary": "Content dependency conflict",
+                    "value": {
+                      "detail": "Active published content still depends on this target.",
+                      "requestId": "00000000-0000-4000-8000-000000000000",
+                      "status": 409,
+                      "title": "Content dependency conflict",
+                      "type": "https://api.airtekpower.example/problems/content_dependency_conflict"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Explicitly unpublish content while preserving its draft and immutable history",
         "tags": [
           "adminContent"
         ]
@@ -12959,33 +13532,6 @@
               "maxLength": 200,
               "type": "string"
             }
-          },
-          {
-            "in": "query",
-            "name": "scanStatus",
-            "required": false,
-            "schema": {
-              "enum": [
-                "pending",
-                "clean",
-                "quarantined",
-                "failed"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "accessLevel",
-            "required": false,
-            "schema": {
-              "enum": [
-                "public",
-                "authenticated",
-                "internal"
-              ],
-              "type": "string"
-            }
           }
         ],
         "responses": {
@@ -12993,7 +13539,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MediaAssetSummaryPage"
+                  "$ref": "#/components/schemas/MediaAssetPage"
                 }
               }
             },
@@ -13109,159 +13655,22 @@
         "tags": [
           "adminContent"
         ]
-      }
-    },
-    "/api/admin/v1/media/assets/{id}/scan": {
+      },
       "post": {
-        "operationId": "reviewAdminMediaAsset",
+        "operationId": "uploadAdminMediaAsset",
         "parameters": [
           {
-            "in": "path",
-            "name": "id",
+            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
+            "in": "header",
+            "name": "Idempotency-Key",
             "required": true,
             "schema": {
-              "format": "uuid",
+              "maxLength": 200,
+              "minLength": 8,
               "type": "string"
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MediaAssetReviewRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MediaAssetSummary"
-                }
-              }
-            },
-            "description": "Media asset reviewed"
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": [],
-            "csrfToken": []
-          }
-        ],
-        "summary": "Record the human review decision for a media asset",
-        "tags": [
-          "adminContent"
-        ]
-      }
-    },
-    "/api/admin/v1/media/uploads": {
-      "post": {
-        "operationId": "uploadAdminMediaAsset",
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -13269,7 +13678,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "file": {
-                    "description": "Single PNG, JPEG, or WebP image up to 25 MiB. SVG is rejected.",
+                    "description": "Exactly one PNG, JPEG, or WebP file up to 25 MiB.",
                     "format": "binary",
                     "type": "string"
                   }
@@ -13288,11 +13697,189 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MediaAssetSummary"
+                  "$ref": "#/components/schemas/MediaAsset"
                 }
               }
             },
-            "description": "Media asset stored"
+            "description": "Public media asset"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "media_idempotency_conflict": {
+                    "summary": "Idempotency key conflict",
+                    "value": {
+                      "detail": "This user already used the key for different file bytes.",
+                      "requestId": "00000000-0000-4000-8000-000000000000",
+                      "status": 409,
+                      "title": "Idempotency key conflict",
+                      "type": "https://api.airtekpower.example/problems/media_idempotency_conflict"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The file exceeds 25 MiB"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "media_decode_failed": {
+                    "summary": "Unsupported media bytes",
+                    "value": {
+                      "detail": "The file header is not PNG, JPEG, or WebP.",
+                      "requestId": "00000000-0000-4000-8000-000000000000",
+                      "status": 415,
+                      "title": "Unsupported media bytes",
+                      "type": "https://api.airtekpower.example/problems/media_decode_failed"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Upload one PNG, JPEG, or WebP asset and make its API URL public immediately",
+        "tags": [
+          "adminContent"
+        ]
+      }
+    },
+    "/api/admin/v1/media/assets/{id}": {
+      "get": {
+        "operationId": "getAdminMediaAsset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaAsset"
+                }
+              }
+            },
+            "description": "Media asset"
           },
           "400": {
             "content": {
@@ -13397,11 +13984,170 @@
         },
         "security": [
           {
-            "adminSession": [],
-            "csrfToken": []
+            "adminSession": []
           }
         ],
-        "summary": "Upload one PNG, JPEG, or WebP object into the review pipeline",
+        "summary": "Get one public media asset",
+        "tags": [
+          "adminContent"
+        ]
+      }
+    },
+    "/api/admin/v1/media/assets/{id}/references": {
+      "get": {
+        "operationId": "listAdminMediaAssetReferences",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque endpoint-scoped cursor returned by the previous page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page size; values outside 1 through 100 return Problem Details 400.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaAssetReferencePage"
+                }
+              }
+            },
+            "description": "Media references"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "List CMS publication snapshots that reference a media asset",
         "tags": [
           "adminContent"
         ]
@@ -18493,14 +19239,14 @@
         "responses": {
           "200": {
             "content": {
-              "image/png": {
+              "application/octet-stream": {
                 "schema": {
                   "format": "binary",
                   "type": "string"
                 }
               }
             },
-            "description": "Media object"
+            "description": "Media bytes"
           },
           "400": {
             "content": {
@@ -18603,7 +19349,7 @@
             "description": "Required service is unavailable"
           }
         },
-        "summary": "Serve one reviewed, public media object",
+        "summary": "Serve a live media asset without authentication",
         "tags": [
           "public"
         ]
@@ -18633,7 +19379,7 @@
                 }
               }
             },
-            "description": "Media attachment"
+            "description": "Media bytes"
           },
           "400": {
             "content": {
@@ -18736,7 +19482,7 @@
             "description": "Required service is unavailable"
           }
         },
-        "summary": "Download one reviewed, public media object as an attachment",
+        "summary": "Download a live media asset without authentication",
         "tags": [
           "public"
         ]
@@ -20058,6 +20804,127 @@
           }
         },
         "summary": "Report process liveness",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/internal/metrics": {
+      "get": {
+        "operationId": "getInternalMetrics",
+        "responses": {
+          "200": {
+            "content": {
+              "application/openmetrics-text": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OpenMetrics telemetry"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "summary": "Return internal low-cardinality OpenMetrics telemetry",
         "tags": [
           "system"
         ]

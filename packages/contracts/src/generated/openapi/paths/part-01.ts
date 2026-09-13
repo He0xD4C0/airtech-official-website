@@ -300,6 +300,23 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/content/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive content only after it has been explicitly unpublished */
+        post: operations["archiveAdminContentV2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/content/{id}/diff": {
         parameters: {
             query?: never;
@@ -386,6 +403,23 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/content/{id}/unpublish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Explicitly unpublish content while preserving its draft and immutable history */
+        post: operations["unpublishAdminContentV2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/content/templates": {
         parameters: {
             query?: never;
@@ -448,40 +482,7 @@ export interface PathsPart01 {
         /** List media library assets for the unified content editor */
         get: operations["listAdminMediaAssets"];
         put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/media/assets/{id}/scan": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Record the human review decision for a media asset */
-        post: operations["reviewAdminMediaAsset"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/media/uploads": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Upload one PNG, JPEG, or WebP object into the review pipeline */
+        /** Upload one PNG, JPEG, or WebP asset and make its API URL public immediately */
         post: operations["uploadAdminMediaAsset"];
         delete?: never;
         options?: never;

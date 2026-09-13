@@ -8,6 +8,20 @@ permissions:
   contents: read
 
 jobs:
+  rust-msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.88.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: services/platform
+      - name: Compile the production platform at its declared MSRV
+        working-directory: services/platform
+        run: cargo check --locked --all-targets --features production
+
   contracts:
     runs-on: ubuntu-latest
     steps:
@@ -49,6 +63,7 @@ jobs:
         run: pnpm test
       - run: pnpm check:production
       - run: pnpm check:deployment
+      - run: pnpm check:media-boundary
 
   browser-contracts:
     runs-on: ubuntu-latest
@@ -107,6 +122,7 @@ jobs:
           --health-retries 20
     env:
       DATABASE_URL: postgres://airtek:airtek@127.0.0.1:5432/airtek
+      AIRTEK_TEST_DATABASE_URL: postgres://airtek:airtek@127.0.0.1:5432/airtek
       FLYWAY_URL: jdbc:postgresql://127.0.0.1:5432/airtek
       FLYWAY_USER: airtek
       FLYWAY_PASSWORD: airtek
@@ -283,16 +299,19 @@ jobs:
           done
       - name: Run Rust unit and HTTP contract tests
         run: cargo test --manifest-path services/platform/Cargo.toml
-      - name: Run PostgreSQL integration contracts serially
-        env:
-          AIRTEK_TEST_DATABASE_URL: ${{ env.DATABASE_URL }}
+      - name: Run PostgreSQL integration contracts with default test parallelism
         run: |
-          cargo test --manifest-path services/platform/Cargo.toml --features devtools --test postgres_contract -- --ignored --test-threads=1
-          cargo test --manifest-path services/platform/Cargo.toml --test retention_contract -- --ignored --test-threads=1
-          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract expired_private_staging_requires_atomic_cryptographic_erasure -- --ignored --exact --test-threads=1
-          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract synthetic_product_master_scale_is_private_promoted_draft_and_idempotent -- --ignored --exact --test-threads=1
-          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract feishu_takes_over_verified_csv_stable_id_and_projects_all_facts_atomically -- --ignored --exact --test-threads=1
-          cargo test --manifest-path services/platform/Cargo.toml --test migration_contract -- --ignored --test-threads=1
+          cargo test --manifest-path services/platform/Cargo.toml --features devtools --test postgres_contract -- --ignored
+          cargo test --manifest-path services/platform/Cargo.toml --test analytics_pagination_contract -- --ignored
+          cargo test --manifest-path services/platform/Cargo.toml --test retention_contract -- --ignored
+          cargo test --manifest-path services/platform/Cargo.toml --features devtools --test migration_contract -- --ignored
+          cargo test --manifest-path services/platform/Cargo.toml --features devtools --test cms_publication_dependencies_contract -- --ignored
+          cargo test --manifest-path services/platform/Cargo.toml --features devtools --test publication_dependency_migration_contract -- --ignored
+      - name: Run shared-state Product Master contracts one at a time
+        run: |
+          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract expired_private_staging_requires_atomic_cryptographic_erasure -- --ignored --exact
+          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract synthetic_product_master_scale_is_private_promoted_draft_and_idempotent -- --ignored --exact
+          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract feishu_takes_over_verified_csv_stable_id_and_projects_all_facts_atomically -- --ignored --exact
       - run: cargo check --manifest-path services/platform/Cargo.toml --features production
       - run: cargo check --manifest-path services/platform/Cargo.toml --features devtools
       - name: Assert production and DevTools are mutually exclusive
@@ -301,10 +320,10 @@ jobs:
             echo "production+devtools unexpectedly compiled"
             exit 1
           fi
-      - name: Assert production dependency tree excludes CLI, PTY, and WebSocket packages
+      - name: Assert production dependency tree excludes DevTools CLI, PTY, and WebSocket packages
         run: |
           if cargo tree --manifest-path services/platform/Cargo.toml --features production | grep -E '(^| )((clap|portable-pty|tokio-tungstenite|tungstenite) v)'; then
-            echo "production dependency tree contains a CLI, PTY, or WebSocket package"
+            echo "production dependency tree contains a DevTools CLI, PTY, or WebSocket package"
             exit 1
           fi
 
