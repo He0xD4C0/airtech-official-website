@@ -34,6 +34,14 @@ AdminProductDetail: components["schemas"]["Product"] & {
             presentation: components["schemas"]["ProductPresentation"] | null;
             sourceKind: components["schemas"]["DataClass"];
         };
+AdminProductPage: {
+            dataStateCounts: components["schemas"]["ProductFacetCount"][];
+            familyCounts: components["schemas"]["ProductFacetCount"][];
+            items: components["schemas"]["Product"][];
+            nextCursor: string | null;
+            statusCounts: components["schemas"]["ProductFacetCount"][];
+            total: number;
+        };
 AdminRoleRecord: {
             displayName: string;
             /** Format: uuid */
@@ -47,6 +55,7 @@ AdminRoleRecord: {
 AdminRoleRecordPage: {
             items: components["schemas"]["AdminRoleRecord"][];
             nextCursor: string | null;
+            total: number;
         };
 AdminSession: {
             /** Format: date-time */
@@ -82,6 +91,7 @@ AdminUserRecord: {
 AdminUserRecordPage: {
             items: components["schemas"]["AdminUserRecord"][];
             nextCursor: string | null;
+            total: number;
         };
 AnalyticsBusinessOutcomes: {
             contactRequests: number;
@@ -261,6 +271,7 @@ BackgroundOperation: {
 BackgroundOperationPage: {
             items: components["schemas"]["BackgroundOperation"][];
             nextCursor: string | null;
+            total: number;
         };
 BodyBlock: {
             /** Format: uuid */
@@ -485,11 +496,4 @@ ContentPreviewLink: {
             /** Format: uri */
             readonly url: string;
         };
-ContentPreviewResponse: {
-            content: components["schemas"]["PublicContentProjection"];
-            /** Format: date-time */
-            previewExpiresAt: string;
-        };
-/** @enum {string} */
-        ContentPublicationAction: "save" | "publish" | "unpublish";
 }

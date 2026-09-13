@@ -1291,7 +1291,7 @@
       "method": "POST",
       "path": "/api/admin/v1/content/{id}/snapshots",
       "operationId": "createAdminContentSnapshotV2",
-      "permission": "content.write; publish intent additionally requires content.publish",
+      "permission": "content.write",
       "request": {
         "parameters": [
           "id",
@@ -1898,7 +1898,9 @@
       "request": {
         "parameters": [
           "cursor",
-          "limit"
+          "limit",
+          "status",
+          "kind"
         ],
         "body": []
       },
@@ -2054,7 +2056,10 @@
         "parameters": [
           "cursor",
           "limit",
-          "q"
+          "q",
+          "family",
+          "status",
+          "dataState"
         ],
         "body": []
       },
@@ -2064,7 +2069,7 @@
           "types": [
             {
               "mediaType": "application/json",
-              "type": "ProductPage"
+              "type": "AdminProductPage"
             }
           ]
         }
@@ -2777,7 +2782,11 @@
       "operationId": "listAdminRoles",
       "permission": "identity.manage",
       "request": {
-        "parameters": [],
+        "parameters": [
+          "cursor",
+          "limit",
+          "q"
+        ],
         "body": []
       },
       "response": [
@@ -2792,7 +2801,9 @@
         }
       ],
       "pagination": {
-        "strategy": "none"
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
       },
       "idempotency": {
         "required": false
@@ -3088,7 +3099,9 @@
       "request": {
         "parameters": [
           "cursor",
-          "limit"
+          "limit",
+          "q",
+          "status"
         ],
         "body": []
       },

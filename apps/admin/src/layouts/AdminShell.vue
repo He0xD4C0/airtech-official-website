@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import {
-  Bell,
-  ChevronDown,
   Command,
   LogOut,
   Menu,
@@ -24,6 +22,9 @@ const ui = useUiStore()
 const route = useRoute()
 const router = useRouter()
 const navigationBadges = ref<Record<string, string>>({})
+const quickQuery = ref('')
+const commandInput = ref<HTMLInputElement>()
+const commandTrigger = ref<HTMLButtonElement>()
 
 const visibleNavigation = computed(() => navigation
   .map((group) => ({
@@ -38,26 +39,26 @@ const visibleNavigation = computed(() => navigation
 
 const pageTitle = computed(() => String(route.meta.title ?? '管理平台'))
 const userInitials = computed(() => auth.user?.displayName.slice(0, 2).toUpperCase() ?? 'AT')
-const visibleQuickActions = computed(() => quickActions.filter((action) => auth.hasPermission(action.permission)))
+const visibleQuickActions = computed(() => {
+  const query = quickQuery.value.trim().toLocaleLowerCase()
+  return quickActions.filter((action) => (
+    auth.hasPermission(action.permission)
+    && (!query || action.label.toLocaleLowerCase().includes(query))
+  ))
+})
 
 async function loadNavigationBadges(): Promise<void> {
   const badges: Record<string, string> = {}
   const requests: Array<Promise<void>> = []
 
   if (auth.hasPermission('integration.run')) {
-    requests.push(adminApi.listConflicts({ limit: 100 }).then((page) => {
-      if (page.items.length) badges['/integrations/feishu'] = `${page.items.length}${page.nextCursor ? '+' : ''}`
+    requests.push(adminApi.listConflicts({ limit: 1 }).then((page) => {
+      if (page.total) badges['/integrations/feishu'] = String(page.total)
     }))
   }
   if (auth.hasPermission('rfq.read')) {
-    requests.push(adminApi.listRfqs({ limit: 100 }).then((rfqs) => {
-      if (rfqs.items.length) badges['/rfqs'] = `${rfqs.items.length}${rfqs.nextCursor ? '+' : ''}`
-    }))
-  }
-  if (auth.hasPermission('operations.run')) {
-    requests.push(adminApi.listOperations({ limit: 100 }).then((page) => {
-      const active = page.items.filter((item) => item.status === 'queued' || item.status === 'running').length
-      if (active) badges['/operations'] = `${active}${page.nextCursor ? '+' : ''}`
+    requests.push(adminApi.listRfqs({ limit: 1 }).then((rfqs) => {
+      if (rfqs.total) badges['/rfqs'] = String(rfqs.total)
     }))
   }
   if (auth.hasPermission('content.read')) {
@@ -79,6 +80,10 @@ function openCommand(): void {
   ui.commandOpen = true
 }
 
+function closeCommand(): void {
+  ui.commandOpen = false
+}
+
 function handleKeydown(event: KeyboardEvent): void {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault()
@@ -95,6 +100,16 @@ onMounted(() => {
   void loadNavigationBadges()
 })
 onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
+
+watch(() => ui.commandOpen, async (open) => {
+  if (open) {
+    quickQuery.value = ''
+    await nextTick()
+    commandInput.value?.focus()
+  } else {
+    commandTrigger.value?.focus()
+  }
+})
 </script>
 
 <template>
@@ -112,11 +127,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 
       <div class="sidebar__context">
         <span class="sidebar__context-label">管理空间</span>
-        <button type="button">
+        <div class="sidebar__context-static">
           <span class="sidebar__context-mark">AP</span>
           <span><strong>AIRTEKPOWER</strong><small>Global · English</small></span>
-          <ChevronDown :size="15" />
-        </button>
+        </div>
       </div>
 
       <nav class="sidebar__nav" aria-label="管理后台主导航">
@@ -156,11 +170,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
           <div><small>管理平台</small><strong>{{ pageTitle }}</strong></div>
         </div>
         <div class="topbar__actions">
-          <button type="button" class="command-trigger" @click="openCommand">
-            <Search :size="17" /><span>搜索内容、产品或操作</span><kbd><Command :size="11" /> K</kbd>
+          <button ref="commandTrigger" type="button" class="command-trigger" @click="openCommand">
+            <Search :size="17" /><span>快速导航</span><kbd><Command :size="11" /> K</kbd>
           </button>
           <span v-if="auth.isDevelopment" class="environment-chip">开发环境</span>
-          <button class="icon-button" type="button" aria-label="通知"><Bell :size="19" /><i class="notification-dot"></i></button>
         </div>
       </header>
 
@@ -169,13 +182,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
       </main>
     </section>
 
-    <div v-if="ui.commandOpen" class="command-overlay" role="presentation" @click.self="ui.commandOpen = false">
-      <section class="command-panel" role="dialog" aria-modal="true" aria-label="快捷操作">
-        <header><Search :size="20" /><input autofocus aria-label="搜索快捷操作" placeholder="搜索页面或操作…" /><kbd>Esc</kbd></header>
-        <p>快捷操作</p>
-        <RouterLink v-for="action in visibleQuickActions" :key="action.to" :to="action.to" @click="ui.commandOpen = false">
+    <div v-if="ui.commandOpen" class="command-overlay" role="presentation" @click.self="closeCommand">
+      <section class="command-panel" role="dialog" aria-modal="true" aria-label="快速导航">
+        <header><Search :size="20" /><input ref="commandInput" v-model="quickQuery" aria-label="筛选快速导航" placeholder="筛选可用操作…" /><kbd>Esc</kbd></header>
+        <p>快速导航</p>
+        <RouterLink v-for="action in visibleQuickActions" :key="action.to" :to="action.to" @click="closeCommand">
           <span><component :is="action.icon" :size="18" /></span>{{ action.label }}<small>打开</small>
         </RouterLink>
+        <p v-if="!visibleQuickActions.length" class="empty-mini">没有匹配的可用操作。</p>
       </section>
     </div>
   </div>

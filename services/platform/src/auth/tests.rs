@@ -86,6 +86,13 @@ mod tests {
             Some("analytics.read")
         );
         assert_eq!(
+            permission_policy(
+                "/api/admin/v1/dashboard/summary",
+                &axum::http::Method::GET
+            ),
+            Some(AdminPermissionPolicy::Authenticated)
+        );
+        assert_eq!(
             required_permission(
                 "/api/admin/v1/media/assets/00000000-0000-0000-0000-000000000001/references",
                 &axum::http::Method::GET

@@ -49,7 +49,7 @@ export interface PathsPart02 {
         };
         get?: never;
         put?: never;
-        /** Create an immutable manual revision. The legacy publish intent is deprecated; use the explicit publish operation */
+        /** Create an immutable manual revision */
         post: operations["createAdminContentSnapshotV2"];
         delete?: never;
         options?: never;

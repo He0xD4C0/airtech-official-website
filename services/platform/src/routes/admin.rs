@@ -21,9 +21,9 @@ use crate::{
     models::{
         AnalyticsBusinessOutcomes, AnalyticsConsentedMetrics, AnalyticsOverview,
         AnalyticsOverviewRange, ArchiveContentRequest, AuditEvent, BackgroundOperation,
-        ContentDraftV2, ContentRecordV2, ContentRevisionV2, ContentSnapshotIntent,
-        CreateContentSnapshotRequest, CreateOperationRequest, CreateTemporaryOverride, CursorPage,
-        OperationKind, OperationStatus, Product, PublicationStatus, RestoreContentRevisionRequest,
+        ContentDraftV2, ContentRecordV2, ContentRevisionV2, CreateContentSnapshotRequest,
+        CreateOperationRequest, CreateTemporaryOverride, CursorPage, OperationKind,
+        OperationStatus, Product, PublicationStatus, RestoreContentRevisionRequest,
         StartSyncRequest, SyncRun, SyncRunStatus, TemporaryOverride, UnpublishContentRequest,
         UpdatePlatformSettings,
     },

@@ -1,6 +1,6 @@
 //! Administrator identity and access-management path definitions.
 
-use serde_json::{Map, Value};
+use serde_json::{json, Map, Value};
 
 use super::super::support::*;
 
@@ -21,7 +21,20 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
                         json_response("Management users", r("AdminUserRecordPage")),
                     )],
                 ),
-                admin_pagination_params(),
+                {
+                    let mut parameters = admin_pagination_params();
+                    parameters.push(query_param(
+                        "q",
+                        false,
+                        json!({"type": "string", "maxLength": 200}),
+                    ));
+                    parameters.push(query_param(
+                        "status",
+                        false,
+                        string_enum(&["invited", "active", "disabled"]),
+                    ));
+                    parameters
+                },
             ),
             false,
         ),
@@ -163,14 +176,25 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
         "/api/admin/v1/roles",
         "get",
         admin(
-            op(
-                "listAdminRoles",
-                "List role definitions and their permission matrices",
-                "adminIdentity",
-                [(
-                    "200",
-                    json_response("Role definitions", r("AdminRoleRecordPage")),
-                )],
+            params(
+                op(
+                    "listAdminRoles",
+                    "List role definitions and their permission matrices",
+                    "adminIdentity",
+                    [(
+                        "200",
+                        json_response("Role definitions", r("AdminRoleRecordPage")),
+                    )],
+                ),
+                {
+                    let mut parameters = admin_pagination_params();
+                    parameters.push(query_param(
+                        "q",
+                        false,
+                        json!({"type": "string", "maxLength": 200}),
+                    ));
+                    parameters
+                },
             ),
             false,
         ),

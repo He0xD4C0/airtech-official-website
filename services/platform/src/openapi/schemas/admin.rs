@@ -190,7 +190,14 @@ pub(super) fn add(s: &mut Map<String, Value>) {
     ));
     s.insert(
         "BackgroundOperationPage".into(),
-        page("BackgroundOperation"),
+        object(
+            &["items", "nextCursor", "total"],
+            json!({
+                "items": array(r("BackgroundOperation")),
+                "nextCursor": nullable(json!({"type": "string"})),
+                "total": {"type": "integer", "minimum": 0}
+            }),
+        ),
     );
     s.insert(
         "PlatformSettings".into(),

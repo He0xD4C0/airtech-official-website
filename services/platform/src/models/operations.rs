@@ -43,6 +43,14 @@ pub struct BackgroundOperation {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct BackgroundOperationPage {
+    pub items: Vec<BackgroundOperation>,
+    pub next_cursor: Option<String>,
+    pub total: usize,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AuditEvent {
     pub id: Uuid,
     pub actor: String,

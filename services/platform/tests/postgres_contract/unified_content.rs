@@ -207,9 +207,9 @@ async fn unified_cms_round_trips_all_configuration_content_and_revisions() {
         let published = cms_mutation(
             &app,
             Method::POST,
-            &format!("/content/{id}/snapshots"),
+            &format!("/content/{id}/publish"),
             3,
-            json!({"intent": "publish", "reason": "Publish reviewed CMS content"}),
+            json!({"reason": "Publish reviewed CMS content"}),
         )
         .await;
         assert_eq!(published.status(), StatusCode::CREATED, "publish {kind}");

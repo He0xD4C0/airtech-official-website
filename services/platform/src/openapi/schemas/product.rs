@@ -52,6 +52,34 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         })
     ));
     s.insert("ProductPage".into(), product_page());
+    s.insert(
+        "ProductFacetCount".into(),
+        object(
+            &["value", "count"],
+            json!({"value": {"type": "string"}, "count": {"type": "integer", "minimum": 0}}),
+        ),
+    );
+    s.insert(
+        "AdminProductPage".into(),
+        object(
+            &[
+                "items",
+                "nextCursor",
+                "total",
+                "familyCounts",
+                "statusCounts",
+                "dataStateCounts",
+            ],
+            json!({
+                "items": array(r("Product")),
+                "nextCursor": nullable(json!({"type": "string"})),
+                "total": {"type": "integer", "minimum": 0},
+                "familyCounts": array(r("ProductFacetCount")),
+                "statusCounts": array(r("ProductFacetCount")),
+                "dataStateCounts": array(r("ProductFacetCount"))
+            }),
+        ),
+    );
     s.insert("ProductPublicationAction".into(), string_enum(&["publish"]));
     s.insert(
         "ValidationIssue".into(),

@@ -9,6 +9,7 @@ import {
   adminOrigin,
   adminSecondaryStorageStatePath,
   adminStorageStatePath,
+  adminTotpSecretPath,
   apiOrigin,
   browserCookiesForLocalGateway,
   isolatedStack,
@@ -224,13 +225,13 @@ async function upsertAndPublish(
   }
   if (entry.status === 'published' && entry.publishedRevision != null) return
   const document = record(entry.draft)
-  const published = await api.post(`/api/admin/v1/content/${String(entry.id)}/snapshots`, {
+  const published = await api.post(`/api/admin/v1/content/${String(entry.id)}/publish`, {
     headers: {
       'X-CSRF-Token': csrf,
       'Idempotency-Key': randomUUID(),
       'If-Match': `"draft-${Number(document.draftVersion)}"`,
     },
-    data: { intent: 'publish', reason: 'Seed development fixture for the isolated E2E stack' },
+    data: { reason: 'Seed development fixture for the isolated E2E stack' },
   })
   await expectJson(published, `Unable to publish ${String(draft.kind)} fixture`)
 }
@@ -433,6 +434,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
       throw new Error(`Unable to start E2E TOTP enrollment (${enrollment.status()}): ${await enrollment.text()}`)
     }
     const { secret } = await enrollment.json() as { secret: string }
+    await writeFile(adminTotpSecretPath, `${secret}\n`, { encoding: 'utf8', mode: 0o600 })
     const confirmation = await api.post('/api/admin/v1/auth/totp/confirm', {
       headers: { 'X-CSRF-Token': csrf },
       data: { code: totp(secret) },

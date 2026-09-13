@@ -32,6 +32,7 @@ const MEDIA_ASSET_LIST_PERMISSIONS: &[&str] = &["content.read", "media.write"];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AdminPermissionPolicy {
+    Authenticated,
     Exact(&'static str),
     Any(&'static [&'static str]),
 }
@@ -39,6 +40,7 @@ pub enum AdminPermissionPolicy {
 impl AdminPermissionPolicy {
     pub fn allows(self, principal: &AdminPrincipal) -> bool {
         match self {
+            Self::Authenticated => true,
             Self::Exact(permission) => principal.has_permission(permission),
             Self::Any(permissions) => permissions
                 .iter()
@@ -48,6 +50,7 @@ impl AdminPermissionPolicy {
 
     pub fn denied_detail(self) -> String {
         match self {
+            Self::Authenticated => "An authenticated Admin session is required.".into(),
             Self::Exact(permission) => format!("The `{permission}` permission is required."),
             Self::Any(_) => "One of the listed permissions is required.".into(),
         }
@@ -58,7 +61,9 @@ pub fn permission_policy(
     path: &str,
     method: &axum::http::Method,
 ) -> Option<AdminPermissionPolicy> {
-    if path.ends_with("/media/assets") && *method == axum::http::Method::GET {
+    if path.ends_with("/dashboard/summary") && *method == axum::http::Method::GET {
+        Some(AdminPermissionPolicy::Authenticated)
+    } else if path.ends_with("/media/assets") && *method == axum::http::Method::GET {
         Some(AdminPermissionPolicy::Any(MEDIA_ASSET_LIST_PERMISSIONS))
     } else {
         required_permission(path, method).map(AdminPermissionPolicy::Exact)

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { AlertTriangle, ArrowRight, Braces, Cable, Clock3, RefreshCw, ShieldAlert } from 'lucide-vue-next'
 import type { FeishuConnectionStatus, StagingRecord, SyncMapping } from '@airtek/contracts'
 import CursorPaginationControls from '@/components/CursorPaginationControls.vue'
@@ -12,7 +13,11 @@ import { apiErrorMessage } from '@/services/cursorPagination'
 import { useUiStore } from '@/stores/ui'
 
 const ui = useUiStore()
-const activeTab = ref<'staging' | 'conflicts' | 'mapping' | 'runs'>('conflicts')
+type SyncTab = 'staging' | 'conflicts' | 'mapping' | 'runs'
+const tabIds: SyncTab[] = ['staging', 'conflicts', 'mapping', 'runs']
+const route = useRoute()
+const router = useRouter()
+const activeTab = ref<SyncTab>('conflicts')
 const dryRunActive = ref(false)
 const selectedConflictId = ref('')
 const connection = ref<FeishuConnectionStatus | null>(null)
@@ -69,9 +74,19 @@ function displayValue(value: unknown): string {
 const tabs = computed(() => [
   { id: 'staging', label: 'Staging', count: String(stagingTotal.value) },
   { id: 'conflicts', label: '冲突', count: String(conflictTotal.value) },
-  { id: 'mapping', label: '字段映射', count: String(mappings.value.length) },
-  { id: 'runs', label: '运行记录', count: syncRuns.value.length },
+  { id: 'mapping', label: '字段映射', count: '' },
+  { id: 'runs', label: '运行记录', count: '' },
 ] as const)
+
+function selectTab(tab: SyncTab): void {
+  void router.replace({ query: { ...route.query, tab } })
+}
+
+watch(() => route.query.tab, (value) => {
+  activeTab.value = typeof value === 'string' && tabIds.includes(value as SyncTab)
+    ? value as SyncTab
+    : 'conflicts'
+}, { immediate: true })
 
 async function runDryRun(): Promise<void> {
   dryRunActive.value = true
@@ -138,7 +153,7 @@ onMounted(async () => {
 
     <section class="panel sync-panel">
       <div class="tab-bar" role="tablist" aria-label="同步数据视图">
-        <button v-for="tab in tabs" :key="tab.id" type="button" role="tab" :aria-selected="activeTab === tab.id" :class="{ 'is-active': activeTab === tab.id }" @click="activeTab = tab.id">
+        <button v-for="tab in tabs" :key="tab.id" type="button" role="tab" :aria-selected="activeTab === tab.id" :class="{ 'is-active': activeTab === tab.id }" @click="selectTab(tab.id)">
           {{ tab.label }}<span v-if="tab.count">{{ tab.count }}</span>
         </button>
       </div>
@@ -153,7 +168,7 @@ onMounted(async () => {
 
       <div v-else-if="activeTab === 'conflicts'" class="conflict-layout">
         <div class="conflict-list">
-          <header><div><p class="eyebrow">BLOCKING</p><h2>字段冲突</h2></div><StatusBadge :label="`${conflicts.length} 个待处理`" tone="danger" /></header>
+          <header><div><p class="eyebrow">BLOCKING</p><h2>字段冲突</h2></div><StatusBadge :label="`${conflictTotal} 个待处理`" tone="danger" /></header>
           <button v-for="conflict in conflicts" :key="conflict.id" type="button" class="conflict-item" :class="{ 'is-active': selectedConflict?.id === conflict.id }" @click="selectedConflictId = conflict.id"><AlertTriangle :size="18" /><span><strong>{{ conflict.sourceRecordId }}</strong><small>{{ conflict.diffs.length }} 个字段差异</small></span><ArrowRight :size="15" /></button>
           <CursorPaginationControls
             :item-count="conflicts.length"

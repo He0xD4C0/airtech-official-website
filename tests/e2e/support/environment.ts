@@ -16,6 +16,8 @@ export const adminStorageStatePath = process.env.E2E_ADMIN_STORAGE_STATE
   ?? path.resolve('test-results/playwright/e2e-admin-storage-state.json')
 export const adminSecondaryStorageStatePath = process.env.E2E_ADMIN_SECONDARY_STORAGE_STATE
   ?? path.resolve('test-results/playwright/e2e-admin-secondary-storage-state.json')
+export const adminTotpSecretPath = process.env.E2E_ADMIN_TOTP_SECRET
+  ?? path.resolve('test-results/playwright/e2e-admin-totp-secret.txt')
 
 export const administrator = {
   displayName: 'AIRTEK E2E Administrator',

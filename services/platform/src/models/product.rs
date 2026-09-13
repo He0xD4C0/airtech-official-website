@@ -100,6 +100,24 @@ pub struct ProductPublicationReport {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ProductFacetCount {
+    pub value: String,
+    pub count: usize,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminProductPage {
+    pub items: Vec<Product>,
+    pub next_cursor: Option<String>,
+    pub total: usize,
+    pub family_counts: Vec<ProductFacetCount>,
+    pub status_counts: Vec<ProductFacetCount>,
+    pub data_state_counts: Vec<ProductFacetCount>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProductQuery {
     pub family: Option<ProductFamily>,
     pub motor_technology: Option<String>,

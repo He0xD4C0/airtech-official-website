@@ -6,6 +6,13 @@
 import type { components } from '../components'
 
 export interface SchemasPart02 {
+ContentPreviewResponse: {
+            content: components["schemas"]["PublicContentProjection"];
+            /** Format: date-time */
+            previewExpiresAt: string;
+        };
+/** @enum {string} */
+        ContentPublicationAction: "save" | "publish" | "unpublish";
 ContentPublicationReadiness: {
             allowedActions: components["schemas"]["ContentPublicationAction"][];
             /** Format: uuid */
@@ -76,7 +83,7 @@ ContentRevisionV2Page: {
             nextCursor: string | null;
         };
 /** @enum {string} */
-        ContentSnapshotIntent: "manual" | "publish";
+        ContentSnapshotIntent: "manual";
 ContentTemplateDefinition: {
             allowedBlocks: components["schemas"]["ContentBlockKind"][];
             bodyPolicy: components["schemas"]["CmsBodyPolicy"];
@@ -486,13 +493,5 @@ GuestVisitAggregate: {
             rfqStarts: number;
             rfqSubmissions: number;
             visits: number;
-        };
-GuestVisitAggregatePage: {
-            items: components["schemas"]["GuestVisitAggregate"][];
-            nextCursor: string | null;
-        };
-GuestVisitPage: {
-            items: components["schemas"]["GuestVisit"][];
-            nextCursor: string | null;
         };
 }

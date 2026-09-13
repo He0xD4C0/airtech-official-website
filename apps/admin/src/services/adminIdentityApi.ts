@@ -1,4 +1,5 @@
 import { adminContractClient, cursorQuery, randomRequestId, revisionEtag } from './adminApiTransport'
+import type { AdminRoleRecordPage, AdminUserRecordPage } from '@airtek/contracts'
 import type {
   AdminRoleRecord,
   AdminUserRecord,
@@ -9,10 +10,19 @@ import type {
   UserInvitation,
 } from './adminApiTypes'
 
+export interface IdentityListRequest extends CursorPageRequest {
+  q?: string
+  status?: 'invited' | 'active' | 'disabled'
+}
+
 export const adminIdentityApi = {
-  async listUsers(pagination?: CursorPageRequest): Promise<CursorPage<AdminUserRecord>> {
+  async listUsers(request: IdentityListRequest = {}): Promise<AdminUserRecordPage> {
     const result = await adminContractClient.get('/api/admin/v1/users', {
-      parameters: { query: cursorQuery(pagination) },
+      parameters: { query: {
+        ...cursorQuery(request),
+        ...(request.q?.trim() ? { q: request.q.trim() } : {}),
+        ...(request.status ? { status: request.status } : {}),
+      } },
     })
     return result.data
   },
@@ -61,9 +71,13 @@ export const adminIdentityApi = {
     })
   },
 
-  async listRoles(_pagination?: CursorPageRequest): Promise<CursorPage<AdminRoleRecord>> {
-    void _pagination
-    const result = await adminContractClient.get('/api/admin/v1/roles')
+  async listRoles(request: Pick<IdentityListRequest, 'cursor' | 'limit' | 'q'> = {}): Promise<AdminRoleRecordPage> {
+    const result = await adminContractClient.get('/api/admin/v1/roles', {
+      parameters: { query: {
+        ...cursorQuery(request),
+        ...(request.q?.trim() ? { q: request.q.trim() } : {}),
+      } },
+    })
     return result.data
   },
 

@@ -15,6 +15,13 @@ fn product_list_params() -> Vec<Value> {
             "description": "Case-insensitive stable id, model, or title search."
         }),
     ));
+    values.push(query_param("family", false, r("ProductFamily")));
+    values.push(query_param("status", false, r("PublicationStatus")));
+    values.push(query_param(
+        "dataState",
+        false,
+        string_enum(&["verified", "pending"]),
+    ));
     values
 }
 
@@ -30,7 +37,10 @@ pub(super) fn add_publication_and_sync(paths: &mut Map<String, Value>) {
                     "listAdminProducts",
                     "List product working records",
                     "adminCatalog",
-                    [("200", json_response("Product records", r("ProductPage")))],
+                    [(
+                        "200",
+                        json_response("Product records", r("AdminProductPage")),
+                    )],
                 ),
                 product_list_params(),
             ),

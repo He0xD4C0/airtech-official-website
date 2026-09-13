@@ -17,9 +17,9 @@ async fn concurrent_source_publish_and_target_unpublish_have_one_atomic_winner()
     let target_publish = cms_mutation(
         &setup_admin,
         Method::POST,
-        &format!("/content/{target_id}/snapshots"),
+        &format!("/content/{target_id}/publish"),
         1,
-        json!({"intent": "publish", "reason": "Publish concurrent target fixture"}),
+        json!({"reason": "Publish concurrent target fixture"}),
     )
     .await;
     assert_eq!(target_publish.status(), StatusCode::CREATED);
@@ -50,9 +50,9 @@ async fn concurrent_source_publish_and_target_unpublish_have_one_atomic_winner()
         cms_mutation(
             &publish_admin,
             Method::POST,
-            &format!("/content/{source_id}/snapshots"),
+            &format!("/content/{source_id}/publish"),
             1,
-            json!({"intent": "publish", "reason": "Race target unpublication"}),
+            json!({"reason": "Race target unpublication"}),
         )
         .await
     });

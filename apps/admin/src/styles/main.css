@@ -302,7 +302,7 @@ input[type='radio'] {
 .metric-card__icon--slate { background: #edf1f1; color: var(--admin-text); }
 .metric-card p { margin-bottom: 0.22rem; color: var(--admin-muted); font-size: 0.7rem; font-weight: 650; }
 .metric-card strong { display: block; margin-bottom: 0.16rem; color: var(--admin-text); font-size: 1.46rem; letter-spacing: -0.035em; line-height: 1.1; }
-.metric-card span { display: block; overflow: hidden; color: #718482; font-size: 0.66rem; text-overflow: ellipsis; white-space: nowrap; }
+.metric-card span { display: block; overflow: hidden; color: var(--admin-muted); font-size: 0.66rem; text-overflow: ellipsis; white-space: nowrap; }
 
 .field {
   display: flex;

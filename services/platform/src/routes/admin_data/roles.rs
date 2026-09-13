@@ -1,6 +1,8 @@
 async fn list_roles(
     State(state): State<AppState>,
-) -> Result<Json<CursorPage<AdminRoleRecord>>, ApiError> {
+    Query(query): Query<IdentityListQuery>,
+) -> Result<Json<crate::models::AdminRolePage>, ApiError> {
+    let search = identity_query_text(query.q)?.map(|value| value.to_lowercase());
     let roles = if let Some(pool) = &state.pool {
         let rows = sqlx::query(
             r#"SELECT role.id,role.key,role.display_name,role.system_role,role.revision,
@@ -39,7 +41,25 @@ async fn list_roles(
             })
             .collect()
     };
-    Ok(Json(CursorPage::all(roles)))
+    let mut roles = roles;
+    roles.retain(|role| search.as_ref().is_none_or(|needle| {
+        format!("{} {} {}", role.key, role.display_name, role.permissions.join(" "))
+            .to_lowercase()
+            .contains(needle)
+    }));
+    let total = roles.len();
+    let scope = format!("admin.roles|{search:?}");
+    let page = crate::pagination::paginate_by_id_scoped(
+        &scope,
+        roles,
+        CursorQuery { cursor: query.cursor, limit: query.limit },
+        |role| role.id,
+    )?;
+    Ok(Json(crate::models::AdminRolePage {
+        items: page.items,
+        next_cursor: page.next_cursor,
+        total,
+    }))
 }
 
 async fn get_role(

@@ -1,14 +1,37 @@
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OperationListQuery {
+    cursor: Option<String>,
+    limit: Option<usize>,
+    status: Option<OperationStatus>,
+    kind: Option<OperationKind>,
+}
+
 async fn list_operations(
     State(state): State<AppState>,
-    Query(query): Query<CursorQuery>,
-) -> Result<Json<CursorPage<BackgroundOperation>>, ApiError> {
-    let values = state.list_operations().await?;
-    Ok(Json(paginate_by_id(
-        "admin.operations",
+    Query(query): Query<OperationListQuery>,
+) -> Result<Json<crate::models::BackgroundOperationPage>, ApiError> {
+    let mut values = state.list_operations().await?;
+    values.retain(|operation| {
+        query.status.is_none_or(|status| operation.status == status)
+            && query.kind.is_none_or(|kind| operation.kind == kind)
+    });
+    let total = values.len();
+    let scope = format!("admin.operations|{:?}|{:?}", query.status, query.kind);
+    let page = crate::pagination::paginate_by_id_scoped(
+        &scope,
         values,
-        query,
+        CursorQuery {
+            cursor: query.cursor,
+            limit: query.limit,
+        },
         |operation| operation.id,
-    )?))
+    )?;
+    Ok(Json(crate::models::BackgroundOperationPage {
+        items: page.items,
+        next_cursor: page.next_cursor,
+        total,
+    }))
 }
 
 async fn create_operation(

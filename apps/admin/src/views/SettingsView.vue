@@ -45,6 +45,11 @@ const visibleTabs = computed(() => accountSecurityOnly ? tabs.filter((tab) => ta
 
 const activeTitle = computed(() => tabs.find((tab) => tab.id === active.value)?.label ?? '基本设置')
 
+function selectTab(section: string): void {
+  if (accountSecurityOnly) return
+  void router.replace({ name: 'settings', params: { section } })
+}
+
 function applySettings(settings: PlatformSettings, etag: string): void {
   loadedSettings.value = settings
   retentionDays.value = settings.rfqRetentionDays
@@ -203,6 +208,11 @@ function formatTime(value: string): string {
 watch(active, (section) => {
   if (section === 'security') void loadSessions()
 }, { immediate: true })
+watch(() => route.params.section, (value) => {
+  if (accountSecurityOnly) return
+  const section = typeof value === 'string' && tabs.some((tab) => tab.id === value) ? value : 'general'
+  active.value = section
+}, { immediate: true })
 
 void loadSettings()
 </script>
@@ -216,7 +226,7 @@ void loadSettings()
     <div v-if="accountSecurityOnly || settingsState === 'ready'" class="status-banner"><span>{{ active === 'security' ? '实时身份服务' : '实时业务设置' }}</span><p>{{ active === 'security' ? 'TOTP、恢复码与会话操作直接调用受认证、CSRF 保护且可审计的 API。' : `三个业务策略值由 Settings API 管理；当前 ${settingsEtag}。部署凭据与 origin 始终只读。` }}</p></div>
 
     <section class="settings-layout">
-      <nav class="settings-nav panel" aria-label="设置导航"><button v-for="tab in visibleTabs" :key="tab.id" type="button" :class="{ 'is-active': active === tab.id }" @click="active = tab.id"><component :is="tab.icon" :size="17" />{{ tab.label }}</button></nav>
+      <nav class="settings-nav panel" aria-label="设置导航"><button v-for="tab in visibleTabs" :key="tab.id" type="button" :class="{ 'is-active': active === tab.id }" @click="selectTab(tab.id)"><component :is="tab.icon" :size="17" />{{ tab.label }}</button></nav>
 
       <DataStatePanel
         v-if="!accountSecurityOnly && settingsState !== 'ready'"

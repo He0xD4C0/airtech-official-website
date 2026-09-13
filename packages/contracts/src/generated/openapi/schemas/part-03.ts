@@ -6,6 +6,14 @@
 import type { components } from '../components'
 
 export interface SchemasPart03 {
+GuestVisitAggregatePage: {
+            items: components["schemas"]["GuestVisitAggregate"][];
+            nextCursor: string | null;
+        };
+GuestVisitPage: {
+            items: components["schemas"]["GuestVisit"][];
+            nextCursor: string | null;
+        };
 HealthStatus: {
             persistence: string;
             service: string;
@@ -315,6 +323,10 @@ ProductContext: {
             /** Format: int64 */
             publishedRevision: number;
             stableId: string;
+        };
+ProductFacetCount: {
+            count: number;
+            value: string;
         };
 /** @enum {string} */
         ProductFamily: "centrifugal" | "axial" | "crossFlow" | "inlineDuct" | "motors";

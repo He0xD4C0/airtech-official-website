@@ -1,12 +1,19 @@
 async fn list_users(
     State(state): State<AppState>,
-    Query(query): Query<CursorQuery>,
-) -> Result<Json<CursorPage<AdminUserRecord>>, ApiError> {
+    Query(query): Query<IdentityListQuery>,
+) -> Result<Json<crate::models::AdminUserPage>, ApiError> {
+    let search = identity_query_text(query.q)?.map(|value| value.to_lowercase());
+    let status = query
+        .status
+        .map(|value| match value.as_str() {
+            "invited" | "active" | "disabled" => Ok(value),
+            _ => Err(ApiError::bad_request("status is not a controlled user state.")),
+        })
+        .transpose()?;
     let mut users = if let Some(pool) = &state.pool {
         let rows = sqlx::query(
             r#"SELECT user_account.id,user_account.email,user_account.display_name,
                       user_account.locale,user_account.status,user_account.revision,
-                      user_account.revision,
                       user_account.totp_confirmed_at IS NOT NULL AS totp_enabled,
                       user_account.invited_at,user_account.last_login_at,
                       user_account.created_at,user_account.updated_at,
@@ -47,9 +54,30 @@ async fn list_users(
             .collect()
     };
     users.sort_by_key(|user| std::cmp::Reverse(user.created_at));
-    Ok(Json(paginate_by_id("admin.users", users, query, |user| {
-        user.id
-    })?))
+    users.retain(|user| {
+        status.as_ref().is_none_or(|value| &user.status == value)
+            && search.as_ref().is_none_or(|needle| {
+                format!("{} {} {}", user.display_name, user.email, user.roles.join(" "))
+                    .to_lowercase()
+                    .contains(needle)
+            })
+    });
+    let total = users.len();
+    let scope = format!("admin.users|{search:?}|{status:?}");
+    let page = crate::pagination::paginate_by_id_scoped(
+        &scope,
+        users,
+        CursorQuery {
+            cursor: query.cursor,
+            limit: query.limit,
+        },
+        |user| user.id,
+    )?;
+    Ok(Json(crate::models::AdminUserPage {
+        items: page.items,
+        next_cursor: page.next_cursor,
+        total,
+    }))
 }
 
 async fn get_user(

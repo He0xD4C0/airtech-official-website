@@ -47,9 +47,9 @@ async fn cms_unpublish_blocks_active_reverse_dependencies_then_removes_projectio
     let target_publish = cms_mutation(
         &admin,
         Method::POST,
-        &format!("/content/{target_id}/snapshots"),
+        &format!("/content/{target_id}/publish"),
         1,
-        json!({"intent": "publish", "reason": "Publish dependency target fixture"}),
+        json!({"reason": "Publish dependency target fixture"}),
     )
     .await;
     assert_eq!(target_publish.status(), StatusCode::CREATED);
@@ -65,9 +65,9 @@ async fn cms_unpublish_blocks_active_reverse_dependencies_then_removes_projectio
     let source_publish = cms_mutation(
         &admin,
         Method::POST,
-        &format!("/content/{source_id}/snapshots"),
+        &format!("/content/{source_id}/publish"),
         1,
-        json!({"intent": "publish", "reason": "Publish dependency source fixture"}),
+        json!({"reason": "Publish dependency source fixture"}),
     )
     .await;
     assert_eq!(source_publish.status(), StatusCode::CREATED);
@@ -210,9 +210,9 @@ async fn blocked_dependency_publication_leaves_no_revision_route_or_side_effects
     let rejected = cms_mutation(
         &admin,
         Method::POST,
-        &format!("/content/{content_id}/snapshots"),
+        &format!("/content/{content_id}/publish"),
         1,
-        json!({"intent": "publish", "reason": "Reject a missing dependency target"}),
+        json!({"reason": "Reject a missing dependency target"}),
     )
     .await;
     assert_eq!(rejected.status(), StatusCode::UNPROCESSABLE_ENTITY);
@@ -331,9 +331,9 @@ async fn publication_accepts_an_existing_direct_media_asset() {
     let published = cms_mutation(
         &admin,
         Method::POST,
-        &format!("/content/{content_id}/snapshots"),
+        &format!("/content/{content_id}/publish"),
         1,
-        json!({"intent": "publish", "reason": "Publish a direct media reference"}),
+        json!({"reason": "Publish a direct media reference"}),
     )
     .await;
     assert_eq!(published.status(), StatusCode::CREATED);

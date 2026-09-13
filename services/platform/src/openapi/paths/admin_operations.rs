@@ -66,12 +66,30 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
         ),
     );
 
-    add_admin_list(
+    add(
         paths,
         "/api/admin/v1/operations",
-        "listBackgroundOperations",
-        "List predefined background operations",
-        "BackgroundOperationPage",
+        "get",
+        admin(
+            params(
+                op(
+                    "listBackgroundOperations",
+                    "List predefined background operations",
+                    "adminOperations",
+                    [(
+                        "200",
+                        json_response("Background operations", r("BackgroundOperationPage")),
+                    )],
+                ),
+                {
+                    let mut parameters = admin_pagination_params();
+                    parameters.push(query_param("status", false, r("OperationStatus")));
+                    parameters.push(query_param("kind", false, r("OperationKind")));
+                    parameters
+                },
+            ),
+            false,
+        ),
     );
     let create_operation = params(
         body(

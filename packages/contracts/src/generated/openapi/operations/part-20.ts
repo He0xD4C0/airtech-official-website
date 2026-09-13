@@ -130,6 +130,8 @@ listAdminUsers: {
                 cursor?: string;
                 /** @description Page size; values outside 1 through 100 return Problem Details 400. */
                 limit?: number;
+                q?: string;
+                status?: "invited" | "active" | "disabled";
             };
             header?: never;
             path?: never;

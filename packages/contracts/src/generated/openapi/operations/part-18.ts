@@ -129,7 +129,13 @@ updateRfqInboxStatus: {
     };
 listAdminRoles: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Opaque endpoint-scoped cursor returned by the previous page. */
+                cursor?: string;
+                /** @description Page size; values outside 1 through 100 return Problem Details 400. */
+                limit?: number;
+                q?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;

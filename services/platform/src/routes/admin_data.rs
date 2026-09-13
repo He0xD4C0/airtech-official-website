@@ -93,6 +93,29 @@ struct AnalyticsQuery {
     limit: Option<usize>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct IdentityListQuery {
+    cursor: Option<String>,
+    limit: Option<usize>,
+    q: Option<String>,
+    status: Option<String>,
+}
+
+fn identity_query_text(value: Option<String>) -> Result<Option<String>, ApiError> {
+    let value = value
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty());
+    if value
+        .as_ref()
+        .is_some_and(|value| value.chars().count() > 200)
+    {
+        Err(ApiError::bad_request("q must not exceed 200 characters."))
+    } else {
+        Ok(value)
+    }
+}
+
 impl AnalyticsQuery {
     fn pagination(&self) -> CursorQuery {
         CursorQuery {

@@ -13,10 +13,16 @@ pub enum ContentSnapshotIntent {
     Publish,
 }
 
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum ManualSnapshotIntent {
+    Manual,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CreateContentSnapshotRequest {
-    pub intent: ContentSnapshotIntent,
+    pub intent: ManualSnapshotIntent,
     pub reason: String,
 }
 

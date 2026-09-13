@@ -136,6 +136,58 @@
           }
         ]
       },
+      "AdminProductPage": {
+        "additionalProperties": false,
+        "properties": {
+          "dataStateCounts": {
+            "items": {
+              "$ref": "#/components/schemas/ProductFacetCount"
+            },
+            "type": "array"
+          },
+          "familyCounts": {
+            "items": {
+              "$ref": "#/components/schemas/ProductFacetCount"
+            },
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "statusCounts": {
+            "items": {
+              "$ref": "#/components/schemas/ProductFacetCount"
+            },
+            "type": "array"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "total",
+          "familyCounts",
+          "statusCounts",
+          "dataStateCounts"
+        ],
+        "type": "object"
+      },
       "AdminRoleRecord": {
         "additionalProperties": false,
         "properties": {
@@ -192,11 +244,16 @@
                 "type": "null"
               }
             ]
+          },
+          "total": {
+            "minimum": 0,
+            "type": "integer"
           }
         },
         "required": [
           "items",
-          "nextCursor"
+          "nextCursor",
+          "total"
         ],
         "type": "object"
       },
@@ -336,11 +393,16 @@
                 "type": "null"
               }
             ]
+          },
+          "total": {
+            "minimum": 0,
+            "type": "integer"
           }
         },
         "required": [
           "items",
-          "nextCursor"
+          "nextCursor",
+          "total"
         ],
         "type": "object"
       },
@@ -1109,11 +1171,16 @@
                 "type": "null"
               }
             ]
+          },
+          "total": {
+            "minimum": 0,
+            "type": "integer"
           }
         },
         "required": [
           "items",
-          "nextCursor"
+          "nextCursor",
+          "total"
         ],
         "type": "object"
       },
@@ -2609,8 +2676,7 @@
       },
       "ContentSnapshotIntent": {
         "enum": [
-          "manual",
-          "publish"
+          "manual"
         ],
         "type": "string"
       },
@@ -6258,6 +6324,23 @@
           "productId",
           "stableId",
           "publishedRevision"
+        ],
+        "type": "object"
+      },
+      "ProductFacetCount": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "count"
         ],
         "type": "object"
       },
@@ -15084,7 +15167,7 @@
             "csrfToken": []
           }
         ],
-        "summary": "Create an immutable manual revision. The legacy publish intent is deprecated; use the explicit publish operation",
+        "summary": "Create an immutable manual revision",
         "tags": [
           "adminContent"
         ]
@@ -17179,6 +17262,22 @@
               "minimum": 1,
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/OperationStatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/OperationKind"
+            }
           }
         ],
         "responses": {
@@ -17190,7 +17289,7 @@
                 }
               }
             },
-            "description": "Collection"
+            "description": "Background operations"
           },
           "400": {
             "content": {
@@ -17300,7 +17399,7 @@
         ],
         "summary": "List predefined background operations",
         "tags": [
-          "admin"
+          "adminOperations"
         ]
       },
       "post": {
@@ -17780,6 +17879,34 @@
               "maxLength": 200,
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "family",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ProductFamily"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/PublicationStatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dataState",
+            "required": false,
+            "schema": {
+              "enum": [
+                "verified",
+                "pending"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -17787,7 +17914,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProductPage"
+                  "$ref": "#/components/schemas/AdminProductPage"
                 }
               }
             },
@@ -20535,6 +20662,40 @@
     "/api/admin/v1/roles": {
       "get": {
         "operationId": "listAdminRoles",
+        "parameters": [
+          {
+            "description": "Opaque endpoint-scoped cursor returned by the previous page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page size; values outside 1 through 100 return Problem Details 400.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -21730,6 +21891,28 @@
               "maximum": 100,
               "minimum": 1,
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "invited",
+                "active",
+                "disabled"
+              ],
+              "type": "string"
             }
           }
         ],

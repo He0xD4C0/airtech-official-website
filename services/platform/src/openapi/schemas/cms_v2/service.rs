@@ -15,10 +15,7 @@ fn add_enums_and_requests(s: &mut Map<String, Value>) {
         "ContentRevisionKindV2".into(),
         string_enum(&["manual", "publish", "restore"]),
     );
-    s.insert(
-        "ContentSnapshotIntent".into(),
-        string_enum(&["manual", "publish"]),
-    );
+    s.insert("ContentSnapshotIntent".into(), string_enum(&["manual"]));
     s.insert(
         "CreateContentSnapshotRequest".into(),
         object(

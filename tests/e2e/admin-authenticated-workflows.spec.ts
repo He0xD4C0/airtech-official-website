@@ -21,7 +21,9 @@ test.describe('Authenticated Admin workflows against Rust and PostgreSQL', () =>
 
   test('creates and publishes News through the unified content editor', async ({ page }) => {
     await page.goto(absolute(adminOrigin, '/content/new'))
-    await page.locator('input[type="radio"][value="newsDetail"]').check()
+    const templateCards = page.locator('.create-form__cards')
+    await templateCards.getByRole('button', { name: /^新闻 /u }).click()
+    await templateCards.getByRole('button').filter({ hasText: 'newsDetail' }).click()
     await page.getByLabel('标题', { exact: true }).fill('AIRTEK E2E publication')
     await page.getByLabel(/Slug/u).fill('airtek-e2e-publication')
     await page.getByRole('button', { name: '创建草稿' }).click()

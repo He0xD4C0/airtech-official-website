@@ -42,9 +42,9 @@ async fn archive_never_implicitly_unpublishes_and_requires_an_explicit_restore_b
     let published = cms_mutation(
         &admin,
         Method::POST,
-        &format!("/content/{id}/snapshots"),
+        &format!("/content/{id}/publish"),
         1,
-        json!({"intent": "publish", "reason": "Publish archive lifecycle fixture"}),
+        json!({"reason": "Publish archive lifecycle fixture"}),
     )
     .await;
     assert_eq!(published.status(), StatusCode::CREATED);
@@ -106,9 +106,9 @@ async fn archive_never_implicitly_unpublishes_and_requires_an_explicit_restore_b
     let republish = cms_mutation(
         &admin,
         Method::POST,
-        &format!("/content/{id}/snapshots"),
+        &format!("/content/{id}/publish"),
         1,
-        json!({"intent": "publish", "reason": "Archived content must not silently revive"}),
+        json!({"reason": "Archived content must not silently revive"}),
     )
     .await;
     assert_eq!(republish.status(), StatusCode::CONFLICT);

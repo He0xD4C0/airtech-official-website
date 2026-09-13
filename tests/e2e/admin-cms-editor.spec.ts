@@ -33,6 +33,12 @@ async function analyzeStable(page: Page): Promise<Awaited<ReturnType<AxeBuilder[
   return new AxeBuilder({ page }).analyze()
 }
 
+async function chooseArticleTemplate(page: Page): Promise<void> {
+  const cards = page.locator('.create-form__cards')
+  await cards.getByRole('button', { name: /^文章 /u }).click()
+  await cards.getByRole('button').filter({ hasText: 'articleDetail' }).click()
+}
+
 test.describe('Unified CMS content editor', () => {
   test.skip(!runAdminWorkflows, 'Run through pnpm test:e2e:stack so mutations use a disposable PostgreSQL volume.')
   test.describe.configure({ mode: 'serial' })
@@ -62,7 +68,7 @@ test.describe('Unified CMS content editor', () => {
   test('creates, autosaves and reloads a draft without switching kind or template', async ({ page }, testInfo) => {
     const slug = `e2e-cms-round-trip-${testInfo.workerIndex}-${testInfo.retry}`
     await page.goto(absolute(adminOrigin, '/content/new'))
-    await page.locator('input[type="radio"][value="articleDetail"]').check()
+    await chooseArticleTemplate(page)
     await page.getByLabel('标题', { exact: true }).fill('E2E CMS round trip')
     await page.getByLabel(/Slug/u).fill(slug)
     await page.getByRole('button', { name: '创建草稿' }).click()
@@ -82,7 +88,7 @@ test.describe('Unified CMS content editor', () => {
   test('derives canonical as a read-only value', async ({ page }, testInfo) => {
     const slug = `e2e-canonical-derivation-${testInfo.workerIndex}-${testInfo.retry}`
     await page.goto(absolute(adminOrigin, '/content/new'))
-    await page.locator('input[type="radio"][value="articleDetail"]').check()
+    await chooseArticleTemplate(page)
     await page.getByLabel('标题', { exact: true }).fill('E2E canonical derivation')
     await page.getByLabel(/Slug/u).fill(slug)
     await page.getByRole('button', { name: '创建草稿' }).click()
@@ -107,7 +113,7 @@ test.describe('Unified CMS content editor', () => {
 
     try {
       await pageA.goto(absolute(adminOrigin, '/content/new'))
-      await pageA.locator('input[type="radio"][value="articleDetail"]').check()
+      await chooseArticleTemplate(pageA)
       await pageA.getByLabel('标题', { exact: true }).fill(initialTitle)
       await pageA.getByLabel(/Slug/u).fill(slug)
       await pageA.getByRole('button', { name: '创建草稿' }).click()
@@ -208,7 +214,7 @@ test.describe('Unified CMS content editor', () => {
     const createResults = await analyzeStable(page)
     expect(describeViolations(createResults.violations)).toBe('')
 
-    await page.locator('input[type="radio"][value="articleDetail"]').check()
+    await chooseArticleTemplate(page)
     await page.getByLabel('标题', { exact: true }).fill('E2E keyboard editor')
     await page.getByLabel(/Slug/u).fill(`e2e-keyboard-editor-${testInfo.workerIndex}-${testInfo.retry}`)
     await page.getByRole('button', { name: '创建草稿' }).click()

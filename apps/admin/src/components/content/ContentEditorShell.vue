@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft, CloudDownload, FileJson2, History, Save, Send, Settings2, ShieldAlert } from 'lucide-vue-next'
 import type {
@@ -13,17 +13,7 @@ import type {
   RelationTargetReference,
   SeoInputV2,
 } from '@airtek/contracts'
-import BlockInspector from '@/components/content/BlockInspector.vue'
-import CompositionEditor from '@/components/content/CompositionEditor.vue'
-import ConflictDialog from '@/components/content/ConflictDialog.vue'
-import ContentMediaBlockDialog from '@/components/content/ContentMediaBlockDialog.vue'
 import ContentOutline from '@/components/content/ContentOutline.vue'
-import ContentPublishDialog from '@/components/content/ContentPublishDialog.vue'
-import RevisionDiff from '@/components/content/RevisionDiff.vue'
-import RevisionTimeline from '@/components/content/RevisionTimeline.vue'
-import SeoInspector from '@/components/content/SeoInspector.vue'
-import StructuredBodyEditor from '@/components/content/StructuredBodyEditor.vue'
-import TypeFieldsPanel from '@/components/content/TypeFieldsPanel.vue'
 import DataStatePanel from '@/components/DataStatePanel.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { contentKindLabels, contentStatusLabels } from '@/components/content/labels'
@@ -32,6 +22,17 @@ import { defaultBlock, newDraftId } from '@/services/contentDraftDefaults'
 import { apiErrorMessage } from '@/services/cursorPagination'
 import { useContentEditorStore } from '@/stores/contentEditor'
 import { useUiStore } from '@/stores/ui'
+
+const BlockInspector = defineAsyncComponent(() => import('@/components/content/BlockInspector.vue'))
+const CompositionEditor = defineAsyncComponent(() => import('@/components/content/CompositionEditor.vue'))
+const ConflictDialog = defineAsyncComponent(() => import('@/components/content/ConflictDialog.vue'))
+const ContentMediaBlockDialog = defineAsyncComponent(() => import('@/components/content/ContentMediaBlockDialog.vue'))
+const ContentPublishDialog = defineAsyncComponent(() => import('@/components/content/ContentPublishDialog.vue'))
+const RevisionDiff = defineAsyncComponent(() => import('@/components/content/RevisionDiff.vue'))
+const RevisionTimeline = defineAsyncComponent(() => import('@/components/content/RevisionTimeline.vue'))
+const SeoInspector = defineAsyncComponent(() => import('@/components/content/SeoInspector.vue'))
+const StructuredBodyEditor = defineAsyncComponent(() => import('@/components/content/StructuredBodyEditor.vue'))
+const TypeFieldsPanel = defineAsyncComponent(() => import('@/components/content/TypeFieldsPanel.vue'))
 
 const MANUAL_SNAPSHOT_REASON = 'Create a manual snapshot from the Admin CMS editor'
 

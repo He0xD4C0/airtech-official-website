@@ -356,9 +356,12 @@ listAdminProducts: {
             query?: {
                 /** @description Opaque endpoint-scoped cursor returned by the previous page. */
                 cursor?: string;
+                dataState?: "verified" | "pending";
+                family?: components["schemas"]["ProductFamily"];
                 /** @description Page size; values outside 1 through 100 return Problem Details 400. */
                 limit?: number;
                 q?: string;
+                status?: components["schemas"]["PublicationStatus"];
             };
             header?: never;
             path?: never;
@@ -372,7 +375,7 @@ listAdminProducts: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProductPage"];
+                    "application/json": components["schemas"]["AdminProductPage"];
                 };
             };
             /** @description Malformed request */

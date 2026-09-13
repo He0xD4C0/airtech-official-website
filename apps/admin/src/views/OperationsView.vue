@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import type { OperationKind, OperationStatus } from '@airtek/contracts'
 import { AlertTriangle, CheckCircle2, Clock3, Database, HardDriveDownload, History, Play, RefreshCw, SearchCheck, ShieldAlert, X } from 'lucide-vue-next'
 import CursorPaginationControls from '@/components/CursorPaginationControls.vue'
 import DataStatePanel from '@/components/DataStatePanel.vue'
@@ -10,10 +12,23 @@ import { adminApi, type BackendOperation } from '@/services/adminApi'
 import { useUiStore } from '@/stores/ui'
 
 const ui = useUiStore()
+const route = useRoute()
+const router = useRouter()
 const selectedTask = ref<string | null>(null)
 const confirmation = ref('')
 const otp = ref('')
-const operationPager = useCursorPagination<BackendOperation>(adminApi.listOperations, {
+const statusFilter = ref<OperationStatus | ''>('')
+const kindFilter = ref<OperationKind | ''>('')
+const total = ref(0)
+const operationPager = useCursorPagination<BackendOperation>(async (pagination) => {
+  const page = await adminApi.listOperations({
+    ...pagination,
+    status: statusFilter.value || undefined,
+    kind: kindFilter.value || undefined,
+  })
+  total.value = page.total
+  return page
+}, {
   errorMessage: '请检查 API 会话。',
   onError: (message) => ui.toast('任务记录读取失败', message, 'danger'),
 })
@@ -32,6 +47,17 @@ const tasks = [
   { id: 'retentionApply', name: '执行保留期清理', detail: '处理已过宽限期的 PII，保留匿名聚合与审计', icon: History, risk: 'high', confirmation: 'APPLY RETENTION' },
   { id: 'searchReindex', name: '重建搜索索引', detail: '从 published projection 重建 FTS 与 trigram 索引', icon: SearchCheck, risk: 'low', confirmation: 'REBUILD SEARCH INDEX' },
 ]
+const operationKinds: Array<{ id: OperationKind; label: string }> = [
+  { id: 'migrationPreflight', label: 'Flyway 状态检查' },
+  { id: 'migrationApply', label: 'Flyway 部署迁移' },
+  { id: 'backup', label: '创建备份' },
+  { id: 'restoreValidate', label: '恢复演练' },
+  { id: 'retentionApply', label: '保留期清理' },
+  { id: 'searchReindex', label: '搜索重建' },
+  { id: 'cacheInvalidate', label: '缓存失效' },
+  { id: 'feishuSync', label: 'Feishu 同步' },
+  { id: 'productImport', label: '产品导入' },
+]
 
 const operation = computed(() => tasks.find((task) => task.id === selectedTask.value))
 const ready = computed(() => Boolean(operation.value) && confirmation.value === operation.value?.confirmation && /^\d{6,8}$/.test(otp.value))
@@ -46,7 +72,7 @@ async function runTask(): Promise<void> {
   if (!ready.value) return
   try {
     const run = await adminApi.createOperation(operation.value!.id, `${operation.value!.name} requested through the controlled Admin Web workflow.`, operation.value!.confirmation, otp.value)
-    operationPager.items.value = [run, ...operationPager.items.value]
+    await operationPager.first()
     ui.toast('任务已加入队列', `Operation ${run.id}`, 'info')
     selectedTask.value = null
   } catch (error) {
@@ -54,9 +80,21 @@ async function runTask(): Promise<void> {
   }
 }
 
-onMounted(async () => {
+function routeString(value: unknown): string { return typeof value === 'string' ? value : '' }
+async function syncFromUrl(): Promise<void> {
+  const status = routeString(route.query.status)
+  const kind = routeString(route.query.kind)
+  statusFilter.value = ['queued', 'running', 'completed', 'failed'].includes(status) ? status as OperationStatus : ''
+  kindFilter.value = operationKinds.some((item) => item.id === kind) ? kind as OperationKind : ''
   await operationPager.first()
-})
+}
+function replaceFilters(): void {
+  void router.replace({ query: {
+    ...(statusFilter.value ? { status: statusFilter.value } : {}),
+    ...(kindFilter.value ? { kind: kindFilter.value } : {}),
+  } })
+}
+watch(() => route.fullPath, () => void syncFromUrl(), { immediate: true })
 </script>
 
 <template>
@@ -74,7 +112,8 @@ onMounted(async () => {
     </section>
 
     <section class="panel table-panel">
-      <header class="panel__header"><div><p class="eyebrow">RECENT OPERATIONS</p><h2>运行记录</h2></div><StatusBadge label="平台任务" tone="info" /></header>
+      <header class="panel__header"><div><p class="eyebrow">RECENT OPERATIONS</p><h2>运行记录</h2></div><StatusBadge :label="`服务端匹配 ${total}`" tone="info" /></header>
+      <div class="table-toolbar"><select v-model="statusFilter" aria-label="任务状态" @change="replaceFilters"><option value="">全部状态</option><option value="queued">Queued</option><option value="running">Running</option><option value="completed">Completed</option><option value="failed">Failed</option></select><select v-model="kindFilter" aria-label="任务类型" @change="replaceFilters"><option value="">全部任务</option><option v-for="item in operationKinds" :key="item.id" :value="item.id">{{ item.label }}</option></select></div>
       <DataStatePanel
         v-if="runsState !== 'ready'"
         :state="runsState"
@@ -89,7 +128,7 @@ onMounted(async () => {
         :can-previous="operationPager.canPrevious.value"
         :can-next="operationPager.canNext.value"
         :loading="operationPager.loading.value"
-        label="条运行记录"
+        :label="`条运行记录；服务端匹配总数 ${total}`"
         @previous="operationPager.previous"
         @next="operationPager.next"
       />

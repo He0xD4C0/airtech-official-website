@@ -88,7 +88,6 @@ function permissionFor(path, method) {
   if (path === '/api/admin/v1/media/assets' && method === 'get') return 'content.read | media.write'
   if (path.includes('/media/')) return write ? 'media.write' : 'content.read'
   if (path.endsWith('/content') || path.includes('/content/')) {
-    if (path.endsWith('/snapshots')) return 'content.write; publish intent additionally requires content.publish'
     if (path.endsWith('/publish') || path.endsWith('/unpublish')) return 'content.publish'
     return write ? 'content.write' : 'content.read'
   }

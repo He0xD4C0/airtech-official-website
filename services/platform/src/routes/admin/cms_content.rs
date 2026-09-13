@@ -285,17 +285,9 @@ async fn update_content_draft(
 async fn create_content_snapshot(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
-    Extension(principal): Extension<AdminPrincipal>,
     headers: HeaderMap,
     Json(request): Json<CreateContentSnapshotRequest>,
 ) -> Result<Response, ApiError> {
-    if request.intent == ContentSnapshotIntent::Publish
-        && !principal.has_permission("content.publish")
-    {
-        return Err(ApiError::forbidden(
-            "The `content.publish` permission is required.",
-        ));
-    }
     let expected = parse_content_if_match(&headers)?;
     let actor_name = actor(&headers);
     let idempotency = match begin_idempotency(
@@ -317,7 +309,6 @@ async fn create_content_snapshot(
         &state,
         id,
         expected,
-        request.intent,
         request.reason,
         mutation_metadata(&headers, actor_name),
         idempotency,

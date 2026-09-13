@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Copy, ExternalLink, FileImage, RefreshCcw, Search, UploadCloud, X } from 'lucide-vue-next'
 import { ApiError, type MediaAsset, type MediaAssetReference } from '@airtek/contracts'
 import DataStatePanel from '@/components/DataStatePanel.vue'
@@ -15,12 +16,14 @@ const ACCEPTED_TYPES = 'image/png,image/jpeg,image/webp'
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 const apiOrigin = new URL(import.meta.env.VITE_ADMIN_API_BASE_URL ?? 'http://localhost:8080/api/admin/v1').origin
 const auth = useAuthStore()
+const route = useRoute()
+const router = useRouter()
 const items = ref<MediaAsset[]>([])
 const total = ref(0)
 const pageState = ref<PageState>('loading')
 const errorMessage = ref('')
 const notice = ref('')
-const query = ref('')
+const query = ref(typeof route.query.q === 'string' ? route.query.q : '')
 const uploading = ref(false)
 const uploadInput = ref<HTMLInputElement | null>(null)
 const cursorStack = ref<string[]>([])
@@ -111,7 +114,14 @@ function previousPage(): void {
 
 function scheduleSearch(): void {
   if (searchTimer) clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => void load(true), 250)
+  searchTimer = setTimeout(() => {
+    const q = query.value.trim()
+    if ((typeof route.query.q === 'string' ? route.query.q : '') === q) {
+      void load(true)
+      return
+    }
+    void router.replace({ query: { ...route.query, ...(q ? { q } : { q: undefined }) } })
+  }, 250)
 }
 
 async function handleFileSelection(event: Event): Promise<void> {
@@ -149,7 +159,10 @@ async function copyUrl(value: string): Promise<void> {
   }
 }
 
-onMounted(() => void load(true))
+watch(() => route.query.q, (value) => {
+  query.value = typeof value === 'string' ? value : ''
+  void load(true)
+}, { immediate: true })
 onBeforeUnmount(() => { if (searchTimer) clearTimeout(searchTimer) })
 </script>
 

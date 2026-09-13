@@ -12,32 +12,6 @@ pub(super) fn add(paths: &mut Map<String, Value>, path: &str, method: &str, oper
         .insert(method.to_owned(), operation);
 }
 
-pub(super) fn add_admin_list(
-    paths: &mut Map<String, Value>,
-    path: &str,
-    operation_id: &str,
-    summary: &str,
-    page_schema: &str,
-) {
-    add(
-        paths,
-        path,
-        "get",
-        admin(
-            params(
-                op(
-                    operation_id,
-                    summary,
-                    "admin",
-                    [("200", json_response("Collection", r(page_schema)))],
-                ),
-                admin_pagination_params(),
-            ),
-            false,
-        ),
-    );
-}
-
 pub(super) fn admin_pagination_params() -> Vec<Value> {
     vec![
         json!({

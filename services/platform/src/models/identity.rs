@@ -17,6 +17,14 @@ pub struct AdminUserRecord {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct AdminUserPage {
+    pub items: Vec<AdminUserRecord>,
+    pub next_cursor: Option<String>,
+    pub total: usize,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AdminRoleRecord {
     pub id: Uuid,
     pub key: String,
@@ -24,6 +32,14 @@ pub struct AdminRoleRecord {
     pub system_role: bool,
     pub revision: i64,
     pub permissions: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminRolePage {
+    pub items: Vec<AdminRoleRecord>,
+    pub next_cursor: Option<String>,
+    pub total: usize,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

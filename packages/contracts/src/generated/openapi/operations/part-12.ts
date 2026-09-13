@@ -380,8 +380,10 @@ listBackgroundOperations: {
             query?: {
                 /** @description Opaque endpoint-scoped cursor returned by the previous page. */
                 cursor?: string;
+                kind?: components["schemas"]["OperationKind"];
                 /** @description Page size; values outside 1 through 100 return Problem Details 400. */
                 limit?: number;
+                status?: components["schemas"]["OperationStatus"];
             };
             header?: never;
             path?: never;
@@ -389,7 +391,7 @@ listBackgroundOperations: {
         };
         requestBody?: never;
         responses: {
-            /** @description Collection */
+            /** @description Background operations */
             200: {
                 headers: {
                     [name: string]: unknown;

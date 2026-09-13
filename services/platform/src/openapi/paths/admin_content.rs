@@ -291,7 +291,7 @@ fn add_snapshot_path(paths: &mut Map<String, Value>) {
                     body(
                         op(
                             "createAdminContentSnapshotV2",
-                            "Create an immutable manual revision. The legacy publish intent is deprecated; use the explicit publish operation",
+                            "Create an immutable manual revision",
                             "adminContent",
                             [("201", content_response("Content snapshot created"))],
                         ),

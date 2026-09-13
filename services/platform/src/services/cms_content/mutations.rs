@@ -219,22 +219,10 @@ pub async fn snapshot_content(
     state: &AppState,
     id: Uuid,
     expected: i64,
-    intent: ContentSnapshotIntent,
     reason: String,
     metadata: MutationMetadata,
     idempotency: IdempotencyContext,
 ) -> Result<ContentRecordV2, ApiError> {
-    if intent == ContentSnapshotIntent::Publish {
-        return super::publication_mutations::publish_content(
-            state,
-            id,
-            expected,
-            reason,
-            metadata,
-            idempotency,
-        )
-        .await;
-    }
     let pool = require_postgres(state)?;
     let mut transaction = pool.begin().await?;
     let before = lock_record(&mut transaction, id).await?;

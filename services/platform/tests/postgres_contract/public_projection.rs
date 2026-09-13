@@ -87,9 +87,9 @@ async fn publishing_cms_v2_content_writes_the_canonical_route_and_serves_the_pro
         let published_shell = cms_mutation(
             &admin,
             Method::POST,
-            &format!("/content/{shell_id}/snapshots"),
+            &format!("/content/{shell_id}/publish"),
             1,
-            json!({"intent": "publish", "reason": "Publish the complete site shell fixture"}),
+            json!({"reason": "Publish the complete site shell fixture"}),
         )
         .await;
         assert_eq!(
@@ -104,9 +104,9 @@ async fn publishing_cms_v2_content_writes_the_canonical_route_and_serves_the_pro
     let published = cms_mutation(
         &admin,
         Method::POST,
-        &format!("/content/{id}/snapshots"),
+        &format!("/content/{id}/publish"),
         1,
-        json!({"intent": "publish", "reason": "Publish the public projection contract fixture"}),
+        json!({"reason": "Publish the public projection contract fixture"}),
     )
     .await;
     assert_eq!(
@@ -285,9 +285,9 @@ async fn publishing_blocks_unpublished_content_relations_and_missing_media() {
     let blocked = cms_mutation(
         &admin,
         Method::POST,
-        &format!("/content/{blocked_id}/snapshots"),
+        &format!("/content/{blocked_id}/publish"),
         1,
-        json!({"intent": "publish", "reason": "Assert relation publication guard"}),
+        json!({"reason": "Assert relation publication guard"}),
     )
     .await;
     assert_eq!(blocked.status(), StatusCode::UNPROCESSABLE_ENTITY);
@@ -336,9 +336,9 @@ async fn publishing_blocks_unpublished_content_relations_and_missing_media() {
     let rejected = cms_mutation(
         &admin,
         Method::POST,
-        &format!("/content/{asset_id}/snapshots"),
+        &format!("/content/{asset_id}/publish"),
         1,
-        json!({"intent": "publish", "reason": "Assert media publication guard"}),
+        json!({"reason": "Assert media publication guard"}),
     )
     .await;
     assert_eq!(rejected.status(), StatusCode::UNPROCESSABLE_ENTITY);
@@ -402,14 +402,14 @@ async fn concurrent_canonical_route_claim_returns_conflict_with_the_existing_ent
     .unwrap();
 
     let publish_admin = admin.clone();
-    let publish_path = format!("/content/{content_id}/snapshots");
+    let publish_path = format!("/content/{content_id}/publish");
     let publish_task = tokio::spawn(async move {
         cms_mutation(
             &publish_admin,
             Method::POST,
             &publish_path,
             1,
-            json!({"intent": "publish", "reason": "Exercise the canonical route race"}),
+            json!({"reason": "Exercise the canonical route race"}),
         )
         .await
     });
