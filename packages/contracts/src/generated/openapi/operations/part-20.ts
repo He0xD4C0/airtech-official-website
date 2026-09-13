@@ -6,27 +6,30 @@
 import type { components } from '../components'
 
 export interface OperationsPart20 {
-selectProducts: {
+revokeUserInvitation: {
         parameters: {
             query?: never;
-            header?: never;
-            path?: never;
+            header: {
+                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SelectorRequest"];
+                "application/json": components["schemas"]["ReasonRequest"];
             };
         };
         responses: {
-            /** @description Selector evaluation */
-            200: {
+            /** @description User invitation revoked */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["SelectorResponse"];
-                };
+                content?: never;
             };
             /** @description Malformed request */
             400: {
@@ -120,10 +123,13 @@ selectProducts: {
             };
         };
     };
-getSiteBootstrap: {
+listAdminUsers: {
         parameters: {
             query?: {
-                locale?: "en";
+                /** @description Opaque endpoint-scoped cursor returned by the previous page. */
+                cursor?: string;
+                /** @description Page size; values outside 1 through 100 return Problem Details 400. */
+                limit?: number;
             };
             header?: never;
             path?: never;
@@ -131,13 +137,13 @@ getSiteBootstrap: {
         };
         requestBody?: never;
         responses: {
-            /** @description Published site bootstrap */
+            /** @description Management users */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SiteBootstrap"];
+                    "application/json": components["schemas"]["AdminUserRecordPage"];
                 };
             };
             /** @description Malformed request */
@@ -232,22 +238,26 @@ getSiteBootstrap: {
             };
         };
     };
-getLiveness: {
+getAdminUser: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Service is alive */
+            /** @description Management user */
             200: {
                 headers: {
+                    /** @description Current user revision tag */
+                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HealthStatus"];
+                    "application/json": components["schemas"]["AdminUserRecord"];
                 };
             };
             /** @description Malformed request */
@@ -342,22 +352,35 @@ getLiveness: {
             };
         };
     };
-getInternalMetrics: {
+updateAdminUser: {
         parameters: {
             query?: never;
-            header?: never;
-            path?: never;
+            header: {
+                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
+                "Idempotency-Key": string;
+                /** @description Current entity ETag, formatted as revision-N. */
+                "If-Match": string;
+            };
+            path: {
+                id: string;
+            };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAdminUser"];
+            };
+        };
         responses: {
-            /** @description OpenMetrics telemetry */
+            /** @description Management user updated */
             200: {
                 headers: {
+                    /** @description New user revision tag */
+                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/openmetrics-text": string;
+                    "application/json": components["schemas"]["AdminUserRecord"];
                 };
             };
             /** @description Malformed request */

@@ -1,0 +1,3237 @@
+{
+  "generatedFrom": "packages/contracts/openapi/openapi.production.json",
+  "operationCount": 81,
+  "operations": [
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/analytics/overview",
+      "operationId": "getAnalyticsOverview",
+      "permission": "analytics.read",
+      "request": {
+        "parameters": [
+          "from",
+          "to"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "AnalyticsOverview"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/analytics/sources",
+      "operationId": "listGuestSources",
+      "permission": "analytics.read",
+      "request": {
+        "parameters": [
+          "from",
+          "to",
+          "cursor",
+          "limit"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "GuestSourceDailyPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/analytics/summary",
+      "operationId": "getAnalyticsSummary",
+      "permission": "analytics.read",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "AnalyticsSummary"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/analytics/visits",
+      "operationId": "listGuestVisits",
+      "permission": "analytics.read",
+      "request": {
+        "parameters": [
+          "from",
+          "to",
+          "cursor",
+          "limit"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "GuestVisitAggregatePage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/audit",
+      "operationId": "listAuditEvents",
+      "permission": "audit.read",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit",
+          "actor",
+          "action",
+          "resourceType",
+          "resourceId",
+          "from",
+          "to",
+          "q"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "AuditEventPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/audit/export.csv",
+      "operationId": "exportAuditEventsCsv",
+      "permission": "audit.read",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit",
+          "actor",
+          "action",
+          "resourceType",
+          "resourceId",
+          "from",
+          "to",
+          "q"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "text/csv",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/auth/invitations/accept",
+      "operationId": "acceptAdministratorInvitation",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "AcceptInvitationRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 201,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "InvitationAcceptance"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "acceptAdministratorInvitation"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/auth/login",
+      "operationId": "loginAdministrator",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "LoginRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "SessionUser"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/auth/logout",
+      "operationId": "logoutAdministrator",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 204,
+          "types": []
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "logoutAdministrator"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/auth/recovery-codes/regenerate",
+      "operationId": "regenerateRecoveryCodes",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "TotpCodeRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "RecoveryCodeSet"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "regenerateRecoveryCodes"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/auth/session",
+      "operationId": "getAdminSession",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "SessionUser"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/auth/sessions",
+      "operationId": "listAdminSessions",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "Array<AdminSession>"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/v1/auth/sessions/{id}",
+      "operationId": "revokeAdminSession",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 204,
+          "types": []
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/auth/setup",
+      "operationId": "setupInitialAdministrator",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "SetupRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 201,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "SessionUser"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "setupInitialAdministrator"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/auth/totp/confirm",
+      "operationId": "confirmTotpEnrollment",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "TotpCodeRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "RecoveryCodeSet"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "confirmTotpEnrollment"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/auth/totp/enrollment",
+      "operationId": "startTotpEnrollment",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "TotpEnrollment"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "startTotpEnrollment"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/contacts",
+      "operationId": "listContactInboxItems",
+      "permission": "rfq.read",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit",
+          "q",
+          "status",
+          "assignedTo"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "BusinessInboxPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/contacts/{id}",
+      "operationId": "getContactInboxItem",
+      "permission": "rfq.read",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "BusinessInboxDetail"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/contacts/{id}/assignment",
+      "operationId": "assignContactInboxItem",
+      "permission": "rfq.assign",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "AssignBusinessInboxRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "BusinessInboxItem"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "assignContactInboxItem"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/contacts/{id}/notes",
+      "operationId": "createContactInternalNote",
+      "permission": "rfq.assign",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "CreateBusinessNoteRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 201,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "BusinessInboxDetail"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "createContactInternalNote"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/contacts/{id}/pii",
+      "operationId": "getContactPii",
+      "permission": "rfq.read_pii",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "BusinessPii"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "getContactPii.read"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/contacts/{id}/status",
+      "operationId": "updateContactInboxStatus",
+      "permission": "rfq.assign",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "UpdateBusinessStatusRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "BusinessInboxItem"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "updateContactInboxStatus"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/content",
+      "operationId": "listAdminContentV2",
+      "permission": "content.read",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit",
+          "q",
+          "kind",
+          "status",
+          "sort",
+          "direction"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ContentRecordV2Page"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/content",
+      "operationId": "createAdminContentV2",
+      "permission": "content.write",
+      "request": {
+        "parameters": [
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "ContentDraftV2"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 201,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ContentRecordV2"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "createAdminContentV2"
+      },
+      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/content/{id}/archive",
+      "operationId": "archiveAdminContentV2",
+      "permission": "content.write",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "ArchiveContentRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ContentRecordV2"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "archiveAdminContentV2"
+      },
+      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/content/{id}/diff",
+      "operationId": "getAdminContentDiffV2",
+      "permission": "content.read",
+      "request": {
+        "parameters": [
+          "id",
+          "baseRevision",
+          "targetRevision"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ContentDiffV2"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/content/{id}/draft",
+      "operationId": "getAdminContentDraftV2",
+      "permission": "content.read",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ContentRecordV2"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/v1/content/{id}/draft",
+      "operationId": "updateAdminContentDraftV2",
+      "permission": "content.write",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "ContentDraftV2"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ContentRecordV2"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "updateAdminContentDraftV2"
+      },
+      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/content/{id}/publication-readiness",
+      "operationId": "getAdminContentPublicationReadinessV2",
+      "permission": "content.read",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ContentPublicationReadiness"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/content/{id}/publish",
+      "operationId": "publishAdminContentV2",
+      "permission": "content.publish",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "PublishContentRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 201,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ContentRecordV2"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "publishAdminContentV2"
+      },
+      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/content/{id}/revisions",
+      "operationId": "listAdminContentRevisionsV2",
+      "permission": "content.read",
+      "request": {
+        "parameters": [
+          "id",
+          "cursor",
+          "limit"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ContentRevisionV2Page"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/content/{id}/revisions/{revision}/restore",
+      "operationId": "restoreAdminContentRevisionV2",
+      "permission": "content.write",
+      "request": {
+        "parameters": [
+          "id",
+          "revision",
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "RestoreContentRevisionRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 201,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ContentRecordV2"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "restoreAdminContentRevisionV2"
+      },
+      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/content/{id}/snapshots",
+      "operationId": "createAdminContentSnapshotV2",
+      "permission": "content.write; publish intent additionally requires content.publish",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "CreateContentSnapshotRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 201,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ContentRecordV2"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "createAdminContentSnapshotV2"
+      },
+      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/content/{id}/unpublish",
+      "operationId": "unpublishAdminContentV2",
+      "permission": "content.publish",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "UnpublishContentRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ContentRecordV2"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "unpublishAdminContentV2"
+      },
+      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/content/templates",
+      "operationId": "listAdminContentTemplatesV2",
+      "permission": "content.read",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ContentTemplateDefinitionPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/dashboard/summary",
+      "operationId": "getAdminDashboardSummary",
+      "permission": "authenticated; metrics filtered by caller permissions",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "AdminDashboardSummary"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/feishu/conflicts",
+      "operationId": "listFeishuConflicts",
+      "permission": "integration.run",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit",
+          "q",
+          "openOnly"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "SyncConflictPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/feishu/conflicts/{id}/resolve",
+      "operationId": "resolveFeishuConflict",
+      "permission": "integration.run",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "ResolveSyncConflictRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "SyncConflict"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "resolveFeishuConflict"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/feishu/connection-status",
+      "operationId": "getFeishuConnectionStatus",
+      "permission": "integration.run",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "FeishuConnectionStatus"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/feishu/mappings",
+      "operationId": "listFeishuMappings",
+      "permission": "integration.run",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "SyncMappingPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/feishu/staging",
+      "operationId": "listFeishuStagingRecords",
+      "permission": "integration.run",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit",
+          "syncRunId",
+          "status",
+          "q"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "StagingRecordPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/feishu/sync-runs",
+      "operationId": "listFeishuSyncRuns",
+      "permission": "integration.run",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "SyncRunPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/feishu/sync-runs",
+      "operationId": "startFeishuSyncRun",
+      "permission": "integration.run",
+      "request": {
+        "parameters": [
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "StartSyncRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 202,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "SyncRun"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "startFeishuSyncRun"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/media/assets",
+      "operationId": "listAdminMediaAssets",
+      "permission": "content.read | media.write",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit",
+          "q"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "MediaAssetPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/mediaApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/media/assets",
+      "operationId": "uploadAdminMediaAsset",
+      "permission": "media.write",
+      "request": {
+        "parameters": [
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "multipart/form-data",
+            "type": "object"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 201,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "MediaAsset"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "uploadAdminMediaAsset"
+      },
+      "frontendConsumer": "apps/admin/src/services/mediaApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/media/assets/{id}",
+      "operationId": "getAdminMediaAsset",
+      "permission": "content.read",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "MediaAsset"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/mediaApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/media/assets/{id}/references",
+      "operationId": "listAdminMediaAssetReferences",
+      "permission": "content.read",
+      "request": {
+        "parameters": [
+          "id",
+          "cursor",
+          "limit"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "MediaAssetReferencePage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/mediaApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/operations",
+      "operationId": "listBackgroundOperations",
+      "permission": "operations.run",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "BackgroundOperationPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/operations",
+      "operationId": "createBackgroundOperation",
+      "permission": "operations.run",
+      "request": {
+        "parameters": [
+          "Idempotency-Key",
+          "X-TOTP-Code"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "CreateOperationRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 202,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "BackgroundOperation"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "createBackgroundOperation"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/operations/{id}",
+      "operationId": "getBackgroundOperation",
+      "permission": "operations.run",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "BackgroundOperation"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/operations/{id}/events",
+      "operationId": "streamBackgroundOperationEvents",
+      "permission": "operations.run",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "text/event-stream",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/products",
+      "operationId": "listAdminProducts",
+      "permission": "product.read",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit",
+          "q"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ProductPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/products/{id}",
+      "operationId": "getAdminProduct",
+      "permission": "product.read",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "AdminProductDetail"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/v1/products/{id}/presentation",
+      "operationId": "updateProductPresentation",
+      "permission": "product.write",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "UpdateProductPresentation"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "AdminProductDetail"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "updateProductPresentation"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/products/{id}/private-pricing",
+      "operationId": "getProductPrivatePricing",
+      "permission": "product.pricing.read",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ProductPrivatePricing"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/products/{id}/publication-readiness",
+      "operationId": "getProductPublicationReadiness",
+      "permission": "product.read",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ProductPublicationReport"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/products/{id}/publish",
+      "operationId": "publishProductRevision",
+      "permission": "product.publish",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "Product"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "publishProductRevision"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/products/{id}/temporary-overrides",
+      "operationId": "listTemporaryOverrides",
+      "permission": "product.read",
+      "request": {
+        "parameters": [
+          "id",
+          "cursor",
+          "limit"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "TemporaryOverridePage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/products/{id}/temporary-overrides",
+      "operationId": "createTemporaryOverride",
+      "permission": "product.write",
+      "request": {
+        "parameters": [
+          "id",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "CreateTemporaryOverride"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 201,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "TemporaryOverride"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "createTemporaryOverride"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/products/{id}/validation-report",
+      "operationId": "getProductValidationReport",
+      "permission": "product.read",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ProductPublicationReport"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/products/imports",
+      "operationId": "listProductImportRuns",
+      "permission": "product.read",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ProductImportResultPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/products/imports",
+      "operationId": "importProductMaster",
+      "permission": "product.write",
+      "request": {
+        "parameters": [
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "ProductImportRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 202,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ProductImportAccepted"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "importProductMaster"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/products/imports/{id}",
+      "operationId": "getProductImportRun",
+      "permission": "product.read",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ProductImportResult"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/rfqs",
+      "operationId": "listRfqInboxItems",
+      "permission": "rfq.read",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit",
+          "q",
+          "status",
+          "assignedTo"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "BusinessInboxPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/rfqs/{id}",
+      "operationId": "getRfqInboxItem",
+      "permission": "rfq.read",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "BusinessInboxDetail"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/rfqs/{id}/assignment",
+      "operationId": "assignRfqInboxItem",
+      "permission": "rfq.assign",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "AssignBusinessInboxRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "BusinessInboxItem"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "assignRfqInboxItem"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/rfqs/{id}/notes",
+      "operationId": "createRfqInternalNote",
+      "permission": "rfq.assign",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "CreateBusinessNoteRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 201,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "BusinessInboxDetail"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "createRfqInternalNote"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/rfqs/{id}/pii",
+      "operationId": "getRfqPii",
+      "permission": "rfq.read_pii",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "BusinessPii"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "getRfqPii.read"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/rfqs/{id}/status",
+      "operationId": "updateRfqInboxStatus",
+      "permission": "rfq.assign",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "UpdateBusinessStatusRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "BusinessInboxItem"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "updateRfqInboxStatus"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/roles",
+      "operationId": "listAdminRoles",
+      "permission": "identity.manage",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "AdminRoleRecordPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/roles/{id}",
+      "operationId": "getAdminRole",
+      "permission": "identity.manage",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "AdminRoleRecord"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/v1/roles/{id}",
+      "operationId": "updateAdminRole",
+      "permission": "identity.manage",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "UpdateAdminRole"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "AdminRoleRecord"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "updateAdminRole"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/settings",
+      "operationId": "getPlatformSettings",
+      "permission": "settings.manage",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "PlatformSettings"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/v1/settings",
+      "operationId": "updatePlatformSettings",
+      "permission": "settings.manage",
+      "request": {
+        "parameters": [
+          "If-Match"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "UpdatePlatformSettings"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "PlatformSettings"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "updatePlatformSettings"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/user-invitations",
+      "operationId": "listUserInvitations",
+      "permission": "identity.manage",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "UserInvitationPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/user-invitations",
+      "operationId": "inviteAdminUser",
+      "permission": "identity.manage",
+      "request": {
+        "parameters": [
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "InviteAdminUser"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 201,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "UserInvitation"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "inviteAdminUser"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/user-invitations/{id}/revoke",
+      "operationId": "revokeUserInvitation",
+      "permission": "identity.manage",
+      "request": {
+        "parameters": [
+          "id",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "ReasonRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 204,
+          "types": []
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "revokeUserInvitation"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/users",
+      "operationId": "listAdminUsers",
+      "permission": "identity.manage",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "AdminUserRecordPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/users/{id}",
+      "operationId": "getAdminUser",
+      "permission": "identity.manage",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "AdminUserRecord"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/v1/users/{id}",
+      "operationId": "updateAdminUser",
+      "permission": "identity.manage",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "UpdateAdminUser"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "AdminUserRecord"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "updateAdminUser"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/v1/users/{id}/sessions",
+      "operationId": "revokeAdminUserSessions",
+      "permission": "identity.manage",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 204,
+          "types": []
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "revokeAdminUserSessions"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+    }
+  ]
+}

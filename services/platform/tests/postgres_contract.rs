@@ -96,3 +96,4 @@ include!("postgres_contract/cms_archive_lifecycle.rs");
 include!("postgres_contract/cms_publication_concurrency.rs");
 include!("postgres_contract/media_assets.rs");
 include!("postgres_contract/cms_round_trip.rs");
+include!("postgres_contract/admin_workflows.rs");

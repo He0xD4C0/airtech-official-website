@@ -8,11 +8,61 @@ use crate::error::CONTENT_DEPENDENCY_CONFLICT;
 pub(super) fn add_paths(paths: &mut Map<String, Value>) {
     add_collection_paths(paths);
     add_draft_paths(paths);
+    add_publication_paths(paths);
     add_snapshot_path(paths);
     add_unpublish_path(paths);
     add_archive_path(paths);
     add_revision_paths(paths);
     add_media_paths(paths);
+}
+
+fn add_publication_paths(paths: &mut Map<String, Value>) {
+    add(
+        paths,
+        "/api/admin/v1/content/{id}/publication-readiness",
+        "get",
+        admin(
+            params(
+                op(
+                    "getAdminContentPublicationReadinessV2",
+                    "Read server-authoritative publication blockers and allowed actions",
+                    "adminContent",
+                    [(
+                        "200",
+                        json_response("Publication readiness", r("ContentPublicationReadiness")),
+                    )],
+                ),
+                vec![path_param("id", uuid())],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/content/{id}/publish",
+        "post",
+        with_problem_example(
+            admin(
+                params(
+                    body(
+                        op(
+                            "publishAdminContentV2",
+                            "Publish the current draft after transactional server-side revalidation",
+                            "adminContent",
+                            [("201", content_response("Content published"))],
+                        ),
+                        r("PublishContentRequest"),
+                    ),
+                    mutation_params(false),
+                ),
+                true,
+            ),
+            "422",
+            CONTENT_DEPENDENCY_CONFLICT,
+            "Content publication blocked",
+            "One or more publication requirements failed validation.",
+        ),
+    );
 }
 
 fn add_archive_path(paths: &mut Map<String, Value>) {
@@ -241,7 +291,7 @@ fn add_snapshot_path(paths: &mut Map<String, Value>) {
                     body(
                         op(
                             "createAdminContentSnapshotV2",
-                            "Create an immutable manual or published revision from the current draft",
+                            "Create an immutable manual revision. The legacy publish intent is deprecated; use the explicit publish operation",
                             "adminContent",
                             [("201", content_response("Content snapshot created"))],
                         ),

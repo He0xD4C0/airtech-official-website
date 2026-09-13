@@ -1,6 +1,5 @@
 import { adminAbsoluteUrl, adminContractClient, cursorQuery, operationKind, randomRequestId, revisionEtag } from './adminApiTransport'
 import type {
-  BackendAuditEvent,
   BackendOperation,
   CursorPage,
   CursorPageRequest,
@@ -9,6 +8,7 @@ import type {
   ProductImportResult,
   UpdatePlatformSettings,
 } from './adminApiTypes'
+import type { AuditEventPage } from '@airtek/contracts'
 
 async function waitForOperationByPolling(id: string, deadline: number): Promise<BackendOperation> {
   while (Date.now() < deadline) {
@@ -105,10 +105,40 @@ export const adminOperationsApi = {
     return result.data
   },
 
-  async listAudit(pagination?: CursorPageRequest): Promise<CursorPage<BackendAuditEvent>> {
+  async listAudit(request: AuditListRequest = {}): Promise<AuditEventPage> {
     const result = await adminContractClient.get('/api/admin/v1/audit', {
-      parameters: { query: cursorQuery(pagination) },
+      parameters: { query: auditQuery(request) },
     })
     return result.data
   },
+
+  async exportAudit(request: AuditListRequest = {}): Promise<Blob> {
+    const response = await adminContractClient.raw('get', '/api/admin/v1/audit/export.csv', {
+      parameters: { query: auditQuery(request) },
+    })
+    return response.blob()
+  },
+}
+
+export interface AuditListRequest extends CursorPageRequest {
+  actor?: string
+  action?: string
+  resourceType?: string
+  resourceId?: string
+  from?: string
+  to?: string
+  q?: string
+}
+
+function auditQuery(request: AuditListRequest) {
+  return {
+    ...cursorQuery(request),
+    ...(request.actor?.trim() ? { actor: request.actor.trim() } : {}),
+    ...(request.action?.trim() ? { action: request.action.trim() } : {}),
+    ...(request.resourceType?.trim() ? { resourceType: request.resourceType.trim() } : {}),
+    ...(request.resourceId ? { resourceId: request.resourceId } : {}),
+    ...(request.from ? { from: request.from } : {}),
+    ...(request.to ? { to: request.to } : {}),
+    ...(request.q?.trim() ? { q: request.q.trim() } : {}),
+  }
 }

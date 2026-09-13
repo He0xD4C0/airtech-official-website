@@ -158,7 +158,7 @@ async fn in_memory_analytics_summary_uses_first_party_counts() {
 }
 
 #[tokio::test]
-async fn rfq_lists_redact_pii_without_the_dedicated_permission() {
+async fn rfq_lists_are_always_redacted_and_keep_pii_out_of_the_wire_shape() {
     let state = AppState::for_test();
     let app = build_router(state.clone());
     let session = setup_admin(&app).await;
@@ -207,15 +207,12 @@ async fn rfq_lists_redact_pii_without_the_dedicated_permission() {
         .unwrap();
     assert_eq!(listed.status(), StatusCode::OK);
     let listed = response_json(listed).await;
-    assert_eq!(
-        listed["items"][0]["request"]["contact"]["name"],
-        "[restricted]"
-    );
-    assert_eq!(
-        listed["items"][0]["request"]["contact"]["email"],
-        "[restricted]"
-    );
-    assert!(listed["items"][0]["request"]["contact"]["phone"].is_null());
+    assert_eq!(listed["items"][0]["entityType"], "rfq");
+    assert_eq!(listed["items"][0]["organization"], "Example Industry");
+    assert!(listed["items"][0].get("request").is_none());
+    assert!(listed["items"][0].get("name").is_none());
+    assert!(listed["items"][0].get("email").is_none());
+    assert!(listed["items"][0].get("phone").is_none());
     let stored = state.data.read().await;
     let stored = stored.rfqs.values().next().unwrap();
     assert_eq!(stored.request.contact.name, "Protected Buyer");

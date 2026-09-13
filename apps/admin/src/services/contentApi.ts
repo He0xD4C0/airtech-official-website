@@ -1,6 +1,7 @@
 import type {
   ContentDiffV2,
   ContentDraftV2,
+  ContentPublicationReadiness,
   ContentRecordV2,
   ContentRevisionV2,
   ContentTemplateDefinition,
@@ -13,7 +14,7 @@ import { adminContractClient, draftEtag, randomRequestId } from './adminApiTrans
 export type ContentSortField = 'updatedAt' | 'title' | 'kind'
 export type SortDirection = 'asc' | 'desc'
 export type ContentStatusFilter = 'draft' | 'published' | 'archived'
-export type SnapshotIntent = 'manual' | 'publish'
+export type SnapshotIntent = 'manual'
 
 export interface ContentListQuery {
   q?: string
@@ -138,6 +139,32 @@ export const contentApi = {
         },
       },
       body: { intent, reason },
+    })
+    return draftResults(result.data, result.etag)
+  },
+
+  async publicationReadiness(id: string): Promise<ContentPublicationReadiness> {
+    const result = await adminContractClient.get(
+      '/api/admin/v1/content/{id}/publication-readiness',
+      { parameters: { path: { id } } },
+    )
+    return result.data
+  },
+
+  async publishContent(
+    id: string,
+    draftVersion: number,
+    reason: string,
+  ): Promise<DraftRecordResult> {
+    const result = await adminContractClient.post('/api/admin/v1/content/{id}/publish', {
+      parameters: {
+        path: { id },
+        header: {
+          'Idempotency-Key': randomRequestId(),
+          'If-Match': draftEtag(draftVersion),
+        },
+      },
+      body: { reason },
     })
     return draftResults(result.data, result.etag)
   },

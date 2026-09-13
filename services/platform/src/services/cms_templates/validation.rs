@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use serde::Serialize;
+
 use crate::models::{
     CmsBodyPolicy, CmsContentKind, ContentBlock, ContentBlockKind, ContentDraftV2,
     ContentTemplateKey, ContentTypeFields, MediaUseReference, CMS_V2_SCHEMA_VERSION,
@@ -11,7 +13,8 @@ mod contract_values;
 mod links;
 mod rich_text;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum CmsTemplateValidationCode {
     UnsupportedSchemaVersion,
     TemplateKindMismatch,

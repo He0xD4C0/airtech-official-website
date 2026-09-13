@@ -199,3 +199,27 @@ async fn publish_product(
         response_product.current_revision,
     ))
 }
+
+async fn get_product_publication_report(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Extension(principal): Extension<AdminPrincipal>,
+) -> Result<Json<crate::models::ProductPublicationReport>, ApiError> {
+    let product = state
+        .load_working_product(id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("Product was not found in validated staging."))?;
+    let issues = state.product_publication_issues(&product).await?;
+    let allowed_actions = if issues.is_empty() && principal.has_permission("product.publish") {
+        vec![crate::models::ProductPublicationAction::Publish]
+    } else {
+        Vec::new()
+    };
+    Ok(Json(crate::models::ProductPublicationReport {
+        product_id: product.id,
+        current_revision: product.current_revision,
+        ready: issues.is_empty(),
+        issues,
+        allowed_actions,
+    }))
+}

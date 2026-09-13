@@ -82,6 +82,27 @@ pub struct AnalyticsOverview {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DashboardMetric {
+    pub available: bool,
+    pub value: Option<i64>,
+    pub unavailable_reason: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminDashboardSummary {
+    pub generated_at: DateTime<Utc>,
+    pub draft_content: DashboardMetric,
+    pub open_conflicts: DashboardMetric,
+    pub open_rfqs: DashboardMetric,
+    pub running_operations: DashboardMetric,
+    pub analytics: Option<AnalyticsConsentedMetrics>,
+    pub recent_activity: Vec<AuditEvent>,
+    pub readiness_item_count: i64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CreateGuestVisit {
     pub anonymous_session_id: Uuid,

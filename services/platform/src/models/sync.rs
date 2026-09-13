@@ -100,6 +100,71 @@ pub struct SyncConflict {
     pub diffs: Vec<FieldDiff>,
     pub resolved_at: Option<DateTime<Utc>>,
     pub resolution: Option<String>,
+    pub revision: i64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncConflictPage {
+    pub items: Vec<SyncConflict>,
+    pub next_cursor: Option<String>,
+    pub total: usize,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StagingRecordPage {
+    pub items: Vec<StagingRecord>,
+    pub next_cursor: Option<String>,
+    pub total: usize,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeishuConnectionStatus {
+    pub connector_id: Option<Uuid>,
+    pub display_name: Option<String>,
+    pub configured: bool,
+    pub enabled: bool,
+    pub updated_at: Option<DateTime<Utc>>,
+    pub latest_sync: Option<SyncRun>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncMapping {
+    pub id: Uuid,
+    pub connector_id: Uuid,
+    pub version: String,
+    pub mapping: Value,
+    pub schema_version: i32,
+    pub active: bool,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum SyncConflictDecision {
+    AcceptIncoming,
+    KeepVerifiedLocal,
+}
+
+impl SyncConflictDecision {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::AcceptIncoming => "acceptIncoming",
+            Self::KeepVerifiedLocal => "keepVerifiedLocal",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ResolveSyncConflictRequest {
+    pub decision: SyncConflictDecision,
+    pub evidence_reference: Option<String>,
+    pub reason: String,
+    pub expires_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

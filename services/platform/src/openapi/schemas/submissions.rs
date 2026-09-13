@@ -159,16 +159,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             json!({"id": uuid(), "reference": {"type": "string"}, "acceptedAt": timestamp()}),
         ),
     );
-    s.insert("RfqSubmission".into(), object(
-        &["id", "reference", "request", "status", "submittedAt", "retentionUntil"],
-        json!({"id": uuid(), "reference": {"type": "string"}, "request": r("CreateRfqRequest"), "status": {"type": "string"}, "submittedAt": timestamp(), "retentionUntil": timestamp()})
-    ));
-    s.insert("ContactRequest".into(), object(
-        &["id", "reference", "request", "status", "submittedAt", "retentionUntil"],
-        json!({"id": uuid(), "reference": {"type": "string"}, "request": r("CreateContactRequest"), "status": {"type": "string"}, "submittedAt": timestamp(), "retentionUntil": timestamp()})
-    ));
-    s.insert("RfqSubmissionPage".into(), page("RfqSubmission"));
-    s.insert("ContactRequestPage".into(), page("ContactRequest"));
+    add_business_inbox_schemas(s);
     s.insert(
         "AnalyticsPolicyVersion".into(),
         string_enum(&["analytics-v1"]),
@@ -261,6 +252,71 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             json!({"generatedAt": timestamp(), "entries": array(r("DiscoveryEntry"))}),
         ),
     );
+}
+
+fn add_business_inbox_schemas(s: &mut Map<String, Value>) {
+    s.insert(
+        "BusinessEntityType".into(),
+        string_enum(&["rfq", "contact"]),
+    );
+    s.insert(
+        "BusinessInboxStatus".into(),
+        string_enum(&["new", "triaged", "assigned", "qualified", "closed", "spam"]),
+    );
+    s.insert("BusinessInboxItem".into(), object(
+        &["id", "entityType", "reference", "journey", "topic", "organization", "countryOrRegion", "productContext", "sourcePath", "locale", "consent", "status", "revision", "assignedTo", "submittedAt", "updatedAt", "retentionUntil"],
+        json!({
+            "id": uuid(), "entityType": r("BusinessEntityType"), "reference": {"type": "string"},
+            "journey": nullable(r("RfqJourney")), "topic": nullable(json!({"type": "string"})),
+            "organization": nullable(json!({"type": "string"})), "countryOrRegion": nullable(json!({"type": "string"})),
+            "productContext": nullable(r("ProductContext")), "sourcePath": {"type": "string"}, "locale": {"type": "string"},
+            "consent": {"type": "boolean"}, "status": r("BusinessInboxStatus"), "revision": revision(),
+            "assignedTo": nullable(uuid()), "submittedAt": timestamp(), "updatedAt": timestamp(), "retentionUntil": timestamp()
+        })
+    ));
+    s.insert(
+        "BusinessInboxPage".into(),
+        object(
+            &["items", "nextCursor", "total"],
+            json!({
+                "items": array(r("BusinessInboxItem")),
+                "nextCursor": nullable(json!({"type": "string"})),
+                "total": {"type": "integer", "minimum": 0}
+            }),
+        ),
+    );
+    s.insert("BusinessPii".into(), object(
+        &["name", "email", "phone", "company", "countryOrRegion", "message"],
+        json!({
+            "name": {"type": "string"}, "email": {"type": "string", "format": "email"},
+            "phone": nullable(json!({"type": "string"})), "company": nullable(json!({"type": "string"})),
+            "countryOrRegion": nullable(json!({"type": "string"})), "message": nullable(json!({"type": "string"}))
+        })
+    ));
+    s.insert("BusinessInternalNote".into(), object(
+        &["id", "entityType", "entityId", "body", "createdBy", "createdAt"],
+        json!({"id": uuid(), "entityType": r("BusinessEntityType"), "entityId": uuid(), "body": {"type": "string"}, "createdBy": uuid(), "createdAt": timestamp()})
+    ));
+    s.insert("BusinessStatusHistoryEntry".into(), object(
+        &["id", "fromStatus", "toStatus", "reason", "changedBy", "changedAt"],
+        json!({"id": uuid(), "fromStatus": nullable(r("BusinessInboxStatus")), "toStatus": r("BusinessInboxStatus"), "reason": nullable(json!({"type": "string"})), "changedBy": {"type": "string"}, "changedAt": timestamp()})
+    ));
+    s.insert("BusinessInboxDetail".into(), object(
+        &["item", "notes", "statusHistory"],
+        json!({"item": r("BusinessInboxItem"), "notes": array(r("BusinessInternalNote")), "statusHistory": array(r("BusinessStatusHistoryEntry"))})
+    ));
+    s.insert("AssignBusinessInboxRequest".into(), object(
+        &["assignedTo", "reason"],
+        json!({"assignedTo": nullable(uuid()), "reason": {"type": "string", "minLength": 3, "maxLength": 2000}})
+    ));
+    s.insert("UpdateBusinessStatusRequest".into(), object(
+        &["status", "reason"],
+        json!({"status": r("BusinessInboxStatus"), "reason": {"type": "string", "minLength": 3, "maxLength": 2000}})
+    ));
+    s.insert("CreateBusinessNoteRequest".into(), object(
+        &["body", "reason"],
+        json!({"body": {"type": "string", "minLength": 1, "maxLength": 4000}, "reason": {"type": "string", "minLength": 3, "maxLength": 2000}})
+    ));
 }
 
 fn rfq_context_properties<const N: usize>(extra: [(&str, Value); N]) -> Map<String, Value> {

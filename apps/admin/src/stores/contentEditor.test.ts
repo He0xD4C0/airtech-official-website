@@ -184,6 +184,31 @@ describe('content editor store', () => {
     expect(store.draft?.title).toBe('Second')
   })
 
+  it('waits for an in-flight autosave before a publish flush completes', async () => {
+    let resolveSave: ((value: { record: ContentRecordV2; etag: string }) => void) | undefined
+    vi.mocked(contentApi.saveDraft).mockImplementationOnce(() => new Promise((resolve) => {
+      resolveSave = resolve
+    }))
+    const store = useStore()
+    await store.load('22222222-0000-4000-8000-000000000001')
+    store.patch((value) => {
+      value.title = 'Ready to publish'
+    })
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_DEBOUNCE_MS)
+
+    let completed = false
+    const flush = store.flush().then((result) => {
+      completed = true
+      return result
+    })
+    await flushPromises()
+    expect(completed).toBe(false)
+
+    resolveSave?.({ record: record(2, 'Ready to publish'), etag: '"draft-2"' })
+    await flushPromises()
+    await expect(flush).resolves.toBe(true)
+  })
+
   it('stops autosave on 409, exposes a diff and reloads the server version', async () => {
     vi.mocked(contentApi.getContentRecord)
       .mockResolvedValueOnce({ record: record(1), etag: '"draft-1"' })

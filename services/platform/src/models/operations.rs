@@ -55,3 +55,11 @@ pub struct AuditEvent {
     pub request_id: Uuid,
     pub occurred_at: DateTime<Utc>,
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AuditEventPage {
+    pub items: Vec<AuditEvent>,
+    pub next_cursor: Option<String>,
+    pub total: usize,
+}

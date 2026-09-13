@@ -52,6 +52,37 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         })
     ));
     s.insert("ProductPage".into(), product_page());
+    s.insert("ProductPublicationAction".into(), string_enum(&["publish"]));
+    s.insert(
+        "ValidationIssue".into(),
+        object(
+            &["fieldPath", "code", "detail"],
+            json!({
+                "fieldPath": {"type": "string"},
+                "code": {"type": "string"},
+                "detail": {"type": "string"}
+            }),
+        ),
+    );
+    s.insert(
+        "ProductPublicationReport".into(),
+        object(
+            &[
+                "productId",
+                "currentRevision",
+                "ready",
+                "issues",
+                "allowedActions",
+            ],
+            json!({
+                "productId": uuid(),
+                "currentRevision": revision(),
+                "ready": {"type": "boolean"},
+                "issues": array(r("ValidationIssue")),
+                "allowedActions": array(r("ProductPublicationAction"))
+            }),
+        ),
+    );
     s.insert(
         "SelectorPriority".into(),
         string_enum(&["efficiency", "noise", "size", "headroom"]),

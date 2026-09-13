@@ -1,4 +1,5 @@
 import { collectCursorPages, findInCursorPages } from './cursorPagination'
+import type { ProductPublicationReport } from '@airtek/contracts'
 import { adminContractClient, cursorQuery, randomRequestId, revisionEtag } from './adminApiTransport'
 import type {
   BackendProduct,
@@ -31,6 +32,12 @@ export const adminProductApi = {
   async getProduct(id: string): Promise<BackendProduct> {
     const result = await adminContractClient.get('/api/admin/v1/products/{id}', { parameters: { path: { id } } })
     return result.data
+  },
+
+  async getProductPublicationReadiness(id: string): Promise<ProductPublicationReport> {
+    return (await adminContractClient.get('/api/admin/v1/products/{id}/publication-readiness', {
+      parameters: { path: { id } },
+    })).data
   },
 
   findProduct: (id: string) => findInCursorPages(

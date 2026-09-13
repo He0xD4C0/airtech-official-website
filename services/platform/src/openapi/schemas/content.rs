@@ -96,5 +96,48 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             json!({"revision": revision(), "reason": {"type": "string", "minLength": 10}}),
         ),
     );
+    s.insert(
+        "PublishContentRequest".into(),
+        object(
+            &["reason"],
+            json!({"reason": {"type": "string", "minLength": 10, "maxLength": 2000}}),
+        ),
+    );
+    s.insert(
+        "ContentPublicationAction".into(),
+        string_enum(&["save", "publish", "unpublish"]),
+    );
+    s.insert(
+        "PublicationReadinessIssue".into(),
+        object(
+            &["code", "path", "detail", "failedGate", "targetId"],
+            json!({
+                "code": {"type": "string"},
+                "path": {"type": "string"},
+                "detail": {"type": "string"},
+                "failedGate": nullable(json!({"type": "string"})),
+                "targetId": nullable(uuid())
+            }),
+        ),
+    );
+    s.insert(
+        "ContentPublicationReadiness".into(),
+        object(
+            &[
+                "contentId",
+                "draftVersion",
+                "ready",
+                "issues",
+                "allowedActions",
+            ],
+            json!({
+                "contentId": uuid(),
+                "draftVersion": revision(),
+                "ready": {"type": "boolean"},
+                "issues": {"type": "array", "items": r("PublicationReadinessIssue")},
+                "allowedActions": {"type": "array", "items": r("ContentPublicationAction")}
+            }),
+        ),
+    );
     s.insert("ContentPage".into(), page("ContentEntry"));
 }

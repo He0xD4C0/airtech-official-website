@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import type { ProductPublicationReport } from '@airtek/contracts'
 import { useRoute } from 'vue-router'
 import {
   ArrowLeft,
@@ -29,7 +30,6 @@ import {
   formatAdminDateTime,
   formatProductValue,
   isTemporaryOverrideExpired,
-  productPublishReadiness,
   publicationStatusPresentation,
   verifiedPerformanceCurves,
 } from '@/services/productPresentation'
@@ -47,7 +47,6 @@ const savingPresentation = ref(false)
 const loadError = ref('')
 const loadForbidden = ref(false)
 const overrideError = ref('')
-const overridesLoaded = ref(false)
 const presentationTitle = ref('')
 const presentationSummary = ref('')
 const presentationSlug = ref('')
@@ -58,6 +57,7 @@ const presentationSortOrder = ref(0)
 const presentationRelatedContentIds = ref('')
 const privatePricing = ref<ProductPrivatePricing>()
 const pricingState = ref<'idle' | 'loading' | 'ready' | 'empty' | 'error' | 'forbidden'>('idle')
+const publicationReport = ref<ProductPublicationReport | null>(null)
 
 const productId = computed(() => String(route.params.id ?? ''))
 const verifiedCurves = computed(() => product.value ? verifiedPerformanceCurves(product.value) : [])
@@ -65,8 +65,12 @@ const excludedCurveCount = computed(() => (product.value?.performanceCurves.leng
 const conditionedSpecifications = computed(() => product.value?.specifications.filter((specification) => specification.operatingCondition) ?? [])
 const readiness = computed(() => {
   if (!product.value) return { allowed: false, reason: '产品记录尚未加载。' }
-  if (!overridesLoaded.value) return { allowed: false, reason: '临时覆盖未完整加载，不能安全发布。' }
-  return productPublishReadiness(product.value, overrides.value, auth.hasPermission('product.publish'))
+  if (!publicationReport.value) return { allowed: false, reason: '服务端发布准备度尚未加载。' }
+  const allowed = publicationReport.value.ready && publicationReport.value.allowedActions.includes('publish')
+  const reason = allowed
+    ? '服务端校验通过，可发布当前 revision。'
+    : publicationReport.value.issues.map((issue) => `${issue.fieldPath}: ${issue.detail}`).join('；') || '服务端未允许发布。'
+  return { allowed, reason }
 })
 
 async function load(): Promise<void> {
@@ -74,12 +78,12 @@ async function load(): Promise<void> {
   loadError.value = ''
   loadForbidden.value = false
   overrideError.value = ''
-  overridesLoaded.value = false
   privatePricing.value = undefined
   pricingState.value = 'idle'
   try {
     const found = await adminApi.getProduct(productId.value)
     product.value = found
+    publicationReport.value = await adminApi.getProductPublicationReadiness(found.id)
     presentationTitle.value = found.presentation?.title ?? found.title
     presentationSummary.value = found.presentation?.summary ?? found.summary ?? ''
     presentationSlug.value = found.presentation?.slug ?? found.slug
@@ -90,7 +94,6 @@ async function load(): Promise<void> {
     presentationRelatedContentIds.value = (found.presentation?.relatedContentIds ?? found.relatedContentIds).join('\n')
     try {
       overrides.value = await adminApi.listAllTemporaryOverrides(found.id)
-      overridesLoaded.value = true
     } catch (error) {
       overrides.value = []
       overrideError.value = apiErrorMessage(error, '无法读取临时覆盖；发布已停用。')
@@ -261,7 +264,7 @@ onMounted(load)
 
     <section class="panel product-detail-section" aria-labelledby="assets-heading">
       <header class="panel__header"><div><p class="eyebrow">ASSET RESOLUTION</p><h2 id="assets-heading">附件缺失清单</h2></div><StatusBadge :label="`${product.missingAssets?.length ?? 0} 个未解析`" :tone="product.missingAssets?.length ? 'warning' : 'success'" /></header>
-      <div v-if="product.missingAssets?.length" class="data-table-wrap"><table class="data-table"><thead><tr><th>类型</th><th>来源文件名</th><th>状态</th></tr></thead><tbody><tr v-for="asset in product.missingAssets" :key="`${asset.assetType}-${asset.sourceReference}`"><td>{{ asset.assetType }}</td><td><code>{{ asset.sourceReference }}</code></td><td><StatusBadge label="等待上传与人工审核" tone="warning" /></td></tr></tbody></table></div><p v-else class="product-empty-copy">当前产品没有未解析附件引用；实际文件仍须通过媒体人工审核才能公开。</p>
+      <div v-if="product.missingAssets?.length" class="data-table-wrap"><table class="data-table"><thead><tr><th>类型</th><th>来源文件名</th><th>状态</th></tr></thead><tbody><tr v-for="asset in product.missingAssets" :key="`${asset.assetType}-${asset.sourceReference}`"><td>{{ asset.assetType }}</td><td><code>{{ asset.sourceReference }}</code></td><td><StatusBadge label="等待上传并关联" tone="warning" /></td></tr></tbody></table></div><p v-else class="product-empty-copy">当前产品没有未解析附件引用。上传成功的图片可直接通过公开媒体地址引用。</p>
     </section>
 
     <section class="panel product-detail-section" aria-labelledby="conditions-heading">

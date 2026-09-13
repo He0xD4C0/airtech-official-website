@@ -142,11 +142,54 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
             false,
         ),
     );
-    add_admin_list(
+    let audit_parameters = || {
+        let mut parameters = admin_pagination_params();
+        parameters.extend([
+            query_param("actor", false, json!({"type": "string"})),
+            query_param("action", false, json!({"type": "string"})),
+            query_param("resourceType", false, json!({"type": "string"})),
+            query_param("resourceId", false, uuid()),
+            query_param("from", false, timestamp()),
+            query_param("to", false, timestamp()),
+            query_param("q", false, json!({"type": "string", "maxLength": 200})),
+        ]);
+        parameters
+    };
+    add(
         paths,
         "/api/admin/v1/audit",
-        "listAuditEvents",
-        "List immutable audit events",
-        "AuditEventPage",
+        "get",
+        admin(
+            params(
+                op(
+                    "listAuditEvents",
+                    "List immutable audit events with server-side actor, action, resource, time and full-text filters",
+                    "adminAudit",
+                    [("200", json_response("Audit events", r("AuditEventPage")))],
+                ),
+                audit_parameters(),
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/audit/export.csv",
+        "get",
+        admin(
+            params(
+                op(
+                    "exportAuditEventsCsv",
+                    "Export filtered audit events as ordinary unsigned CSV",
+                    "adminAudit",
+                    [(
+                        "200",
+                        text_response("Filtered audit CSV", "text/csv", json!({"type": "string"})),
+                    )],
+                ),
+                audit_parameters(),
+            ),
+            false,
+        ),
     );
 }

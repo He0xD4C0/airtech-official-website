@@ -64,6 +64,8 @@ export const useContentEditorStore = defineStore('contentEditor', () => {
 
   let saveTimer: ReturnType<typeof setTimeout> | undefined
   let saving = false
+  let saveCompletion: Promise<void> | null = null
+  let resolveSaveCompletion: (() => void) | null = null
   let queuedSave = false
   let changeSequence = 0
   let savedSequence = 0
@@ -172,6 +174,9 @@ export const useContentEditorStore = defineStore('contentEditor', () => {
 
     clearTimer()
     saving = true
+    saveCompletion = new Promise((resolve) => {
+      resolveSaveCompletion = resolve
+    })
     queuedSave = false
     saveError.value = ''
     saveState.value = 'saving'
@@ -200,6 +205,9 @@ export const useContentEditorStore = defineStore('contentEditor', () => {
       return false
     } finally {
       saving = false
+      resolveSaveCompletion?.()
+      resolveSaveCompletion = null
+      saveCompletion = null
       if (queuedSave && (saveState.value === 'dirty' || saveState.value === 'saved')) {
         scheduleAutosave()
       }
@@ -256,16 +264,41 @@ export const useContentEditorStore = defineStore('contentEditor', () => {
     return JSON.stringify(conflict.value?.localDraft ?? draft.value, null, 2)
   }
 
-  async function snapshot(intent: 'manual' | 'publish', reason: string): Promise<ContentRecordV2 | null> {
-    if (!record.value || !draft.value) return null
-    if (isDirty.value) {
-      const saved = await save()
-      if (!saved) return null
+  async function flush(): Promise<boolean> {
+    clearTimer()
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      if (saving) {
+        await saveCompletion
+        continue
+      }
+      if (!isDirty.value) return saveState.value !== 'conflict' && saveState.value !== 'error'
+      if (!(await save())) return false
     }
+    saveState.value = 'error'
+    saveError.value = '等待串行保存完成时超时，请重试。'
+    return false
+  }
+
+  async function snapshot(intent: 'manual', reason: string): Promise<ContentRecordV2 | null> {
+    if (!record.value || !draft.value) return null
+    if (!(await flush())) return null
     const result = await contentApi.createSnapshot(
       record.value.id,
       draft.value.draftVersion,
       intent,
+      reason,
+    )
+    applyRecord(result.record)
+    saveState.value = 'saved'
+    return result.record
+  }
+
+  async function publish(reason: string): Promise<ContentRecordV2 | null> {
+    if (!record.value || !draft.value) return null
+    if (!(await flush())) return null
+    const result = await contentApi.publishContent(
+      record.value.id,
+      draft.value.draftVersion,
       reason,
     )
     applyRecord(result.record)
@@ -335,6 +368,7 @@ export const useContentEditorStore = defineStore('contentEditor', () => {
     create,
     patch,
     save,
+    flush,
     scheduleAutosave,
     enterConflict,
     dismissConflict,
@@ -342,6 +376,7 @@ export const useContentEditorStore = defineStore('contentEditor', () => {
     reloadServerVersion,
     conflictJson,
     snapshot,
+    publish,
     loadRevisions,
     compare,
     restoreRevision,

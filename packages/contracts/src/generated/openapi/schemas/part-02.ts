@@ -6,6 +6,90 @@
 import type { components } from '../components'
 
 export interface SchemasPart02 {
+ContentPublicationReadiness: {
+            allowedActions: components["schemas"]["ContentPublicationAction"][];
+            /** Format: uuid */
+            contentId: string;
+            /** Format: int64 */
+            draftVersion: number;
+            issues: components["schemas"]["PublicationReadinessIssue"][];
+            ready: boolean;
+        };
+ContentRecordV2: {
+            /** Format: date-time */
+            createdAt: string;
+            draft: components["schemas"]["ContentDraftV2"];
+            /** Format: uuid */
+            id: string;
+            latestRevision: number | null;
+            publishedRevision: number | null;
+            status: components["schemas"]["CmsPublicationStatusV2"];
+            /** Format: date-time */
+            updatedAt: string;
+            updatedBy: string;
+        };
+ContentRecordV2Page: {
+            counts: {
+                article?: number;
+                caseStudy?: number;
+                company?: number;
+                download?: number;
+                faq?: number;
+                footer?: number;
+                generalInformation?: number;
+                home?: number;
+                legal?: number;
+                navigation?: number;
+                news?: number;
+                page?: number;
+                solution?: number;
+                technology?: number;
+            };
+            items: components["schemas"]["ContentRecordV2"][];
+            nextCursor: string | null;
+            total: number;
+        };
+ContentRelationReference: {
+            /** Format: uuid */
+            id: string;
+            slot: string;
+            target: components["schemas"]["RelationTargetReference"];
+        };
+/** @enum {string} */
+        ContentRevisionKindV2: "manual" | "publish" | "restore";
+ContentRevisionV2: {
+            /** Format: uuid */
+            contentId: string;
+            /** Format: date-time */
+            createdAt: string;
+            createdBy: string;
+            document: components["schemas"]["ContentDraftV2"];
+            kind: components["schemas"]["ContentRevisionKindV2"];
+            reason: string;
+            /** Format: int64 */
+            revision: number;
+            /** Format: int64 */
+            sourceDraftVersion: number;
+        };
+ContentRevisionV2Page: {
+            items: components["schemas"]["ContentRevisionV2"][];
+            nextCursor: string | null;
+        };
+/** @enum {string} */
+        ContentSnapshotIntent: "manual" | "publish";
+ContentTemplateDefinition: {
+            allowedBlocks: components["schemas"]["ContentBlockKind"][];
+            bodyPolicy: components["schemas"]["CmsBodyPolicy"];
+            contentKind: components["schemas"]["CmsContentKind"];
+            key: components["schemas"]["ContentTemplateKey"];
+            requiredBlocks: components["schemas"]["ContentBlockKind"][];
+            routable: boolean;
+            routePattern: string | null;
+            singletonPerLocale: boolean;
+        };
+ContentTemplateDefinitionPage: {
+            items: components["schemas"]["ContentTemplateDefinition"][];
+        };
 /** @enum {string} */
         ContentTemplateKey: "home" | "productIndex" | "productFamily" | "selector" | "compare" | "solutionIndex" | "solutionDetail" | "technologyIndex" | "technologyDetail" | "articleIndex" | "articleDetail" | "newsIndex" | "newsDetail" | "faqIndex" | "faqDetail" | "caseStudyIndex" | "caseStudyDetail" | "downloadIndex" | "downloadDetail" | "about" | "contact" | "rfqRouter" | "rfqForm" | "search" | "legal" | "navigation" | "footer" | "generalInformation";
 ContentTypeFields: {
@@ -92,6 +176,10 @@ CreateAnalyticsConsent: {
             policyVersion: components["schemas"]["AnalyticsPolicyVersion"];
         };
 CreateAnalyticsEvent: components["schemas"]["ConsentedAnalyticsEvent"] | components["schemas"]["AnalyticsOptOutEvent"];
+CreateBusinessNoteRequest: {
+            body: string;
+            reason: string;
+        };
 CreateContactRequest: {
             consent: boolean;
             contact: components["schemas"]["BusinessContact"];
@@ -152,6 +240,11 @@ CtaBlock: {
         };
 /** @enum {string} */
         CtaVariant: "standard" | "emphasized";
+DashboardMetric: {
+            available: boolean;
+            unavailableReason: string | null;
+            value: number | null;
+        };
 /** @enum {string} */
         DataClass: "editorial" | "feishu" | "verifiedCsv" | "developmentFixture";
 DependencyProblemIssue: {
@@ -262,6 +355,14 @@ FeatureItem: {
             /** Format: uuid */
             id: string;
             title: string;
+        };
+FeishuConnectionStatus: {
+            configured: boolean;
+            connectorId: string | null;
+            displayName: string | null;
+            enabled: boolean;
+            latestSync: components["schemas"]["SyncRun"] | null;
+            updatedAt: string | null;
         };
 FieldDiff: {
             baseValue: unknown | null;
@@ -393,105 +494,5 @@ GuestVisitAggregatePage: {
 GuestVisitPage: {
             items: components["schemas"]["GuestVisit"][];
             nextCursor: string | null;
-        };
-HealthStatus: {
-            persistence: string;
-            service: string;
-            status: string;
-            /** Format: date-time */
-            timestamp: string;
-            version: string;
-        };
-HeroBlock: {
-            actions: components["schemas"]["EditorialAction"][];
-            eyebrow?: string | null;
-            heading?: string | null;
-            /** Format: uuid */
-            id: string;
-            lead?: string | null;
-            media?: components["schemas"]["MediaUseReference"] | null;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "hero";
-            variant: components["schemas"]["HeroVariant"];
-        };
-/** @enum {string} */
-        HeroVariant: "standard" | "splitMedia" | "minimal";
-InvitationAcceptance: {
-            /** Format: date-time */
-            acceptedAt: string;
-            displayName: string;
-            /** Format: email */
-            email: string;
-            locale: string;
-            roleKeys: string[];
-            /** @constant */
-            status: "active";
-            /** Format: uuid */
-            userId: string;
-        };
-InviteAdminUser: {
-            displayName: string;
-            /** Format: email */
-            email: string;
-            roleKeys: string[];
-        };
-LegalTypeFields: {
-            effectiveDate?: string | null;
-        };
-LinkTargetContent: {
-            /** Format: uuid */
-            contentId: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            targetType: "content";
-        };
-LinkTargetExternal: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            targetType: "external";
-            /** Format: uri */
-            url: string;
-        };
-LinkTargetReference: components["schemas"]["LinkTargetContent"] | components["schemas"]["LinkTargetRoute"] | components["schemas"]["LinkTargetExternal"];
-LinkTargetRoute: {
-            path: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            targetType: "route";
-        };
-LoginRequest: {
-            /** Format: email */
-            email: string;
-            otp?: string | null;
-            /** Format: password */
-            password: string;
-        };
-MediaAsset: {
-            byteSize: number;
-            /** Format: date-time */
-            createdAt: string;
-            downloadUrl: string;
-            /** Format: uuid */
-            id: string;
-            /** @enum {string} */
-            mediaType: "image/png" | "image/jpeg" | "image/webp";
-            originalName: string;
-            publicUrl: string;
-            sha256: string;
-            uploadedBy: string;
-        };
-MediaAssetPage: {
-            items: components["schemas"]["MediaAsset"][];
-            nextCursor: string | null;
-            total: number;
         };
 }

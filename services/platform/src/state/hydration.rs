@@ -242,6 +242,11 @@ impl AppState {
                 diffs: decode_payload(row.try_get("field_diffs")?, "sync conflict")?,
                 resolved_at: row.try_get("resolved_at")?,
                 resolution: row.try_get("resolution")?,
+                revision: if row.try_get::<Option<DateTime<Utc>>, _>("resolved_at")?.is_some() {
+                    2
+                } else {
+                    1
+                },
             };
             loaded.conflicts.insert(conflict.id, conflict);
         }

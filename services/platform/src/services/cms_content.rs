@@ -23,6 +23,7 @@ mod migration;
 mod mutations;
 mod publication;
 mod publication_mutations;
+mod readiness;
 mod storage;
 mod validation;
 
@@ -33,7 +34,8 @@ pub use mutations::{
     archive_content, create_content, restore_revision, save_draft, snapshot_content,
 };
 pub use publication::{publish_public_route, resolve_content_links, resolve_relation_cards};
-pub use publication_mutations::unpublish_content;
+pub use publication_mutations::{publish_content, unpublish_content};
+pub use readiness::publication_readiness;
 pub use storage::{get_content, list_content, list_revisions};
 
 #[derive(Clone, Debug)]

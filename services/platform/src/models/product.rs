@@ -82,6 +82,22 @@ pub struct Product {
     pub updated_at: DateTime<Utc>,
 }
 
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum ProductPublicationAction {
+    Publish,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProductPublicationReport {
+    pub product_id: Uuid,
+    pub current_revision: i64,
+    pub ready: bool,
+    pub issues: Vec<ValidationIssue>,
+    pub allowed_actions: Vec<ProductPublicationAction>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProductQuery {

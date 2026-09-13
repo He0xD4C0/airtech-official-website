@@ -1,3 +1,4 @@
+pub mod business_inbox;
 pub mod cms_content;
 pub mod cms_dependency_backfill;
 pub mod cms_preflight;

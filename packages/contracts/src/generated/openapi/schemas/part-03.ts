@@ -6,6 +6,106 @@
 import type { components } from '../components'
 
 export interface SchemasPart03 {
+HealthStatus: {
+            persistence: string;
+            service: string;
+            status: string;
+            /** Format: date-time */
+            timestamp: string;
+            version: string;
+        };
+HeroBlock: {
+            actions: components["schemas"]["EditorialAction"][];
+            eyebrow?: string | null;
+            heading?: string | null;
+            /** Format: uuid */
+            id: string;
+            lead?: string | null;
+            media?: components["schemas"]["MediaUseReference"] | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "hero";
+            variant: components["schemas"]["HeroVariant"];
+        };
+/** @enum {string} */
+        HeroVariant: "standard" | "splitMedia" | "minimal";
+InvitationAcceptance: {
+            /** Format: date-time */
+            acceptedAt: string;
+            displayName: string;
+            /** Format: email */
+            email: string;
+            locale: string;
+            roleKeys: string[];
+            /** @constant */
+            status: "active";
+            /** Format: uuid */
+            userId: string;
+        };
+InviteAdminUser: {
+            displayName: string;
+            /** Format: email */
+            email: string;
+            roleKeys: string[];
+        };
+LegalTypeFields: {
+            effectiveDate?: string | null;
+        };
+LinkTargetContent: {
+            /** Format: uuid */
+            contentId: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            targetType: "content";
+        };
+LinkTargetExternal: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            targetType: "external";
+            /** Format: uri */
+            url: string;
+        };
+LinkTargetReference: components["schemas"]["LinkTargetContent"] | components["schemas"]["LinkTargetRoute"] | components["schemas"]["LinkTargetExternal"];
+LinkTargetRoute: {
+            path: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            targetType: "route";
+        };
+LoginRequest: {
+            /** Format: email */
+            email: string;
+            otp?: string | null;
+            /** Format: password */
+            password: string;
+        };
+MediaAsset: {
+            byteSize: number;
+            /** Format: date-time */
+            createdAt: string;
+            downloadUrl: string;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            mediaType: "image/png" | "image/jpeg" | "image/webp";
+            originalName: string;
+            publicUrl: string;
+            sha256: string;
+            uploadedBy: string;
+        };
+MediaAssetPage: {
+            items: components["schemas"]["MediaAsset"][];
+            nextCursor: string | null;
+            total: number;
+        };
 MediaAssetReference: {
             /** Format: uuid */
             contentId: string;
@@ -304,6 +404,17 @@ ProductPrivatePricing: {
             sourceRowNumber: number;
             stableId: string;
         };
+/** @enum {string} */
+        ProductPublicationAction: "publish";
+ProductPublicationReport: {
+            allowedActions: components["schemas"]["ProductPublicationAction"][];
+            /** Format: int64 */
+            currentRevision: number;
+            issues: components["schemas"]["ValidationIssue"][];
+            /** Format: uuid */
+            productId: string;
+            ready: boolean;
+        };
 ProductRfqContext: {
             additionalMessage?: string;
             application: string;
@@ -364,130 +475,13 @@ ProjectRfqRequest: {
             locale: "en";
             sourcePath: string;
         };
+PublicationReadinessIssue: {
+            code: string;
+            detail: string;
+            failedGate: string | null;
+            path: string;
+            targetId: string | null;
+        };
 /** @enum {string} */
         PublicationStatus: "draft" | "scheduled" | "published" | "archived";
-PublicContentProjection: {
-            body: components["schemas"]["TiptapDocument"] | null;
-            composition: components["schemas"]["PageComposition"];
-            /** Format: uuid */
-            id: string;
-            isPlaceholder: boolean;
-            kind: components["schemas"]["CmsContentKind"];
-            locale: string;
-            /** Format: int64 */
-            publishedRevision: number;
-            resolvedLinks: components["schemas"]["ResolvedLinkTarget"][];
-            resolvedMedia: components["schemas"]["ResolvedMedia"][];
-            resolvedRelations: components["schemas"]["ResolvedRelationCard"][];
-            /** @constant */
-            schemaVersion: 2;
-            seo: components["schemas"]["SeoInputV2"];
-            slug: string | null;
-            summary: string | null;
-            templateKey: components["schemas"]["ContentTemplateKey"];
-            title: string;
-            typeFields: components["schemas"]["ContentTypeFields"];
-            /** Format: date-time */
-            updatedAt: string;
-        };
-ReasonRequest: {
-            reason: string;
-        };
-RecoveryCodeSet: {
-            /** Format: date-time */
-            generatedAt: string;
-            readonly recoveryCodes: string[];
-        };
-RelationCollectionBlock: {
-            heading?: string | null;
-            /** Format: uuid */
-            id: string;
-            presentation: components["schemas"]["CollectionPresentation"];
-            relationIds: string[];
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "relationCollection";
-        };
-RelationTargetContent: {
-            /** Format: uuid */
-            contentId: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            targetType: "content";
-        };
-RelationTargetProduct: {
-            /** Format: uuid */
-            productId: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            targetType: "product";
-        };
-RelationTargetReference: components["schemas"]["RelationTargetContent"] | components["schemas"]["RelationTargetProduct"];
-ReplacementRfqContext: {
-            additionalMessage?: string;
-            application: string;
-            dutyPoint: components["schemas"]["RfqDutyPoint"];
-            electrical?: components["schemas"]["RfqElectricalContext"];
-            environment?: string;
-            existingModel: string;
-            installationConstraints?: string;
-            /** @enum {string} */
-            priority?: "efficiency" | "noise" | "size" | "headroom";
-            quantity?: components["schemas"]["RfqQuantity"];
-            replacementGoal?: string;
-        };
-ReplacementRfqRequest: {
-            /** @enum {boolean} */
-            consent: true;
-            contact: components["schemas"]["BusinessContact"];
-            context: components["schemas"]["ReplacementRfqContext"];
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            journey: "replacement";
-            /** @enum {string} */
-            locale: "en";
-            sourcePath: string;
-        };
-ResolvedLinkTarget: {
-            /** Format: uuid */
-            contentId: string;
-            href: string;
-        };
-ResolvedMedia: {
-            /** Format: uuid */
-            assetId: string;
-            byteSize: number;
-            downloadUrl: string;
-            /** @enum {string} */
-            mediaType: "image/png" | "image/jpeg" | "image/webp";
-            originalName: string;
-            publicUrl: string;
-        };
-ResolvedRelationCard: {
-            /** @enum {string} */
-            entityType: "content" | "product";
-            eyebrow: string | null;
-            href: string;
-            /** Format: uuid */
-            relationId: string;
-            summary: string | null;
-            tags: string[];
-            title: string;
-        };
-RestoreContentRevisionRequest: {
-            reason: string;
-        };
-RevisionRequest: {
-            reason: string;
-            /** Format: int64 */
-            revision: number;
-        };
 }

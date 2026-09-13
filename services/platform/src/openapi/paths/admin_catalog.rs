@@ -52,6 +52,42 @@ pub(super) fn add_publication_and_sync(paths: &mut Map<String, Value>) {
             true,
         ),
     );
+    for (path, operation_id, summary) in [
+        (
+            "/api/admin/v1/products/{id}/publication-readiness",
+            "getProductPublicationReadiness",
+            "Read server-authoritative product publication readiness",
+        ),
+        (
+            "/api/admin/v1/products/{id}/validation-report",
+            "getProductValidationReport",
+            "Read the stable product publication validation report",
+        ),
+    ] {
+        add(
+            paths,
+            path,
+            "get",
+            admin(
+                params(
+                    op(
+                        operation_id,
+                        summary,
+                        "adminCatalog",
+                        [(
+                            "200",
+                            json_response(
+                                "Product publication report",
+                                r("ProductPublicationReport"),
+                            ),
+                        )],
+                    ),
+                    vec![path_param("id", uuid())],
+                ),
+                false,
+            ),
+        );
+    }
     add(
         paths,
         "/api/admin/v1/products/{id}/temporary-overrides",
@@ -152,9 +188,111 @@ pub(super) fn add_publication_and_sync(paths: &mut Map<String, Value>) {
                         json_response("Sync conflicts", r("SyncConflictPage")),
                     )],
                 ),
+                {
+                    let mut parameters = admin_pagination_params();
+                    parameters.push(query_param(
+                        "q",
+                        false,
+                        serde_json::json!({"type": "string", "maxLength": 200}),
+                    ));
+                    parameters.push(query_param(
+                        "openOnly",
+                        false,
+                        serde_json::json!({"type": "boolean", "default": true}),
+                    ));
+                    parameters
+                },
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/feishu/connection-status",
+        "get",
+        admin(
+            op(
+                "getFeishuConnectionStatus",
+                "Read credential-safe Feishu connector status and latest run",
+                "adminFeishu",
+                [(
+                    "200",
+                    json_response("Feishu connection status", r("FeishuConnectionStatus")),
+                )],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/feishu/mappings",
+        "get",
+        admin(
+            params(
+                op(
+                    "listFeishuMappings",
+                    "List versioned Feishu field mappings",
+                    "adminFeishu",
+                    [(
+                        "200",
+                        json_response("Feishu mappings", r("SyncMappingPage")),
+                    )],
+                ),
                 admin_pagination_params(),
             ),
             false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/feishu/staging",
+        "get",
+        admin(
+            params(
+                op(
+                    "listFeishuStagingRecords",
+                    "List server-filtered Feishu staging records and validation results",
+                    "adminFeishu",
+                    [(
+                        "200",
+                        json_response("Feishu staging", r("StagingRecordPage")),
+                    )],
+                ),
+                {
+                    let mut parameters = admin_pagination_params();
+                    parameters.extend([
+                        query_param("syncRunId", false, uuid()),
+                        query_param("status", false, r("StagingValidationStatus")),
+                        query_param(
+                            "q",
+                            false,
+                            serde_json::json!({"type": "string", "maxLength": 200}),
+                        ),
+                    ]);
+                    parameters
+                },
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/feishu/conflicts/{id}/resolve",
+        "post",
+        admin(
+            params(
+                body(
+                    op(
+                        "resolveFeishuConflict",
+                        "Resolve a conflict only by accepting incoming data or retaining an evidenced local value temporarily",
+                        "adminFeishu",
+                        [("200", json_response("Resolved sync conflict", r("SyncConflict")))],
+                    ),
+                    r("ResolveSyncConflictRequest"),
+                ),
+                idempotent_entity_params(),
+            ),
+            true,
         ),
     );
 }

@@ -51,6 +51,11 @@ pub fn router() -> Router<AppState> {
             "/content/{id}/draft",
             get(get_content_draft).patch(update_content_draft),
         )
+        .route(
+            "/content/{id}/publication-readiness",
+            get(get_content_publication_readiness),
+        )
+        .route("/content/{id}/publish", post(publish_content))
         .route("/content/{id}/snapshots", post(create_content_snapshot))
         .route("/content/{id}/unpublish", post(unpublish_content))
         .route("/content/{id}/archive", post(archive_content))
@@ -61,6 +66,14 @@ pub fn router() -> Router<AppState> {
             post(restore_content_revision),
         )
         .route("/products", get(list_products))
+        .route(
+            "/products/{id}/publication-readiness",
+            get(get_product_publication_report),
+        )
+        .route(
+            "/products/{id}/validation-report",
+            get(get_product_publication_report),
+        )
         .route("/products/{id}/publish", post(publish_product))
         .route(
             "/products/{id}/temporary-overrides",
@@ -70,16 +83,35 @@ pub fn router() -> Router<AppState> {
             "/feishu/sync-runs",
             get(list_sync_runs).post(start_sync_run),
         )
+        .route(
+            "/feishu/connection-status",
+            get(get_feishu_connection_status),
+        )
+        .route("/feishu/mappings", get(list_feishu_mappings))
+        .route("/feishu/staging", get(list_feishu_staging))
         .route("/feishu/conflicts", get(list_conflicts))
+        .route("/feishu/conflicts/{id}/resolve", post(resolve_conflict))
         .route("/rfqs", get(list_rfqs))
+        .route("/rfqs/{id}", get(get_rfq))
+        .route("/rfqs/{id}/pii", get(get_rfq_pii))
+        .route("/rfqs/{id}/assignment", post(assign_rfq))
+        .route("/rfqs/{id}/status", post(update_rfq_status))
+        .route("/rfqs/{id}/notes", post(add_rfq_note))
         .route("/contacts", get(list_contacts))
+        .route("/contacts/{id}", get(get_contact))
+        .route("/contacts/{id}/pii", get(get_contact_pii))
+        .route("/contacts/{id}/assignment", post(assign_contact))
+        .route("/contacts/{id}/status", post(update_contact_status))
+        .route("/contacts/{id}/notes", post(add_contact_note))
         .route("/analytics/overview", get(analytics_overview))
         .route("/analytics/summary", get(analytics_summary))
+        .route("/dashboard/summary", get(admin_dashboard_summary))
         .route("/settings", get(get_settings).patch(update_settings))
         .route("/operations", get(list_operations).post(create_operation))
         .route("/operations/{id}", get(get_operation))
         .route("/operations/{id}/events", get(operation_events))
         .route("/audit", get(list_audit))
+        .route("/audit/export.csv", get(export_audit_csv))
         .merge(super::admin_data::router())
 }
 
@@ -89,10 +121,13 @@ include!("admin/cms_content_lifecycle.rs");
 include!("admin/products.rs");
 include!("admin/temporary_overrides.rs");
 include!("admin/sync.rs");
+include!("admin/sync_conflicts.rs");
 include!("admin/submissions.rs");
+include!("admin/submissions_support.rs");
 include!("admin/analytics_overview.rs");
 include!("admin/media.rs");
 include!("admin/analytics_summary.rs");
+include!("admin/dashboard.rs");
 include!("admin/operations.rs");
 include!("admin/audit_and_validation.rs");
 include!("admin/response_and_audit.rs");

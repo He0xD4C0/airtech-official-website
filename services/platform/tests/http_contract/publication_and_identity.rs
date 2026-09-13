@@ -173,6 +173,7 @@ async fn product_publish_gate_rejects_invalid_master_and_unaccepted_workflow_sta
             diffs: vec![],
             resolved_at: None,
             resolution: None,
+            revision: 1,
         };
         data.conflicts.insert(conflict.id, conflict);
         let expired_override = TemporaryOverride {

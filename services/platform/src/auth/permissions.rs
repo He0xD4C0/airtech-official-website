@@ -79,7 +79,9 @@ pub fn required_permission(path: &str, method: &axum::http::Method) -> Option<&'
     } else if (path.contains("/content/")
         || path.contains("/news/")
         || path.contains("/general-information/"))
-        && (path.ends_with("/publish") || path.ends_with("/rollback"))
+        && (path.ends_with("/publish")
+            || path.ends_with("/unpublish")
+            || path.ends_with("/rollback"))
     {
         Some("content.publish")
     } else if path.ends_with("/content")
@@ -105,8 +107,12 @@ pub fn required_permission(path: &str, method: &axum::http::Method) -> Option<&'
         })
     } else if path.contains("/feishu/") {
         Some("integration.run")
+    } else if (path.contains("/rfqs/") || path.contains("/contacts/"))
+        && path.ends_with("/pii")
+    {
+        Some("rfq.read_pii")
     } else if path.contains("/rfqs") || path.contains("/contacts") {
-        Some("rfq.read")
+        Some(if write { "rfq.assign" } else { "rfq.read" })
     } else if path.contains("/analytics") {
         Some("analytics.read")
     } else if path.ends_with("/users")

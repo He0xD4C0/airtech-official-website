@@ -22,6 +22,40 @@ pub struct CreateContentSnapshotRequest {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PublishContentRequest {
+    pub reason: String,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum ContentPublicationAction {
+    Save,
+    Publish,
+    Unpublish,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PublicationReadinessIssue {
+    pub code: String,
+    pub path: String,
+    pub detail: String,
+    pub failed_gate: Option<String>,
+    pub target_id: Option<Uuid>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ContentPublicationReadiness {
+    pub content_id: Uuid,
+    pub draft_version: i64,
+    pub ready: bool,
+    pub issues: Vec<PublicationReadinessIssue>,
+    pub allowed_actions: Vec<ContentPublicationAction>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RestoreContentRevisionRequest {
     pub reason: String,
 }

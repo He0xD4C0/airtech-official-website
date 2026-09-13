@@ -6,6 +6,139 @@
 import type { components } from '../components'
 
 export interface SchemasPart04 {
+PublicContentProjection: {
+            body: components["schemas"]["TiptapDocument"] | null;
+            composition: components["schemas"]["PageComposition"];
+            /** Format: uuid */
+            id: string;
+            isPlaceholder: boolean;
+            kind: components["schemas"]["CmsContentKind"];
+            locale: string;
+            /** Format: int64 */
+            publishedRevision: number;
+            resolvedLinks: components["schemas"]["ResolvedLinkTarget"][];
+            resolvedMedia: components["schemas"]["ResolvedMedia"][];
+            resolvedRelations: components["schemas"]["ResolvedRelationCard"][];
+            /** @constant */
+            schemaVersion: 2;
+            seo: components["schemas"]["SeoInputV2"];
+            slug: string | null;
+            summary: string | null;
+            templateKey: components["schemas"]["ContentTemplateKey"];
+            title: string;
+            typeFields: components["schemas"]["ContentTypeFields"];
+            /** Format: date-time */
+            updatedAt: string;
+        };
+PublishContentRequest: {
+            reason: string;
+        };
+ReasonRequest: {
+            reason: string;
+        };
+RecoveryCodeSet: {
+            /** Format: date-time */
+            generatedAt: string;
+            readonly recoveryCodes: string[];
+        };
+RelationCollectionBlock: {
+            heading?: string | null;
+            /** Format: uuid */
+            id: string;
+            presentation: components["schemas"]["CollectionPresentation"];
+            relationIds: string[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "relationCollection";
+        };
+RelationTargetContent: {
+            /** Format: uuid */
+            contentId: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            targetType: "content";
+        };
+RelationTargetProduct: {
+            /** Format: uuid */
+            productId: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            targetType: "product";
+        };
+RelationTargetReference: components["schemas"]["RelationTargetContent"] | components["schemas"]["RelationTargetProduct"];
+ReplacementRfqContext: {
+            additionalMessage?: string;
+            application: string;
+            dutyPoint: components["schemas"]["RfqDutyPoint"];
+            electrical?: components["schemas"]["RfqElectricalContext"];
+            environment?: string;
+            existingModel: string;
+            installationConstraints?: string;
+            /** @enum {string} */
+            priority?: "efficiency" | "noise" | "size" | "headroom";
+            quantity?: components["schemas"]["RfqQuantity"];
+            replacementGoal?: string;
+        };
+ReplacementRfqRequest: {
+            /** @enum {boolean} */
+            consent: true;
+            contact: components["schemas"]["BusinessContact"];
+            context: components["schemas"]["ReplacementRfqContext"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            journey: "replacement";
+            /** @enum {string} */
+            locale: "en";
+            sourcePath: string;
+        };
+ResolvedLinkTarget: {
+            /** Format: uuid */
+            contentId: string;
+            href: string;
+        };
+ResolvedMedia: {
+            /** Format: uuid */
+            assetId: string;
+            byteSize: number;
+            downloadUrl: string;
+            /** @enum {string} */
+            mediaType: "image/png" | "image/jpeg" | "image/webp";
+            originalName: string;
+            publicUrl: string;
+        };
+ResolvedRelationCard: {
+            /** @enum {string} */
+            entityType: "content" | "product";
+            eyebrow: string | null;
+            href: string;
+            /** Format: uuid */
+            relationId: string;
+            summary: string | null;
+            tags: string[];
+            title: string;
+        };
+ResolveSyncConflictRequest: {
+            decision: components["schemas"]["SyncConflictDecision"];
+            evidenceReference: string | null;
+            expiresAt: string | null;
+            reason: string;
+        };
+RestoreContentRevisionRequest: {
+            reason: string;
+        };
+RevisionRequest: {
+            reason: string;
+            /** Format: int64 */
+            revision: number;
+        };
 RfqDutyPoint: {
             airflow: number;
             /** @enum {string} */
@@ -21,21 +154,6 @@ RfqElectricalContext: {
 /** @enum {string} */
         RfqJourney: "product" | "selection" | "project" | "replacement";
 RfqQuantity: number | string;
-RfqSubmission: {
-            /** Format: uuid */
-            id: string;
-            reference: string;
-            request: components["schemas"]["CreateRfqRequest"];
-            /** Format: date-time */
-            retentionUntil: string;
-            status: string;
-            /** Format: date-time */
-            submittedAt: string;
-        };
-RfqSubmissionPage: {
-            items: components["schemas"]["RfqSubmission"][];
-            nextCursor: string | null;
-        };
 RichTextDocument: {
             doc: unknown;
             schemaVersion: number;
@@ -186,6 +304,27 @@ SpecValue: {
          * @enum {string}
          */
         StableProblemType: "https://api.airtekpower.example/problems/media_idempotency_conflict" | "https://api.airtekpower.example/problems/media_decode_failed" | "https://api.airtekpower.example/problems/content_dependency_conflict";
+StagingRecord: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            normalizedPayload: unknown | null;
+            sourceRecordId: string;
+            /** Format: uuid */
+            sourceSnapshotId: string;
+            /** Format: uuid */
+            syncRunId: string;
+            validationErrors: components["schemas"]["ValidationIssue"][];
+            validationStatus: components["schemas"]["StagingValidationStatus"];
+        };
+StagingRecordPage: {
+            items: components["schemas"]["StagingRecord"][];
+            nextCursor: string | null;
+            total: number;
+        };
+/** @enum {string} */
+        StagingValidationStatus: "pending" | "valid" | "invalid" | "conflicted";
 StartSyncRequest: {
             cursor?: string | null;
             /** @default false */
@@ -199,12 +338,33 @@ SyncConflict: {
             productId: string | null;
             resolution: string | null;
             resolvedAt: string | null;
+            /** Format: int64 */
+            revision: number;
             sourceRecordId: string;
             /** Format: uuid */
             syncRunId: string;
         };
+/** @enum {string} */
+        SyncConflictDecision: "acceptIncoming" | "keepVerifiedLocal";
 SyncConflictPage: {
             items: components["schemas"]["SyncConflict"][];
+            nextCursor: string | null;
+            total: number;
+        };
+SyncMapping: {
+            active: boolean;
+            /** Format: uuid */
+            connectorId: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            mapping: unknown;
+            schemaVersion: number;
+            version: string;
+        };
+SyncMappingPage: {
+            items: components["schemas"]["SyncMapping"][];
             nextCursor: string | null;
         };
 SyncRun: {
@@ -335,77 +495,5 @@ TiptapTextNode: {
             text: string;
             /** @enum {string} */
             type: "text";
-        };
-TotpCodeRequest: {
-            code: string;
-        };
-TotpEnrollment: {
-            /** @constant */
-            algorithm: "SHA1";
-            /** @constant */
-            digits: 6;
-            /** Format: uri */
-            readonly otpAuthUri: string;
-            /** @constant */
-            periodSeconds: 30;
-            readonly secret: string;
-        };
-UnpublishContentRequest: {
-            /** Format: int64 */
-            expectedPublishedRevision: number;
-            reason: string;
-        };
-UpdateAdminRole: {
-            displayName?: string;
-            permissions?: string[];
-            reason: string;
-        };
-UpdateAdminUser: {
-            displayName?: string;
-            locale?: string;
-            reason: string;
-            roleKeys?: string[];
-            /** @enum {string} */
-            status?: "invited" | "active" | "disabled";
-        };
-UpdatePlatformSettings: {
-            reason: string;
-            retentionDeletionGraceDays?: number;
-            rfqRetentionDays?: number;
-            temporaryOverrideDefaultDays?: number;
-        };
-UpdateProductPresentation: {
-            indexable: boolean;
-            locale: string;
-            reason: string;
-            /** @default [] */
-            relatedContentIds: string[];
-            seo: components["schemas"]["SeoMetadataInput"];
-            slug: string;
-            /** @default 0 */
-            sortOrder: number;
-            summary?: string | null;
-            title: string;
-        };
-UserAdminSummary: components["schemas"]["AdminUserRecord"];
-UserInvitation: {
-            displayName: string;
-            /** Format: email */
-            email: string;
-            /** Format: date-time */
-            expiresAt: string;
-            /** Format: uuid */
-            id: string;
-            readonly invitationToken?: string;
-            /** Format: date-time */
-            invitedAt: string;
-            locale: string;
-            roleKeys: string[];
-            /** @enum {string} */
-            status: "pending" | "accepted" | "revoked" | "expired";
-        };
-UserInvitationPage: {
-            items: components["schemas"]["UserInvitation"][];
-            nextCursor: string | null;
         };
 }

@@ -25,8 +25,8 @@
     "check:deployment": "node scripts/assert-deployment-config.mjs",
     "check:media-boundary": "node scripts/assert-direct-media-boundary.mjs",
     "check:isolation": "node scripts/smoke-isolation.mjs",
-    "generate:contracts": "node scripts/generate-openapi.mjs && pnpm --filter @airtek/contracts typecheck",
-    "check:contracts": "node scripts/generate-openapi.mjs --check && pnpm --filter @airtek/contracts typecheck"
+    "generate:contracts": "node scripts/generate-openapi.mjs && node scripts/generate-admin-operation-matrix.mjs && pnpm --filter @airtek/contracts typecheck",
+    "check:contracts": "node scripts/generate-openapi.mjs --check && node scripts/generate-admin-operation-matrix.mjs --check && pnpm --filter @airtek/contracts typecheck"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.10.2",

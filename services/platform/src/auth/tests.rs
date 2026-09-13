@@ -43,6 +43,22 @@ mod tests {
             ),
             Some("content.write")
         );
+        for path in [
+            "/api/admin/v1/content/abc/publish",
+            "/api/admin/v1/content/abc/unpublish",
+        ] {
+            assert_eq!(
+                required_permission(path, &axum::http::Method::POST),
+                Some("content.publish")
+            );
+        }
+        assert_eq!(
+            required_permission(
+                "/api/admin/v1/content/abc/publication-readiness",
+                &axum::http::Method::GET
+            ),
+            Some("content.read")
+        );
         assert_eq!(
             required_permission("/api/admin/v1/settings", &axum::http::Method::GET),
             Some("settings.manage")
@@ -93,6 +109,27 @@ mod tests {
                 &axum::http::Method::POST
             ),
             Some(AdminPermissionPolicy::Exact("media.write"))
+        );
+        assert_eq!(
+            required_permission(
+                "/api/admin/v1/rfqs/00000000-0000-0000-0000-000000000001/pii",
+                &axum::http::Method::GET
+            ),
+            Some("rfq.read_pii")
+        );
+        assert_eq!(
+            required_permission(
+                "/api/admin/v1/rfqs/00000000-0000-0000-0000-000000000001/status",
+                &axum::http::Method::POST
+            ),
+            Some("rfq.assign")
+        );
+        assert_eq!(
+            required_permission(
+                "/api/admin/v1/feishu/conflicts/00000000-0000-0000-0000-000000000001/resolve",
+                &axum::http::Method::POST
+            ),
+            Some("integration.run")
         );
     }
 

@@ -31,7 +31,7 @@ impl From<sqlx::Error> for AttemptError {
     }
 }
 
-pub(super) async fn publish_content(
+pub async fn publish_content(
     state: &AppState,
     id: Uuid,
     expected: i64,

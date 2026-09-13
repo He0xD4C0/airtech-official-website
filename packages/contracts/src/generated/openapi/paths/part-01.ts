@@ -85,8 +85,25 @@ export interface PathsPart01 {
             path?: never;
             cookie?: never;
         };
-        /** List immutable audit events */
+        /** List immutable audit events with server-side actor, action, resource, time and full-text filters */
         get: operations["listAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/audit/export.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export filtered audit events as ordinary unsigned CSV */
+        get: operations["exportAuditEventsCsv"];
         put?: never;
         post?: never;
         delete?: never;
@@ -272,10 +289,95 @@ export interface PathsPart01 {
             path?: never;
             cookie?: never;
         };
-        /** List contacts with permission-aware PII redaction */
-        get: operations["listContactRequests"];
+        /** List always-redacted Contact inbox items with server filtering and total count */
+        get: operations["listContactInboxItems"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/contacts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an always-redacted Contact item, immutable notes and status history */
+        get: operations["getContactInboxItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/contacts/{id}/assignment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Assign or unassign for an Contact item with a required reason */
+        post: operations["assignContactInboxItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/contacts/{id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create an immutable internal note for an Contact item with a required reason */
+        post: operations["createContactInternalNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/contacts/{id}/pii": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Contact PII with no-store response and read audit */
+        get: operations["getContactPii"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/contacts/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transition status, including spam marking for an Contact item with a required reason */
+        post: operations["updateContactInboxStatus"];
         delete?: never;
         options?: never;
         head?: never;
@@ -352,15 +454,15 @@ export interface PathsPart01 {
         patch: operations["updateAdminContentDraftV2"];
         trace?: never;
     };
-"/api/admin/v1/content/{id}/revisions": {
+"/api/admin/v1/content/{id}/publication-readiness": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List immutable unified CMS revisions */
-        get: operations["listAdminContentRevisionsV2"];
+        /** Read server-authoritative publication blockers and allowed actions */
+        get: operations["getAdminContentPublicationReadinessV2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -369,7 +471,7 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/content/{id}/revisions/{revision}/restore": {
+"/api/admin/v1/content/{id}/publish": {
         parameters: {
             query?: never;
             header?: never;
@@ -378,112 +480,8 @@ export interface PathsPart01 {
         };
         get?: never;
         put?: never;
-        /** Restore an immutable revision as a new draft and immutable restore revision */
-        post: operations["restoreAdminContentRevisionV2"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content/{id}/snapshots": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create an immutable manual or published revision from the current draft */
-        post: operations["createAdminContentSnapshotV2"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content/{id}/unpublish": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Explicitly unpublish content while preserving its draft and immutable history */
-        post: operations["unpublishAdminContentV2"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content/templates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List the controlled CMS template registry */
-        get: operations["listAdminContentTemplatesV2"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/feishu/conflicts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List three-way product conflicts */
-        get: operations["listFeishuConflicts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/feishu/sync-runs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Feishu sync runs */
-        get: operations["listFeishuSyncRuns"];
-        put?: never;
-        /** Queue a resumable Feishu staging sync job */
-        post: operations["startFeishuSyncRun"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/media/assets": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List media library assets for the unified content editor */
-        get: operations["listAdminMediaAssets"];
-        put?: never;
-        /** Upload one PNG, JPEG, or WebP asset and make its API URL public immediately */
-        post: operations["uploadAdminMediaAsset"];
+        /** Publish the current draft after transactional server-side revalidation */
+        post: operations["publishAdminContentV2"];
         delete?: never;
         options?: never;
         head?: never;

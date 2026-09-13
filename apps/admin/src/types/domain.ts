@@ -29,7 +29,8 @@ export interface SessionUser {
   totpEnabled: boolean
 }
 
-export type ContentStatus = 'draft' | 'scheduled' | 'published' | 'archived'
+export type ContentStatus = 'draft' | 'published' | 'archived'
+export type ProductStatus = 'draft' | 'scheduled' | 'published' | 'archived'
 export type FactState =
   | 'verified'
   | 'missing'
@@ -55,7 +56,7 @@ export interface ProductSummary {
   model: string
   family: string
   sourceState: 'loaded' | 'pending'
-  publishState: ContentStatus
+  publishState: ProductStatus
   verifiedFields: number
   totalFields: number
   overrideExpiresAt?: string

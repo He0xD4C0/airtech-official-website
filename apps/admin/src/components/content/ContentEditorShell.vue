@@ -26,29 +26,24 @@ import StructuredBodyEditor from '@/components/content/StructuredBodyEditor.vue'
 import TypeFieldsPanel from '@/components/content/TypeFieldsPanel.vue'
 import DataStatePanel from '@/components/DataStatePanel.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { blockKindLabels, contentKindLabels, contentStatusLabels } from '@/components/content/labels'
-import { routePatternUsesSlug } from '@/services/canonicalPath'
+import { contentKindLabels, contentStatusLabels } from '@/components/content/labels'
+import { useContentPublication } from '@/composables/useContentPublication'
 import { defaultBlock, newDraftId } from '@/services/contentDraftDefaults'
 import { apiErrorMessage } from '@/services/cursorPagination'
-import { useAuthStore } from '@/stores/auth'
 import { useContentEditorStore } from '@/stores/contentEditor'
 import { useUiStore } from '@/stores/ui'
 
 const MANUAL_SNAPSHOT_REASON = 'Create a manual snapshot from the Admin CMS editor'
-const DEFAULT_PUBLISH_REASON = 'Publish the current Admin CMS draft'
 
 const emit = defineEmits<{ reload: [] }>()
 const router = useRouter()
-const auth = useAuthStore()
 const ui = useUiStore()
 const store = useContentEditorStore()
 
 const activePanel = ref<'block' | 'seo' | 'revisions'>('seo')
 const activeSection = ref('editor-basics')
 const selectedBlockId = ref<string | null>(null)
-const publishOpen = ref(false)
-const publishReason = ref(DEFAULT_PUBLISH_REASON)
-const publishing = ref(false)
+const publication = useContentPublication()
 const mediaDialogKind = ref<ContentBlockKind | null>(null)
 const diff = ref<ContentDiffV2 | null>(null)
 const diffLoading = ref(false)
@@ -64,7 +59,6 @@ const statusTone = computed(() => {
   if (status === 'archived') return 'warning' as const
   return 'neutral' as const
 })
-const canPublish = computed(() => auth.hasPermission('content.publish'))
 const isSingleton = computed(() => template.value?.routable === false)
 
 const sections = computed(() => [
@@ -73,25 +67,6 @@ const sections = computed(() => [
   ...(bodyPolicy.value === 'forbidden' ? [] : [{ id: 'editor-body', label: '正文', level: 1 as const }]),
   { id: 'editor-type-fields', label: '类型字段', level: 1 as const },
 ])
-
-const publishIssues = computed(() => {
-  const current = draft.value
-  const definition = template.value
-  if (!current || !definition) return []
-  const issues: string[] = []
-  if (routePatternUsesSlug(definition.routePattern) && !(current.slug ?? '').trim()) {
-    issues.push('发布前必须填写 slug。')
-  }
-  if (!current.title.trim()) issues.push('发布前必须填写标题。')
-  const kinds = new Set(current.composition.blocks.map((block) => block.type))
-  for (const required of definition.requiredBlocks) {
-    if (!kinds.has(required)) issues.push(`缺少必需区块：${blockKindLabels[required] ?? required}`)
-  }
-  const hasBody = Boolean(current.body?.content.length)
-  if (definition.bodyPolicy === 'required' && !hasBody) issues.push('该模板要求非空正文。')
-  if (hasBody && !kinds.has('body')) issues.push('正文非空时需要在组成中加入正文区块。')
-  return issues
-})
 
 watch(selectedBlockId, (value) => {
   if (value) activePanel.value = 'block'
@@ -211,23 +186,6 @@ async function manualSnapshot(): Promise<void> {
   }
 }
 
-async function publish(): Promise<void> {
-  publishing.value = true
-  try {
-    const result = await store.snapshot('publish', publishReason.value.trim() || DEFAULT_PUBLISH_REASON)
-    if (result) {
-      publishOpen.value = false
-      ui.toast('内容已发布', `Published revision ${result.publishedRevision}.`)
-    } else if (store.saveState === 'conflict') {
-      ui.toast('保存已停止', '发布前发现版本冲突，请先处理差异。', 'warning')
-    }
-  } catch (error) {
-    ui.toast('发布失败', apiErrorMessage(error, '请检查字段、权限与并发版本。'), 'danger')
-  } finally {
-    publishing.value = false
-  }
-}
-
 async function compareRevisions(baseRevision: number, targetRevision?: number): Promise<void> {
   if (!store.record) return
   diffLoading.value = true
@@ -311,8 +269,8 @@ async function loadRevisions(): Promise<void> {
         <button class="button button--secondary" type="button" @click="manualSnapshot">
           <FileJson2 :size="15" />建立快照
         </button>
-        <button v-if="canPublish" class="button button--primary" type="button" @click="publishOpen = true">
-          <Send :size="15" />发布
+        <button v-if="publication.canPublish.value" class="button button--primary" type="button" :disabled="publication.checking.value" @click="publication.prepare">
+          <Send :size="15" />{{ publication.checking.value ? '检查中…' : '发布' }}
         </button>
       </div>
     </header>
@@ -458,14 +416,14 @@ async function loadRevisions(): Promise<void> {
       @close="store.dismissConflict()"
     />
     <ContentPublishDialog
-      :open="publishOpen"
+      :open="publication.open.value"
       :is-placeholder="draft.isPlaceholder"
-      :issues="publishIssues"
-      :reason="publishReason"
-      :publishing="publishing"
-      @update:reason="publishReason = $event"
-      @confirm="publish"
-      @close="publishOpen = false"
+      :issues="publication.issues.value"
+      :reason="publication.reason.value"
+      :publishing="publication.publishing.value"
+      @update:reason="publication.reason.value = $event"
+      @confirm="publication.publish"
+      @close="publication.close"
     />
     <ContentMediaBlockDialog
       :kind="mediaDialogKind"

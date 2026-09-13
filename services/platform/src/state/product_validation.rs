@@ -1,14 +1,21 @@
 use super::*;
 
 impl AppState {
-    pub async fn assert_product_publishable(&self, product: &Product) -> Result<(), ApiError> {
-        let issues = if self.pool.is_some() {
-            self.postgres_product_publication_issues(product).await?
+    pub async fn product_publication_issues(
+        &self,
+        product: &Product,
+    ) -> Result<Vec<ValidationIssue>, ApiError> {
+        if self.pool.is_some() {
+            self.postgres_product_publication_issues(product).await
         } else {
             let mut issues = validate_product_master(product);
             issues.extend(self.in_memory_product_publication_issues(product).await);
-            issues
-        };
+            Ok(issues)
+        }
+    }
+
+    pub async fn assert_product_publishable(&self, product: &Product) -> Result<(), ApiError> {
+        let issues = self.product_publication_issues(product).await?;
         if issues.is_empty() {
             Ok(())
         } else {
