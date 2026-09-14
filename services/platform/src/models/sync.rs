@@ -126,6 +126,8 @@ pub struct FeishuConnectionStatus {
     pub display_name: Option<String>,
     pub configured: bool,
     pub enabled: bool,
+    pub runnable: bool,
+    pub unavailable_reason: Option<String>,
     pub updated_at: Option<DateTime<Utc>>,
     pub latest_sync: Option<SyncRun>,
 }

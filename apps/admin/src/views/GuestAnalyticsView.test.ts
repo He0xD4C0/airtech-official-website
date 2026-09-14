@@ -3,20 +3,16 @@ import { renderToString } from 'vue/server-renderer'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/composables/useCursorPagination', () => {
-  let call = 0
   return {
     useCursorPagination: () => {
-      const visits = [{
+      const sources = [{
         bucketDate: '2026-09-02', landingPath: '/en', locale: 'en', visits: 3,
         pageViews: 4, rfqStarts: 1, rfqSubmissions: 0,
-      }]
-      const sources = [{
-        ...visits[0], source: 'referral', sourceName: 'Referral',
+        source: 'referral', sourceName: 'Referral',
         referrerDomain: 'example.test', utmSource: null, medium: null, campaign: null,
       }]
-      const items = call++ % 2 === 0 ? visits : sources
       return {
-        items: shallowRef(items),
+        items: shallowRef(sources),
         nextCursor: shallowRef('opaque-next-page'),
         pageNumber: ref(2),
         canPrevious: ref(true),
@@ -35,8 +31,8 @@ vi.mock('@/composables/useCursorPagination', () => {
 
 import GuestAnalyticsView from './GuestAnalyticsView.vue'
 
-async function render(mode: 'visits' | 'sources'): Promise<string> {
-  const app = createSSRApp(GuestAnalyticsView, { mode })
+async function render(): Promise<string> {
+  const app = createSSRApp(GuestAnalyticsView)
   app.component('RouterLink', defineComponent({
     setup(_props, { slots }) {
       return () => h('a', slots.default?.())
@@ -46,15 +42,12 @@ async function render(mode: 'visits' | 'sources'): Promise<string> {
 }
 
 describe('GuestAnalyticsView pagination', () => {
-  it('renders server-cursor previous and next controls for both aggregate modes', async () => {
-    const visits = await render('visits')
-    const sources = await render('sources')
+  it('renders server-cursor previous and next controls for source aggregates', async () => {
+    const sources = await render()
 
-    expect(visits).toContain('第 2 页')
-    expect(visits).toContain('条访问聚合')
-    expect(visits).toContain('上一页')
-    expect(visits).toContain('下一页')
     expect(sources).toContain('第 2 页')
     expect(sources).toContain('条来源聚合')
+    expect(sources).toContain('上一页')
+    expect(sources).toContain('下一页')
   })
 })

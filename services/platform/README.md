@@ -40,8 +40,7 @@ removes public schema creation, and refuses an incomplete privilege topology.
 In production, that runtime role must not own the database or schema objects.
 Local Compose alone explicitly
 allows its existing shared `airtek` owner for development-volume compatibility.
-The former Rust `airtek-migrate` binary has been removed, and `airtekctl` has no
-`migrate` subcommand.
+Application-owned migration and operations CLIs have been removed.
 
 Admin authentication uses an Argon2id password and a host-only HttpOnly session
 cookie. The one-time `AIRTEK_ADMIN_BOOTSTRAP_TOKEN` is accepted only by
@@ -101,16 +100,9 @@ The Compose profile assigns its gateway `172.28.0.10` and trusts only
 that local network conflicts. Never trust an entire private address range merely
 because it is private.
 
-The development-only CLI and PTY terminal require an explicit feature:
-
-```sh
-cargo run --features devtools --bin airtekctl -- diagnose
-cargo run --features devtools --bin airtekctl -- validate all
-cargo run --features devtools --bin airtekctl -- sync dry-run --mapping-version development
-cargo run --features devtools --bin airtekctl -- index rebuild
-cargo run --features devtools --bin airtekctl -- cache invalidate
-cargo run --features devtools --bin airtekctl -- jobs list
-```
+The development-only browser PTY terminal requires the explicit `devtools`
+feature. It opens the host `$SHELL` with the same non-root identity and working
+directory as the API process; there is no application-owned command language.
 
 The development seed is the only writer allowed to establish
 `developmentFixture` ownership. When an editor clears a seeded record's
@@ -136,15 +128,13 @@ working directory; no `sudo`, `setuid` or OS-user mapping is used.
 Terminal establishment, termination and input-frame metadata are written to the
 immutable platform audit log. For command frames the audit includes actor,
 session, time, byte count and a fixed reason, but deliberately excludes command
-text and PTY output. `airtekctl` reports provider work only as queued; the worker
-fails it explicitly when a Feishu, search or cache provider is not configured.
+text and PTY output. Feishu synchronization remains disabled until its provider
+adapter is connected; no placeholder job is queued.
 
 Production artifacts must be built with `--features production`. The crate
 rejects `production,devtools` at compile time. The production Platform image
-contains API, Worker, and a restricted `airtekctl` that accepts only diagnostics,
-CMS/media preflight, dependency backfill, and media backfill operations. The
-broader seed, provider-sync, cache, job, and PTY tooling remains gated by
-`devtools` and is absent from production.
+contains only API and Worker. The browser terminal and PTY tooling remain gated
+by `devtools` and are absent from production.
 
 ## OpenAPI contract
 

@@ -12,8 +12,6 @@ fn documents_every_production_route() {
     let expected = [
         "/api/admin/v1/analytics/overview",
         "/api/admin/v1/analytics/sources",
-        "/api/admin/v1/analytics/summary",
-        "/api/admin/v1/analytics/visits",
         "/api/admin/v1/audit",
         "/api/admin/v1/audit/export.csv",
         "/api/admin/v1/auth/invitations/accept",
@@ -53,7 +51,6 @@ fn documents_every_production_route() {
         "/api/admin/v1/media/assets",
         "/api/admin/v1/media/assets/{id}",
         "/api/admin/v1/media/assets/{id}/references",
-        "/api/admin/v1/operations",
         "/api/admin/v1/operations/{id}",
         "/api/admin/v1/operations/{id}/events",
         "/api/admin/v1/products",
@@ -346,7 +343,7 @@ fn public_media_contract_is_asset_resolved() {
 }
 
 #[test]
-fn admin_submit_publish_and_job_mutations_require_a_bounded_idempotency_key() {
+fn mutations_require_a_bounded_idempotency_key() {
     let document = document();
     for (path, method) in [
         ("/api/admin/v1/content", "post"),
@@ -359,11 +356,10 @@ fn admin_submit_publish_and_job_mutations_require_a_bounded_idempotency_key() {
         ),
         ("/api/admin/v1/products/{id}/publish", "post"),
         ("/api/admin/v1/products/{id}/temporary-overrides", "post"),
-        ("/api/admin/v1/feishu/sync-runs", "post"),
-        ("/api/admin/v1/operations", "post"),
         ("/api/admin/v1/media/assets", "post"),
         ("/api/admin/v1/products/imports", "post"),
         ("/api/admin/v1/products/{id}/presentation", "patch"),
+        ("/api/public/v1/analytics/events", "post"),
         ("/api/admin/v1/user-invitations", "post"),
         ("/api/admin/v1/user-invitations/{id}/revoke", "post"),
         ("/api/admin/v1/users/{id}", "patch"),
@@ -406,10 +402,13 @@ fn every_operation_has_an_id_and_problem_contracts() {
                 "{method} {path} has no operationId"
             );
             let responses = operation["responses"].as_object().expect("responses");
+            let has_success = responses
+                .keys()
+                .any(|status| status.starts_with('2') || status == "101");
+            let is_explicitly_unavailable =
+                operation["operationId"] == "startFeishuSyncRun" && responses.contains_key("409");
             assert!(
-                responses
-                    .keys()
-                    .any(|status| status.starts_with('2') || status == "101"),
+                has_success || is_explicitly_unavailable,
                 "{method} {path} has no success response"
             );
             assert_eq!(

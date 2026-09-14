@@ -12,7 +12,6 @@ fn workflow_principal(user_id: Uuid, email: String) -> AdminPrincipal {
             "content.write".into(),
             "content.publish".into(),
             "integration.run".into(),
-            "operations.run".into(),
             "rfq.read".into(),
             "rfq.read_pii".into(),
             "rfq.assign".into(),

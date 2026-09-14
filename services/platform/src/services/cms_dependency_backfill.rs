@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use super::cms_publication_dependencies::{self as dependencies, CMS_DEPENDENCY_EXTRACTOR_VERSION};
 
-const BACKFILL_ACTOR: &str = "airtekctl:cms-dependencies-backfill";
+const BACKFILL_ACTOR: &str = "system:cms-dependencies-backfill";
 const PUBLICATION_LOCK_KEY: &str = "airtek.cms.publication.v2";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

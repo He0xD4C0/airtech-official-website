@@ -6,40 +6,6 @@
 import type { operations } from '../operations'
 
 export interface PathsPart02 {
-"/api/admin/v1/content/{id}/revisions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List immutable unified CMS revisions */
-        get: operations["listAdminContentRevisionsV2"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content/{id}/revisions/{revision}/restore": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Restore an immutable revision as a new draft and immutable restore revision */
-        post: operations["restoreAdminContentRevisionV2"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 "/api/admin/v1/content/{id}/snapshots": {
         parameters: {
             query?: never;
@@ -203,7 +169,7 @@ export interface PathsPart02 {
         /** List Feishu sync runs */
         get: operations["listFeishuSyncRuns"];
         put?: never;
-        /** Queue a resumable Feishu staging sync job */
+        /** Report that Feishu synchronization is unavailable until the provider adapter is connected */
         post: operations["startFeishuSyncRun"];
         delete?: never;
         options?: never;
@@ -263,24 +229,6 @@ export interface PathsPart02 {
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/operations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List predefined background operations */
-        get: operations["listBackgroundOperations"];
-        put?: never;
-        /** Queue a predefined background operation */
-        post: operations["createBackgroundOperation"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 "/api/admin/v1/operations/{id}": {
         parameters: {
             query?: never;
@@ -288,7 +236,7 @@ export interface PathsPart02 {
             path?: never;
             cookie?: never;
         };
-        /** Get background operation status */
+        /** Get Product Master import operation status */
         get: operations["getBackgroundOperation"];
         put?: never;
         post?: never;
@@ -305,7 +253,7 @@ export interface PathsPart02 {
             path?: never;
             cookie?: never;
         };
-        /** Stream operation status as a server-sent event */
+        /** Stream Product Master import status as a server-sent event */
         get: operations["streamBackgroundOperationEvents"];
         put?: never;
         post?: never;
@@ -481,6 +429,57 @@ export interface PathsPart02 {
         get: operations["getProductImportRun"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/rfqs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List always-redacted RFQ inbox items with server filtering and total count */
+        get: operations["listRfqInboxItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/rfqs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an always-redacted RFQ item, immutable notes and status history */
+        get: operations["getRfqInboxItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/rfqs/{id}/assignment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Assign or unassign for an RFQ item with a required reason */
+        post: operations["assignRfqInboxItem"];
         delete?: never;
         options?: never;
         head?: never;

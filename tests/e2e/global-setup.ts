@@ -64,6 +64,7 @@ async function seedAnalyticsProjection(): Promise<void> {
       ]
       for (const eventName of eventNames) {
         const event = await publicApi.post('/api/public/v1/analytics/events', {
+          headers: { 'Idempotency-Key': randomUUID() },
           data: {
             eventName,
             anonymousSessionId,

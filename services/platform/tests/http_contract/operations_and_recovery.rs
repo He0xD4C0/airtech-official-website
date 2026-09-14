@@ -1,160 +1,86 @@
 #[tokio::test]
-async fn in_memory_feishu_sync_fails_explicitly_without_a_provider() {
-    let app = build_router(AppState::for_test());
-    let session = setup_admin(&app).await;
-    let started = app
-        .clone()
-        .oneshot(
-            Request::post("/api/admin/v1/feishu/sync-runs")
-                .header(header::COOKIE, &session.cookie)
-                .header("x-csrf-token", &session.csrf)
-                .header("idempotency-key", "feishu-sync-contract-0001")
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(
-                    json!({"dryRun": true, "mappingVersion": "validated-mapping-v1"}).to_string(),
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(started.status(), StatusCode::ACCEPTED);
-    let started = response_json(started).await;
-    assert_eq!(started["status"], "failed");
-    assert!(started["error"]
-        .as_str()
-        .unwrap()
-        .contains("provider adapter"));
-
-    let listed = app
-        .oneshot(
-            Request::get("/api/admin/v1/feishu/sync-runs")
-                .header(header::COOKIE, session.cookie)
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(listed.status(), StatusCode::OK);
-    let listed = response_json(listed).await;
-    assert_eq!(listed["items"][0]["status"], "failed");
-}
-
-#[tokio::test]
-async fn sync_and_background_operation_replays_preserve_ids_and_location() {
+async fn disabled_feishu_and_removed_operations_create_no_records() {
     let state = AppState::for_test();
     let app = build_router(state.clone());
     let session = setup_admin(&app).await;
 
-    let sync_body = json!({"dryRun": true, "mappingVersion": "idempotency-v1"}).to_string();
-    let sync = |body: String| {
+    let sync = app.clone().oneshot(
         Request::post("/api/admin/v1/feishu/sync-runs")
             .header(header::COOKIE, &session.cookie)
             .header("x-csrf-token", &session.csrf)
-            .header("idempotency-key", "sync-replay-contract-0001")
             .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(body))
-            .unwrap()
-    };
-    let first_sync = app.clone().oneshot(sync(sync_body.clone())).await.unwrap();
-    assert_eq!(first_sync.status(), StatusCode::ACCEPTED);
-    let first_sync_body = response_json(first_sync).await;
-    let replay_sync = app.clone().oneshot(sync(sync_body.clone())).await.unwrap();
-    assert_eq!(replay_sync.status(), StatusCode::ACCEPTED);
-    assert_eq!(response_json(replay_sync).await, first_sync_body);
-    let different_sync = app
-        .clone()
-        .oneshot(sync(sync_body.replace("idempotency-v1", "idempotency-v2")))
-        .await
-        .unwrap();
-    assert_eq!(different_sync.status(), StatusCode::CONFLICT);
+            .body(Body::from(json!({"dryRun": true, "mappingVersion": "v1"}).to_string()))
+            .unwrap(),
+    ).await.unwrap();
+    assert_eq!(sync.status(), StatusCode::CONFLICT);
 
-    let operation_body = json!({
-        "kind": "searchReindex",
-        "reason": "Rebuild the validated public search projection",
-        "confirmation": "REBUILD SEARCH INDEX"
-    })
-    .to_string();
-    let operation = |body: String| {
+    let operation = app.clone().oneshot(
         Request::post("/api/admin/v1/operations")
             .header(header::COOKIE, &session.cookie)
             .header("x-csrf-token", &session.csrf)
-            .header("idempotency-key", "operation-replay-contract-0001")
             .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(body))
-            .unwrap()
-    };
-    let first_operation = app
-        .clone()
-        .oneshot(operation(operation_body.clone()))
-        .await
-        .unwrap();
-    assert_eq!(first_operation.status(), StatusCode::ACCEPTED);
-    let first_location = first_operation
-        .headers()
-        .get(header::LOCATION)
-        .unwrap()
-        .clone();
-    let first_operation_body = response_json(first_operation).await;
-    let replay_operation = app
-        .clone()
-        .oneshot(operation(operation_body.clone()))
-        .await
-        .unwrap();
-    assert_eq!(replay_operation.status(), StatusCode::ACCEPTED);
-    assert_eq!(
-        replay_operation.headers().get(header::LOCATION).unwrap(),
-        &first_location
-    );
-    assert_eq!(response_json(replay_operation).await, first_operation_body);
-    let different_operation = app
-        .clone()
-        .oneshot(operation(operation_body.replace(
-            "Rebuild the validated public search projection",
-            "Use a different validated background task reason",
-        )))
-        .await
-        .unwrap();
-    assert_eq!(different_operation.status(), StatusCode::CONFLICT);
+            .body(Body::from("{}"))
+            .unwrap(),
+    ).await.unwrap();
+    assert_eq!(operation.status(), StatusCode::NOT_FOUND);
+
+    let summary = app.oneshot(
+        Request::get("/api/admin/v1/analytics/summary")
+            .header(header::COOKIE, session.cookie)
+            .body(Body::empty())
+            .unwrap(),
+    ).await.unwrap();
+    assert_eq!(summary.status(), StatusCode::NOT_FOUND);
 
     let data = state.data.read().await;
-    assert_eq!(data.sync_runs.len(), 1);
-    assert_eq!(data.operations.len(), 1);
-    assert_eq!(
-        data.audit_events
-            .iter()
-            .filter(|event| event.action == "feishu.sync.queue")
-            .count(),
-        1
-    );
-    assert_eq!(
-        data.audit_events
-            .iter()
-            .filter(|event| event.action == "operation.queue")
-            .count(),
-        1
-    );
+    assert!(data.sync_runs.is_empty());
+    assert!(data.operations.is_empty());
+    assert!(data.audit_events.iter().all(|event| {
+        event.action != "feishu.sync.queue" && event.action != "operation.queue"
+    }));
 }
 
 #[tokio::test]
-async fn in_memory_analytics_summary_uses_first_party_counts() {
-    let app = build_router(AppState::for_test());
+async fn operation_status_exposes_only_product_imports() {
+    let state = AppState::for_test();
+    let now = Utc::now();
+    let product_import = BackgroundOperation {
+        id: Uuid::new_v4(),
+        kind: OperationKind::ProductImport,
+        status: OperationStatus::Completed,
+        reason: "Product Master import".into(),
+        created_at: now,
+        updated_at: now,
+        result: Some(json!({"import": {}})),
+    };
+    let retired = BackgroundOperation {
+        id: Uuid::new_v4(),
+        kind: OperationKind::Backup,
+        status: OperationStatus::Failed,
+        reason: "Historical backup operation".into(),
+        created_at: now,
+        updated_at: now,
+        result: None,
+    };
+    {
+        let mut data = state.data.write().await;
+        data.operations.insert(product_import.id, product_import.clone());
+        data.operations.insert(retired.id, retired.clone());
+    }
+    let app = build_router(state);
     let session = setup_admin(&app).await;
-    let summary = app
-        .oneshot(
-            Request::get("/api/admin/v1/analytics/summary")
-                .header(header::COOKIE, session.cookie)
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(summary.status(), StatusCode::OK);
-    let summary = response_json(summary).await;
-    assert_eq!(summary["acceptedEventCount"], 0);
-    assert_eq!(summary["rfqCount"], 0);
-    assert_eq!(summary["contactCount"], 0);
-    assert_eq!(summary["containsPii"], false);
-    assert_eq!(summary["source"], "firstParty");
+    let visible = app.clone().oneshot(
+        Request::get(format!("/api/admin/v1/operations/{}", product_import.id))
+            .header(header::COOKIE, &session.cookie)
+            .body(Body::empty()).unwrap(),
+    ).await.unwrap();
+    assert_eq!(visible.status(), StatusCode::OK);
+    let hidden = app.oneshot(
+        Request::get(format!("/api/admin/v1/operations/{}", retired.id))
+            .header(header::COOKIE, session.cookie)
+            .body(Body::empty()).unwrap(),
+    ).await.unwrap();
+    assert_eq!(hidden.status(), StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
@@ -290,28 +216,6 @@ async fn totp_recovery_codes_and_session_revocation_are_end_to_end_enforced() {
     let refreshed_body = response_json(refreshed).await;
     assert_eq!(refreshed_body["totpEnabled"], true);
 
-    let high_risk = app
-        .clone()
-        .oneshot(
-            Request::post("/api/admin/v1/operations")
-                .header(header::COOKIE, &setup_session.cookie)
-                .header("x-csrf-token", &refreshed_csrf)
-                .header("x-totp-code", totp.generate_current().unwrap())
-                .header("idempotency-key", "totp-high-risk-contract")
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(
-                    json!({
-                        "kind": "backup",
-                        "reason": "Verify a real TOTP reauthentication contract",
-                        "confirmation": "CREATE BACKUP"
-                    })
-                    .to_string(),
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(high_risk.status(), StatusCode::ACCEPTED);
 
     let logged_out = app
         .clone()

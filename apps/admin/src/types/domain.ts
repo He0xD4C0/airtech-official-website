@@ -16,7 +16,6 @@ export type Permission =
   | 'identity.manage'
   | 'audit.read'
   | 'settings.manage'
-  | 'operations.run'
   | 'devtools.shell'
 
 export interface SessionUser {
@@ -29,7 +28,6 @@ export interface SessionUser {
   totpEnabled: boolean
 }
 
-export type ContentStatus = 'draft' | 'published' | 'archived'
 export type ProductStatus = 'draft' | 'scheduled' | 'published' | 'archived'
 export type FactState =
   | 'verified'
@@ -38,18 +36,6 @@ export type FactState =
   | 'notTested'
   | 'confidential'
   | 'pendingVerification'
-
-export interface ContentEntry {
-  id: string
-  type: string
-  title: string
-  locale: string
-  status: ContentStatus
-  updatedAt: string
-  updatedBy: string
-  publishedRevision?: string
-  isPlaceholder?: boolean
-}
 
 export interface ProductSummary {
   id: string
@@ -70,23 +56,6 @@ export interface SyncConflict {
   local: string
   incoming: string
   severity: 'blocking' | 'warning'
-}
-
-export interface InboxItem {
-  id: string
-  kind: 'product' | 'selection' | 'project' | 'replacement' | 'contact'
-  company: string
-  region: string
-  status: 'new' | 'triaged' | 'assigned' | 'qualified' | 'closed'
-  createdAt: string
-  assignee?: string
-  sourcePath?: string
-  consent?: boolean
-  productContext?: {
-    stableId: string
-    model?: string
-    publishedRevision: number
-  }
 }
 
 export type ApiProblem = ProblemDetails

@@ -11,6 +11,20 @@ impl AppState {
         }
         self.check_persistence().await?;
         crate::services::cms_content::migrate_legacy_content(self).await?;
+        let pool = self.pool.as_ref().expect("PostgreSQL presence was checked");
+        let report = crate::services::cms_dependency_backfill::run(
+            pool,
+            crate::services::cms_dependency_backfill::DependencyBackfillMode::Check,
+        )
+        .await
+        .map_err(ApiError::service_unavailable)?;
+        if report.already_complete != report.published_revisions {
+            let report = serde_json::to_string(&report)
+                .map_err(|_| ApiError::internal("CMS dependency report serialization failed."))?;
+            return Err(ApiError::service_unavailable(format!(
+                "CMS publication dependency snapshots blocked startup: {report}"
+            )));
+        }
         Ok(())
     }
 

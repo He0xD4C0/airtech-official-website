@@ -168,17 +168,14 @@ pub(super) fn add_publication_and_sync(paths: &mut Map<String, Value>) {
         "/api/admin/v1/feishu/sync-runs",
         "post",
         admin(
-            params(
-                body(
-                    op(
-                        "startFeishuSyncRun",
-                        "Queue a resumable Feishu staging sync job",
-                        "adminFeishu",
-                        [("202", json_response("Sync run queued", r("SyncRun")))],
-                    ),
-                    r("StartSyncRequest"),
+            body(
+                op(
+                    "startFeishuSyncRun",
+                    "Report that Feishu synchronization is unavailable until the provider adapter is connected",
+                    "adminFeishu",
+                    [("409", problem_response("Feishu provider adapter is not connected"))],
                 ),
-                vec![idempotency_param()],
+                r("StartSyncRequest"),
             ),
             true,
         ),

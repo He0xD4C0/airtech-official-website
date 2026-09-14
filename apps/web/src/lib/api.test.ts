@@ -82,11 +82,12 @@ describe('public API client', () => {
       eventName: 'pageView', anonymousSessionId: '059adab1-18af-434e-a93b-4e7d24d5744e',
       sourcePath: '/en', locale: 'en', consentGranted: true, policyVersion: 'analytics-v1',
       consentReceipt: 'f4abdf14-c27b-4d71-a22b-45cc3f7aa64d', properties: {},
-    })
+    }, 'analytics-event-key-0001')
     expect(receipt.accepted).toBe(true)
     const [url, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0]
     expect(url).toBe('http://api:8080/api/public/v1/analytics/events')
     expect(init.credentials).toBe('omit')
+    expect(new Headers(init.headers).get('Idempotency-Key')).toBe('analytics-event-key-0001')
   })
 
   it('records consent before analytics and accepts only a bound receipt shape', async () => {

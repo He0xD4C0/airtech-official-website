@@ -207,15 +207,30 @@ async fn create_analytics_event(
         ANALYTICS_POLICY,
     )
     .await?;
+    let idempotency = match begin_idempotency(
+        &state,
+        "public.analytics.event.create",
+        &headers,
+        &event,
+    )
+    .await?
+    {
+        IdempotencyOutcome::Replay(replay) => {
+            let status = replay.status()?;
+            let receipt: AnalyticsEventReceipt = replay.decode()?;
+            return Ok((status, Json(receipt)).into_response());
+        }
+        IdempotencyOutcome::Fresh(context) => context,
+    };
     if !event.consent_granted {
-        return Ok((
-            StatusCode::ACCEPTED,
-            Json(AnalyticsEventReceipt {
-                accepted: false,
-                event_id: None,
-            }),
-        )
-            .into_response());
+        let receipt = AnalyticsEventReceipt {
+            accepted: false,
+            event_id: None,
+        };
+        idempotency
+            .complete(&state, &receipt, StatusCode::ACCEPTED)
+            .await?;
+        return Ok((StatusCode::ACCEPTED, Json(receipt)).into_response());
     }
     validate_analytics_event(&event)?;
     validate_analytics_consent(&state, &event).await?;
@@ -238,6 +253,9 @@ async fn create_analytics_event(
             .analytics_receipts
             .insert(event_id, receipt.clone());
     }
+    idempotency
+        .complete(&state, &receipt, StatusCode::ACCEPTED)
+        .await?;
     Ok((StatusCode::ACCEPTED, Json(receipt)).into_response())
 }
 

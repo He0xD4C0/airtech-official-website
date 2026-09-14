@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import PublicBlockRenderer from '@/components/blocks/PublicBlockRenderer.vue'
-import { getPublishedNews, type NewsEntryResponse } from '@/lib/api'
+import { getPublishedNews } from '@/lib/api'
+import { publishedNewsCard } from '@/lib/newsCard'
 import type { CardEntry, PublicPageModel } from '@/types/content'
 
 const props = defineProps<{ page: PublicPageModel }>()
@@ -32,24 +33,6 @@ watch(
   },
 )
 
-function newsCard(entry: NewsEntryResponse): CardEntry | undefined {
-  const content = entry.content
-  if ((content.isPlaceholder && entry.dataClass !== 'developmentFixture')
-    || !content.publishedRevision
-    || !content.slug
-    || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(content.slug)) return undefined
-  return {
-    slug: content.slug,
-    title: content.title,
-    summary: content.summary ?? '',
-    href: `/en/resources/news/${content.slug}`,
-    category: entry.category ?? undefined,
-    author: entry.authorDisplayName ?? undefined,
-    publishedAt: entry.publishedAt ?? undefined,
-    featured: entry.featured,
-  }
-}
-
 async function loadPage(cursor: string | null): Promise<boolean> {
   const generation = ++requestGeneration
   loading.value = true
@@ -58,7 +41,7 @@ async function loadPage(cursor: string | null): Promise<boolean> {
     const page = await getPublishedNews({ locale: 'en', limit: newsPageSize, ...(cursor ? { cursor } : {}) })
     if (generation !== requestGeneration) return false
     pageEntries.value = page.items.flatMap((entry) => {
-      const card = newsCard(entry)
+      const card = publishedNewsCard(entry)
       return card ? [card] : []
     })
     pageNextCursor.value = page.nextCursor

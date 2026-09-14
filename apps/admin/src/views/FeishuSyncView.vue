@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { AlertTriangle, ArrowRight, Braces, Cable, Clock3, RefreshCw, ShieldAlert } from 'lucide-vue-next'
+import { AlertTriangle, ArrowRight, Braces, Cable, Clock3, ShieldAlert } from 'lucide-vue-next'
 import type { FeishuConnectionStatus, StagingRecord, SyncMapping } from '@airtek/contracts'
 import CursorPaginationControls from '@/components/CursorPaginationControls.vue'
 import DataStatePanel from '@/components/DataStatePanel.vue'
@@ -18,7 +18,6 @@ const tabIds: SyncTab[] = ['staging', 'conflicts', 'mapping', 'runs']
 const route = useRoute()
 const router = useRouter()
 const activeTab = ref<SyncTab>('conflicts')
-const dryRunActive = ref(false)
 const selectedConflictId = ref('')
 const connection = ref<FeishuConnectionStatus | null>(null)
 const connectionError = ref('')
@@ -88,19 +87,6 @@ watch(() => route.query.tab, (value) => {
     : 'conflicts'
 }, { immediate: true })
 
-async function runDryRun(): Promise<void> {
-  dryRunActive.value = true
-  try {
-    const run = await adminApi.startSync(true)
-    syncRunPager.items.value = [run, ...syncRunPager.items.value]
-    ui.toast('Dry-run 已加入队列', `Operation ${run.id}`, 'info')
-  } catch (error) {
-    ui.toast('Dry-run 创建失败', error instanceof Error ? error.message : '请检查同步配置。', 'danger')
-  } finally {
-    dryRunActive.value = false
-  }
-}
-
 async function resolveConflict(decision: 'acceptIncoming' | 'keepVerifiedLocal'): Promise<void> {
   if (!selectedConflict.value || resolving.value) return
   resolving.value = true
@@ -140,12 +126,14 @@ onMounted(async () => {
   <div class="page-stack">
     <PageHeader eyebrow="FEISHU PRODUCT MASTER" title="同步与冲突" description="产品主数据先进入 Staging，经校验与三方差异处理后才能形成可发布 revision。">
       <template #actions>
-        <button class="button button--primary" type="button" :disabled="dryRunActive" @click="runDryRun"><RefreshCw :size="16" :class="{ spin: dryRunActive }" />{{ dryRunActive ? '正在创建…' : '运行 dry-run' }}</button>
+        <button class="button button--primary" type="button" disabled :title="connection?.unavailableReason || 'Feishu provider adapter is not connected.'"><ShieldAlert :size="16" />同步暂不可用</button>
       </template>
     </PageHeader>
 
+    <div class="security-baseline"><ShieldAlert :size="18" /><div><strong>Feishu 适配器尚未连接</strong><p>{{ connection?.unavailableReason || '同步入口已禁用；现有 Staging、映射、冲突和运行历史仍可查看。' }}</p></div><StatusBadge label="不可运行" tone="warning" /></div>
+
     <section class="sync-status-grid">
-      <article><div class="sync-status-grid__icon"><Cable :size="20" /></div><span>连接状态</span><strong>{{ connectionError || (connection?.configured ? (connection.enabled ? '已配置并启用' : '已配置但停用') : '未配置') }}</strong><small>{{ connection?.displayName || '浏览器不读取集成凭据' }}</small></article>
+      <article><div class="sync-status-grid__icon"><Cable :size="20" /></div><span>连接状态</span><strong>{{ connectionError || (connection?.runnable ? '可运行' : '适配器未连接') }}</strong><small>{{ connection?.displayName || '浏览器不读取集成凭据' }}</small></article>
       <article><div class="sync-status-grid__icon"><Clock3 :size="20" /></div><span>最近同步</span><strong>{{ syncRuns[0] ? new Intl.DateTimeFormat('zh-CN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(syncRuns[0].startedAt)) : '尚无记录' }}</strong><small>{{ syncRuns[0]?.status || '等待首次运行' }}</small></article>
       <article><div class="sync-status-grid__icon sync-status-grid__icon--warning"><ShieldAlert :size="20" /></div><span>阻塞冲突</span><strong>{{ conflictTotal }}</strong><small>服务端未解决总数</small></article>
       <article><div class="sync-status-grid__icon"><Braces :size="20" /></div><span>Mapping version</span><strong>{{ mappings.find((entry) => entry.active)?.version || '无 active mapping' }}</strong><small>来自版本化 Mapping API</small></article>

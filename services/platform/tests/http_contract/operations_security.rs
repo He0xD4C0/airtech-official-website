@@ -25,62 +25,24 @@ async fn login_failures_are_rate_limited_by_source_and_account() {
 }
 
 #[tokio::test]
-async fn high_risk_operations_fail_closed_until_totp_is_enabled() {
-    let app = build_router(AppState::for_test());
-    let session = setup_admin_without_totp(&app).await;
-    let response = app
-        .oneshot(
-            Request::post("/api/admin/v1/operations")
-                .header(header::COOKIE, session.cookie)
-                .header("x-csrf-token", session.csrf)
-                .header("x-totp-code", "123456")
-                .header("idempotency-key", "operation-fail-closed-0001")
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(
-                    json!({
-                        "kind": "backup",
-                        "reason": "Create verified backup before deployment",
-                        "confirmation": "CREATE BACKUP"
-                    })
-                    .to_string(),
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(response.status(), StatusCode::FORBIDDEN);
-    assert!(response_json(response).await["detail"]
-        .as_str()
-        .unwrap()
-        .contains("enable TOTP"));
-}
-
-#[tokio::test]
-async fn application_operations_cannot_apply_flyway_migrations() {
+async fn general_operations_collection_is_removed() {
     let app = build_router(AppState::for_test());
     let session = setup_admin(&app).await;
-    let response = app
-        .oneshot(
-            Request::post("/api/admin/v1/operations")
-                .header(header::COOKIE, session.cookie)
-                .header("x-csrf-token", session.csrf)
-                .header("idempotency-key", "flyway-deployment-only-0001")
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(
-                    json!({
-                        "kind": "migrationApply",
-                        "reason": "Attempt migration through the application boundary",
-                        "confirmation": "APPLY MIGRATION"
-                    })
-                    .to_string(),
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(response.status(), StatusCode::CONFLICT);
-    assert!(response_json(response).await["detail"]
-        .as_str()
-        .unwrap()
-        .contains("Flyway"));
+    for method in [axum::http::Method::GET, axum::http::Method::POST] {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method(method)
+                    .uri("/api/admin/v1/operations")
+                    .header(header::COOKIE, &session.cookie)
+                    .header("x-csrf-token", &session.csrf)
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from("{}"))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
 }

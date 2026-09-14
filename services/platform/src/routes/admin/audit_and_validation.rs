@@ -118,20 +118,6 @@ fn csv_cell(value: &str) -> String {
     }
 }
 
-fn confirmation_phrase(kind: OperationKind) -> &'static str {
-    match kind {
-        OperationKind::MigrationPreflight => "PREFLIGHT MIGRATION",
-        OperationKind::MigrationApply => "APPLY MIGRATION",
-        OperationKind::Backup => "CREATE BACKUP",
-        OperationKind::RestoreValidate => "VALIDATE RESTORE",
-        OperationKind::RetentionApply => "APPLY RETENTION",
-        OperationKind::SearchReindex => "REBUILD SEARCH INDEX",
-        OperationKind::CacheInvalidate => "INVALIDATE PUBLIC CACHE",
-        OperationKind::FeishuSync => "START FEISHU SYNC",
-        OperationKind::ProductImport => "IMPORT PRODUCT MASTER",
-    }
-}
-
 fn entity_response<T: serde::Serialize>(status: StatusCode, value: &T, revision: i64) -> Response {
     let mut response = (status, Json(value)).into_response();
     response.headers_mut().insert(

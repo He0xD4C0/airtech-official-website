@@ -159,17 +159,6 @@ async fn claim_and_run(
         .bind(id)
         .execute(&mut *transaction)
         .await?;
-    if job_type == "feishuSync" {
-        sqlx::query(
-            r#"UPDATE sync_runs
-               SET status='fetching',
-                   payload=(jsonb_set(payload, '{status}', '"fetching"', true) - 'error')
-               WHERE id=$1"#,
-        )
-        .bind(id)
-        .execute(&mut *transaction)
-        .await?;
-    }
     transaction.commit().await?;
 
     let result = execute_with_job_lease(
@@ -191,7 +180,7 @@ async fn claim_and_run(
     };
     match result {
         Ok(output) => {
-            if !persist_job_success(pool, &lease, &job_type, &output).await? {
+            if !persist_job_success(pool, &lease, &output).await? {
                 tracing::warn!(job_id = %id, job_type = %job_type, "discarded completed job result after lease ownership changed");
             }
         }
@@ -280,7 +269,6 @@ async fn terminalize_one_expired_exhausted_job(
         id,
         &job_type,
         false,
-        EXPIRED_ATTEMPT_BUDGET_ERROR,
     )
     .await?;
     tracing::error!(
@@ -301,39 +289,6 @@ async fn execute_job(
     approved_product_master: Option<&crate::config::ApprovedProductMaster>,
 ) -> Result<Value, String> {
     match job_type {
-        "migrationPreflight" => {
-            let version = sqlx::query_scalar::<_, String>("SHOW server_version")
-                .fetch_one(pool)
-                .await
-                .map_err(|error| error.to_string())?;
-            let flyway_status = crate::flyway::read_status(pool).await.map_err(|error| {
-                format!(
-                    "Flyway schema history is unavailable; run the deployment migration first: {error}"
-                )
-            })?;
-            if !flyway_status.is_current() {
-                return Err(format!(
-                    "Flyway schema history is not current: version={:?}, failed={}, coveredRequiredVersions={}, legacyBaselinePresent={}",
-                    flyway_status.current_version,
-                    flyway_status.failed_migrations,
-                    flyway_status.covered_required_versions,
-                    flyway_status.legacy_baseline_present
-                ));
-            }
-            Ok(json!({
-                "checkedAt": Utc::now(),
-                "migrationTool": "flyway",
-                "currentVersion": flyway_status.current_version,
-                "failedMigrations": flyway_status.failed_migrations,
-                "coveredRequiredVersions": flyway_status.covered_required_versions,
-                "legacyBaselinePresent": flyway_status.legacy_baseline_present,
-                "serverVersion": version
-            }))
-        }
-        "migrationApply" => Err(
-            "Schema migrations are deployment-only and must run through Flyway; the application worker cannot apply them."
-                .into(),
-        ),
         "retentionApply" => {
             apply_retention_with_deployment_defaults(
                 pool,
@@ -353,15 +308,7 @@ async fn execute_job(
                 .map_err(|error| error.to_string())?;
             Ok(json!({"import": report}))
         }
-        "searchReindex" | "cacheInvalidate" | "feishuSync" => Err(
-            "The required provider adapter is not configured; the task was not completed."
-                .into(),
-        ),
-        "backup" | "restoreValidate" => Err(
-            "A configured encrypted backup/isolated-restore executor is required; no shell command was run."
-                .into(),
-        ),
-        _ => Err("Unknown predefined job type; arbitrary commands are not executed by the worker.".into()),
+        _ => Err("This retired job type is no longer executable.".into()),
     }
 }
 

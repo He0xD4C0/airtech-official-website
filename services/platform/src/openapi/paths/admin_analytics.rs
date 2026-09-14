@@ -52,28 +52,6 @@ pub(super) fn add_overview(paths: &mut Map<String, Value>) {
             false,
         ),
     );
-    let mut legacy_analytics_summary = admin(
-        op(
-            "getAnalyticsSummary",
-            "Get legacy unscoped first-party analytics totals",
-            "adminAnalytics",
-            [(
-                "200",
-                json_response("Analytics summary", r("AnalyticsSummary")),
-            )],
-        ),
-        false,
-    );
-    legacy_analytics_summary["deprecated"] = json!(true);
-    legacy_analytics_summary["description"] = json!(
-        "Deprecated compatibility endpoint. Use /api/admin/v1/analytics/overview for time-scoped metrics with consistent consented and business-outcome cohorts."
-    );
-    add(
-        paths,
-        "/api/admin/v1/analytics/summary",
-        "get",
-        legacy_analytics_summary,
-    );
 }
 
 fn add_business_inbox_paths(paths: &mut Map<String, Value>, segment: &str, label: &str) {
@@ -203,26 +181,6 @@ pub(super) fn add_reports(paths: &mut Map<String, Value>) {
         parameters.extend(admin_pagination_params());
         parameters
     };
-    add(
-        paths,
-        "/api/admin/v1/analytics/visits",
-        "get",
-        admin(
-            params(
-                op(
-                    "listGuestVisits",
-                    "List privacy-minimized daily landing-page aggregates",
-                    "adminAnalytics",
-                    [(
-                        "200",
-                        json_response("Guest visit aggregates", r("GuestVisitAggregatePage")),
-                    )],
-                ),
-                analytics_parameters(),
-            ),
-            false,
-        ),
-    );
     add(
         paths,
         "/api/admin/v1/analytics/sources",

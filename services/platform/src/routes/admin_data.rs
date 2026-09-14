@@ -29,9 +29,9 @@ use crate::{
     },
     models::{
         AdminProductDetail, AdminRoleRecord, AdminUserRecord, AuditEvent, CursorPage, DataClass,
-        GuestSourceDaily, GuestVisitAggregate, InviteAdminUser, ProductImportRequest,
-        ProductImportResult, ProductPresentation, ProductPrivatePricing, UpdateAdminRole,
-        UpdateAdminUser, UpdateProductPresentation, UserInvitation,
+        GuestSourceDaily, InviteAdminUser, ProductImportRequest, ProductImportResult,
+        ProductPresentation, ProductPrivatePricing, UpdateAdminRole, UpdateAdminUser,
+        UpdateProductPresentation, UserInvitation,
     },
     pagination::{
         cursor_limit, decode_scoped_cursor, encode_scoped_cursor, paginate_by_id, CursorQuery,
@@ -59,7 +59,6 @@ pub fn router() -> Router<AppState> {
             "/products/{id}/presentation",
             patch(update_product_presentation),
         )
-        .route("/analytics/visits", get(list_guest_visits))
         .route("/analytics/sources", get(list_guest_sources))
         .route("/users", get(list_users))
         .route("/users/{id}", get(get_user).patch(update_user))

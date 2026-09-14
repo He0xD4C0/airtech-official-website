@@ -40,22 +40,11 @@ async fn public_rate_limit_survives_an_api_restart() {
         "application/problem+json"
     );
 
-    // Force the in-process mirror empty: the summary must still read durable
-    // COUNT(*) values rather than silently falling back to hydrated details.
-    restarted_state.data.write().await.contacts.clear();
-    let admin_handlers = airtek_platform::routes::admin::router().with_state(restarted_state);
-    let summary = admin_handlers
-        .oneshot(
-            Request::get("/analytics/summary")
-                .body(Body::empty())
-                .unwrap(),
-        )
+    let contact_count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM contact_requests")
+        .fetch_one(&pool)
         .await
-        .unwrap();
-    assert_eq!(summary.status(), StatusCode::OK);
-    let summary = summary.into_body().collect().await.unwrap().to_bytes();
-    let summary: serde_json::Value = serde_json::from_slice(&summary).unwrap();
-    assert_eq!(summary["contactCount"], baseline_contacts + 5);
+        .expect("durable contact count");
+    assert_eq!(contact_count, baseline_contacts + 5);
 
     drop(first_app);
     sandbox.cleanup().await;

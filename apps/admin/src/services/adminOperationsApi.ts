@@ -1,4 +1,4 @@
-import { adminAbsoluteUrl, adminContractClient, cursorQuery, operationKind, randomRequestId, revisionEtag } from './adminApiTransport'
+import { adminAbsoluteUrl, adminContractClient, cursorQuery, revisionEtag } from './adminApiTransport'
 import type {
   BackendOperation,
   CursorPageRequest,
@@ -7,12 +7,7 @@ import type {
   ProductImportResult,
   UpdatePlatformSettings,
 } from './adminApiTypes'
-import type { AuditEventPage, BackgroundOperationPage, OperationKind, OperationStatus } from '@airtek/contracts'
-
-export interface OperationListRequest extends CursorPageRequest {
-  status?: OperationStatus
-  kind?: OperationKind
-}
+import type { AuditEventPage } from '@airtek/contracts'
 
 async function waitForOperationByPolling(id: string, deadline: number): Promise<BackendOperation> {
   while (Date.now() < deadline) {
@@ -83,34 +78,6 @@ export const adminOperationsApi = {
       body: payload,
     })
     return { settings: result.data, etag: result.etag ?? '' }
-  },
-
-  async listOperations(request: OperationListRequest = {}): Promise<BackgroundOperationPage> {
-    const result = await adminContractClient.get('/api/admin/v1/operations', {
-      parameters: { query: {
-        ...cursorQuery(request),
-        ...(request.status ? { status: request.status } : {}),
-        ...(request.kind ? { kind: request.kind } : {}),
-      } },
-    })
-    return result.data
-  },
-
-  async getOperation(id: string): Promise<BackendOperation> {
-    const result = await adminContractClient.get('/api/admin/v1/operations/{id}', {
-      parameters: { path: { id } },
-    })
-    return result.data
-  },
-
-  async createOperation(kind: string, reason: string, confirmation: string, otp: string): Promise<BackendOperation> {
-    const result = await adminContractClient.post('/api/admin/v1/operations', {
-      parameters: {
-        header: { 'Idempotency-Key': randomRequestId(), 'X-TOTP-Code': otp },
-      },
-      body: { kind: operationKind(kind), reason, confirmation },
-    })
-    return result.data
   },
 
   async listAudit(request: AuditListRequest = {}): Promise<AuditEventPage> {

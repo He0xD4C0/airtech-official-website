@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import type { AdminDashboardSummary, DashboardMetric } from '@airtek/contracts'
-import { ArrowRight, BookOpenText, Boxes, Cable, CheckCircle2, CircleAlert, Eye, Inbox, ListTodo, MousePointerClick, RefreshCw, TrendingUp } from 'lucide-vue-next'
+import { ArrowRight, BookOpenText, Boxes, Cable, CheckCircle2, CircleAlert, Eye, Inbox, ListTodo, MousePointerClick, TrendingUp } from 'lucide-vue-next'
 import DataStatePanel from '@/components/DataStatePanel.vue'
 import MetricCard from '@/components/MetricCard.vue'
 import PageHeader from '@/components/PageHeader.vue'
@@ -64,7 +64,6 @@ onMounted(loadDashboard)
         <MetricCard label="待发布内容" :value="metricValue(summary.draftContent)" :detail="summary.draftContent.unavailableReason || '全部草稿记录'" :icon="BookOpenText" tone="blue" />
         <MetricCard label="产品数据冲突" :value="metricValue(summary.openConflicts)" :detail="summary.openConflicts.unavailableReason || '全部未解决冲突'" :icon="Boxes" tone="amber" />
         <MetricCard label="开放 RFQ" :value="metricValue(summary.openRfqs)" :detail="summary.openRfqs.unavailableReason || '不含 closed 与 spam'" :icon="Inbox" tone="green" />
-        <MetricCard label="运行中任务" :value="metricValue(summary.runningOperations)" :detail="summary.runningOperations.unavailableReason || '排队或执行中'" :icon="RefreshCw" tone="slate" />
       </section>
 
       <section class="dashboard-grid">
@@ -92,7 +91,6 @@ onMounted(loadDashboard)
           <header class="panel__header"><div><p class="eyebrow">PUBLISHING READINESS</p><h2>发布工作项</h2></div><StatusBadge :label="summary.readinessItemCount ? '需要处理' : '无已知工作项'" :tone="summary.readinessItemCount ? 'warning' : 'success'" /></header>
           <div class="readiness-score"><strong>{{ summary.readinessItemCount }}</strong><span>项待处理</span></div>
           <ul class="readiness-list"><li><CircleAlert :size="16" />{{ metricValue(summary.openConflicts) }} 个来源冲突</li><li><MousePointerClick :size="16" />{{ metricValue(summary.draftContent) }} 个内容草稿</li></ul>
-          <RouterLink v-if="auth.hasPermission('operations.run')" class="button button--secondary button--wide" to="/operations">查看运维任务</RouterLink>
         </article>
       </section>
     </template>

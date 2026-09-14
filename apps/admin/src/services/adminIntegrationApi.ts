@@ -58,11 +58,4 @@ export const adminIntegrationApi = {
     })).data
   },
 
-  async startSync(dryRun: boolean, mappingVersion = 'v1'): Promise<BackendSyncRun> {
-    const result = await adminContractClient.post('/api/admin/v1/feishu/sync-runs', {
-      parameters: { header: { 'Idempotency-Key': randomRequestId() } },
-      body: { dryRun, mappingVersion },
-    })
-    return result.data
-  },
 }

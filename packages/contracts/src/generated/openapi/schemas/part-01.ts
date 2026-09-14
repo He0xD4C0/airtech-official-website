@@ -27,7 +27,6 @@ AdminDashboardSummary: {
             openRfqs: components["schemas"]["DashboardMetric"];
             readinessItemCount: number;
             recentActivity: components["schemas"]["AuditEvent"][];
-            runningOperations: components["schemas"]["DashboardMetric"];
         };
 AdminProductDetail: components["schemas"]["Product"] & {
             missingAssets: components["schemas"]["MissingAssetReference"][];
@@ -216,15 +215,6 @@ AnalyticsOverviewRange: {
         };
 /** @enum {string} */
         AnalyticsPolicyVersion: "analytics-v1";
-AnalyticsSummary: {
-            acceptedEventCount: number;
-            contactCount: number;
-            /** @constant */
-            containsPii: false;
-            rfqCount: number;
-            /** @constant */
-            source: "firstParty";
-        };
 ArchiveContentRequest: {
             reason: string;
         };
@@ -267,11 +257,6 @@ BackgroundOperation: {
             status: components["schemas"]["OperationStatus"];
             /** Format: date-time */
             updatedAt: string;
-        };
-BackgroundOperationPage: {
-            items: components["schemas"]["BackgroundOperation"][];
-            nextCursor: string | null;
-            total: number;
         };
 BodyBlock: {
             /** Format: uuid */
@@ -496,4 +481,11 @@ ContentPreviewLink: {
             /** Format: uri */
             readonly url: string;
         };
+ContentPreviewResponse: {
+            content: components["schemas"]["PublicContentProjection"];
+            /** Format: date-time */
+            previewExpiresAt: string;
+        };
+/** @enum {string} */
+        ContentPublicationAction: "save" | "publish" | "unpublish";
 }

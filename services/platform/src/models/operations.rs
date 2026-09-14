@@ -23,14 +23,6 @@ pub enum OperationStatus {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateOperationRequest {
-    pub kind: OperationKind,
-    pub reason: String,
-    pub confirmation: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct BackgroundOperation {
     pub id: Uuid,
     pub kind: OperationKind,
@@ -39,14 +31,6 @@ pub struct BackgroundOperation {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub result: Option<Value>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BackgroundOperationPage {
-    pub items: Vec<BackgroundOperation>,
-    pub next_cursor: Option<String>,
-    pub total: usize,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

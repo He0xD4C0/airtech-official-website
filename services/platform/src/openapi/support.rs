@@ -178,14 +178,6 @@ pub(super) fn if_match_param() -> Value {
     json!({"name": "If-Match", "in": "header", "required": true, "description": "Current entity ETag, formatted as revision-N.", "schema": {"type": "string", "pattern": "^\\\"revision-[0-9]+\\\"$"}})
 }
 
-pub(super) fn totp_param() -> Value {
-    json!({
-        "name": "X-TOTP-Code", "in": "header", "required": false,
-        "description": "A fresh six-digit TOTP is required for migration apply, backup, restore validation, and retention operations.",
-        "schema": {"type": "string", "pattern": "^[0-9]{6}$"}
-    })
-}
-
 pub(super) fn seo_properties() -> Value {
     json!({
         "title": nullable(json!({"type": "string"})), "description": nullable(json!({"type": "string"})),

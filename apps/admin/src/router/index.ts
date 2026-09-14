@@ -104,17 +104,9 @@ const workspaceChildren: RouteRecordRaw[] = [
     meta: { title: 'Analytics', requiresAuth: true, permission: 'analytics.read' },
   },
   {
-    path: 'analytics/visits',
-    name: 'analytics-visits',
-    component: () => import('@/views/GuestAnalyticsView.vue'),
-    props: { mode: 'visits' },
-    meta: { title: '访问趋势', requiresAuth: true, permission: 'analytics.read' },
-  },
-  {
     path: 'analytics/sources',
     name: 'analytics-sources',
     component: () => import('@/views/GuestAnalyticsView.vue'),
-    props: { mode: 'sources' },
     meta: { title: '站外来源', requiresAuth: true, permission: 'analytics.read' },
   },
   {
@@ -160,12 +152,6 @@ const workspaceChildren: RouteRecordRaw[] = [
     name: 'settings',
     component: () => import('@/views/SettingsView.vue'),
     meta: { title: '系统设置', requiresAuth: true, permission: 'settings.manage' },
-  },
-  {
-    path: 'operations',
-    name: 'operations',
-    component: () => import('@/views/OperationsView.vue'),
-    meta: { title: '运维任务', requiresAuth: true, permission: 'operations.run' },
   },
   ...devtoolsRoutes,
   {

@@ -30,9 +30,10 @@ pub async fn migrate_legacy_content(state: &AppState) -> Result<(), ApiError> {
     let plan = plan_legacy_snapshot(snapshot.clone(), Utc::now());
     if !plan.report.can_migrate {
         transaction.rollback().await?;
+        let report = serde_json::to_string(&plan.report)
+            .map_err(|_| ApiError::internal("CMS migration report serialization failed."))?;
         return Err(ApiError::service_unavailable(format!(
-            "CMS V2 migration preflight found {} blocking issue(s); run `airtekctl cms preflight` before starting the API.",
-            plan.report.blocking_issue_count
+            "CMS V2 migration preflight blocked startup: {report}"
         )));
     }
     migrate_records(&mut transaction, &snapshot, &plan.records).await?;

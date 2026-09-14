@@ -80,33 +80,6 @@ pub(super) fn add(s: &mut Map<String, Value>) {
     );
     s.insert("GuestVisitPage".into(), page("GuestVisit"));
     s.insert(
-        "GuestVisitAggregate".into(),
-        object(
-            &[
-                "bucketDate",
-                "landingPath",
-                "locale",
-                "visits",
-                "pageViews",
-                "rfqStarts",
-                "rfqSubmissions",
-            ],
-            json!({
-                "bucketDate": {"type": "string", "format": "date"},
-                "landingPath": {"type": "string", "pattern": "^/en(?:/|$)[^?#]*$"},
-                "locale": {"type": "string"},
-                "visits": counter(),
-                "pageViews": counter(),
-                "rfqStarts": counter(),
-                "rfqSubmissions": counter()
-            }),
-        ),
-    );
-    s.insert(
-        "GuestVisitAggregatePage".into(),
-        page("GuestVisitAggregate"),
-    );
-    s.insert(
         "GuestSourceDaily".into(),
         object(
             &[

@@ -21,7 +21,7 @@ async fn list_products(
     let input_records = values.len();
     let started = std::time::Instant::now();
     if let Some(needle) = &needle {
-        values.retain(|product| product_matches_query(product, &needle));
+        values.retain(|product| product_matches_query(product, needle));
     }
     if let Some(status) = status {
         values.retain(|product| product.status == status);

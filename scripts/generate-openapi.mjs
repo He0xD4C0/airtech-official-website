@@ -150,7 +150,6 @@ function assertRequiredDataContracts(document) {
     ProductPresentation: ['seo', 'sortOrder', 'relatedContentIds'],
     UpdateProductPresentation: ['seo', 'sortOrder', 'relatedContentIds'],
     ProductPrivatePricing: ['productId', 'stableId', 'sourceRowNumber', 'pricingFields'],
-    GuestVisitAggregate: ['bucketDate', 'landingPath', 'locale', 'visits', 'pageViews', 'rfqStarts', 'rfqSubmissions'],
     GuestSourceDaily: ['bucketDate', 'source', 'landingPath', 'locale', 'visits', 'pageViews', 'rfqStarts', 'rfqSubmissions'],
     ContentDraftV2: ['schemaVersion', 'kind', 'templateKey', 'isPlaceholder', 'typeFields', 'composition', 'seo', 'relations', 'draftVersion'],
     ContentRecordV2: ['id', 'status', 'draft', 'latestRevision', 'publishedRevision', 'updatedBy'],

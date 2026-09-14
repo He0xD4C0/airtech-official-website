@@ -74,7 +74,6 @@ async fn renew_job_lease(pool: &PgPool, lease: &ClaimedJobLease) -> Result<bool,
 async fn persist_job_success(
     pool: &PgPool,
     lease: &ClaimedJobLease,
-    job_type: &str,
     output: &Value,
 ) -> Result<bool, ApiError> {
     let mut transaction = pool.begin().await?;
@@ -98,20 +97,6 @@ async fn persist_job_success(
     .bind(output)
     .execute(&mut *transaction)
     .await?;
-    if job_type == "feishuSync" {
-        sqlx::query(
-            r#"UPDATE sync_runs
-               SET status='completed', completed_at=now(),
-                   payload=(jsonb_set(
-                       jsonb_set(payload, '{status}', '"completed"', true),
-                       '{completedAt}', to_jsonb(now()), true
-                   ) - 'error')
-               WHERE id=$1"#,
-        )
-        .bind(lease.job_id)
-        .execute(&mut *transaction)
-        .await?;
-    }
     transaction.commit().await?;
     Ok(true)
 }
@@ -156,7 +141,6 @@ async fn persist_job_failure(
         lease.job_id,
         job_type,
         retrying,
-        detail,
     )
     .await?;
     transaction.commit().await?;
@@ -168,30 +152,7 @@ async fn persist_related_failure(
     job_id: Uuid,
     job_type: &str,
     retrying: bool,
-    detail: &str,
 ) -> Result<(), ApiError> {
-    if job_type == "feishuSync" {
-        let statement = if retrying {
-            r#"UPDATE sync_runs
-               SET status='queued',
-                   payload=jsonb_set(payload, '{status}', '"queued"', true)
-                       || jsonb_build_object('error', $2::text)
-               WHERE id=$1"#
-        } else {
-            r#"UPDATE sync_runs
-               SET status='failed', completed_at=now(),
-                   payload=jsonb_set(
-                       jsonb_set(payload, '{status}', '"failed"', true),
-                       '{completedAt}', to_jsonb(now()), true
-                   ) || jsonb_build_object('error', $2::text)
-               WHERE id=$1"#
-        };
-        sqlx::query(statement)
-            .bind(job_id)
-            .bind(detail)
-            .execute(&mut **transaction)
-            .await?;
-    }
     if job_type == "productImport" {
         sqlx::query(
             r#"UPDATE product_import_runs

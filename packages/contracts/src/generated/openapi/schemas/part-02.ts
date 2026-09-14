@@ -6,13 +6,6 @@
 import type { components } from '../components'
 
 export interface SchemasPart02 {
-ContentPreviewResponse: {
-            content: components["schemas"]["PublicContentProjection"];
-            /** Format: date-time */
-            previewExpiresAt: string;
-        };
-/** @enum {string} */
-        ContentPublicationAction: "save" | "publish" | "unpublish";
 ContentPublicationReadiness: {
             allowedActions: components["schemas"]["ContentPublicationAction"][];
             /** Format: uuid */
@@ -217,11 +210,6 @@ CreateGuestVisit: {
             referrerDomain?: string | null;
             source?: string | null;
         };
-CreateOperationRequest: {
-            confirmation: string;
-            kind: components["schemas"]["OperationKind"];
-            reason: string;
-        };
 CreateRfqRequest: components["schemas"]["ProductRfqRequest"] | components["schemas"]["SelectionRfqRequest"] | components["schemas"]["ProjectRfqRequest"] | components["schemas"]["ReplacementRfqRequest"];
 CreateTemporaryOverride: {
             expiresAt?: string | null;
@@ -369,6 +357,8 @@ FeishuConnectionStatus: {
             displayName: string | null;
             enabled: boolean;
             latestSync: components["schemas"]["SyncRun"] | null;
+            runnable: boolean;
+            unavailableReason: string | null;
             updatedAt: string | null;
         };
 FieldDiff: {
@@ -484,14 +474,16 @@ GuestVisit: {
             retentionUntil: string;
             source: string;
         };
-GuestVisitAggregate: {
-            /** Format: date */
-            bucketDate: string;
-            landingPath: string;
-            locale: string;
-            pageViews: number;
-            rfqStarts: number;
-            rfqSubmissions: number;
-            visits: number;
+GuestVisitPage: {
+            items: components["schemas"]["GuestVisit"][];
+            nextCursor: string | null;
+        };
+HealthStatus: {
+            persistence: string;
+            service: string;
+            status: string;
+            /** Format: date-time */
+            timestamp: string;
+            version: string;
         };
 }

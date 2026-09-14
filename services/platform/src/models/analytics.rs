@@ -96,7 +96,6 @@ pub struct AdminDashboardSummary {
     pub draft_content: DashboardMetric,
     pub open_conflicts: DashboardMetric,
     pub open_rfqs: DashboardMetric,
-    pub running_operations: DashboardMetric,
     pub analytics: Option<AnalyticsConsentedMetrics>,
     pub recent_activity: Vec<AuditEvent>,
     pub readiness_item_count: i64,
@@ -140,18 +139,6 @@ pub struct GuestSourceDaily {
     pub utm_source: Option<String>,
     pub medium: Option<String>,
     pub campaign: Option<String>,
-    pub landing_path: String,
-    pub locale: String,
-    pub visits: i64,
-    pub page_views: i64,
-    pub rfq_starts: i64,
-    pub rfq_submissions: i64,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GuestVisitAggregate {
-    pub bucket_date: chrono::NaiveDate,
     pub landing_path: String,
     pub locale: String,
     pub visits: i64,

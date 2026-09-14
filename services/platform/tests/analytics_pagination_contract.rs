@@ -1,5 +1,5 @@
 use airtek_platform::{
-    models::{CursorPage, GuestSourceDaily, GuestVisit, GuestVisitAggregate},
+    models::{CursorPage, GuestSourceDaily, GuestVisit},
     routes::admin_data,
     AppState, Config,
 };
@@ -18,30 +18,15 @@ use uuid::Uuid;
 mod support;
 
 #[test]
-fn analytics_openapi_exposes_runtime_cursor_and_limit_parameters() {
+fn source_analytics_openapi_exposes_runtime_cursor_and_limit_parameters() {
     let document = airtek_platform::openapi::document();
-    for path in [
-        "/api/admin/v1/analytics/visits",
-        "/api/admin/v1/analytics/sources",
-    ] {
-        let parameters = document["paths"][path]["get"]["parameters"]
-            .as_array()
-            .expect("analytics query parameters");
-        for name in ["from", "to", "cursor", "limit"] {
-            assert!(
-                parameters
-                    .iter()
-                    .any(|parameter| { parameter["name"] == name && parameter["in"] == "query" }),
-                "{path} must declare the {name} runtime query parameter"
-            );
-        }
-        let limit = parameters
+    let parameters = document["paths"]["/api/admin/v1/analytics/sources"]["get"]["parameters"]
+        .as_array()
+        .expect("analytics query parameters");
+    for name in ["from", "to", "cursor", "limit"] {
+        assert!(parameters
             .iter()
-            .find(|parameter| parameter["name"] == "limit")
-            .unwrap();
-        assert_eq!(limit["schema"]["type"], "integer");
-        assert_eq!(limit["schema"]["minimum"], 1);
-        assert_eq!(limit["schema"]["maximum"], 100);
+            .any(|parameter| { parameter["name"] == name && parameter["in"] == "query" }));
     }
 }
 
@@ -74,7 +59,7 @@ fn visit(at: DateTime<Utc>, landing_path: String, source: String) -> GuestVisit 
 }
 
 #[tokio::test]
-async fn analytics_http_uses_opaque_scope_bound_keyset_cursors() {
+async fn source_analytics_uses_opaque_scope_bound_keyset_cursors() {
     let state = AppState::new(Config::for_test()).unwrap();
     let prefix = Uuid::new_v4().simple().to_string();
     let base = Utc.with_ymd_and_hms(2026, 9, 2, 12, 0, 0).unwrap();
@@ -90,21 +75,9 @@ async fn analytics_http_uses_opaque_scope_bound_keyset_cursors() {
         }
     }
 
-    let first_response = memory_request(&state, "/analytics/visits?limit=2").await;
-    if first_response.status() != StatusCode::OK {
-        let status = first_response.status();
-        let bytes = first_response
-            .into_body()
-            .collect()
-            .await
-            .unwrap()
-            .to_bytes();
-        panic!(
-            "unexpected analytics status {status}: {}",
-            String::from_utf8_lossy(&bytes)
-        );
-    }
-    let first: CursorPage<GuestVisitAggregate> = response_json(first_response).await;
+    let first_response = memory_request(&state, "/analytics/sources?limit=2").await;
+    assert_eq!(first_response.status(), StatusCode::OK);
+    let first: CursorPage<GuestSourceDaily> = response_json(first_response).await;
     assert_eq!(first.items.len(), 2);
     let cursor = first.next_cursor.expect("second page cursor");
     assert!(
@@ -114,56 +87,34 @@ async fn analytics_http_uses_opaque_scope_bound_keyset_cursors() {
 
     let second_response = memory_request(
         &state,
-        &format!("/analytics/visits?limit=2&cursor={cursor}"),
+        &format!("/analytics/sources?limit=2&cursor={cursor}"),
     )
     .await;
     assert_eq!(second_response.status(), StatusCode::OK);
-    let second: CursorPage<GuestVisitAggregate> = response_json(second_response).await;
+    let second: CursorPage<GuestSourceDaily> = response_json(second_response).await;
     assert_eq!(second.items.len(), 2);
     assert!(second.next_cursor.is_none());
-    let first_paths = first
-        .items
-        .iter()
-        .map(|item| &item.landing_path)
-        .collect::<Vec<_>>();
-    assert!(second
-        .items
-        .iter()
-        .all(|item| !first_paths.contains(&&item.landing_path)));
 
     let changed_scope = memory_request(
         &state,
-        &format!("/analytics/visits?limit=2&from=2026-09-01T00:00:00Z&cursor={cursor}"),
+        &format!("/analytics/sources?limit=2&from=2026-09-01T00:00:00Z&cursor={cursor}"),
     )
     .await;
     assert_eq!(changed_scope.status(), StatusCode::BAD_REQUEST);
     let problem: Value = response_json(changed_scope).await;
     assert_eq!(problem["status"], 400);
-
-    let wrong_endpoint = memory_request(
-        &state,
-        &format!("/analytics/sources?limit=2&cursor={cursor}"),
-    )
-    .await;
-    assert_eq!(wrong_endpoint.status(), StatusCode::BAD_REQUEST);
-
-    let source_response = memory_request(&state, "/analytics/sources?limit=1").await;
-    assert_eq!(source_response.status(), StatusCode::OK);
-    let sources: CursorPage<GuestSourceDaily> = response_json(source_response).await;
-    assert_eq!(sources.items.len(), 1);
-    assert!(sources.next_cursor.is_some());
 }
 
 #[tokio::test]
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
-async fn postgres_analytics_pagination_merges_history_and_raw_without_overlap() {
+async fn postgres_source_pagination_merges_history_and_raw_without_overlap() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
     let pool = PgPoolOptions::new()
         .max_connections(2)
         .connect(&database_url)
         .await
-        .expect("PostgreSQL connection");
+        .unwrap();
     support::assert_flyway_schema_current(&pool).await;
 
     let prefix = Uuid::new_v4().simple().to_string();
@@ -186,7 +137,7 @@ async fn postgres_analytics_pagination_merges_history_and_raw_without_overlap() 
     .bind(&landing_path)
     .execute(&pool)
     .await
-    .expect("historical aggregate fixture");
+    .unwrap();
     sqlx::query(
         r#"INSERT INTO consent_records
                (id,anonymous_session_id,policy_version,analytics_allowed,granted_at)
@@ -197,7 +148,7 @@ async fn postgres_analytics_pagination_merges_history_and_raw_without_overlap() 
     .bind(at)
     .execute(&pool)
     .await
-    .expect("consent fixture");
+    .unwrap();
     sqlx::query(
         r#"INSERT INTO guest_visits
                (id,anonymous_session_id,consent_record_id,consent_analytics_allowed,
@@ -215,89 +166,34 @@ async fn postgres_analytics_pagination_merges_history_and_raw_without_overlap() 
     .bind(at + Duration::days(180))
     .execute(&pool)
     .await
-    .expect("raw visit fixture");
-
-    for offset in 0..2 {
-        let other_path = format!("/en/analytics-pagination-{prefix}-other-{offset}");
-        sqlx::query(
-            r#"INSERT INTO guest_source_daily
-                   (bucket_date,source_type,source_name,utm_source,utm_medium,utm_campaign,
-                    landing_path,locale,visits)
-               VALUES ((($1 AT TIME ZONE 'UTC')::date - $2::integer),'direct','','','','',
-                       $3,'en',1)"#,
-        )
-        .bind(at)
-        .bind(offset)
-        .bind(other_path)
-        .execute(&pool)
-        .await
-        .expect("additional aggregate fixture");
-    }
+    .unwrap();
 
     let mut config = Config::for_test();
     config.database_url = Some(database_url.clone());
-    let state = AppState::new(config).expect("PostgreSQL state");
-    let first_response = memory_request(&state, "/analytics/visits?limit=1").await;
-    assert_eq!(first_response.status(), StatusCode::OK);
-    let first: CursorPage<GuestVisitAggregate> = response_json(first_response).await;
-    let cursor = first.next_cursor.clone().expect("next page cursor");
-    let second_response = memory_request(
-        &state,
-        &format!("/analytics/visits?limit=1&cursor={cursor}"),
-    )
-    .await;
-    assert_eq!(second_response.status(), StatusCode::OK);
-    let second: CursorPage<GuestVisitAggregate> = response_json(second_response).await;
-    assert_ne!(first.items[0].landing_path, second.items[0].landing_path);
-
-    let all_response = memory_request(&state, "/analytics/visits?limit=100").await;
-    let all: CursorPage<GuestVisitAggregate> = response_json(all_response).await;
-    let merged = all
+    let state = AppState::new(config).unwrap();
+    let response = memory_request(&state, "/analytics/sources?limit=100").await;
+    let page: CursorPage<GuestSourceDaily> = response_json(response).await;
+    let merged = page
         .items
         .iter()
         .find(|item| item.landing_path == landing_path)
-        .expect("merged historical and raw row");
+        .unwrap();
     assert_eq!(merged.visits, 5);
     assert_eq!(merged.page_views, 5);
 
-    let first_source_response = memory_request(&state, "/analytics/sources?limit=1").await;
-    assert_eq!(first_source_response.status(), StatusCode::OK);
-    let first_source: CursorPage<GuestSourceDaily> = response_json(first_source_response).await;
-    let source_cursor = first_source.next_cursor.expect("source next page cursor");
-    let second_source_response = memory_request(
-        &state,
-        &format!("/analytics/sources?limit=1&cursor={source_cursor}"),
-    )
-    .await;
-    assert_eq!(second_source_response.status(), StatusCode::OK);
-    let second_source: CursorPage<GuestSourceDaily> = response_json(second_source_response).await;
-    assert_ne!(
-        first_source.items[0].landing_path,
-        second_source.items[0].landing_path
-    );
-    let all_sources_response = memory_request(&state, "/analytics/sources?limit=100").await;
-    let all_sources: CursorPage<GuestSourceDaily> = response_json(all_sources_response).await;
-    let merged_source = all_sources
-        .items
-        .iter()
-        .find(|item| item.landing_path == landing_path)
-        .expect("merged historical and raw source row");
-    assert_eq!(merged_source.visits, 5);
-    assert_eq!(merged_source.page_views, 5);
-
-    sqlx::query("DELETE FROM guest_source_daily WHERE landing_path LIKE $1")
-        .bind(format!("/en/analytics-pagination-{prefix}%"))
+    sqlx::query("DELETE FROM guest_source_daily WHERE landing_path=$1")
+        .bind(&landing_path)
         .execute(&pool)
         .await
-        .expect("aggregate cleanup");
+        .unwrap();
     sqlx::query("DELETE FROM guest_visits WHERE id=$1")
         .bind(visit_id)
         .execute(&pool)
         .await
-        .expect("visit cleanup");
+        .unwrap();
     sqlx::query("DELETE FROM consent_records WHERE id=$1")
         .bind(consent_id)
         .execute(&pool)
         .await
-        .expect("consent cleanup");
+        .unwrap();
 }

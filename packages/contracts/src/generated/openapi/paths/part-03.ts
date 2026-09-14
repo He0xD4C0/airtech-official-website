@@ -6,57 +6,6 @@
 import type { operations } from '../operations'
 
 export interface PathsPart03 {
-"/api/admin/v1/rfqs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List always-redacted RFQ inbox items with server filtering and total count */
-        get: operations["listRfqInboxItems"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/rfqs/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get an always-redacted RFQ item, immutable notes and status history */
-        get: operations["getRfqInboxItem"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/rfqs/{id}/assignment": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Assign or unassign for an RFQ item with a required reason */
-        post: operations["assignRfqInboxItem"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 "/api/admin/v1/rfqs/{id}/notes": {
         parameters: {
             query?: never;
@@ -274,7 +223,7 @@ export interface PathsPart03 {
         };
         get?: never;
         put?: never;
-        /** Accept an allowlisted analytics event */
+        /** Accept an idempotent allowlisted analytics event */
         post: operations["createAnalyticsEvent"];
         delete?: never;
         options?: never;
@@ -480,6 +429,57 @@ export interface PathsPart03 {
         put?: never;
         /** Submit a structured RFQ */
         post: operations["createRfqSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/public/v1/routes/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Resolve one canonical published public route */
+        get: operations["resolvePublishedRoute"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/public/v1/selector": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Evaluate validated selector candidates */
+        post: operations["selectProducts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/public/v1/site-bootstrap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the published site shell and default company information */
+        get: operations["getSiteBootstrap"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

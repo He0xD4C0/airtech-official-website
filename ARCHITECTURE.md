@@ -210,8 +210,8 @@ Compose waits for PostgreSQL health, requires `flyway-migrate` to exit
 successfully, and only then starts the API and Worker.
 
 The supported operator entry points are `pnpm db:migrate`, `pnpm db:info`, and
-`pnpm db:validate`. The Rust `airtek-migrate` binary and any `airtekctl migrate`
-path have been removed. SQLx performs runtime queries and transactions only.
+`pnpm db:validate`. Application binaries do not expose schema or operational
+commands. SQLx performs runtime queries and transactions only.
 
 An existing database with the exact legacy SQLx v1-10 history requires a
 controlled, one-time takeover. First back it up, verify restoration, and confirm
@@ -231,8 +231,8 @@ databases use only `pnpm db:migrate`.
 
 ## Developer tools
 
-Development builds may include the browser terminal UI, PTY API, and
-`airtekctl`. The PTY inherits the non-root OS identity that started the service;
+Development builds may include the browser terminal UI and PTY API. The PTY
+opens the host `$SHELL` and inherits the non-root OS identity that started the service;
 application users and `devtools.shell` authorization remain database identities
 and are not mapped to OS accounts. The Admin UI uses an xterm-compatible terminal
 only from its development-only route chunk. A hashed, 60-second, single-use token
@@ -245,10 +245,8 @@ Audit events store actor, session, timestamps, fixed reasons and command-frame
 metadata while intentionally excluding command text and terminal output.
 
 Production builds exclude DevTools UI chunks, the Rust `devtools` feature, API
-route, WebSocket upstream, and devtools-only CLI operations. The Platform image
-does contain a restricted `airtekctl` for diagnostics plus CMS dependency
-checks. `production` and `devtools` are mutually exclusive build
-features.
+route, WebSocket upstream, PTY dependencies, and every shell or operational
+entrypoint. `production` and `devtools` are mutually exclusive build features.
 
 ## Adapter readiness
 

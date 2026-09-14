@@ -1,9 +1,9 @@
 use airtek_platform::{
     build_router,
     models::{
-        FactState, PerformanceCurve, Product, ProductFamily, PublicationStatus, SourceSnapshot,
-        SpecValue, StagingRecord, StagingValidationStatus, SyncConflict, SyncRun, SyncRunStatus,
-        TemporaryOverride,
+        BackgroundOperation, FactState, OperationKind, OperationStatus, PerformanceCurve, Product,
+        ProductFamily, PublicationStatus, SourceSnapshot, SpecValue, StagingRecord,
+        StagingValidationStatus, SyncConflict, SyncRun, SyncRunStatus, TemporaryOverride,
     },
     AppState, Config,
 };
@@ -12,10 +12,12 @@ use axum::{
     extract::connect_info::ConnectInfo,
     http::{header, Request, StatusCode},
 };
+use chrono::Utc;
 use http_body_util::BodyExt;
 use serde_json::{json, Value};
 use std::net::SocketAddr;
 use tower::ServiceExt;
+use uuid::Uuid;
 
 #[derive(Clone)]
 struct TestAdminSession {

@@ -53,23 +53,6 @@ async fn admin_dashboard_summary(
         },
     )
     .await?;
-    let running_operations = dashboard_count(
-        &state,
-        &principal,
-        "operations.run",
-        "SELECT count(*)::bigint FROM operation_runs WHERE status IN ('queued','running')",
-        || async {
-            Ok(state
-                .data
-                .read()
-                .await
-                .operations
-                .values()
-                .filter(|entry| matches!(entry.status, OperationStatus::Queued | OperationStatus::Running))
-                .count() as i64)
-        },
-    )
-    .await?;
     let analytics = if principal.has_permission("analytics.read") {
         Some(
             analytics_overview(
@@ -100,7 +83,6 @@ async fn admin_dashboard_summary(
         draft_content,
         open_conflicts,
         open_rfqs,
-        running_operations,
         analytics,
         recent_activity,
         readiness_item_count,

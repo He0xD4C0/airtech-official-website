@@ -223,7 +223,7 @@ async fn overview_defaults_to_thirty_utc_calendar_days() {
 }
 
 #[test]
-fn openapi_exposes_overview_and_deprecates_the_legacy_summary() {
+fn openapi_exposes_overview_and_removes_the_legacy_summary() {
     let document = airtek_platform::openapi::document();
     let overview = &document["paths"]["/api/admin/v1/analytics/overview"]["get"];
     assert_eq!(overview["operationId"], "getAnalyticsOverview");
@@ -234,10 +234,9 @@ fn openapi_exposes_overview_and_deprecates_the_legacy_summary() {
         overview["responses"]["200"]["content"]["application/json"]["schema"]["$ref"],
         "#/components/schemas/AnalyticsOverview"
     );
-    assert_eq!(
-        document["paths"]["/api/admin/v1/analytics/summary"]["get"]["deprecated"],
-        true
-    );
+    assert!(document["paths"]
+        .get("/api/admin/v1/analytics/summary")
+        .is_none());
     assert_eq!(
         document["components"]["schemas"]["AnalyticsOverview"]["required"],
         serde_json::json!([

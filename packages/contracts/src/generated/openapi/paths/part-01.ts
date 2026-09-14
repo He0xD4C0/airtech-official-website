@@ -40,44 +40,6 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/analytics/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get legacy unscoped first-party analytics totals
-         * @deprecated
-         * @description Deprecated compatibility endpoint. Use /api/admin/v1/analytics/overview for time-scoped metrics with consistent consented and business-outcome cohorts.
-         */
-        get: operations["getAnalyticsSummary"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/analytics/visits": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List privacy-minimized daily landing-page aggregates */
-        get: operations["listGuestVisits"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 "/api/admin/v1/audit": {
         parameters: {
             query?: never;
@@ -482,6 +444,40 @@ export interface PathsPart01 {
         put?: never;
         /** Publish the current draft after transactional server-side revalidation */
         post: operations["publishAdminContentV2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/content/{id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List immutable unified CMS revisions */
+        get: operations["listAdminContentRevisionsV2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/content/{id}/revisions/{revision}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore an immutable revision as a new draft and immutable restore revision */
+        post: operations["restoreAdminContentRevisionV2"];
         delete?: never;
         options?: never;
         head?: never;

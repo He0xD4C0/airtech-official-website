@@ -82,9 +82,6 @@
               "$ref": "#/components/schemas/AuditEvent"
             },
             "type": "array"
-          },
-          "runningOperations": {
-            "$ref": "#/components/schemas/DashboardMetric"
           }
         },
         "required": [
@@ -92,7 +89,6 @@
           "draftContent",
           "openConflicts",
           "openRfqs",
-          "runningOperations",
           "analytics",
           "recentActivity",
           "readinessItemCount"
@@ -916,39 +912,6 @@
         ],
         "type": "string"
       },
-      "AnalyticsSummary": {
-        "additionalProperties": false,
-        "properties": {
-          "acceptedEventCount": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "contactCount": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "containsPii": {
-            "const": false,
-            "type": "boolean"
-          },
-          "rfqCount": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "source": {
-            "const": "firstParty",
-            "type": "string"
-          }
-        },
-        "required": [
-          "acceptedEventCount",
-          "rfqCount",
-          "contactCount",
-          "containsPii",
-          "source"
-        ],
-        "type": "object"
-      },
       "ArchiveContentRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1150,37 +1113,6 @@
           "createdAt",
           "updatedAt",
           "result"
-        ],
-        "type": "object"
-      },
-      "BackgroundOperationPage": {
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/BackgroundOperation"
-            },
-            "type": "array"
-          },
-          "nextCursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "total": {
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "nextCursor",
-          "total"
         ],
         "type": "object"
       },
@@ -3479,27 +3411,6 @@
         ],
         "type": "object"
       },
-      "CreateOperationRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "confirmation": {
-            "type": "string"
-          },
-          "kind": {
-            "$ref": "#/components/schemas/OperationKind"
-          },
-          "reason": {
-            "minLength": 10,
-            "type": "string"
-          }
-        },
-        "required": [
-          "kind",
-          "reason",
-          "confirmation"
-        ],
-        "type": "object"
-      },
       "CreateRfqRequest": {
         "discriminator": {
           "mapping": {
@@ -4185,6 +4096,19 @@
               }
             ]
           },
+          "runnable": {
+            "type": "boolean"
+          },
+          "unavailableReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "updatedAt": {
             "anyOf": [
               {
@@ -4202,6 +4126,8 @@
           "displayName",
           "configured",
           "enabled",
+          "runnable",
+          "unavailableReason",
           "updatedAt",
           "latestSync"
         ],
@@ -4791,74 +4717,6 @@
           "firstSeenAt",
           "lastSeenAt",
           "retentionUntil"
-        ],
-        "type": "object"
-      },
-      "GuestVisitAggregate": {
-        "additionalProperties": false,
-        "properties": {
-          "bucketDate": {
-            "format": "date",
-            "type": "string"
-          },
-          "landingPath": {
-            "pattern": "^/en(?:/|$)[^?#]*$",
-            "type": "string"
-          },
-          "locale": {
-            "type": "string"
-          },
-          "pageViews": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "rfqStarts": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "rfqSubmissions": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "visits": {
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "bucketDate",
-          "landingPath",
-          "locale",
-          "visits",
-          "pageViews",
-          "rfqStarts",
-          "rfqSubmissions"
-        ],
-        "type": "object"
-      },
-      "GuestVisitAggregatePage": {
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/GuestVisitAggregate"
-            },
-            "type": "array"
-          },
-          "nextCursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "items",
-          "nextCursor"
         ],
         "type": "object"
       },
@@ -5876,14 +5734,6 @@
       },
       "OperationKind": {
         "enum": [
-          "migrationPreflight",
-          "migrationApply",
-          "backup",
-          "restoreValidate",
-          "retentionApply",
-          "searchReindex",
-          "cacheInvalidate",
-          "feishuSync",
           "productImport"
         ],
         "type": "string"
@@ -10129,303 +9979,6 @@
           }
         ],
         "summary": "List daily source and campaign aggregates",
-        "tags": [
-          "adminAnalytics"
-        ]
-      }
-    },
-    "/api/admin/v1/analytics/summary": {
-      "get": {
-        "deprecated": true,
-        "description": "Deprecated compatibility endpoint. Use /api/admin/v1/analytics/overview for time-scoped metrics with consistent consented and business-outcome cohorts.",
-        "operationId": "getAnalyticsSummary",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AnalyticsSummary"
-                }
-              }
-            },
-            "description": "Analytics summary"
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": []
-          }
-        ],
-        "summary": "Get legacy unscoped first-party analytics totals",
-        "tags": [
-          "adminAnalytics"
-        ]
-      }
-    },
-    "/api/admin/v1/analytics/visits": {
-      "get": {
-        "operationId": "listGuestVisits",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "from",
-            "required": false,
-            "schema": {
-              "format": "date-time",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "to",
-            "required": false,
-            "schema": {
-              "format": "date-time",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Opaque endpoint-scoped cursor returned by the previous page.",
-            "in": "query",
-            "name": "cursor",
-            "required": false,
-            "schema": {
-              "maxLength": 2048,
-              "minLength": 1,
-              "type": "string"
-            }
-          },
-          {
-            "description": "Page size; values outside 1 through 100 return Problem Details 400.",
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 50,
-              "maximum": 100,
-              "minimum": 1,
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GuestVisitAggregatePage"
-                }
-              }
-            },
-            "description": "Guest visit aggregates"
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": []
-          }
-        ],
-        "summary": "List privacy-minimized daily landing-page aggregates",
         "tags": [
           "adminAnalytics"
         ]
@@ -16432,19 +15985,6 @@
       },
       "post": {
         "operationId": "startFeishuSyncRun",
-        "parameters": [
-          {
-            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": true,
-            "schema": {
-              "maxLength": 200,
-              "minLength": 8,
-              "type": "string"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -16456,16 +15996,6 @@
           "required": true
         },
         "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SyncRun"
-                }
-              }
-            },
-            "description": "Sync run queued"
-          },
           "400": {
             "content": {
               "application/problem+json": {
@@ -16514,7 +16044,7 @@
                 }
               }
             },
-            "description": "Concurrent or domain conflict"
+            "description": "Feishu provider adapter is not connected"
           },
           "422": {
             "content": {
@@ -16573,7 +16103,7 @@
             "csrfToken": []
           }
         ],
-        "summary": "Queue a resumable Feishu staging sync job",
+        "summary": "Report that Feishu synchronization is unavailable until the provider adapter is connected",
         "tags": [
           "adminFeishu"
         ]
@@ -17236,339 +16766,6 @@
         ]
       }
     },
-    "/api/admin/v1/operations": {
-      "get": {
-        "operationId": "listBackgroundOperations",
-        "parameters": [
-          {
-            "description": "Opaque endpoint-scoped cursor returned by the previous page.",
-            "in": "query",
-            "name": "cursor",
-            "required": false,
-            "schema": {
-              "maxLength": 2048,
-              "minLength": 1,
-              "type": "string"
-            }
-          },
-          {
-            "description": "Page size; values outside 1 through 100 return Problem Details 400.",
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 50,
-              "maximum": 100,
-              "minimum": 1,
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "status",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/OperationStatus"
-            }
-          },
-          {
-            "in": "query",
-            "name": "kind",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/OperationKind"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BackgroundOperationPage"
-                }
-              }
-            },
-            "description": "Background operations"
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": []
-          }
-        ],
-        "summary": "List predefined background operations",
-        "tags": [
-          "adminOperations"
-        ]
-      },
-      "post": {
-        "operationId": "createBackgroundOperation",
-        "parameters": [
-          {
-            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": true,
-            "schema": {
-              "maxLength": 200,
-              "minLength": 8,
-              "type": "string"
-            }
-          },
-          {
-            "description": "A fresh six-digit TOTP is required for migration apply, backup, restore validation, and retention operations.",
-            "in": "header",
-            "name": "X-TOTP-Code",
-            "required": false,
-            "schema": {
-              "pattern": "^[0-9]{6}$",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateOperationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BackgroundOperation"
-                }
-              }
-            },
-            "description": "Operation queued",
-            "headers": {
-              "Location": {
-                "description": "Operation status URL",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": [],
-            "csrfToken": []
-          }
-        ],
-        "summary": "Queue a predefined background operation",
-        "tags": [
-          "adminOperations"
-        ]
-      }
-    },
     "/api/admin/v1/operations/{id}": {
       "get": {
         "operationId": "getBackgroundOperation",
@@ -17700,9 +16897,9 @@
             "adminSession": []
           }
         ],
-        "summary": "Get background operation status",
+        "summary": "Get Product Master import operation status",
         "tags": [
-          "adminOperations"
+          "adminProductImports"
         ]
       }
     },
@@ -17837,9 +17034,9 @@
             "adminSession": []
           }
         ],
-        "summary": "Stream operation status as a server-sent event",
+        "summary": "Stream Product Master import status as a server-sent event",
         "tags": [
-          "adminOperations"
+          "adminProductImports"
         ]
       }
     },
@@ -22624,6 +21821,19 @@
     "/api/public/v1/analytics/events": {
       "post": {
         "operationId": "createAnalyticsEvent",
+        "parameters": [
+          {
+            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -22746,7 +21956,7 @@
             "description": "Required service is unavailable"
           }
         },
-        "summary": "Accept an allowlisted analytics event",
+        "summary": "Accept an idempotent allowlisted analytics event",
         "tags": [
           "publicAnalytics"
         ]

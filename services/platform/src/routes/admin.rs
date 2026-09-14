@@ -22,10 +22,9 @@ use crate::{
         AnalyticsBusinessOutcomes, AnalyticsConsentedMetrics, AnalyticsOverview,
         AnalyticsOverviewRange, ArchiveContentRequest, AuditEvent, BackgroundOperation,
         ContentDraftV2, ContentRecordV2, ContentRevisionV2, CreateContentSnapshotRequest,
-        CreateOperationRequest, CreateTemporaryOverride, CursorPage, OperationKind,
-        OperationStatus, Product, PublicationStatus, RestoreContentRevisionRequest,
-        StartSyncRequest, SyncRun, SyncRunStatus, TemporaryOverride, UnpublishContentRequest,
-        UpdatePlatformSettings,
+        CreateTemporaryOverride, CursorPage, OperationKind, OperationStatus, Product,
+        PublicationStatus, RestoreContentRevisionRequest, StartSyncRequest, SyncRun,
+        TemporaryOverride, UnpublishContentRequest, UpdatePlatformSettings,
     },
     pagination::{paginate_by_id, CursorQuery},
     routes::{actor, etag, parse_if_match},
@@ -104,10 +103,8 @@ pub fn router() -> Router<AppState> {
         .route("/contacts/{id}/status", post(update_contact_status))
         .route("/contacts/{id}/notes", post(add_contact_note))
         .route("/analytics/overview", get(analytics_overview))
-        .route("/analytics/summary", get(analytics_summary))
         .route("/dashboard/summary", get(admin_dashboard_summary))
         .route("/settings", get(get_settings).patch(update_settings))
-        .route("/operations", get(list_operations).post(create_operation))
         .route("/operations/{id}", get(get_operation))
         .route("/operations/{id}/events", get(operation_events))
         .route("/audit", get(list_audit))
@@ -126,7 +123,6 @@ include!("admin/submissions.rs");
 include!("admin/submissions_support.rs");
 include!("admin/analytics_overview.rs");
 include!("admin/media.rs");
-include!("admin/analytics_summary.rs");
 include!("admin/dashboard.rs");
 include!("admin/operations.rs");
 include!("admin/audit_and_validation.rs");

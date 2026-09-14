@@ -294,17 +294,20 @@ pub(super) fn add_core(paths: &mut Map<String, Value>) {
         paths,
         "/api/public/v1/analytics/events",
         "post",
-        body(
-            op(
-                "createAnalyticsEvent",
-                "Accept an allowlisted analytics event",
-                "publicAnalytics",
-                [(
-                    "202",
-                    json_response("Consent-aware event receipt", r("AnalyticsEventReceipt")),
-                )],
+        params(
+            body(
+                op(
+                    "createAnalyticsEvent",
+                    "Accept an idempotent allowlisted analytics event",
+                    "publicAnalytics",
+                    [(
+                        "202",
+                        json_response("Consent-aware event receipt", r("AnalyticsEventReceipt")),
+                    )],
+                ),
+                r("CreateAnalyticsEvent"),
             ),
-            r("CreateAnalyticsEvent"),
+            vec![idempotency_param()],
         ),
     );
 }

@@ -9,7 +9,6 @@ import type {
   BackgroundOperation as ContractBackgroundOperation,
   ContentPreviewLink as ContractContentPreviewLink,
   GuestSourceDaily as ContractGuestSourceDaily,
-  GuestVisitAggregate as ContractGuestVisitAggregate,
   InvitationAcceptance as ContractInvitationAcceptance,
   MissingAssetReference as ContractMissingAssetReference,
   PerformanceCurve as ContractPerformanceCurve,
@@ -38,16 +37,10 @@ export type { CursorPage, CursorPageRequest } from './cursorPagination'
 export type AcceptInvitationRequest = ContractAcceptInvitationRequest
 export type InvitationAcceptance = ContractInvitationAcceptance
 
-export interface SiteNavigationLink {
-  label: string
-  href: string
-}
-
 export type ProductImportError = ContractProductImportError
 export type MissingProductAsset = ContractMissingAssetReference
 export type ProductImportResult = ContractProductImportResult
 export type ProductImportAccepted = ContractProductImportAccepted
-export type GuestVisitAggregate = ContractGuestVisitAggregate
 export type GuestSourceDaily = ContractGuestSourceDaily
 export type AnalyticsOverview = ContractAnalyticsOverview
 export type AdminUserRecord = ContractAdminUserRecord

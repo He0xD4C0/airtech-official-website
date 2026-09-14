@@ -42,7 +42,6 @@ beforeEach(() => {
     draftContent: { available: true, value: 4 },
     openConflicts: { available: true, value: 2 },
     openRfqs: { available: true, value: 6 },
-    runningOperations: { available: true, value: 1 },
     readinessItemCount: 6,
     recentActivity: [],
     analytics: {

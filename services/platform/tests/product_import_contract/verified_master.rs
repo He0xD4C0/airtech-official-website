@@ -150,7 +150,7 @@ async fn verified_master_is_staged_queued_promoted_and_replayed_without_plaintex
 
     // A terminal worker failure can be retried only while authenticated
     // private staging remains available. The reset occurs atomically with the
-    // job/operation state reset in airtekctl.
+    // job/operation state reset for the import workflow.
     let mut retry = pool.begin().await.unwrap();
     sqlx::query("UPDATE jobs SET status='failed' WHERE id=$1")
         .bind(staged.operation_id)

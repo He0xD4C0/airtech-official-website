@@ -1,6 +1,6 @@
 {
   "generatedFrom": "packages/contracts/openapi/openapi.production.json",
-  "operationCount": 81,
+  "operationCount": 77,
   "operations": [
     {
       "method": "GET",
@@ -60,81 +60,6 @@
             {
               "mediaType": "application/json",
               "type": "GuestSourceDailyPage"
-            }
-          ]
-        }
-      ],
-      "pagination": {
-        "strategy": "cursor",
-        "cursor": "cursor",
-        "limit": "limit"
-      },
-      "idempotency": {
-        "required": false
-      },
-      "concurrency": {
-        "required": false
-      },
-      "audit": {
-        "required": false
-      },
-      "frontendConsumer": "apps/admin/src/services/adminApi.ts"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/v1/analytics/summary",
-      "operationId": "getAnalyticsSummary",
-      "permission": "analytics.read",
-      "request": {
-        "parameters": [],
-        "body": []
-      },
-      "response": [
-        {
-          "status": 200,
-          "types": [
-            {
-              "mediaType": "application/json",
-              "type": "AnalyticsSummary"
-            }
-          ]
-        }
-      ],
-      "pagination": {
-        "strategy": "none"
-      },
-      "idempotency": {
-        "required": false
-      },
-      "concurrency": {
-        "required": false
-      },
-      "audit": {
-        "required": false
-      },
-      "frontendConsumer": "apps/admin/src/services/adminApi.ts"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/v1/analytics/visits",
-      "operationId": "listGuestVisits",
-      "permission": "analytics.read",
-      "request": {
-        "parameters": [
-          "from",
-          "to",
-          "cursor",
-          "limit"
-        ],
-        "body": []
-      },
-      "response": [
-        {
-          "status": 200,
-          "types": [
-            {
-              "mediaType": "application/json",
-              "type": "GuestVisitAggregatePage"
             }
           ]
         }
@@ -1694,9 +1619,7 @@
       "operationId": "startFeishuSyncRun",
       "permission": "integration.run",
       "request": {
-        "parameters": [
-          "Idempotency-Key"
-        ],
+        "parameters": [],
         "body": [
           {
             "mediaType": "application/json",
@@ -1704,30 +1627,18 @@
           }
         ]
       },
-      "response": [
-        {
-          "status": 202,
-          "types": [
-            {
-              "mediaType": "application/json",
-              "type": "SyncRun"
-            }
-          ]
-        }
-      ],
+      "response": [],
       "pagination": {
         "strategy": "none"
       },
       "idempotency": {
-        "required": true,
-        "header": "Idempotency-Key"
+        "required": false
       },
       "concurrency": {
         "required": false
       },
       "audit": {
-        "required": true,
-        "action": "startFeishuSyncRun"
+        "required": false
       },
       "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
     },
@@ -1892,94 +1803,9 @@
     },
     {
       "method": "GET",
-      "path": "/api/admin/v1/operations",
-      "operationId": "listBackgroundOperations",
-      "permission": "operations.run",
-      "request": {
-        "parameters": [
-          "cursor",
-          "limit",
-          "status",
-          "kind"
-        ],
-        "body": []
-      },
-      "response": [
-        {
-          "status": 200,
-          "types": [
-            {
-              "mediaType": "application/json",
-              "type": "BackgroundOperationPage"
-            }
-          ]
-        }
-      ],
-      "pagination": {
-        "strategy": "cursor",
-        "cursor": "cursor",
-        "limit": "limit"
-      },
-      "idempotency": {
-        "required": false
-      },
-      "concurrency": {
-        "required": false
-      },
-      "audit": {
-        "required": false
-      },
-      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/v1/operations",
-      "operationId": "createBackgroundOperation",
-      "permission": "operations.run",
-      "request": {
-        "parameters": [
-          "Idempotency-Key",
-          "X-TOTP-Code"
-        ],
-        "body": [
-          {
-            "mediaType": "application/json",
-            "type": "CreateOperationRequest"
-          }
-        ]
-      },
-      "response": [
-        {
-          "status": 202,
-          "types": [
-            {
-              "mediaType": "application/json",
-              "type": "BackgroundOperation"
-            }
-          ]
-        }
-      ],
-      "pagination": {
-        "strategy": "none"
-      },
-      "idempotency": {
-        "required": true,
-        "header": "Idempotency-Key"
-      },
-      "concurrency": {
-        "required": false
-      },
-      "audit": {
-        "required": true,
-        "action": "createBackgroundOperation"
-      },
-      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
-    },
-    {
-      "method": "GET",
       "path": "/api/admin/v1/operations/{id}",
       "operationId": "getBackgroundOperation",
-      "permission": "operations.run",
+      "permission": "product.write",
       "request": {
         "parameters": [
           "id"
@@ -2015,7 +1841,7 @@
       "method": "GET",
       "path": "/api/admin/v1/operations/{id}/events",
       "operationId": "streamBackgroundOperationEvents",
-      "permission": "operations.run",
+      "permission": "product.write",
       "request": {
         "parameters": [
           "id"

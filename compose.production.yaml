@@ -13,7 +13,7 @@ services:
       FLYWAY_USER: ${FLYWAY_USER:?set the migration role}
       FLYWAY_PASSWORD: ${FLYWAY_PASSWORD:?set the migration role password from the secret manager}
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: ${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:?set the existing API and Worker database role}
-      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:?set AIRTEK_FLYWAY_TARGET=15}
+      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:?set AIRTEK_FLYWAY_TARGET=16}
     restart: "no"
 
   platform-api:
@@ -90,18 +90,6 @@ services:
         condition: service_completed_successfully
     mem_limit: 768m
     restart: unless-stopped
-
-  platform-ops:
-    image: ${AIRTEK_PLATFORM_IMAGE:?set AIRTEK_PLATFORM_IMAGE to an immutable image reference}
-    profiles: ["operations"]
-    entrypoint: ["/usr/local/bin/airtekctl"]
-    command: ["diagnose"]
-    environment:
-      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
-    depends_on:
-      flyway-migrate:
-        condition: service_completed_successfully
-    restart: "no"
 
   public-web:
     image: ${AIRTEK_PUBLIC_WEB_IMAGE:?set AIRTEK_PUBLIC_WEB_IMAGE to an immutable image reference}

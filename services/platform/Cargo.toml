@@ -8,7 +8,7 @@ publish = false
 [features]
 default = []
 production = []
-devtools = ["dep:clap", "dep:portable-pty", "axum/ws"]
+devtools = ["dep:portable-pty", "axum/ws"]
 
 [dependencies]
 async-trait = "0.1"
@@ -16,7 +16,6 @@ argon2 = { version = "0.5", features = ["std"] }
 axum = { version = "0.8", features = ["http2", "json", "macros", "multipart"] }
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
-clap = { version = "4.5", features = ["derive", "env"], optional = true }
 data-encoding = "2"
 dotenvy = "0.15"
 futures-util = "0.3"
@@ -51,7 +50,3 @@ path = "src/bin/api.rs"
 [[bin]]
 name = "airtek-worker"
 path = "src/bin/worker.rs"
-
-[[bin]]
-name = "airtekctl"
-path = "src/bin/airtekctl.rs"

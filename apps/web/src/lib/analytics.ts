@@ -1,5 +1,5 @@
 import type { AnalyticsConsentReceipt, CreateAnalyticsEvent, JsonValue } from '@airtek/contracts'
-import { recordGuestVisit, submitAnalyticsConsent, submitAnalyticsEvent } from './api'
+import { newIdempotencyKey, recordGuestVisit, submitAnalyticsConsent, submitAnalyticsEvent } from './api'
 import type { PublicAnalyticsContext } from '@/types/content'
 
 export type AnalyticsEventName =
@@ -324,7 +324,7 @@ export async function trackAnalyticsEvent(
     properties: sanitizeAnalyticsProperties(eventName, properties),
   }
   try {
-    return (await submitAnalyticsEvent(event)).accepted
+    return (await submitAnalyticsEvent(event, newIdempotencyKey())).accepted
   } catch {
     return false
   }

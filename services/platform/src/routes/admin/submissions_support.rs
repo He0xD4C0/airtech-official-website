@@ -8,6 +8,7 @@ enum DetailIdempotency {
     Fresh(crate::idempotency::IdempotencyContext),
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn begin_item_idempotency<T: serde::Serialize>(
     state: &AppState,
     entity_type: BusinessEntityType,

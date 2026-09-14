@@ -13,10 +13,9 @@ Build and scan five immutable artifacts:
   browser origins passed as Vite build arguments.
 - Admin Web from `infra/docker/Dockerfile.admin`, with the final Admin API
   browser origin passed at build time. Its production build forces DevTools off.
-- Platform from `infra/docker/Dockerfile.platform`. It supplies the API,
-  Worker, and the production-allowlisted `airtekctl` operations entrypoint; it
-  contains neither schema migration tools nor DevTools PTY/WebSocket
-  dependencies.
+- Platform from `infra/docker/Dockerfile.platform`. It supplies only the API
+  and Worker; it contains no application-owned CLI, schema migration tools, or
+  DevTools PTY/WebSocket dependencies.
 - Migrations from `infra/docker/Dockerfile.flyway`, pinned to Flyway `13.4.0`.
   It is an independent, non-root one-shot artifact and is the sole owner of
   PostgreSQL schema versions.

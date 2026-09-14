@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const apiMocks = vi.hoisted(() => ({
+  newIdempotencyKey: vi.fn(() => '11111111-1111-4111-8111-111111111111'),
   submitAnalyticsConsent: vi.fn(),
   submitAnalyticsEvent: vi.fn(),
   recordGuestVisit: vi.fn(),
@@ -103,7 +104,7 @@ describe('consent-aware analytics', () => {
       anonymousSessionId: expect.any(String),
       consentReceipt: expect.any(String),
       properties: { filterName: 'family', resultCount: 2 },
-    }))
+    }), expect.stringMatching(/^[0-9a-f-]{36}$/u))
   })
 
   it('sanitizes acquisition data and omits unapproved UTM or query fields', () => {
@@ -130,7 +131,7 @@ describe('consent-aware analytics', () => {
         contentId: '792406a9-2f19-425e-8508-78a205c0c764',
         publishedRevision: 3,
       },
-    }))
+    }), expect.stringMatching(/^[0-9a-f-]{36}$/u))
     expect(apiMocks.recordGuestVisit).toHaveBeenCalledTimes(1)
   })
 

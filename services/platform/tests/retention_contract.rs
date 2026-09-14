@@ -1,5 +1,5 @@
 use airtek_platform::{
-    models::{AnalyticsOverview, CursorPage, GuestSourceDaily, GuestVisitAggregate},
+    models::{AnalyticsOverview, CursorPage, GuestSourceDaily},
     routes::{admin, admin_data},
     worker::apply_retention,
     AppState, Config,
@@ -41,20 +41,14 @@ where
 async fn analytics_rows(
     database_url: &str,
     landing_path: &str,
-) -> (GuestVisitAggregate, GuestSourceDaily) {
-    let visit = analytics_page::<GuestVisitAggregate>(database_url, "/analytics/visits")
-        .await
-        .items
-        .into_iter()
-        .find(|row| row.landing_path == landing_path)
-        .expect("landing path is visible in visit analytics");
+) -> (GuestSourceDaily, GuestSourceDaily) {
     let source = analytics_page::<GuestSourceDaily>(database_url, "/analytics/sources")
         .await
         .items
         .into_iter()
         .find(|row| row.landing_path == landing_path)
         .expect("landing path is visible in source analytics");
-    (visit, source)
+    (source.clone(), source)
 }
 
 async fn analytics_overview(

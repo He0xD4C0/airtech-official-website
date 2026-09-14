@@ -30,6 +30,10 @@ async fn get_feishu_connection_status(
             display_name: Some(row.try_get("display_name")?),
             configured: row.try_get("configured")?,
             enabled: row.try_get("enabled")?,
+            runnable: false,
+            unavailable_reason: Some(
+                "Feishu provider adapter is not connected; synchronization is disabled.".into(),
+            ),
             updated_at: Some(row.try_get("updated_at")?),
             latest_sync,
         },
@@ -38,6 +42,10 @@ async fn get_feishu_connection_status(
             display_name: None,
             configured: false,
             enabled: false,
+            runnable: false,
+            unavailable_reason: Some(
+                "Feishu provider adapter is not connected; synchronization is disabled.".into(),
+            ),
             updated_at: None,
             latest_sync,
         },
@@ -100,7 +108,7 @@ async fn list_feishu_staging(
         .status
         .map(|value| {
             serde_json::from_value::<crate::models::StagingValidationStatus>(Value::String(value))
-                .map(|status| serialized_enum_label(status))
+                .map(serialized_enum_label)
                 .map_err(|_| ApiError::bad_request("status is not a staging validation state."))
         })
         .transpose()?;
@@ -156,77 +164,13 @@ async fn list_feishu_staging(
 }
 
 async fn start_sync_run(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    Json(request): Json<StartSyncRequest>,
+    State(_state): State<AppState>,
+    _headers: HeaderMap,
+    Json(_request): Json<StartSyncRequest>,
 ) -> Result<Response, ApiError> {
-    let actor = actor(&headers);
-    let idempotency = match begin_idempotency(
-        &state,
-        "admin.feishu.sync.start",
-        &headers,
-        &json!({"actor": &actor, "request": &request}),
-    )
-    .await?
-    {
-        IdempotencyOutcome::Replay(replay) => {
-            let status = replay.status()?;
-            let run: SyncRun = replay.decode()?;
-            return Ok((status, Json(run)).into_response());
-        }
-        IdempotencyOutcome::Fresh(context) => context,
-    };
-    if request.mapping_version.trim().is_empty() {
-        return Err(ApiError::bad_request("mappingVersion is required."));
-    }
-    let adapter_unavailable = state.pool.is_none();
-    let now = Utc::now();
-    let run = SyncRun {
-        id: Uuid::new_v4(),
-        source: "feishu".into(),
-        dry_run: request.dry_run,
-        mapping_version: request.mapping_version,
-        status: if adapter_unavailable {
-            SyncRunStatus::Failed
-        } else {
-            SyncRunStatus::Queued
-        },
-        resume_cursor: request.cursor,
-        records_seen: 0,
-        records_valid: 0,
-        conflict_count: 0,
-        started_at: now,
-        completed_at: adapter_unavailable.then_some(now),
-        error: adapter_unavailable.then(|| {
-            "Feishu synchronization requires PostgreSQL and a configured provider adapter; no synchronization ran."
-                .into()
-        }),
-    };
-    state.enqueue_sync_run(&run).await?;
-    if state.pool.is_none() {
-        state
-            .data
-            .write()
-            .await
-            .sync_runs
-            .insert(run.id, run.clone());
-    }
-    audit(
-        &state,
-        &headers,
-        &actor,
-        "feishu.sync.queue",
-        "syncRun",
-        Some(run.id),
-        None,
-        Some(json!(run)),
-        Some("Queue Feishu staging synchronization".into()),
-    )
-    .await?;
-    idempotency
-        .complete(&state, &run, StatusCode::ACCEPTED)
-        .await?;
-    Ok((StatusCode::ACCEPTED, Json(run)).into_response())
+    Err(ApiError::conflict(
+        "Feishu provider adapter is not connected; synchronization is disabled.",
+    ))
 }
 
 #[derive(Debug, Deserialize)]

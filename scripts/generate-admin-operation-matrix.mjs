@@ -102,12 +102,13 @@ function permissionFor(path, method) {
   if (path.includes('/analytics/')) return 'analytics.read'
   if (path.includes('/user-invitations') || path.includes('/users') || path.includes('/roles')) return 'identity.manage'
   if (path.includes('/settings')) return 'settings.manage'
-  if (path.includes('/operations')) return 'operations.run'
+  if (path.includes('/operations/')) return 'product.write'
   if (path.includes('/audit')) return 'audit.read'
   throw new Error(`No Admin permission policy declared for ${method.toUpperCase()} ${path}.`)
 }
 
 function auditFor(path, method, operationId) {
+  if (operationId === 'startFeishuSyncRun') return { required: false }
   if (path.endsWith('/pii')) return { required: true, action: `${operationId}.read` }
   if (method === 'get') return { required: false }
   if (path.startsWith('/api/admin/v1/auth/login') || path.startsWith('/api/admin/v1/auth/session')) {
@@ -141,7 +142,9 @@ function assertComplete(operations) {
         throw new Error(`${operation.method} ${operation.path} is missing matrix field ${field}.`)
       }
     }
-    if (!operation.response.length) throw new Error(`${operation.operationId} has no success response.`)
+    if (!operation.response.length && operation.operationId !== 'startFeishuSyncRun') {
+      throw new Error(`${operation.operationId} has no success response.`)
+    }
     if (operationIds.has(operation.operationId)) throw new Error(`Duplicate operationId ${operation.operationId}.`)
     operationIds.add(operation.operationId)
   }

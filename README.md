@@ -184,8 +184,7 @@ The checked-in local Compose stack explicitly permits its historical single
 override is not present in `compose.production.yaml`; production rejects using
 the Flyway DDL identity as the application runtime identity.
 
-The former Rust `airtek-migrate` binary has been removed, and `airtekctl` has no
-`migrate` subcommand. In-memory repositories exist only behind isolated test
+Application-owned migration and operations CLIs have been removed. In-memory repositories exist only behind isolated test
 construction and are not a supported server mode. The local/S3-compatible media
 storage implementations are selected explicitly; there is no implicit local
 fallback when media storage is unconfigured.

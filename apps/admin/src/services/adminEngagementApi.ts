@@ -13,7 +13,6 @@ import type {
   CursorPage,
   CursorPageRequest,
   GuestSourceDaily,
-  GuestVisitAggregate,
 } from './adminApiTypes'
 
 export const adminEngagementApi = {
@@ -77,13 +76,6 @@ export const adminEngagementApi = {
   async analyticsOverview(range: AnalyticsApiRange): Promise<AnalyticsOverview> {
     const result = await adminContractClient.get('/api/admin/v1/analytics/overview', {
       parameters: { query: range },
-    })
-    return result.data
-  },
-
-  async listGuestVisits(pagination?: CursorPageRequest): Promise<CursorPage<GuestVisitAggregate>> {
-    const result = await adminContractClient.get('/api/admin/v1/analytics/visits', {
-      parameters: { query: cursorQuery(pagination) },
     })
     return result.data
   },

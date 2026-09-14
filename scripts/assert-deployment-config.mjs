@@ -68,7 +68,7 @@ for (const variable of ['CARGO_REGISTRY_MIRROR', 'HTTP_PROXY', 'HTTPS_PROXY', 'N
 requireMatch(platformDockerfile, /replace-with = "airtek-mirror"/u, 'Platform must configure a named Cargo mirror only when requested.')
 requireMatch(platformDockerfile, /^USER\s+10001$/mu, 'Platform runtime must remain non-root.')
 requireMatch(platformDockerfile, /^EXPOSE\s+8080$/mu, 'Platform image must expose only its fixed API port 8080.')
-requireMatch(platformDockerfile, /--bin\s+airtekctl/u, 'Production Platform image must build the operations-only airtekctl.')
+forbidMatch(platformDockerfile, /airtekctl/u, 'Production Platform image must not contain the retired airtekctl.')
 forbidMatch(platformDockerfile, /airtek-migrate/u, 'Production Platform image must not contain the retired SQLx migrator.')
 
 const flywayDockerfile = read('infra/docker/Dockerfile.flyway')
@@ -358,7 +358,7 @@ for (const origin of ['AIRTEK_PUBLIC_ORIGIN=https://', 'AIRTEK_ADMIN_ORIGIN=http
   requireMatch(productionEnv, new RegExp(`^${origin}`, 'mu'), `Production environment example must configure ${origin.split('=')[0]} as HTTPS.`)
 }
 requireMatch(productionEnv, /^AIRTEK_MEDIA_STORAGE=s3$/mu, 'Production media storage must use S3.')
-requireMatch(productionEnv, /^AIRTEK_FLYWAY_TARGET=15$/mu, 'Production must target schema V15.')
+requireMatch(productionEnv, /^AIRTEK_FLYWAY_TARGET=16$/mu, 'Production must target schema V16.')
 requireMatch(productionCompose, /AIRTEK_TOTP_ENCRYPTION_KEY:\s*\$\{AIRTEK_TOTP_ENCRYPTION_KEY:\?/u, 'Production must require a secret-manager TOTP encryption key.')
 requireMatch(productionEnv, /^AIRTEK_TOTP_ENCRYPTION_KEY=REPLACE_/mu, 'Production environment example must declare the TOTP key placeholder.')
 for (const variable of ['FLYWAY_URL', 'FLYWAY_USER', 'FLYWAY_PASSWORD', 'FLYWAY_PLACEHOLDERS_RUNTIME_ROLE']) {

@@ -101,12 +101,7 @@ test.describe('Authenticated Admin workflows against Rust and PostgreSQL', () =>
     await expect(page.getByText('100.00', { exact: true })).toBeVisible()
   })
 
-  test('renders PostgreSQL guest visit and source aggregates without visitor profiles', async ({ page }) => {
-    await page.goto(absolute(adminOrigin, '/analytics/visits'))
-    await expect(page.getByText('/en/e2e-admin-analytics', { exact: true })).toBeVisible()
-    await expect(page.getByRole('cell', { name: '7 / 11' })).toBeVisible()
-    await expect(page.locator('body')).not.toContainText('anonymousSessionId')
-
+  test('renders PostgreSQL source aggregates without visitor profiles', async ({ page }) => {
     await page.goto(absolute(adminOrigin, '/analytics/sources'))
     await expect(page.locator('.source-dashboard')).toContainText('e2e.example.test')
     await expect(page.getByText(/e2e-source \/ integration-test/u)).toBeVisible()
@@ -203,13 +198,13 @@ test.describe('Authenticated Admin workflows against Rust and PostgreSQL', () =>
       expect(restrictedSession.permissions).toContain('content.read')
       expect(restrictedSession.permissions).not.toContain('analytics.read')
 
-      await restrictedPage.goto(absolute(adminOrigin, '/analytics/visits'))
+      await restrictedPage.goto(absolute(adminOrigin, '/analytics/sources'))
       await expect(restrictedPage).toHaveURL(/\/forbidden\?/u)
       await expect(restrictedPage.getByRole('heading', { name: '没有访问权限' })).toBeVisible()
       await expect(restrictedPage.getByText('analytics.read', { exact: true })).toBeVisible()
 
       const denied = await restrictedPage.evaluate(async (apiUrl) => {
-        const response = await fetch(`${apiUrl}/api/admin/v1/analytics/visits`, { credentials: 'include' })
+        const response = await fetch(`${apiUrl}/api/admin/v1/analytics/sources`, { credentials: 'include' })
         return response.status
       }, apiOrigin)
       expect(denied).toBe(403)

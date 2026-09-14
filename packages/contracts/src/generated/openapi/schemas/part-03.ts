@@ -6,22 +6,6 @@
 import type { components } from '../components'
 
 export interface SchemasPart03 {
-GuestVisitAggregatePage: {
-            items: components["schemas"]["GuestVisitAggregate"][];
-            nextCursor: string | null;
-        };
-GuestVisitPage: {
-            items: components["schemas"]["GuestVisit"][];
-            nextCursor: string | null;
-        };
-HealthStatus: {
-            persistence: string;
-            service: string;
-            status: string;
-            /** Format: date-time */
-            timestamp: string;
-            version: string;
-        };
 HeroBlock: {
             actions: components["schemas"]["EditorialAction"][];
             eyebrow?: string | null;
@@ -234,7 +218,7 @@ OpenApiDocument: {
             [key: string]: unknown;
         };
 /** @enum {string} */
-        OperationKind: "migrationPreflight" | "migrationApply" | "backup" | "restoreValidate" | "retentionApply" | "searchReindex" | "cacheInvalidate" | "feishuSync" | "productImport";
+        OperationKind: "productImport";
 /** @enum {string} */
         OperationStatus: "queued" | "running" | "completed" | "failed";
 PageComposition: {

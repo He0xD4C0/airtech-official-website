@@ -18,7 +18,6 @@ fn super_admin_permissions() -> Vec<String> {
         "identity.manage",
         "audit.read",
         "settings.manage",
-        "operations.run",
     ]
     .into_iter()
     .map(str::to_owned)
@@ -129,8 +128,8 @@ pub fn required_permission(path: &str, method: &axum::http::Method) -> Option<&'
         Some("identity.manage")
     } else if path.ends_with("/settings") {
         Some("settings.manage")
-    } else if path.contains("/operations") {
-        Some("operations.run")
+    } else if path.contains("/operations/") {
+        Some("product.write")
     } else if path.contains("/audit") {
         Some("audit.read")
     } else {

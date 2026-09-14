@@ -98,11 +98,11 @@ mod tests {
     fn control_protocol_distinguishes_commands_and_resize() {
         assert_eq!(
             serde_json::from_str::<ClientEvent>(
-                r#"{"type":"input","data":"airtekctl diagnose\n","command":true}"#,
+                r#"{"type":"input","data":"pwd\n","command":true}"#,
             )
             .unwrap(),
             ClientEvent::Input {
-                data: "airtekctl diagnose\n".into(),
+                data: "pwd\n".into(),
                 command: true,
             }
         );

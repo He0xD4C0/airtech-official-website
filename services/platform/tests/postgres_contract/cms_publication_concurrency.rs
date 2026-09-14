@@ -1,3 +1,16 @@
+type PublicationRaceState = (
+    Option<i64>,
+    Option<i64>,
+    String,
+    String,
+    i64,
+    i64,
+    i64,
+    i64,
+    i64,
+    i64,
+);
+
 #[tokio::test]
 #[cfg(feature = "devtools")]
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
@@ -105,18 +118,7 @@ async fn concurrent_source_publish_and_target_unpublish_have_one_atomic_winner()
         }));
     }
 
-    let state: (
-        Option<i64>,
-        Option<i64>,
-        String,
-        String,
-        i64,
-        i64,
-        i64,
-        i64,
-        i64,
-        i64,
-    ) = sqlx::query_as(
+    let state: PublicationRaceState = sqlx::query_as(
         r#"SELECT source.cms_published_revision,target.cms_published_revision,
                   source.status,target.status,
                   (SELECT count(*) FROM content_revisions WHERE content_id=source.id),

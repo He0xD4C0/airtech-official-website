@@ -68,64 +68,14 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
 
     add(
         paths,
-        "/api/admin/v1/operations",
-        "get",
-        admin(
-            params(
-                op(
-                    "listBackgroundOperations",
-                    "List predefined background operations",
-                    "adminOperations",
-                    [(
-                        "200",
-                        json_response("Background operations", r("BackgroundOperationPage")),
-                    )],
-                ),
-                {
-                    let mut parameters = admin_pagination_params();
-                    parameters.push(query_param("status", false, r("OperationStatus")));
-                    parameters.push(query_param("kind", false, r("OperationKind")));
-                    parameters
-                },
-            ),
-            false,
-        ),
-    );
-    let create_operation = params(
-        body(
-            op(
-                "createBackgroundOperation",
-                "Queue a predefined background operation",
-                "adminOperations",
-                [(
-                    "202",
-                    response_header(
-                        json_response("Operation queued", r("BackgroundOperation")),
-                        "Location",
-                        "Operation status URL",
-                    ),
-                )],
-            ),
-            r("CreateOperationRequest"),
-        ),
-        vec![idempotency_param(), totp_param()],
-    );
-    add(
-        paths,
-        "/api/admin/v1/operations",
-        "post",
-        admin(create_operation, true),
-    );
-    add(
-        paths,
         "/api/admin/v1/operations/{id}",
         "get",
         admin(
             params(
                 op(
                     "getBackgroundOperation",
-                    "Get background operation status",
-                    "adminOperations",
+                    "Get Product Master import operation status",
+                    "adminProductImports",
                     [(
                         "200",
                         json_response("Background operation", r("BackgroundOperation")),
@@ -144,8 +94,8 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
             params(
                 op(
                     "streamBackgroundOperationEvents",
-                    "Stream operation status as a server-sent event",
-                    "adminOperations",
+                    "Stream Product Master import status as a server-sent event",
+                    "adminProductImports",
                     [(
                         "200",
                         text_response(

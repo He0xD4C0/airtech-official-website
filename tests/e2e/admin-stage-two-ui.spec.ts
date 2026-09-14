@@ -21,7 +21,6 @@ const routes = [
   '/rfqs',
   '/contacts',
   '/analytics',
-  '/analytics/visits',
   '/analytics/sources',
   '/users',
   '/roles',
@@ -31,7 +30,6 @@ const routes = [
   '/settings/consent',
   '/settings/retention',
   '/settings/domains',
-  '/operations',
 ] as const
 
 function seriousViolations(

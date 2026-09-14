@@ -268,6 +268,7 @@ async fn rfq_and_analytics_routes_enforce_their_public_limits() {
             .clone()
             .oneshot(
                 Request::post("/api/public/v1/analytics/events")
+                    .header("idempotency-key", format!("analytics-rate-limit-{index:04}"))
                     .header(header::CONTENT_TYPE, "application/json")
                     .body(Body::from(analytics_body.clone()))
                     .unwrap(),
