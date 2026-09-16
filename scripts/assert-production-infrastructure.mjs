@@ -48,11 +48,15 @@ for (const variable of [
   'AIRTEK_MEDIA_STORAGE',
   'AIRTEK_MEDIA_S3_ENDPOINT',
   'AIRTEK_MEDIA_S3_BUCKET',
-  'AIRTEK_MEDIA_S3_ACCESS_KEY_ID',
-  'AIRTEK_MEDIA_S3_SECRET_ACCESS_KEY',
 ]) {
   requireMatch(serviceBlock(application, 'platform-api'), new RegExp(`${variable}:\\s*\\$\\{${variable}`, 'u'), `Production API must receive ${variable}.`)
   requireMatch(productionEnv, new RegExp(`^${variable}=`, 'mu'), `production.env.example must declare ${variable}.`)
+}
+for (const field of ['ACCESS_KEY_ID', 'SECRET_ACCESS_KEY']) {
+  requireMatch(serviceBlock(application, 'platform-api'), new RegExp(`AIRTEK_MEDIA_S3_${field}:\\s*\\$\\{AIRTEK_MEDIA_API_S3_${field}:\\?`, 'u'), `Production API must require its MinIO ${field}.`)
+  requireMatch(productionEnv, new RegExp(`^AIRTEK_MEDIA_API_S3_${field}=`, 'mu'), `production.env.example must declare the API MinIO ${field}.`)
+  requireMatch(serviceBlock(infrastructure, 'minio-bootstrap'), new RegExp(`AIRTEK_MEDIA_S3_${field}:\\s*\\$\\{AIRTEK_MEDIA_API_S3_${field}:\\?`, 'u'), `MinIO bootstrap must receive the same API ${field}.`)
+  requireMatch(infrastructureEnv, new RegExp(`^AIRTEK_MEDIA_API_S3_${field}=`, 'mu'), `infrastructure.env.example must declare the API MinIO ${field}.`)
 }
 
 for (const variable of [
@@ -62,7 +66,7 @@ for (const variable of [
   'POSTGRES_SUPERUSER_PASSWORD',
   'AIRTEK_RUNTIME_DATABASE_PASSWORD',
   'MINIO_ROOT_PASSWORD',
-  'AIRTEK_MEDIA_S3_SECRET_ACCESS_KEY',
+  'AIRTEK_MEDIA_API_S3_SECRET_ACCESS_KEY',
 ]) {
   requireMatch(infrastructureEnv, new RegExp(`^${variable}=`, 'mu'), `infrastructure.env.example must declare ${variable}.`)
 }

@@ -20,8 +20,10 @@ test.describe('Authenticated Admin workflows against Rust and PostgreSQL', () =>
   test.use({ storageState: adminStorageStatePath })
 
   test('creates and publishes News through the unified content editor', async ({ page }) => {
-    await page.goto(absolute(adminOrigin, '/content/new'))
-    await page.locator('input[type="radio"][value="newsDetail"]').check()
+    await page.goto(absolute(adminOrigin, '/content/drafts/new'))
+    const templateCards = page.locator('.create-form__cards')
+    await templateCards.getByRole('button', { name: /^新闻 /u }).click()
+    await templateCards.getByRole('button').filter({ hasText: 'newsDetail' }).click()
     await page.getByLabel('标题', { exact: true }).fill('AIRTEK E2E publication')
     await page.getByLabel(/Slug/u).fill('airtek-e2e-publication')
     await page.getByRole('button', { name: '创建草稿' }).click()
@@ -39,25 +41,25 @@ test.describe('Authenticated Admin workflows against Rust and PostgreSQL', () =>
 
     const placeholder = page.getByRole('checkbox', { name: /^占位内容/u })
     if (await placeholder.isChecked()) await placeholder.uncheck()
-    await expect(page.locator('.save-state')).toContainText('已保存', { timeout: 15_000 })
-
-    await page.getByRole('button', { name: '发布', exact: true }).click()
-    await page.getByRole('button', { name: '确认发布' }).click()
-    await expect(page.getByText('内容已发布')).toBeVisible()
+    await expect(page.locator('.save-state')).toContainText('有未保存更改')
+    await page.getByRole('button', { name: '保存', exact: true }).click()
+    await expect(page.locator('.save-state')).toContainText('已保存')
+    await page.getByRole('button', { name: '提交审核' }).click()
+    await expect(page.getByText('已发布', { exact: true })).toBeVisible()
   })
 
-  test('updates, autosaves and publishes General Information', async ({ page }) => {
+  test('updates, explicitly saves and publishes General Information', async ({ page }) => {
     await page.goto(absolute(adminOrigin, '/site/general-information'))
     const initialize = page.getByRole('button', { name: /初始化 General Information/u })
     if (await initialize.isVisible().catch(() => false)) await initialize.click()
 
     await expect(page.getByRole('heading', { name: '基本信息' })).toBeVisible()
     await page.getByLabel('品牌标语').fill('AIRTEK E2E database-backed identity')
-    await expect(page.locator('.save-state')).toContainText('已保存', { timeout: 15_000 })
-
-    await page.getByRole('button', { name: '发布', exact: true }).click()
-    await page.getByRole('button', { name: '确认发布' }).click()
-    await expect(page.getByText('内容已发布')).toBeVisible()
+    await expect(page.locator('.save-state')).toContainText('有未保存更改')
+    await page.getByRole('button', { name: '保存', exact: true }).click()
+    await expect(page.locator('.save-state')).toContainText('已保存')
+    await page.getByRole('button', { name: '提交审核' }).click()
+    await expect(page.getByText('已发布', { exact: true })).toBeVisible()
   })
 
   test('imports a Product Master row and edits portal-owned product fields', async ({ page }) => {
@@ -99,12 +101,7 @@ test.describe('Authenticated Admin workflows against Rust and PostgreSQL', () =>
     await expect(page.getByText('100.00', { exact: true })).toBeVisible()
   })
 
-  test('renders PostgreSQL guest visit and source aggregates without visitor profiles', async ({ page }) => {
-    await page.goto(absolute(adminOrigin, '/analytics/visits'))
-    await expect(page.getByText('/en/e2e-admin-analytics', { exact: true })).toBeVisible()
-    await expect(page.getByRole('cell', { name: '7 / 11' })).toBeVisible()
-    await expect(page.locator('body')).not.toContainText('anonymousSessionId')
-
+  test('renders PostgreSQL source aggregates without visitor profiles', async ({ page }) => {
     await page.goto(absolute(adminOrigin, '/analytics/sources'))
     await expect(page.locator('.source-dashboard')).toContainText('e2e.example.test')
     await expect(page.getByText(/e2e-source \/ integration-test/u)).toBeVisible()
@@ -201,13 +198,13 @@ test.describe('Authenticated Admin workflows against Rust and PostgreSQL', () =>
       expect(restrictedSession.permissions).toContain('content.read')
       expect(restrictedSession.permissions).not.toContain('analytics.read')
 
-      await restrictedPage.goto(absolute(adminOrigin, '/analytics/visits'))
+      await restrictedPage.goto(absolute(adminOrigin, '/analytics/sources'))
       await expect(restrictedPage).toHaveURL(/\/forbidden\?/u)
       await expect(restrictedPage.getByRole('heading', { name: '没有访问权限' })).toBeVisible()
       await expect(restrictedPage.getByText('analytics.read', { exact: true })).toBeVisible()
 
       const denied = await restrictedPage.evaluate(async (apiUrl) => {
-        const response = await fetch(`${apiUrl}/api/admin/v1/analytics/visits`, { credentials: 'include' })
+        const response = await fetch(`${apiUrl}/api/admin/v1/analytics/sources`, { credentials: 'include' })
         return response.status
       }, apiOrigin)
       expect(denied).toBe(403)

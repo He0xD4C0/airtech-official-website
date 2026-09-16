@@ -25,8 +25,11 @@ Prerequisites:
 - Node.js 22+
 - pnpm 11+
 - Rust 1.98 toolchain (pinned by `rust-toolchain.toml`)
-- Docker with Compose for PostgreSQL and the pinned Flyway `13.4.0` migration
-  image; optional local MinIO profile for S3-compatible media work
+- Docker with Compose for PostgreSQL, private MinIO object storage, and the
+  pinned Flyway `13.4.0` migration image
+
+The repository development toolchain remains Rust 1.98. The Platform crate's
+declared MSRV is Rust 1.88 and CI checks it explicitly.
 
 The repository includes a ready-to-run, Git-ignored `.env` and a tracked
 `.env.example`. Keep machine-specific values in `.env`; never place production
@@ -39,10 +42,10 @@ credentials there. The main configuration groups are:
 | Browser and security origins | `PUBLIC_HOST`, `ADMIN_HOST`, `API_HOST`, `AIRTEK_*_ORIGIN`, `VITE_*_BASE_URL`, `PUBLIC_API_BROWSER_ORIGIN` |
 | Local persistence | `POSTGRES_*`, `AIRTEK_DATABASE_URL_INTERNAL`, host-side `DATABASE_URL`, `MINIO_ROOT_*` |
 | Schema migration | `AIRTEK_FLYWAY_BASE_IMAGE`, JDBC `FLYWAY_URL`, `FLYWAY_USER`/`FLYWAY_PASSWORD`, and `FLYWAY_PLACEHOLDERS_RUNTIME_ROLE` |
-| Authentication, private staging and network trust | setup-only `AIRTEK_ADMIN_BOOTSTRAP_TOKEN`, independent TOTP/preview/Product Staging/Analytics HMAC/invitation replay keys, gateway subnet/address, exact trusted-proxy CIDRs |
+| Authentication, private staging and network trust | setup-only `AIRTEK_ADMIN_BOOTSTRAP_TOKEN`, independent TOTP/Product Staging/Analytics HMAC/invitation replay keys, gateway subnet/address, exact trusted-proxy CIDRs |
 | Data lifecycle | `AIRTEK_GUEST_RAW_RETENTION_DAYS`, `AIRTEK_GUEST_AGGREGATE_RETENTION_MONTHS`, `AIRTEK_PRODUCT_IMPORT_MAPPING_VERSION` |
 | Analytics vocabulary | `AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES`, `AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS`, `AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS` register the only UTM identifiers the API may store; unknown free text is rejected |
-| Media pipeline | `AIRTEK_MEDIA_STORAGE`, `AIRTEK_MEDIA_LOCAL_ROOT`, and the `AIRTEK_MEDIA_S3_*` endpoint/bucket/credential/prefix/path-style settings |
+| Direct media | `AIRTEK_MEDIA_STORAGE`, the API's private `AIRTEK_MEDIA_S3_*` object-store identity, and the fixed 25 MiB upload limit |
 | Development behavior | `VITE_ENABLE_DEVTOOLS`, cookie-banner test switch, `RUST_LOG` |
 | Reserved external adapters | Feishu and GA4 placeholders; blank values do not enable an adapter |
 
@@ -65,26 +68,11 @@ it `CONNECT`, the required DML, and Worker `TEMPORARY` access after each
 successful migration while keeping schema history read-only.
 The production runtime role must not own the database, schema, tables, or
 functions and must not retain `CREATE` on `public`.
-Generate five independent random 32-byte Base64 keys for TOTP, preview
-signing, Product Master private staging, analytics-token HMAC, and encrypted
+Generate four independent random 32-byte Base64 keys for TOTP, Product Master
+private staging, analytics-token HMAC, and encrypted
 invitation idempotency replay before retaining real local data. Invitation
 tokens remain hashed in their source table; the short-lived replay response is
 stored only as an AES-256-GCM envelope so a retry can return the original token.
-
-Content preview links are short-lived bearer capabilities, limited to ten
-minutes and one immutable content revision. The authenticated Admin API binds
-each token to the issuing Admin user and session. Every preview read revalidates
-that the user is active, the session is unrevoked and unexpired, TOTP remains
-confirmed, and the user still has `content.read`; disabling the user, revoking
-the session, or removing the permission invalidates the URL immediately. Public
-SSR exchanges the query token for that exact revision through the internal API
-using an `Authorization: Bearer` header. This is intentional: the Admin/API
-host-only cookie is not sent to the Public origin.
-Preview responses are private, never cached or indexed, and never fall back to
-published content. The checked-in gateway disables access logging for the
-preview route so its bearer query token is not copied into container logs. Do
-not otherwise log, persist, or forward a preview URL; rotating
-`AIRTEK_PREVIEW_SIGNING_KEY` immediately invalidates all outstanding links.
 
 The complete local stack builds all three applications plus the independent,
 non-root migration image, applies migrations through the one-shot
@@ -108,8 +96,8 @@ machine and are not substitutes for the Host boundary. Set
 TLS and external port `443` belong to the hosting provider or an outer ingress.
 
 PostgreSQL is network-internal in the base stack, so it cannot collide with or
-be reached from a host PostgreSQL instance. The S3-compatible media adapter is
-implemented, while its local MinIO service and storage selection are opt-in.
+be reached from a host PostgreSQL instance. MinIO remains private and is part
+of the default development stack; public media bytes are served only by the API.
 For native source development, opt in to the loopback-only database mapping,
 install dependencies, and start PostgreSQL first. The
 Rust binaries load the root `.env` through `dotenvy` when they are launched
@@ -137,13 +125,11 @@ pnpm dev:web
 pnpm dev:admin
 ```
 
-To exercise the S3-compatible adapter against the private local bucket, opt in
-to both media storage and the MinIO profile. Including `compose.debug.yaml`
-publishes the MinIO API and console on loopback for diagnostics:
+To expose PostgreSQL and MinIO on loopback for native development, add the
+debug Compose overlay:
 
 ```sh
-AIRTEK_MEDIA_STORAGE=s3 docker compose -f compose.yaml -f compose.debug.yaml \
-  --profile object-storage up --build
+docker compose -f compose.yaml -f compose.debug.yaml up --build
 ```
 
 Leaving `AIRTEK_MEDIA_STORAGE` empty keeps uploads and delivery disabled while
@@ -151,8 +137,8 @@ the Admin catalogue remains readable. Selecting `s3` requires a complete
 endpoint, bucket and credential set; when any required value is absent or
 blank, media storage remains disabled and the application continues without a
 fallback backend. Explicit malformed endpoints, prefixes and boolean values
-still fail configuration. The MinIO profile creates a non-anonymous bucket and
-is only a local development dependency.
+still fail configuration. A successful PNG, JPEG, or WebP upload is immediately
+public through the unauthenticated API media URL; MinIO itself remains private.
 
 The Admin SPA always uses the Rust API. Runtime mock records and local mock
 authentication are not supported; deterministic UI fixtures live only inside
@@ -178,13 +164,17 @@ pnpm db:info
 pnpm db:validate
 ```
 
+Compose runs `airtek-maintenance prepare-runtime` once after Flyway and before
+the API/Worker. For a non-Compose deployment, run the same command from the
+Platform image after `flyway migrate`; API and Worker startup fails closed when
+its versioned preparation marker is absent.
+
 The checked-in local Compose stack explicitly permits its historical single
 `airtek` owner role for development-volume compatibility. That shared-role
 override is not present in `compose.production.yaml`; production rejects using
 the Flyway DDL identity as the application runtime identity.
 
-The former Rust `airtek-migrate` binary has been removed, and `airtekctl` has no
-`migrate` subcommand. In-memory repositories exist only behind isolated test
+Application-owned migration and operations CLIs have been removed. In-memory repositories exist only behind isolated test
 construction and are not a supported server mode. The local/S3-compatible media
 storage implementations are selected explicitly; there is no implicit local
 fallback when media storage is unconfigured.
@@ -192,9 +182,8 @@ fallback when media storage is unconfigured.
 ### One-time adoption of an existing SQLx v1-10 database
 
 Do not run a normal migration first against a database already managed through
-SQLx versions 1 through 10. Back up that database, verify the restore path, and
-confirm the exact environment, database identity, credentials, and maintenance
-window. Then run this controlled adoption sequence:
+SQLx versions 1 through 10. Confirm the exact environment, database identity,
+credentials, and maintenance window, then run this controlled adoption sequence:
 
 ```sh
 docker compose run --rm flyway-migrate baseline
@@ -246,6 +235,8 @@ docker compose --env-file infra/deploy/production.env.example -f compose.product
 ## Verification
 
 ```sh
+pnpm test:source-lines
+pnpm check:source-lines
 pnpm lint
 pnpm typecheck
 pnpm test
@@ -260,6 +251,16 @@ cargo fmt --manifest-path services/platform/Cargo.toml --all -- --check
 cargo clippy --manifest-path services/platform/Cargo.toml --all-targets -- -D warnings
 cargo test --manifest-path services/platform/Cargo.toml
 ```
+
+`check:source-lines` audits application code, tests, executable scripts, SQL,
+and generated source across the repository. Ordinary source files may contain
+at most 500 logical lines. Documentation, lock files, data files, binary assets,
+and generated build/test output are excluded. The already-applied V1 and V5
+Flyway migrations are the only historical exceptions: their expected line
+counts and SHA-256 checksums are pinned, so editing, extending, or removing
+either migration fails the check. `test:source-lines` exercises the auditor,
+and CI runs both commands before the build. `check:production` also invokes the
+source-line audit before building production artifacts.
 
 The Playwright suite is a production-shape browser contract. The self-contained
 runner creates a disposable PostgreSQL volume, starts the complete Compose
@@ -307,11 +308,46 @@ The generated package exports path/operation types and named request/response
 types; its small fetch helper remains available for application transport.
 
 The production isolation check rejects an admin bundle containing DevTools,
-public manifests, webmaster verification files, or sitemaps. Deployment checks
-also assert the Flyway migration dependency, independent non-root migration
-image, gateway Host boundary, and production DevTools route exclusion.
-Production Rust builds use the `production` feature without `devtools`; the
-mutually enabled combination must fail to compile.
+public manifests, webmaster verification files, or sitemaps. The independent
+Admin UI boundary checks the editor entry and lazy JavaScript chunks against
+their gzip budgets; repository source length is enforced by
+`check:source-lines`, not by the bundle checker. Deployment checks also assert
+the Flyway migration dependency, independent non-root migration image, gateway
+Host boundary, and production DevTools route exclusion. Production Rust builds
+use the `production` feature without `devtools`; the mutually enabled
+combination must fail to compile.
+
+## Brand asset evidence workflow
+
+The legacy public website may be searched for missing company-brand asset
+candidates, but it is a mutable discovery source and does not approve an asset
+for production. The capture script scans its fixed company/brand page scope,
+downloads eligible AIRTEKPOWER/LDY CDN files into an isolated Git-ignored
+staging directory, records source-page context, and deduplicates files by
+SHA-256:
+
+```sh
+node scripts/scrape_airtek_brand_assets.mjs [staging-directory]
+```
+
+After every unique candidate has been visually reviewed, record a decision for
+each checksum ID in `scripts/airtek-brand-asset-decisions.json`, then finalize
+the same staging directory:
+
+```sh
+node scripts/finalize_airtek_brand_assets.mjs [staging-directory]
+```
+
+Finalization fails when decision coverage is incomplete or a downloaded file no
+longer matches its recorded hash. It writes `brand-manifest.json`, a review CSV,
+and a staging README, and copies only retained candidates into
+`review-required/` or `hold/`; excluded source candidates are not promoted into
+those retained sets. Image dimensions use ImageMagick `identify` when it is
+available and otherwise remain unknown. No generated review package, legacy
+logo crop, favicon, facility image, video, or certificate is approved for CMS
+upload merely because the workflow completed. Follow the owner, rights,
+currency, identity, integrity, and media-safety gates in
+[brand asset governance](./.agents/skills/airtek-brand/references/brand-assets.md).
 
 ## Database-driven content and Product Master
 
@@ -323,80 +359,91 @@ production frontend fallback. Missing optional data is omitted; a missing
 public record returns 404 and an unavailable required projection fails closed
 rather than fabricating content.
 
-The initial approved Product Master is imported through the Admin Product
-Master screen or its API. Each CSV import is keyed by deployment environment,
-SHA-256 and mapping version, rejects malformed rows without creating products,
-encrypts commercial price columns in private staging, and records unresolved
-filename-only assets. Product facts and portal-owned localized presentation use
-independent immutable revision histories; publishing binds one presentation
-revision to the exact accepted Product Master revision. Noise remains excluded
-from the public projection until its measurement setup is supplied.
+An owner-approved Product Master, when supplied, is imported through the Admin
+Product Master screen or its API. Each CSV import is keyed by deployment
+environment, SHA-256 and mapping version, rejects malformed rows without
+creating products, encrypts commercial price columns in private staging, and
+records unresolved filename-only assets. Product facts and portal-owned
+localized presentation use independent immutable revision histories;
+publishing binds one presentation revision to the exact accepted Product Master
+revision. This media/CMS delivery does not itself establish that a current
+owner-approved Product Master exists. Noise remains excluded from the public
+projection until its measurement setup is supplied.
 
 ### CMS V2 public contract
 
 The published public CMS boundary is a hard V2 cutover. Public content is
-decoded from `content_revisions.document` at the exact revision named by
-`content_entries.cms_published_revision`; `public_routes` owns routable lookup
-and discovery. Responses carry `PublicContentProjection.schemaVersion = 2`,
-including typed `typeFields`, `body`, `composition`, SEO, the published revision,
-and server-resolved relations and content links. Route resolution, site
+decoded from the single current row in `cms_published_content`; `public_routes`
+owns routable lookup and discovery. Responses carry `PublicContentProjection.schemaVersion = 2`,
+including typed `typeFields`, `body`, `composition`, SEO, the publication version,
+and server-resolved relations, content links, and current `resolvedMedia`.
+Route resolution, site
 bootstrap, News, generic content and discovery do not fall back to legacy
 `payload` columns or the `published_news` / `published_general_information`
-views. Those columns and views remain in the schema only for migration evidence
-and operational rollback.
+views.
 
-`GET /api/admin/v1/content/templates` exposes each template's `routePattern`.
-The Rust template registry is the shared source for Admin canonical previews and
-publication. A publish transaction validates relations and referenced media,
-then upserts `public_routes` for routable templates; a path already owned by
-another entity returns 409, while unpublished relation targets and invalid media
-references return 422. Non-routable navigation, footer and General Information
-documents do not receive routes. A route is indexable only when the document's
-SEO allows it and it is neither a placeholder nor non-routable.
+`GET /api/admin/v1/content-drafts/templates` exposes each template's
+`routePattern`. Editor undo, redo, dirty state, and preview live only in browser
+memory. An explicit save writes one current private draft. Approval locks that
+draft and the current publication, validates canonical routes and dependencies,
+overwrites the publication row, replaces current dependencies, emits route and
+outbox metadata, and deletes the private draft in one PostgreSQL transaction.
+Stale base publication versions return 409 and put the draft back into editing.
 
 The main CMS and media endpoints are:
 
 | Boundary | Routes |
 | --- | --- |
-| Admin CMS (`/api/admin/v1`) | `GET/POST /content`; `GET /content/templates`; `GET/PATCH /content/{id}/draft`; `POST /content/{id}/snapshots`; `GET /content/{id}/revisions`; `GET /content/{id}/diff`; `POST /content/{id}/revisions/{revision}/restore` |
+| Admin CMS (`/api/admin/v1`) | `/content-drafts`; `/content-reviews`; `/published-content`; explicit draft save, submit, withdraw, approve, reject, sharing, and copy-to-private-draft operations |
 | Public CMS (`/api/public/v1`) | `GET /content/{kind}/{slug}`; `/routes/resolve`; `/site-bootstrap`; `/news`; `/news/{slug}`; `/discovery` |
-| Admin media (`/api/admin/v1`) | `GET /media/assets`; `POST /media/uploads`; `POST /media/assets/{id}/scan` |
-| Public media | `GET /api/public/v1/media/{assetId}` and `/media/{assetId}/download`; the public Host exposes the corresponding routes at `/media/{assetId}` and `/media/{assetId}/download` |
+| Admin media (`/api/admin/v1`) | `GET/POST /media/assets`; `GET /media/assets/{id}`; `GET /media/assets/{id}/references` |
+| Public media | `GET /api/public/v1/media/{assetId}` and `/download`, mirrored below the public Host `/media/*` |
 
 The former dedicated Admin News and General Information mutation APIs are
-removed; all supported kinds use the unified `/content` lifecycle. The Web
+removed; all supported kinds use the private-draft lifecycle. The Web
 application consumes the same V2 contract and renders the ten registered block
 kinds through `PublicBlockRenderer`, including FAQ, Contact, relations, media
 and downloads.
 
-### Media pipeline
+### Direct media uploads
 
-`POST /api/admin/v1/media/uploads` requires `media.write` and one multipart
-`file` part. The platform accepts at most 25 MiB and verifies the byte signature
-as PNG, JPEG or WebP; SVG is not accepted. Every successful upload creates a
-`pending` catalogue row that is not publicly readable. A reviewer with
-`media.write` explicitly changes it to `clean` or `quarantined` through the
-legacy-named `/scan` compatibility endpoint, and every decision requires a
-non-empty reason. This flow has no machine scanner or automatic clean mode.
+`POST /api/admin/v1/media/assets` requires `media.write`, an
+`Idempotency-Key`, and exactly one multipart `file` part. The request streams
+into a restricted temporary file, accepts at most 25 MiB, identifies PNG, JPEG,
+or WebP from file headers, sanitizes the original file name, and computes
+SHA-256. It stores one immutable object and commits the catalogue row, audit
+record, and replay response in one database transaction. A database failure
+triggers exact-object deletion; a storage failure creates no catalogue row.
 
-Public delivery returns only live assets whose database state is both `clean`
-and `public`. The gateway proxies `/media/*` through the Rust API on the public
-origin, so the storage endpoint and bucket remain private. Responses use a
-strong ETag, immutable one-year caching and `nosniff`; the download route forces
-`Content-Disposition: attachment`. Missing, quarantined, non-public, deleted,
-unconfigured or backend-mismatched objects fail closed. The repository includes
-local-file and S3-compatible storage implementations plus the opt-in MinIO
-profile, but it does not provide a CDN, public bucket, third-party scanner, or a
-managed external object store. Public delivery streams local files
-asynchronously and forwards S3 response bytes through a bounded channel; the
-gateway disables proxy response buffering for `/media/*`, so neither layer
-collects a complete object before sending it to the client. The checked-in
-production topology connects the API to the independently operated private
-MinIO service through bucket-scoped credentials on a shared internal network.
+Success returns `201 MediaAsset`. Replaying the same user, key, and bytes
+returns the original response without another object; reusing that key for
+different bytes returns stable `409 media_idempotency_conflict`.
+
+Every non-deleted asset is immediately readable without authentication at
+`/api/public/v1/media/{assetId}` and its `/download` variant. Responses use
+the SHA-256 value as a strong ETag, immutable public caching, `nosniff`, and a
+sanitized content disposition. Content and product publication only determines
+whether a website projection contains the link. Soft-deleted historical assets
+return 404, and this release exposes no new delete operation.
+
+MinIO/S3 stays private. Only the API identity can get, put, or compensate-delete
+objects under the configured media prefix. The ordinary Worker continues
+non-media jobs and has no media credentials, heartbeat, or media job types.
+Historical review-related database columns from early migrations are inert
+compatibility columns and are not part of runtime models, OpenAPI, or Admin UI.
+
+The selected production topology connects only the API to an independently
+operated private MinIO service through bucket-scoped credentials on the shared
+internal network. The browser receives neither object-store credentials nor a
+provider URL; the gateway keeps public delivery same-origin. This repository
+does not provide a CDN or third-party malware scanner.
 
 ## Data and publication rules
 
-- The owner-approved Product Master CSV is the authoritative initial snapshot. Future Feishu changes still pass through staging, three-way diff, validation and an explicit publish action.
+- A supplied, owner-approved Product Master CSV is authoritative only for its
+  registered environment, checksum, and mapping version. Future Feishu changes
+  still pass through staging, three-way diff, validation, and an explicit
+  publish action.
 - The HTML demos under `docs/Plan & Solution/` are interaction references only. Their product specifications, curves, downloads, scores, and colors are not production data.
 - The public application reads only published projections. Drafts, source snapshots, conflicts, RFQ records, users, and audit data are admin-only.
 - Public RFQs never accept file uploads.
@@ -407,33 +454,36 @@ MinIO service through bucket-scoped credentials on a shared internal network.
 - Every CMS V2 kind, including News and General Information, uses the unified
   content draft/snapshot/revision transaction. Publishing a routable kind writes
   its canonical `public_routes` row in that same transaction.
-- A media or download block can publish only when its immutable asset/version
-  reference resolves to a live `clean + public` catalogue record.
+- A media or download block can publish only when its referenced asset exists
+  and has not been soft-deleted.
 - `docs/` is preserved as source evidence and is not edited by the implementation.
 
 ## Current integration status
 
-- Exact products may be published only from the audited Product Master snapshot.
-  Missing curves, certifications, downloads and case outcomes remain omitted
-  until their own controlled evidence exists.
+- Exact products may be published only from an accepted, audited Product Master
+  snapshot. This repository state does not prove that an owner-approved current
+  snapshot has been supplied. Missing curves, certifications, downloads, and
+  case outcomes remain omitted until their own controlled evidence exists.
 - Public SSR serves `robots.txt` and every sitemap document dynamically. The
   Rust discovery feed contributes only published, canonical, indexable,
   non-placeholder content and products; API failure is handled fail-closed.
   Static files with those route names are intentionally excluded so they cannot
   bypass the runtime publication filter.
 - The management portal provides real News, General Information, Product Master
-  import/presentation, media upload/review, guest-source analytics and
+  import/presentation, direct media upload, guest-source analytics and
   identity-management workflows. News and General Information now use the
   unified CMS V2 editor rather than dedicated legacy APIs.
-- Durable publication revisions and outbox hand-off exist. Runtime sitemaps read
+- One current publication row and durable outbox hand-off exist. Runtime sitemaps read
   the published projection directly, while CDN invalidation and external search
   indexing adapters are not wired; no external provider refresh should be
   inferred from a completed internal hook.
-- The S3-compatible adapter and local MinIO profile are implemented and remain
-  opt-in. Feishu and GA4 values are still reserved configuration only; no live
-  Feishu synchronization or GA4 loading is implied. The selected single-host
-  production deployment uses a private MinIO bucket; machine scanning is not
-  part of the media workflow.
+- The API owns the direct S3-compatible upload/read/delete-compensation path.
+  The selected single-host production deployment uses a private MinIO bucket,
+  but production readiness still requires least-privilege API credentials,
+  monitoring, off-host backup and an end-to-end smoke test. Machine scanning is
+  not part of the media workflow.
+- Feishu and GA4 values are still reserved configuration only; no live Feishu
+  synchronization or GA4 loading is implied.
 - Consent-gated first-party analytics events are sanitized in the public client,
   accepted by the Rust API, and exposed through the admin aggregate. A GA4
   provider adapter is not connected, so no GA4 loading is implied.

@@ -1,9 +1,11 @@
+use super::*;
+
 #[tokio::test]
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
 async fn identity_mutations_are_idempotent_and_commit_with_their_audit_records() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    let sandbox = support::DatabaseClone::create(&database_url).await;
     sandbox.apply_current().await;
     let pool = sandbox.pool().clone();
     support::assert_flyway_schema_current(&pool).await;

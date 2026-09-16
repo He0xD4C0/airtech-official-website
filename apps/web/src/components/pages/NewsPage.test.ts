@@ -31,6 +31,7 @@ function news(slug: string, title: string): PublicContentProjection {
     updatedAt: '2026-09-02T00:00:00Z',
     resolvedRelations: [],
     resolvedLinks: [],
+    resolvedMedia: [],
   }
 }
 

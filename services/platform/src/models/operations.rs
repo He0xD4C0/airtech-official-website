@@ -1,10 +1,10 @@
+use super::*;
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum OperationKind {
     MigrationPreflight,
     MigrationApply,
-    Backup,
-    RestoreValidate,
     RetentionApply,
     SearchReindex,
     CacheInvalidate,
@@ -19,14 +19,6 @@ pub enum OperationStatus {
     Running,
     Completed,
     Failed,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateOperationRequest {
-    pub kind: OperationKind,
-    pub reason: String,
-    pub confirmation: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -52,6 +44,15 @@ pub struct AuditEvent {
     pub before: Option<Value>,
     pub after: Option<Value>,
     pub reason: Option<String>,
+    pub current_version: Option<i64>,
     pub request_id: Uuid,
     pub occurred_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AuditEventPage {
+    pub items: Vec<AuditEvent>,
+    pub next_cursor: Option<String>,
+    pub total: usize,
 }

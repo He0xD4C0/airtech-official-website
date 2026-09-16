@@ -1,4 +1,6 @@
-fn parse_rfq_context<T: for<'de> Deserialize<'de>>(
+use super::*;
+
+pub(super) fn parse_rfq_context<T: for<'de> Deserialize<'de>>(
     value: Value,
     journey: &str,
     errors: &mut BTreeMap<String, Vec<String>>,
@@ -14,7 +16,10 @@ fn parse_rfq_context<T: for<'de> Deserialize<'de>>(
     }
 }
 
-fn reject_product_context(request: &CreateRfqRequest, errors: &mut BTreeMap<String, Vec<String>>) {
+pub(super) fn reject_product_context(
+    request: &CreateRfqRequest,
+    errors: &mut BTreeMap<String, Vec<String>>,
+) {
     if request.product_context.is_some() {
         errors.insert(
             "productContext".into(),
@@ -23,7 +28,7 @@ fn reject_product_context(request: &CreateRfqRequest, errors: &mut BTreeMap<Stri
     }
 }
 
-fn validate_product_context(
+pub(super) fn validate_product_context(
     context: &crate::models::ProductContext,
     errors: &mut BTreeMap<String, Vec<String>>,
 ) {
@@ -45,7 +50,7 @@ fn validate_product_context(
     }
 }
 
-fn validate_common_rfq_context(
+pub(super) fn validate_common_rfq_context(
     application: &str,
     quantity: Option<&RfqQuantity>,
     electrical: Option<&RfqElectricalContext>,
@@ -109,7 +114,10 @@ fn validate_common_rfq_context(
     );
 }
 
-fn validate_duty_point(duty_point: &RfqDutyPoint, errors: &mut BTreeMap<String, Vec<String>>) {
+pub(super) fn validate_duty_point(
+    duty_point: &RfqDutyPoint,
+    errors: &mut BTreeMap<String, Vec<String>>,
+) {
     validate_optional_finite_positive(
         "context.dutyPoint.airflow",
         Some(duty_point.airflow),
@@ -136,7 +144,7 @@ fn validate_duty_point(duty_point: &RfqDutyPoint, errors: &mut BTreeMap<String, 
     }
 }
 
-fn validate_optional_finite_positive(
+pub(super) fn validate_optional_finite_positive(
     field: &str,
     value: Option<f64>,
     maximum: f64,
@@ -152,7 +160,7 @@ fn validate_optional_finite_positive(
     }
 }
 
-fn validate_string_list(
+pub(super) fn validate_string_list(
     field: &str,
     values: &[String],
     maximum_items: usize,
@@ -174,8 +182,8 @@ fn validate_string_list(
     }
 }
 
-fn contains_attachment_field(value: &Value) -> bool {
-    const ATTACHMENT_KEYS: &[&str] = &[
+pub(super) fn contains_attachment_field(value: &Value) -> bool {
+    pub(super) const ATTACHMENT_KEYS: &[&str] = &[
         "attachment",
         "attachments",
         "attachmentname",

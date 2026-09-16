@@ -1,7 +1,8 @@
-use std::net::{Ipv6Addr, SocketAddr};
+use std::{
+    net::{Ipv6Addr, SocketAddr},
+    path::PathBuf,
+};
 
-#[cfg(feature = "devtools")]
-use airtek_platform::services::development_seed;
 use airtek_platform::{
     auth::AdminPrincipal,
     build_router,
@@ -15,12 +16,9 @@ use axum::{
 };
 #[cfg(feature = "devtools")]
 use axum::{http::Method, response::Response, Router};
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use http_body_util::BodyExt;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
-#[cfg(feature = "devtools")]
-use sqlx::postgres::PgPoolOptions;
 use tower::ServiceExt;
 use uuid::Uuid;
 
@@ -56,18 +54,86 @@ fn postgres_state(database_url: &str) -> AppState {
     AppState::new(config).expect("PostgreSQL test state")
 }
 
+fn postgres_direct_media_state(database_url: &str) -> AppState {
+    use airtek_platform::services::media::{MediaStorageKind, MediaStorageSettings};
+
+    let mut config = Config::for_test();
+    config.database_url = Some(database_url.to_owned());
+    config.media.storage = Some(MediaStorageSettings {
+        kind: MediaStorageKind::S3,
+        local_root: PathBuf::from("/unused"),
+        endpoint: "https://s3.example.test".into(),
+        region: "us-east-1".into(),
+        bucket: "postgres-contract".into(),
+        access_key_id: "test-access".into(),
+        secret_access_key: "test-secret".into(),
+        key_prefix: "media".into(),
+        path_style: true,
+    });
+    AppState::new(config).expect("PostgreSQL direct-media test state")
+}
+
 #[cfg(feature = "devtools")]
 async fn response_json(response: Response) -> Value {
     let bytes = response.into_body().collect().await.unwrap().to_bytes();
     serde_json::from_slice(&bytes).unwrap()
 }
 
-include!("postgres_contract/bootstrap_and_fixture_takeover.rs");
-include!("postgres_contract/preview_and_invitations.rs");
-include!("postgres_contract/rate_limit_and_admin_idempotency.rs");
-include!("postgres_contract/identity_mutation_atomicity.rs");
-include!("postgres_contract/settings_and_product_publish.rs");
-include!("postgres_contract/unified_content.rs");
-include!("postgres_contract/public_projection.rs");
-include!("postgres_contract/media_assets.rs");
-include!("postgres_contract/cms_round_trip.rs");
+#[cfg(feature = "devtools")]
+fn cms_principal() -> AdminPrincipal {
+    AdminPrincipal {
+        user_id: Uuid::new_v4(),
+        display_name: "TEST ONLY CMS admin".into(),
+        email: format!("cms-test-{}@example.com", Uuid::new_v4().simple()),
+        role: "super-admin".into(),
+        permissions: [
+            "content.read",
+            "content.write",
+            "content.publish",
+            "media.write",
+        ]
+        .into_iter()
+        .map(str::to_owned)
+        .collect(),
+        session_id: Uuid::new_v4(),
+        session_token_hash: vec![1; 32],
+        csrf_hash: vec![2; 32],
+        totp_enabled: true,
+    }
+}
+
+#[cfg(feature = "devtools")]
+async fn admin_get_json(app: &Router, path: &str) -> (StatusCode, Value) {
+    let response = app
+        .clone()
+        .oneshot(Request::get(path).body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    let status = response.status();
+    (status, response_json(response).await)
+}
+
+#[cfg(feature = "devtools")]
+fn item_ids(page: &Value) -> Vec<String> {
+    page["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|item| item["id"].as_str().map(str::to_owned))
+        .collect()
+}
+
+#[path = "postgres_contract/admin_product_listing.rs"]
+mod admin_product_listing;
+#[path = "postgres_contract/admin_workflows.rs"]
+mod admin_workflows;
+#[path = "postgres_contract/cms_private_workflow.rs"]
+mod cms_private_workflow;
+#[path = "postgres_contract/identity_mutation_atomicity.rs"]
+mod identity_mutation_atomicity;
+#[path = "postgres_contract/media_assets.rs"]
+mod media_assets;
+#[path = "postgres_contract/rate_limit_and_admin_idempotency.rs"]
+mod rate_limit_and_admin_idempotency;
+#[path = "postgres_contract/settings_and_product_publish.rs"]
+mod settings_and_product_publish;

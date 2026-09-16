@@ -33,8 +33,8 @@ export function selectProducts(payload: SelectorRequest) {
   return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).selectProducts(payload)
 }
 
-export function submitAnalyticsEvent(payload: CreateAnalyticsEvent) {
-  return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).submitAnalyticsEvent(payload)
+export function submitAnalyticsEvent(payload: CreateAnalyticsEvent, idempotencyKey: string) {
+  return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).submitAnalyticsEvent(payload, idempotencyKey)
 }
 
 export function submitAnalyticsConsent(payload: CreateAnalyticsConsent) {

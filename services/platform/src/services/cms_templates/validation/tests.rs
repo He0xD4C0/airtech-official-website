@@ -103,7 +103,6 @@ fn non_decorative_rendered_media_requires_alt_text_at_publish() {
     hero.media = Some(MediaUseReference {
         asset: AssetVersionReference {
             asset_id: Uuid::from_u128(2),
-            version_id: Uuid::from_u128(3),
         },
         alt_text: None,
         decorative: false,
@@ -210,7 +209,6 @@ fn structural_validation_enforces_nested_string_and_collection_limits() {
     hero.media = Some(MediaUseReference {
         asset: AssetVersionReference {
             asset_id: Uuid::from_u128(20),
-            version_id: Uuid::from_u128(21),
         },
         alt_text: Some("a".repeat(501)),
         decorative: false,

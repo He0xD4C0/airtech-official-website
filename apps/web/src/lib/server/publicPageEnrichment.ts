@@ -1,12 +1,9 @@
 import type { Product, ProductContext, ProductFamily } from '@airtek/contracts'
 import { PublicApiError } from '@/lib/api'
 import type { createPublicApiClient } from '@/lib/publicApiClient'
-import type {
-  NewsEntryResponse,
-  PublicDiscoveryEntryResponse,
-  RouteProjectionResponse,
-} from '@/lib/publicApiTypes'
+import type { PublicDiscoveryEntryResponse, RouteProjectionResponse } from '@/lib/publicApiTypes'
 import { isSearchablePublicPath } from '@/lib/publicPaths'
+import { publishedNewsCard } from '@/lib/newsCard'
 import { PUBLIC_PRODUCT_PAGE_SIZE } from '@/lib/productPagination'
 import type { CardEntry, PublicPageModel } from '@/types/content'
 import {
@@ -90,24 +87,6 @@ function productContext(product: Product): ProductContext | undefined {
   }
 }
 
-function newsCard(entry: NewsEntryResponse): CardEntry | undefined {
-  const developmentFixture = entry.dataClass === 'developmentFixture'
-  if ((entry.content.isPlaceholder && !developmentFixture) || !entry.content.publishedRevision) return undefined
-  const slug = entry.content.slug
-  if (!slug || !slugPattern.test(slug)) return undefined
-  return {
-    slug,
-    title: entry.content.title,
-    summary: entry.content.summary ?? '',
-    eyebrow: entry.category ?? undefined,
-    href: `/en/resources/news/${slug}`,
-    category: entry.category ?? undefined,
-    author: entry.authorDisplayName ?? undefined,
-    publishedAt: entry.publishedAt ?? undefined,
-    featured: entry.featured,
-  }
-}
-
 export async function enrichPage(
   page: PublicPageModel,
   route: RouteProjectionResponse,
@@ -146,7 +125,7 @@ export async function enrichPage(
     } else if (page.kind === 'news') {
       const news = await client.listNews({ locale: 'en', limit: 48 })
       page.entries = news.items.flatMap((entry) => {
-        const card = newsCard(entry)
+        const card = publishedNewsCard(entry)
         return card ? [card] : []
       })
       page.newsNextCursor = news.nextCursor

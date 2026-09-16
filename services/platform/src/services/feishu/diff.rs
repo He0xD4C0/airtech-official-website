@@ -1,3 +1,5 @@
+use super::*;
+
 /// Builds the source-aware three-way diff shown by the management portal.
 /// A field is returned only when the local working record or incoming Feishu
 /// snapshot differs from the last accepted source snapshot.

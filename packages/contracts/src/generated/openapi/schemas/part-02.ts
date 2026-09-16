@@ -6,6 +6,70 @@
 import type { components } from '../components'
 
 export interface SchemasPart02 {
+ContentDraftV2: {
+            body?: components["schemas"]["TiptapDocument"] | null;
+            composition: components["schemas"]["PageComposition"];
+            /** Format: int64 */
+            draftVersion: number;
+            isPlaceholder: boolean;
+            kind: components["schemas"]["CmsContentKind"];
+            locale: string;
+            relations: components["schemas"]["ContentRelationReference"][];
+            /** @constant */
+            schemaVersion: 2;
+            seo: components["schemas"]["SeoInputV2"];
+            slug?: string | null;
+            summary?: string | null;
+            templateKey: components["schemas"]["ContentTemplateKey"];
+            title: string;
+            typeFields: components["schemas"]["ContentTypeFields"];
+        };
+ContentEntry: {
+            body: components["schemas"]["RichTextDocument"];
+            /** Format: int64 */
+            currentRevision: number;
+            /** Format: uuid */
+            id: string;
+            isPlaceholder: boolean;
+            kind: components["schemas"]["ContentKind"];
+            locale: string;
+            publishedRevision: number | null;
+            scheduledFor: string | null;
+            seo: components["schemas"]["SeoMetadata"];
+            slug: string;
+            status: components["schemas"]["PublicationStatus"];
+            summary: string | null;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+/** @enum {string} */
+        ContentKind: "home" | "solution" | "technology" | "article" | "news" | "faq" | "caseStudy" | "download" | "company" | "legal" | "navigation" | "footer";
+ContentPage: {
+            items: components["schemas"]["ContentEntry"][];
+            nextCursor: string | null;
+        };
+ContentRelationReference: {
+            /** Format: uuid */
+            id: string;
+            slot: string;
+            target: components["schemas"]["RelationTargetReference"];
+        };
+ContentTemplateDefinition: {
+            allowedBlocks: components["schemas"]["ContentBlockKind"][];
+            bodyPolicy: components["schemas"]["CmsBodyPolicy"];
+            contentKind: components["schemas"]["CmsContentKind"];
+            key: components["schemas"]["ContentTemplateKey"];
+            requiredBlocks: components["schemas"]["ContentBlockKind"][];
+            routable: boolean;
+            routePattern: string | null;
+            singletonPerLocale: boolean;
+        };
+ContentTemplateDefinitionPage: {
+            items: components["schemas"]["ContentTemplateDefinition"][];
+        };
+/** @enum {string} */
+        ContentTemplateKey: "home" | "productIndex" | "productFamily" | "selector" | "compare" | "solutionIndex" | "solutionDetail" | "technologyIndex" | "technologyDetail" | "articleIndex" | "articleDetail" | "newsIndex" | "newsDetail" | "faqIndex" | "faqDetail" | "caseStudyIndex" | "caseStudyDetail" | "downloadIndex" | "downloadDetail" | "about" | "contact" | "rfqRouter" | "rfqForm" | "search" | "legal" | "navigation" | "footer" | "generalInformation";
 ContentTypeFields: {
             /** @constant */
             type: "home";
@@ -90,6 +154,10 @@ CreateAnalyticsConsent: {
             policyVersion: components["schemas"]["AnalyticsPolicyVersion"];
         };
 CreateAnalyticsEvent: components["schemas"]["ConsentedAnalyticsEvent"] | components["schemas"]["AnalyticsOptOutEvent"];
+CreateBusinessNoteRequest: {
+            body: string;
+            reason: string;
+        };
 CreateContactRequest: {
             consent: boolean;
             contact: components["schemas"]["BusinessContact"];
@@ -97,16 +165,6 @@ CreateContactRequest: {
             message: string;
             sourcePath: string;
             topic: string;
-        };
-CreateContentPreviewRequest: {
-            /** @default 600 */
-            expiresInSeconds?: number;
-            /** Format: int64 */
-            revision: number;
-        };
-CreateContentSnapshotRequest: {
-            intent: components["schemas"]["ContentSnapshotIntent"];
-            reason: string;
         };
 CreateGuestVisit: {
             /** Format: uuid */
@@ -119,11 +177,6 @@ CreateGuestVisit: {
             policyVersion: components["schemas"]["AnalyticsPolicyVersion"];
             referrerDomain?: string | null;
             source?: string | null;
-        };
-CreateOperationRequest: {
-            confirmation: string;
-            kind: components["schemas"]["OperationKind"];
-            reason: string;
         };
 CreateRfqRequest: components["schemas"]["ProductRfqRequest"] | components["schemas"]["SelectionRfqRequest"] | components["schemas"]["ProjectRfqRequest"] | components["schemas"]["ReplacementRfqRequest"];
 CreateTemporaryOverride: {
@@ -150,8 +203,20 @@ CtaBlock: {
         };
 /** @enum {string} */
         CtaVariant: "standard" | "emphasized";
+DashboardMetric: {
+            available: boolean;
+            unavailableReason: string | null;
+            value: number | null;
+        };
 /** @enum {string} */
         DataClass: "editorial" | "feishu" | "verifiedCsv" | "developmentFixture";
+DependencyProblemIssue: {
+            code: string;
+            detail: string;
+            failedGate: string;
+            path: string;
+            targetId: string | null;
+        };
 DiscoveryDocument: {
             entries: components["schemas"]["DiscoveryEntry"][];
             /** Format: date-time */
@@ -253,6 +318,16 @@ FeatureItem: {
             /** Format: uuid */
             id: string;
             title: string;
+        };
+FeishuConnectionStatus: {
+            configured: boolean;
+            connectorId: string | null;
+            displayName: string | null;
+            enabled: boolean;
+            latestSync: components["schemas"]["SyncRun"] | null;
+            runnable: boolean;
+            unavailableReason: string | null;
+            updatedAt: string | null;
         };
 FieldDiff: {
             baseValue: unknown | null;
@@ -367,20 +442,6 @@ GuestVisit: {
             retentionUntil: string;
             source: string;
         };
-GuestVisitAggregate: {
-            /** Format: date */
-            bucketDate: string;
-            landingPath: string;
-            locale: string;
-            pageViews: number;
-            rfqStarts: number;
-            rfqSubmissions: number;
-            visits: number;
-        };
-GuestVisitAggregatePage: {
-            items: components["schemas"]["GuestVisitAggregate"][];
-            nextCursor: string | null;
-        };
 GuestVisitPage: {
             items: components["schemas"]["GuestVisit"][];
             nextCursor: string | null;
@@ -431,64 +492,5 @@ InviteAdminUser: {
         };
 LegalTypeFields: {
             effectiveDate?: string | null;
-        };
-LinkTargetContent: {
-            /** Format: uuid */
-            contentId: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            targetType: "content";
-        };
-LinkTargetExternal: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            targetType: "external";
-            /** Format: uri */
-            url: string;
-        };
-LinkTargetReference: components["schemas"]["LinkTargetContent"] | components["schemas"]["LinkTargetRoute"] | components["schemas"]["LinkTargetExternal"];
-LinkTargetRoute: {
-            path: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            targetType: "route";
-        };
-LoginRequest: {
-            /** Format: email */
-            email: string;
-            otp?: string | null;
-            /** Format: password */
-            password: string;
-        };
-MediaAssetReviewRequest: {
-            /** @description Required for every human clean or quarantine decision; surrounding whitespace is trimmed and the reason is recorded in the audit trail. */
-            reason: string;
-            /** @enum {string} */
-            status: "clean" | "quarantined";
-        };
-MediaAssetSummary: {
-            /** @enum {string} */
-            accessLevel: "public" | "authenticated" | "internal";
-            byteSize: number;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: uuid */
-            id: string;
-            mediaType: string;
-            originalName: string;
-            /** @enum {string} */
-            scanStatus: "pending" | "clean" | "quarantined" | "failed";
-            /** Format: uuid */
-            versionId: string;
-        };
-MediaAssetSummaryPage: {
-            items: components["schemas"]["MediaAssetSummary"][];
-            nextCursor: string | null;
         };
 }

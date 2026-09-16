@@ -1,4 +1,9 @@
-fn validate_performance_curves(value: Option<&Value>, issues: &mut Vec<ValidationIssue>) {
+use super::*;
+
+pub(super) fn validate_performance_curves(
+    value: Option<&Value>,
+    issues: &mut Vec<ValidationIssue>,
+) {
     let Some(value) = value else {
         return;
     };
@@ -81,7 +86,7 @@ fn validate_performance_curves(value: Option<&Value>, issues: &mut Vec<Validatio
     }
 }
 
-fn validate_curve_unit(
+pub(super) fn validate_curve_unit(
     curve: &serde_json::Map<String, Value>,
     field: &str,
     allowed: &[&str],
@@ -101,7 +106,11 @@ fn validate_curve_unit(
     }
 }
 
-fn validate_curve_points(value: Option<&Value>, path: &str, issues: &mut Vec<ValidationIssue>) {
+pub(super) fn validate_curve_points(
+    value: Option<&Value>,
+    path: &str,
+    issues: &mut Vec<ValidationIssue>,
+) {
     let Some(points) = value.and_then(Value::as_array) else {
         issues.push(ValidationIssue {
             field_path: format!("{path}.points"),
@@ -157,7 +166,7 @@ fn validate_curve_points(value: Option<&Value>, path: &str, issues: &mut Vec<Val
     }
 }
 
-fn validate_positive_number(
+pub(super) fn validate_positive_number(
     value: Option<&Value>,
     field: &str,
     path: &str,

@@ -55,10 +55,9 @@ try {
   mkdirSync(dirname(rawGenerated), { recursive: true })
   writeFileSync(candidateSnapshot, `${JSON.stringify(document, null, 2)}\n`)
 
-  const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
-  execFileSync(pnpm, [
-    'exec',
-    'openapi-typescript',
+  const openApiTypescriptCli = join(root, 'node_modules/openapi-typescript/bin/cli.js')
+  execFileSync(process.execPath, [
+    openApiTypescriptCli,
     candidateSnapshot,
     '--output',
     rawGenerated,
@@ -75,7 +74,7 @@ try {
 
   if (check) {
     compare(snapshot, candidateSnapshot, 'OpenAPI snapshot')
-    compareGeneratedTree(generatedRoot, candidateGeneratedRoot)
+    compareGeneratedTree(generatedRoot, candidateGeneratedRoot, ['openapi/runtime-data.ts'])
     console.log('OpenAPI snapshot and generated TypeScript contract are current.')
   } else {
     console.log('Updated production OpenAPI snapshot and generated TypeScript contract.')
@@ -130,12 +129,13 @@ function assertProductionDocument(document) {
 function assertRequiredDataContracts(document) {
   const operations = [
     ['post', '/api/admin/v1/auth/invitations/accept', 'acceptAdministratorInvitation'],
-    ['get', '/api/admin/v1/content/{id}/draft', 'getAdminContentDraftV2'],
-    ['patch', '/api/admin/v1/content/{id}/draft', 'updateAdminContentDraftV2'],
-    ['post', '/api/admin/v1/content/{id}/snapshots', 'createAdminContentSnapshotV2'],
-    ['get', '/api/admin/v1/content/{id}/revisions', 'listAdminContentRevisionsV2'],
-    ['get', '/api/admin/v1/content/{id}/diff', 'getAdminContentDiffV2'],
-    ['post', '/api/admin/v1/content/{id}/revisions/{revision}/restore', 'restoreAdminContentRevisionV2'],
+    ['get', '/api/admin/v1/content-drafts/{draftId}', 'getPrivateContentDraft'],
+    ['patch', '/api/admin/v1/content-drafts/{draftId}', 'savePrivateContentDraft'],
+    ['post', '/api/admin/v1/content-drafts/{draftId}/submit', 'submitPrivateContentDraft'],
+    ['get', '/api/admin/v1/content-reviews', 'listContentReviews'],
+    ['post', '/api/admin/v1/content-reviews/{draftId}/approve', 'approveContentReview'],
+    ['get', '/api/admin/v1/published-content/{contentId}', 'getCurrentPublishedContent'],
+    ['post', '/api/admin/v1/published-content/{contentId}/drafts', 'copyPublishedContentToPrivateDraft'],
     ['get', '/api/admin/v1/products/{id}/private-pricing', 'getProductPrivatePricing'],
   ]
   for (const [method, path, operationId] of operations) {
@@ -149,15 +149,12 @@ function assertRequiredDataContracts(document) {
     ProductPresentation: ['seo', 'sortOrder', 'relatedContentIds'],
     UpdateProductPresentation: ['seo', 'sortOrder', 'relatedContentIds'],
     ProductPrivatePricing: ['productId', 'stableId', 'sourceRowNumber', 'pricingFields'],
-    GuestVisitAggregate: ['bucketDate', 'landingPath', 'locale', 'visits', 'pageViews', 'rfqStarts', 'rfqSubmissions'],
     GuestSourceDaily: ['bucketDate', 'source', 'landingPath', 'locale', 'visits', 'pageViews', 'rfqStarts', 'rfqSubmissions'],
     ContentDraftV2: ['schemaVersion', 'kind', 'templateKey', 'isPlaceholder', 'typeFields', 'composition', 'seo', 'relations', 'draftVersion'],
-    ContentRecordV2: ['id', 'status', 'draft', 'latestRevision', 'publishedRevision', 'updatedBy'],
-    ContentRevisionV2: ['contentId', 'revision', 'sourceDraftVersion', 'kind', 'document', 'reason'],
-    ContentDiffV2: ['contentId', 'baseRevision', 'targetRevision', 'targetDraftVersion', 'changes'],
+    CmsPrivateDraft: ['draftId', 'contentId', 'ownerUserId', 'document', 'draftVersion', 'basePublicationVersion', 'state'],
+    CmsPublishedContent: ['contentId', 'document', 'publicationVersion', 'publishedBy', 'publishedAt'],
+    CmsReviewItem: ['draft', 'submittedByUserId', 'submittedAt'],
     GeneralInformationTypeFields: ['contact', 'socialLinks', 'defaultSeo', 'productCategories', 'navigationCta'],
-    MigrationPreflightReport: ['targetSchemaVersion', 'generatedAt', 'canMigrate', 'scanned', 'convertible', 'issues'],
-    MigrationPreflightCounts: ['contentEntries', 'contentRevisions', 'newsEntries', 'generalInformationEntries', 'mediaAssets', 'mediaReferences', 'relations', 'publicRoutes'],
   }
   for (const [schemaName, properties] of Object.entries(requiredSchemaProperties)) {
     const schema = document?.components?.schemas?.[schemaName]
@@ -272,10 +269,15 @@ function readRustSource(sourcePath, visited = new Set()) {
     throw new Error(`Rust include cycle detected at ${normalizeRelativePath(relative(root, normalized))}.`)
   }
   const nextVisited = new Set(visited).add(normalized)
-  return readFileSync(normalized, 'utf8').replace(
-    /include!\(\s*"([^"]+)"\s*\);/g,
-    (_match, includedPath) => readRustSource(resolve(dirname(normalized), includedPath), nextVisited),
-  )
+  return readFileSync(normalized, 'utf8')
+    .replace(
+      /#\[path\s*=\s*"([^"]+)"\]\s*mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/g,
+      (_match, modulePath) => readRustSource(resolve(dirname(normalized), modulePath), nextVisited),
+    )
+    .replace(
+      /include!\(\s*"([^"]+)"\s*\);/g,
+      (_match, includedPath) => readRustSource(resolve(dirname(normalized), includedPath), nextVisited),
+    )
 }
 
 function findMatchingRustBrace(source, openBrace) {

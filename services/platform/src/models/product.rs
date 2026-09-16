@@ -1,3 +1,5 @@
+use super::*;
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub enum ProductFamily {
@@ -80,6 +82,40 @@ pub struct Product {
     pub status: PublicationStatus,
     pub indexable: bool,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum ProductPublicationAction {
+    Publish,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProductPublicationReport {
+    pub product_id: Uuid,
+    pub current_revision: i64,
+    pub ready: bool,
+    pub issues: Vec<ValidationIssue>,
+    pub allowed_actions: Vec<ProductPublicationAction>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProductFacetCount {
+    pub value: String,
+    pub count: usize,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminProductPage {
+    pub items: Vec<Product>,
+    pub next_cursor: Option<String>,
+    pub total: usize,
+    pub family_counts: Vec<ProductFacetCount>,
+    pub status_counts: Vec<ProductFacetCount>,
+    pub data_state_counts: Vec<ProductFacetCount>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

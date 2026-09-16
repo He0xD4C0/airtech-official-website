@@ -1,4 +1,6 @@
-fn validate_analytics_event(event: &CreateAnalyticsEvent) -> Result<(), ApiError> {
+use super::*;
+
+pub(super) fn validate_analytics_event(event: &CreateAnalyticsEvent) -> Result<(), ApiError> {
     let mut errors = BTreeMap::new();
     let Some(allowed_properties) = analytics_property_dictionary(&event.event_name) else {
         errors.insert(
@@ -8,7 +10,7 @@ fn validate_analytics_event(event: &CreateAnalyticsEvent) -> Result<(), ApiError
         return Err(ApiError::validation(errors));
     };
     if !(event.source_path == "/en" || event.source_path.starts_with("/en/"))
-        || !super::public_data::valid_guest_landing_path(&event.source_path)
+        || !crate::routes::public_data::valid_guest_landing_path(&event.source_path)
     {
         errors.insert(
             "sourcePath".into(),
@@ -50,7 +52,7 @@ fn validate_analytics_event(event: &CreateAnalyticsEvent) -> Result<(), ApiError
     }
 }
 
-fn analytics_property_dictionary(event_name: &str) -> Option<&'static [&'static str]> {
+pub(super) fn analytics_property_dictionary(event_name: &str) -> Option<&'static [&'static str]> {
     match event_name {
         "pageView" => Some(&["contentKind", "contentId", "publishedRevision"]),
         "internalSearch" => Some(&["queryLength", "resultCount"]),
@@ -76,7 +78,7 @@ fn analytics_property_dictionary(event_name: &str) -> Option<&'static [&'static 
     }
 }
 
-fn analytics_scalar_is_valid(event_name: &str, key: &str, value: &Value) -> bool {
+pub(super) fn analytics_scalar_is_valid(event_name: &str, key: &str, value: &Value) -> bool {
     match value {
         Value::String(value) => {
             if !valid_analytics_string(value, 160) {
@@ -150,7 +152,7 @@ fn analytics_scalar_is_valid(event_name: &str, key: &str, value: &Value) -> bool
     }
 }
 
-fn valid_faq_analytics_id(value: &str) -> bool {
+pub(super) fn valid_faq_analytics_id(value: &str) -> bool {
     Uuid::parse_str(value).is_ok()
         || value.strip_prefix("faq-").is_some_and(|ordinal| {
             !ordinal.starts_with('0')
@@ -159,7 +161,7 @@ fn valid_faq_analytics_id(value: &str) -> bool {
         })
 }
 
-fn valid_analytics_string(value: &str, maximum_length: usize) -> bool {
+pub(super) fn valid_analytics_string(value: &str, maximum_length: usize) -> bool {
     let value = value.trim();
     !value.is_empty()
         && value.chars().count() <= maximum_length
@@ -170,7 +172,7 @@ fn valid_analytics_string(value: &str, maximum_length: usize) -> bool {
         && !looks_like_secret(value)
 }
 
-fn looks_like_email(value: &str) -> bool {
+pub(super) fn looks_like_email(value: &str) -> bool {
     value.split_whitespace().any(|token| {
         let token = token.trim_matches(|character: char| {
             matches!(character, '<' | '>' | '(' | ')' | '[' | ']' | ',' | ';')
@@ -181,7 +183,7 @@ fn looks_like_email(value: &str) -> bool {
     })
 }
 
-fn looks_like_phone(value: &str) -> bool {
+pub(super) fn looks_like_phone(value: &str) -> bool {
     let digit_count = value.bytes().filter(u8::is_ascii_digit).count();
     (8..=15).contains(&digit_count)
         && value.bytes().all(|byte| {
@@ -189,7 +191,7 @@ fn looks_like_phone(value: &str) -> bool {
         })
 }
 
-fn looks_like_secret(value: &str) -> bool {
+pub(super) fn looks_like_secret(value: &str) -> bool {
     let lower = value.to_ascii_lowercase();
     lower.starts_with("bearer ")
         || lower.starts_with("basic ")
@@ -199,11 +201,11 @@ fn looks_like_secret(value: &str) -> bool {
         || lower.contains("token=")
 }
 
-fn reference(prefix: &str, id: Uuid, at: chrono::DateTime<Utc>) -> String {
+pub(super) fn reference(prefix: &str, id: Uuid, at: chrono::DateTime<Utc>) -> String {
     let compact = id.simple().to_string();
     format!("{prefix}-{}-{}", at.format("%Y%m%d"), &compact[..8]).to_uppercase()
 }
 
-fn default_locale() -> String {
+pub(super) fn default_locale() -> String {
     "en".into()
 }

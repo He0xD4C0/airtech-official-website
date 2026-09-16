@@ -1,4 +1,3 @@
-import type { OperationKind as ContractOperationKind } from '@airtek/contracts'
 import { createContractClient } from '@airtek/contracts'
 import {
   captureAdminCsrfToken,
@@ -49,23 +48,6 @@ export function draftEtag(version: number | undefined, allowZero = false): strin
     throw new TypeError('A valid draft version is required for this update.')
   }
   return `"draft-${value}"`
-}
-
-export function operationKind(value: string): ContractOperationKind {
-  switch (value) {
-    case 'migrationPreflight':
-    case 'migrationApply':
-    case 'backup':
-    case 'restoreValidate':
-    case 'retentionApply':
-    case 'searchReindex':
-    case 'cacheInvalidate':
-    case 'feishuSync':
-    case 'productImport':
-      return value
-    default:
-      throw new TypeError(`Unsupported operation kind: ${value}`)
-  }
 }
 
 export function adminAbsoluteUrl(path: string): string {

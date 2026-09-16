@@ -6,15 +6,15 @@ setupAdminApiTestEnvironment()
 
 describe('admin analytics API', () => {
   it('reads only aggregate analytics contracts without a visitor identifier', async () => {
-    const visit = { bucketDate: '2026-09-02', landingPath: '/en', locale: 'en', visits: 3, pageViews: 8, rfqStarts: 1, rfqSubmissions: 0 }
-    const source = { ...visit, source: 'referral', sourceName: 'Referral', referrerDomain: 'example.test', utmSource: null, medium: null, campaign: null }
-    const fetchMock = vi.fn(async (input: string | URL | Request) => response({ items: String(input).includes('/sources') ? [source] : [visit], nextCursor: null }))
+    const source = { bucketDate: '2026-09-02', landingPath: '/en', locale: 'en', visits: 3, pageViews: 8, rfqStarts: 1, rfqSubmissions: 0, source: 'referral', sourceName: 'Referral', referrerDomain: 'example.test', utmSource: null, medium: null, campaign: null }
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      void input
+      return response({ items: [source], nextCursor: null })
+    })
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(adminApi.listGuestVisits({ cursor: 'visit-cursor', limit: 25 })).resolves.toEqual({ items: [visit], nextCursor: null })
     await expect(adminApi.listGuestSources({ cursor: 'source-cursor', limit: 10 })).resolves.toEqual({ items: [source], nextCursor: null })
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/analytics/visits?cursor=visit-cursor&limit=25')
-    expect(String(fetchMock.mock.calls[1]?.[0])).toContain('/analytics/sources?cursor=source-cursor&limit=10')
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/analytics/sources?cursor=source-cursor&limit=10')
     expect(JSON.stringify(fetchMock.mock.calls)).not.toContain('anonymousSessionId')
   })
 

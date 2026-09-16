@@ -1,53 +1,16 @@
-async fn list_temporary_overrides(
+use super::*;
+
+pub(super) async fn list_temporary_overrides(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
     Query(query): Query<CursorQuery>,
 ) -> Result<Json<CursorPage<TemporaryOverride>>, ApiError> {
-    let mut values: Vec<_> = if let Some(pool) = &state.pool {
-        let rows = sqlx::query(
-            r#"SELECT id,product_id,field_path,value,reason,created_at,expires_at
-               FROM product_temporary_overrides WHERE product_id=$1
-               ORDER BY created_at DESC,id"#,
-        )
-        .bind(id)
-        .fetch_all(pool)
-        .await?;
-        rows.into_iter()
-            .map(|row| {
-                let expires_at = row.try_get("expires_at")?;
-                Ok(TemporaryOverride {
-                    id: row.try_get("id")?,
-                    product_id: row.try_get("product_id")?,
-                    field_path: row.try_get("field_path")?,
-                    value: row.try_get("value")?,
-                    reason: row.try_get("reason")?,
-                    created_at: row.try_get("created_at")?,
-                    expires_at,
-                    expired: expires_at <= Utc::now(),
-                })
-            })
-            .collect::<Result<Vec<_>, ApiError>>()?
-    } else {
-        state
-            .data
-            .read()
-            .await
-            .temporary_overrides
-            .values()
-            .filter(|value| value.product_id == id)
-            .cloned()
-            .collect()
-    };
-    values.sort_by_key(|entry| Reverse(entry.created_at));
-    Ok(Json(paginate_by_id(
-        "admin.productOverrides",
-        values,
-        query,
-        |entry| entry.id,
-    )?))
+    Ok(Json(
+        crate::services::admin_products::list_temporary_overrides(&state, id, query).await?,
+    ))
 }
 
-async fn create_temporary_override(
+pub(super) async fn create_temporary_override(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
     headers: HeaderMap,
@@ -100,14 +63,6 @@ async fn create_temporary_override(
     input.reason = input.reason.trim().to_owned();
     let value = TemporaryOverride::from_input(input);
     state.persist_override(&value).await?;
-    if state.pool.is_none() {
-        state
-            .data
-            .write()
-            .await
-            .temporary_overrides
-            .insert(value.id, value.clone());
-    }
     let override_reason = value.reason.clone();
     audit(
         &state,

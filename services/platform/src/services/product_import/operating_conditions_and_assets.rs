@@ -1,4 +1,6 @@
-fn normalized_operating_conditions(
+use super::*;
+
+pub(super) fn normalized_operating_conditions(
     header_index: &HashMap<String, usize>,
     record: &[String],
 ) -> Vec<Value> {
@@ -23,7 +25,7 @@ fn normalized_operating_conditions(
     .unwrap_or_default()
 }
 
-fn value_for(
+pub(super) fn value_for(
     header_index: &HashMap<String, usize>,
     record: &[String],
     aliases: &[&str],
@@ -31,7 +33,7 @@ fn value_for(
     non_empty(field(record, find_header(header_index, aliases)))
 }
 
-fn split_paired(value: &str) -> Vec<String> {
+pub(super) fn split_paired(value: &str) -> Vec<String> {
     value
         .split('/')
         .map(str::trim)
@@ -40,7 +42,7 @@ fn split_paired(value: &str) -> Vec<String> {
         .collect()
 }
 
-fn is_asset_header(name: &str) -> bool {
+pub(super) fn is_asset_header(name: &str) -> bool {
     name.contains("asset")
         || name.contains("image")
         || name.contains("drawing")
@@ -52,7 +54,7 @@ fn is_asset_header(name: &str) -> bool {
         || name.contains("规格书")
 }
 
-fn asset_type(name: &str) -> &'static str {
+pub(super) fn asset_type(name: &str) -> &'static str {
     if name.contains("cad")
         || name.contains("drawing")
         || name.contains("2d图纸")
@@ -68,7 +70,7 @@ fn asset_type(name: &str) -> &'static str {
     }
 }
 
-fn split_asset_references(value: &str) -> impl Iterator<Item = String> + '_ {
+pub(super) fn split_asset_references(value: &str) -> impl Iterator<Item = String> + '_ {
     value
         .split([';', '|'])
         .map(str::trim)
@@ -76,7 +78,7 @@ fn split_asset_references(value: &str) -> impl Iterator<Item = String> + '_ {
         .map(str::to_owned)
 }
 
-fn is_safe_optional_header(name: &str) -> bool {
+pub(super) fn is_safe_optional_header(name: &str) -> bool {
     // Do not ever place confidential price, source noise measurements, or
     // asset locator fields in the public candidate payload.
     !name.contains("price")
@@ -105,7 +107,7 @@ fn is_safe_optional_header(name: &str) -> bool {
         )
 }
 
-fn import_error(
+pub(super) fn import_error(
     row_number: i32,
     stable_id: Option<&str>,
     field_name: &str,

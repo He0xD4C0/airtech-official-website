@@ -12,32 +12,6 @@ pub(super) fn add(paths: &mut Map<String, Value>, path: &str, method: &str, oper
         .insert(method.to_owned(), operation);
 }
 
-pub(super) fn add_admin_list(
-    paths: &mut Map<String, Value>,
-    path: &str,
-    operation_id: &str,
-    summary: &str,
-    page_schema: &str,
-) {
-    add(
-        paths,
-        path,
-        "get",
-        admin(
-            params(
-                op(
-                    operation_id,
-                    summary,
-                    "admin",
-                    [("200", json_response("Collection", r(page_schema)))],
-                ),
-                admin_pagination_params(),
-            ),
-            false,
-        ),
-    );
-}
-
 pub(super) fn admin_pagination_params() -> Vec<Value> {
     vec![
         json!({
@@ -143,6 +117,29 @@ pub(super) fn problem_response(description: &str) -> Value {
     json!({"description": description, "content": {"application/problem+json": {"schema": r("ProblemDetails")}}})
 }
 
+pub(super) fn with_problem_example(
+    mut operation: Value,
+    status: &str,
+    code: &str,
+    title: &str,
+    detail: &str,
+) -> Value {
+    let status_number = status
+        .parse::<u16>()
+        .expect("OpenAPI problem example status is numeric");
+    operation["responses"][status]["content"]["application/problem+json"]["examples"][code] = json!({
+        "summary": title,
+        "value": {
+            "type": crate::error::problem_type_uri(code),
+            "title": title,
+            "status": status_number,
+            "detail": detail,
+            "requestId": "00000000-0000-4000-8000-000000000000"
+        }
+    });
+    operation
+}
+
 pub(super) fn session_response(description: &str) -> Value {
     let mut response = json_response(description, r("SessionUser"));
     response["headers"] = json!({
@@ -181,14 +178,6 @@ pub(super) fn if_match_param() -> Value {
     json!({"name": "If-Match", "in": "header", "required": true, "description": "Current entity ETag, formatted as revision-N.", "schema": {"type": "string", "pattern": "^\\\"revision-[0-9]+\\\"$"}})
 }
 
-pub(super) fn totp_param() -> Value {
-    json!({
-        "name": "X-TOTP-Code", "in": "header", "required": false,
-        "description": "A fresh six-digit TOTP is required for migration apply, backup, restore validation, and retention operations.",
-        "schema": {"type": "string", "pattern": "^[0-9]{6}$"}
-    })
-}
-
 pub(super) fn seo_properties() -> Value {
     json!({
         "title": nullable(json!({"type": "string"})), "description": nullable(json!({"type": "string"})),
@@ -213,7 +202,7 @@ pub(super) fn product_page() -> Value {
         json!({
             "items": array(r("Product")),
             "nextCursor": {
-                "description": "Opaque base64url v1 keyset cursor bound to the filters used for this page.",
+                "description": "Opaque base64url v2 keyset cursor bound to the active filters; v1 is accepted for one compatibility release.",
                 "anyOf": [
                     {"type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^[A-Za-z0-9_-]+$"},
                     {"type": "null"}

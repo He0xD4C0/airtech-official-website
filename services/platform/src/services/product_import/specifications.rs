@@ -1,4 +1,6 @@
-fn normalized_specifications(
+use super::*;
+
+pub(super) fn normalized_specifications(
     header_index: &HashMap<String, usize>,
     record: &[String],
     checksum: &str,
@@ -11,7 +13,7 @@ fn normalized_specifications(
         &["frequency", "频率frequency", "频率"],
     );
     let source_reference = format!("verified-csv:{checksum}:row-{row_number}:{stable_id}");
-    type SpecificationDefinition = (
+    pub(super) type SpecificationDefinition = (
         &'static str,
         &'static str,
         &'static [&'static str],

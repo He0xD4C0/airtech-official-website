@@ -1,131 +1,114 @@
-async fn list_sync_runs(
+use super::*;
+
+pub(super) async fn list_sync_runs(
     State(state): State<AppState>,
     Query(query): Query<CursorQuery>,
 ) -> Result<Json<CursorPage<SyncRun>>, ApiError> {
-    let values = state.list_sync_runs().await?;
-    Ok(Json(paginate_by_id(
-        "admin.feishuSyncRuns",
-        values,
-        query,
-        |run| run.id,
-    )?))
+    Ok(Json(
+        crate::services::admin_sync::list_sync_runs(&state, query).await?,
+    ))
 }
 
-async fn start_sync_run(
+pub(super) async fn get_feishu_connection_status(
     State(state): State<AppState>,
-    headers: HeaderMap,
-    Json(request): Json<StartSyncRequest>,
-) -> Result<Response, ApiError> {
-    let actor = actor(&headers);
-    let idempotency = match begin_idempotency(
-        &state,
-        "admin.feishu.sync.start",
-        &headers,
-        &json!({"actor": &actor, "request": &request}),
-    )
-    .await?
-    {
-        IdempotencyOutcome::Replay(replay) => {
-            let status = replay.status()?;
-            let run: SyncRun = replay.decode()?;
-            return Ok((status, Json(run)).into_response());
-        }
-        IdempotencyOutcome::Fresh(context) => context,
-    };
-    if request.mapping_version.trim().is_empty() {
-        return Err(ApiError::bad_request("mappingVersion is required."));
-    }
-    let adapter_unavailable = state.pool.is_none();
-    let now = Utc::now();
-    let run = SyncRun {
-        id: Uuid::new_v4(),
-        source: "feishu".into(),
-        dry_run: request.dry_run,
-        mapping_version: request.mapping_version,
-        status: if adapter_unavailable {
-            SyncRunStatus::Failed
-        } else {
-            SyncRunStatus::Queued
-        },
-        resume_cursor: request.cursor,
-        records_seen: 0,
-        records_valid: 0,
-        conflict_count: 0,
-        started_at: now,
-        completed_at: adapter_unavailable.then_some(now),
-        error: adapter_unavailable.then(|| {
-            "Feishu synchronization requires PostgreSQL and a configured provider adapter; no synchronization ran."
-                .into()
-        }),
-    };
-    state.enqueue_sync_run(&run).await?;
-    if state.pool.is_none() {
-        state
-            .data
-            .write()
-            .await
-            .sync_runs
-            .insert(run.id, run.clone());
-    }
-    audit(
-        &state,
-        &headers,
-        &actor,
-        "feishu.sync.queue",
-        "syncRun",
-        Some(run.id),
-        None,
-        Some(json!(run)),
-        Some("Queue Feishu staging synchronization".into()),
-    )
-    .await?;
-    idempotency
-        .complete(&state, &run, StatusCode::ACCEPTED)
-        .await?;
-    Ok((StatusCode::ACCEPTED, Json(run)).into_response())
+) -> Result<Json<crate::models::FeishuConnectionStatus>, ApiError> {
+    Ok(Json(
+        crate::services::admin_sync::connection_status(&state).await?,
+    ))
 }
 
-async fn list_conflicts(
+pub(super) async fn list_feishu_mappings(
     State(state): State<AppState>,
     Query(query): Query<CursorQuery>,
-) -> Result<Json<CursorPage<crate::models::SyncConflict>>, ApiError> {
-    let mut values: Vec<_> = if let Some(pool) = &state.pool {
-        let rows = sqlx::query(
-            r#"SELECT id,sync_run_id,product_id,source_record_id,field_diffs,resolved_at,resolution
-               FROM sync_conflicts ORDER BY id"#,
+) -> Result<Json<CursorPage<crate::models::SyncMapping>>, ApiError> {
+    Ok(Json(
+        crate::services::admin_sync::list_mappings(&state, query).await?,
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct StagingListQuery {
+    pub(super) cursor: Option<String>,
+    pub(super) limit: Option<usize>,
+    pub(super) sync_run_id: Option<Uuid>,
+    pub(super) status: Option<String>,
+    pub(super) q: Option<String>,
+}
+
+pub(super) async fn list_feishu_staging(
+    State(state): State<AppState>,
+    Query(query): Query<StagingListQuery>,
+) -> Result<Json<crate::models::StagingRecordPage>, ApiError> {
+    let status = query
+        .status
+        .map(|value| {
+            serde_json::from_value::<crate::models::StagingValidationStatus>(Value::String(value))
+                .map(serialized_enum_label)
+                .map_err(|_| ApiError::bad_request("status is not a staging validation state."))
+        })
+        .transpose()?;
+    let search = parse_query_text(query.q)?;
+    Ok(Json(
+        crate::services::admin_sync::list_staging(
+            &state,
+            crate::services::admin_sync::StagingFilter {
+                sync_run_id: query.sync_run_id,
+                status,
+                search,
+            },
+            CursorQuery {
+                cursor: query.cursor,
+                limit: query.limit,
+            },
         )
-        .fetch_all(pool)
-        .await?;
-        rows.into_iter()
-            .map(|row| {
-                Ok(crate::models::SyncConflict {
-                    id: row.try_get("id")?,
-                    sync_run_id: row.try_get("sync_run_id")?,
-                    product_id: row.try_get("product_id")?,
-                    source_record_id: row.try_get("source_record_id")?,
-                    diffs: serde_json::from_value(row.try_get("field_diffs")?).map_err(|_| {
-                        ApiError::service_unavailable("Stored sync conflict data is invalid.")
-                    })?,
-                    resolved_at: row.try_get("resolved_at")?,
-                    resolution: row.try_get("resolution")?,
-                })
-            })
-            .collect::<Result<Vec<_>, ApiError>>()?
-    } else {
-        state
-            .data
-            .read()
-            .await
-            .conflicts
-            .values()
-            .cloned()
-            .collect()
+        .await?,
+    ))
+}
+
+pub(super) async fn start_sync_run(
+    State(_state): State<AppState>,
+    _headers: HeaderMap,
+    Json(_request): Json<StartSyncRequest>,
+) -> Result<Response, ApiError> {
+    Err(ApiError::conflict(
+        "Feishu provider adapter is not connected; synchronization is disabled.",
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct ConflictListQuery {
+    pub(super) cursor: Option<String>,
+    pub(super) limit: Option<usize>,
+    pub(super) q: Option<String>,
+    pub(super) open_only: Option<bool>,
+}
+
+pub(super) async fn list_conflicts(
+    State(state): State<AppState>,
+    Query(query): Query<ConflictListQuery>,
+) -> Result<Json<crate::models::SyncConflictPage>, ApiError> {
+    let filter = crate::services::admin_sync::ConflictFilter {
+        search: parse_query_text(query.q)?,
+        open_only: query.open_only.unwrap_or(true),
     };
-    values.sort_by_key(|entry| entry.id);
-    Ok(Json(paginate_by_id(
-        "admin.feishuConflicts",
-        values,
-        query,
-        |entry| entry.id,
-    )?))
+    Ok(Json(
+        crate::services::admin_sync::list_conflicts(
+            &state,
+            filter,
+            CursorQuery {
+                cursor: query.cursor,
+                limit: query.limit,
+            },
+        )
+        .await?,
+    ))
+}
+
+pub(super) fn serialized_enum_label(value: impl serde::Serialize) -> String {
+    serde_json::to_value(value)
+        .ok()
+        .and_then(|value| value.as_str().map(str::to_owned))
+        .unwrap_or_default()
 }

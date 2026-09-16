@@ -1,4 +1,6 @@
-fn parse_csv(csv: &str) -> Result<Vec<(i32, Vec<String>)>, ApiError> {
+use super::*;
+
+pub(super) fn parse_csv(csv: &str) -> Result<Vec<(i32, Vec<String>)>, ApiError> {
     let mut records = Vec::new();
     let mut record = Vec::new();
     let mut field = String::new();
@@ -48,7 +50,7 @@ fn parse_csv(csv: &str) -> Result<Vec<(i32, Vec<String>)>, ApiError> {
     Ok(records)
 }
 
-fn encrypt_confidential(
+pub(super) fn encrypt_confidential(
     key: &ProductStagingEncryptionKey,
     aad: &[u8],
     plaintext: &[u8],
@@ -120,7 +122,7 @@ pub fn decrypt_private_pricing(
         .collect())
 }
 
-fn is_private_pricing_header(mapping_version: &str, name: &str) -> bool {
+pub(super) fn is_private_pricing_header(mapping_version: &str, name: &str) -> bool {
     match mapping_version {
         // Exact normalized headers from the user-confirmed Product Master.
         // Adding another commercial field requires an explicit mapping-version

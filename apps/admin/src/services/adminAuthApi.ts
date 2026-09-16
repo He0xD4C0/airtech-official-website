@@ -42,7 +42,6 @@ function permission(value: string): Permission | undefined {
     case 'identity.manage':
     case 'audit.read':
     case 'settings.manage':
-    case 'operations.run':
       return value
     default:
       return devtoolsPermissions.find((candidate) => candidate === value)

@@ -262,6 +262,7 @@ fn add_public_projection_schemas(s: &mut Map<String, Value>) {
                 "updatedAt",
                 "resolvedRelations",
                 "resolvedLinks",
+                "resolvedMedia",
             ],
             json!({
                 "schemaVersion": {"type": "integer", "const": 2},
@@ -280,7 +281,8 @@ fn add_public_projection_schemas(s: &mut Map<String, Value>) {
                 "publishedRevision": revision(),
                 "updatedAt": timestamp(),
                 "resolvedRelations": array(r("ResolvedRelationCard")),
-                "resolvedLinks": array(r("ResolvedLinkTarget"))
+                "resolvedLinks": array(r("ResolvedLinkTarget")),
+                "resolvedMedia": array(r("ResolvedMedia"))
             }),
         ),
     );

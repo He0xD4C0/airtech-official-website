@@ -1,3 +1,5 @@
+use super::*;
+
 /// Performs transport-independent validation before a Feishu record may leave staging.
 /// It intentionally validates provenance and structure, not product-specific numeric ranges.
 pub fn validate_staging_payload(payload: &Value) -> Vec<ValidationIssue> {

@@ -24,6 +24,7 @@ function projection(overrides: Record<string, unknown> = {}) {
     updatedAt: '2026-09-01T08:00:00Z',
     resolvedRelations: [],
     resolvedLinks: [],
+    resolvedMedia: [],
     ...overrides,
   }
 }
@@ -59,7 +60,7 @@ describe('public API client', () => {
         application: 'Industrial cooling',
         dutyPoint: { airflow: 1200, airflowUnit: 'm3/h', pressure: 320, pressureUnit: 'Pa' },
       },
-    }, 'rfq-test-0001')).rejects.toThrow(/invalid submission acknowledgement/i)
+    }, 'rfq-test-0001')).rejects.toThrow(/OpenAPI response validation failed/i)
   })
 
   it('preserves the noValidatedCandidates selector outcome', async () => {
@@ -81,11 +82,12 @@ describe('public API client', () => {
       eventName: 'pageView', anonymousSessionId: '059adab1-18af-434e-a93b-4e7d24d5744e',
       sourcePath: '/en', locale: 'en', consentGranted: true, policyVersion: 'analytics-v1',
       consentReceipt: 'f4abdf14-c27b-4d71-a22b-45cc3f7aa64d', properties: {},
-    })
+    }, 'analytics-event-key-0001')
     expect(receipt.accepted).toBe(true)
     const [url, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0]
     expect(url).toBe('http://api:8080/api/public/v1/analytics/events')
     expect(init.credentials).toBe('omit')
+    expect(new Headers(init.headers).get('Idempotency-Key')).toBe('analytics-event-key-0001')
   })
 
   it('records consent before analytics and accepts only a bound receipt shape', async () => {
@@ -113,7 +115,9 @@ describe('public API client', () => {
   it('loads only a valid published product for the comparison workspace', async () => {
     const product = {
       id: '77935cef-4111-4c4c-bdb8-17679a8b42fe', stableId: 'AT-P-001', model: 'Validated model', slug: 'validated-model',
-      locale: 'en', family: 'axial', title: 'Published product', specifications: [], performanceCurves: [],
+      locale: 'en', family: 'axial', subtype: null, motorTechnology: null, title: 'Published product', summary: null,
+      seo: { title: null, description: null, canonicalPath: '/en/products/axial/validated-model', indexable: true },
+      sortOrder: 0, relatedContentIds: [], specifications: [], performanceCurves: [],
       sourceSnapshotId: 'c44656ad-fc7a-41c0-909e-930466096b37', sourceRevision: '8', currentRevision: 8,
       publishedRevision: 7, status: 'published', indexable: true, updatedAt: '2026-09-01T08:00:00Z',
     }
@@ -129,7 +133,9 @@ describe('public API client', () => {
   it('loads an opaque cursor page with bounded public filters', async () => {
     const product = {
       id: '77935cef-4111-4c4c-bdb8-17679a8b42fe', stableId: 'AT-P-001', model: 'Validated model', slug: 'validated-model',
-      locale: 'en', family: 'axial', title: 'Published product', specifications: [], performanceCurves: [],
+      locale: 'en', family: 'axial', subtype: null, motorTechnology: null, title: 'Published product', summary: null,
+      seo: { title: null, description: null, canonicalPath: '/en/products/axial/validated-model', indexable: true },
+      sortOrder: 0, relatedContentIds: [], specifications: [], performanceCurves: [],
       sourceSnapshotId: 'c44656ad-fc7a-41c0-909e-930466096b37', sourceRevision: '8', currentRevision: 8,
       publishedRevision: 7, status: 'published', indexable: true, updatedAt: '2026-09-01T08:00:00Z',
     }
@@ -151,7 +157,7 @@ describe('public API client', () => {
       fetchImpl: vi.fn(async () => jsonResponse({ items: [], nextCursor: 42 })) as unknown as typeof fetch,
     })
     await expect(client.listProducts({ cursor: '../admin' })).rejects.toThrow(/cursor is invalid/i)
-    await expect(client.listProducts()).rejects.toThrow(/invalid published product page/i)
+    await expect(client.listProducts()).rejects.toThrow(/OpenAPI response validation failed/i)
   })
 
   it('loads the bootstrap, route and News projections through their canonical public endpoints', async () => {

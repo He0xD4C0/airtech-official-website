@@ -1,10 +1,10 @@
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod cases {
+    use super::super::*;
     use std::collections::HashSet;
 
     #[test]
-    fn password_hashes_use_argon2id() {
+    pub(super) fn password_hashes_use_argon2id() {
         let hash = hash_password("a-long-password-123").unwrap();
         assert!(hash.starts_with("$argon2id$"));
         assert!(verify_password(&hash, "a-long-password-123"));
@@ -12,7 +12,7 @@ mod tests {
     }
 
     #[test]
-    fn invitation_password_policy_is_bounded_and_requires_letters_and_digits() {
+    pub(super) fn invitation_password_policy_is_bounded_and_requires_letters_and_digits() {
         assert!(validate_strong_password("correct-horse-123").is_ok());
         assert!(validate_strong_password("short-1").is_err());
         assert!(validate_strong_password("onlylettersforever").is_err());
@@ -21,27 +21,31 @@ mod tests {
     }
 
     #[test]
-    fn permission_mapping_distinguishes_edit_and_publish() {
+    pub(super) fn permission_mapping_distinguishes_edit_and_publish() {
         assert_eq!(
             required_permission(
-                "/api/admin/v1/content/abc/draft",
+                "/api/admin/v1/content-drafts/abc",
                 &axum::http::Method::PATCH
             ),
             Some("content.write")
         );
         assert_eq!(
             required_permission(
-                "/api/admin/v1/content/abc/snapshots",
+                "/api/admin/v1/content-drafts/abc/submit",
                 &axum::http::Method::POST
             ),
             Some("content.write")
         );
         assert_eq!(
             required_permission(
-                "/api/admin/v1/content/abc/revisions/2/restore",
+                "/api/admin/v1/content-reviews/abc/approve",
                 &axum::http::Method::POST
             ),
-            Some("content.write")
+            Some("content.publish")
+        );
+        assert_eq!(
+            permission_policy("/api/admin/v1/content-drafts/abc", &axum::http::Method::GET),
+            Some(AdminPermissionPolicy::Any(CONTENT_DRAFT_READ_PERMISSIONS))
         );
         assert_eq!(
             required_permission("/api/admin/v1/settings", &axum::http::Method::GET),
@@ -69,19 +73,64 @@ mod tests {
             required_permission("/api/admin/v1/analytics/overview", &axum::http::Method::GET),
             Some("analytics.read")
         );
+        assert_eq!(
+            permission_policy("/api/admin/v1/dashboard/summary", &axum::http::Method::GET),
+            Some(AdminPermissionPolicy::Authenticated)
+        );
+        assert_eq!(
+            required_permission(
+                "/api/admin/v1/media/assets/00000000-0000-0000-0000-000000000001/references",
+                &axum::http::Method::GET
+            ),
+            Some("content.read")
+        );
+        assert_eq!(
+            required_permission("/api/admin/v1/media/assets", &axum::http::Method::GET),
+            None
+        );
+        assert_eq!(
+            permission_policy("/api/admin/v1/media/assets", &axum::http::Method::GET),
+            Some(AdminPermissionPolicy::Any(&["content.read", "media.write"]))
+        );
+        assert_eq!(
+            permission_policy("/api/admin/v1/media/assets", &axum::http::Method::POST),
+            Some(AdminPermissionPolicy::Exact("media.write"))
+        );
+        assert_eq!(
+            required_permission(
+                "/api/admin/v1/rfqs/00000000-0000-0000-0000-000000000001/pii",
+                &axum::http::Method::GET
+            ),
+            Some("rfq.read_pii")
+        );
+        assert_eq!(
+            required_permission(
+                "/api/admin/v1/rfqs/00000000-0000-0000-0000-000000000001/status",
+                &axum::http::Method::POST
+            ),
+            Some("rfq.assign")
+        );
+        assert_eq!(
+            required_permission(
+                "/api/admin/v1/feishu/conflicts/00000000-0000-0000-0000-000000000001/resolve",
+                &axum::http::Method::POST
+            ),
+            Some("integration.run")
+        );
     }
 
     #[test]
-    fn permissions_are_unique() {
+    pub(super) fn permissions_are_unique() {
         let values = super_admin_permissions();
         let set = values.iter().collect::<HashSet<_>>();
         assert_eq!(set.len(), values.len());
     }
 
-    #[test]
-    fn https_cookie_is_secure_strict_and_host_only() {
+    #[tokio::test]
+    pub(super) async fn https_cookie_is_secure_strict_and_host_only() {
         let mut config = crate::Config::for_test();
         config.admin_origin = "https://admin.example.com".into();
+        config.database_url = Some("postgresql://localhost/unused".into());
         let state = AppState::new(config).unwrap();
         let session = session_cookie(&state, "token", 60);
         let csrf = csrf_cookie(&state, "csrf", 60);

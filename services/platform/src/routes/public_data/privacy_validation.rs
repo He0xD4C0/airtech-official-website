@@ -1,4 +1,6 @@
-fn normalize_guest_visit(mut request: CreateGuestVisit) -> CreateGuestVisit {
+use super::*;
+
+pub(super) fn normalize_guest_visit(mut request: CreateGuestVisit) -> CreateGuestVisit {
     request.referrer_domain = request
         .referrer_domain
         .map(|value| value.trim().to_ascii_lowercase());
@@ -8,14 +10,14 @@ fn normalize_guest_visit(mut request: CreateGuestVisit) -> CreateGuestVisit {
     request
 }
 
-fn normalize_optional_attribution(value: Option<String>) -> Option<String> {
+pub(super) fn normalize_optional_attribution(value: Option<String>) -> Option<String> {
     value.and_then(|value| {
         let value = value.trim().to_ascii_lowercase();
         (!value.is_empty()).then_some(value)
     })
 }
 
-fn valid_referrer_hostname(value: &str) -> bool {
+pub(super) fn valid_referrer_hostname(value: &str) -> bool {
     if value.chars().any(char::is_control) {
         return false;
     }
@@ -48,7 +50,11 @@ fn valid_referrer_hostname(value: &str) -> bool {
     })
 }
 
-fn valid_guest_attribution(value: &str, maximum: usize, allowlist: &BTreeSet<String>) -> bool {
+pub(super) fn valid_guest_attribution(
+    value: &str,
+    maximum: usize,
+    allowlist: &BTreeSet<String>,
+) -> bool {
     let trimmed = value.trim();
     if trimmed.is_empty() {
         return true;
@@ -71,7 +77,7 @@ fn valid_guest_attribution(value: &str, maximum: usize, allowlist: &BTreeSet<Str
         && allowlist.contains(&normalized)
 }
 
-pub(super) fn valid_guest_landing_path(path: &str) -> bool {
+pub(crate) fn valid_guest_landing_path(path: &str) -> bool {
     if validate_public_path(path).is_err()
         || path.chars().any(char::is_control)
         || path.contains('\\')
@@ -91,7 +97,7 @@ pub(super) fn valid_guest_landing_path(path: &str) -> bool {
 /// Decode one path segment while rejecting encoded delimiters and identifier
 /// markers. Encoded `%` is rejected as well so double encoding cannot bypass
 /// the PII checks on a second decode.
-fn decode_safe_path_segment(segment: &str) -> Option<String> {
+pub(super) fn decode_safe_path_segment(segment: &str) -> Option<String> {
     let bytes = segment.as_bytes();
     let mut decoded = Vec::with_capacity(bytes.len());
     let mut index = 0;
@@ -118,7 +124,7 @@ fn decode_safe_path_segment(segment: &str) -> Option<String> {
     String::from_utf8(decoded).ok()
 }
 
-fn hex_value(byte: u8) -> Option<u8> {
+pub(super) fn hex_value(byte: u8) -> Option<u8> {
     match byte {
         b'0'..=b'9' => Some(byte - b'0'),
         b'a'..=b'f' => Some(byte - b'a' + 10),
@@ -127,7 +133,7 @@ fn hex_value(byte: u8) -> Option<u8> {
     }
 }
 
-fn contains_pii_like_value(value: &str) -> bool {
+pub(super) fn contains_pii_like_value(value: &str) -> bool {
     looks_like_email(value)
         || contains_phone_like(value)
         || contains_ip_address(value)
@@ -137,7 +143,7 @@ fn contains_pii_like_value(value: &str) -> bool {
             .any(|token| Uuid::parse_str(token).is_ok())
 }
 
-fn looks_like_email(value: &str) -> bool {
+pub(super) fn looks_like_email(value: &str) -> bool {
     value.split_whitespace().any(|token| {
         let token = token.trim_matches(|character: char| {
             matches!(
@@ -151,7 +157,7 @@ fn looks_like_email(value: &str) -> bool {
     })
 }
 
-fn contains_phone_like(value: &str) -> bool {
+pub(super) fn contains_phone_like(value: &str) -> bool {
     if looks_like_phone(value.trim()) {
         return true;
     }
@@ -169,7 +175,7 @@ fn contains_phone_like(value: &str) -> bool {
     false
 }
 
-fn looks_like_phone(value: &str) -> bool {
+pub(super) fn looks_like_phone(value: &str) -> bool {
     let digit_count = value.bytes().filter(u8::is_ascii_digit).count();
     (8..=15).contains(&digit_count)
         && value.bytes().all(|byte| {
@@ -177,7 +183,7 @@ fn looks_like_phone(value: &str) -> bool {
         })
 }
 
-fn contains_ip_address(value: &str) -> bool {
+pub(super) fn contains_ip_address(value: &str) -> bool {
     value.parse::<IpAddr>().is_ok()
         || value
             .split(|character: char| {
@@ -187,7 +193,7 @@ fn contains_ip_address(value: &str) -> bool {
             .any(|candidate| candidate.parse::<IpAddr>().is_ok())
 }
 
-fn contains_secret_like_value(value: &str) -> bool {
+pub(super) fn contains_secret_like_value(value: &str) -> bool {
     let lower = value.to_ascii_lowercase();
     lower.starts_with("bearer ")
         || lower.starts_with("basic ")
@@ -199,7 +205,7 @@ fn contains_secret_like_value(value: &str) -> bool {
         || lower.contains("tel:")
 }
 
-fn classify_source(request: &CreateGuestVisit) -> String {
+pub(super) fn classify_source(request: &CreateGuestVisit) -> String {
     let source = request.source.as_deref().unwrap_or_default().to_lowercase();
     let medium = request.medium.as_deref().unwrap_or_default().to_lowercase();
     if source.is_empty() && request.referrer_domain.is_none() {

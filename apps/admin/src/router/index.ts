@@ -11,22 +11,40 @@ const workspaceChildren: RouteRecordRaw[] = [
     meta: { title: '工作台', requiresAuth: true, permission: 'dashboard.read' },
   },
   {
-    path: 'content',
-    name: 'content',
+    path: 'content/drafts',
+    name: 'content-drafts',
     component: () => import('@/views/ContentListView.vue'),
     meta: { title: '内容中心', requiresAuth: true, permission: 'content.read' },
   },
   {
-    path: 'content/new',
-    name: 'content-new',
+    path: 'content/drafts/new',
+    name: 'content-drafts-new',
     component: () => import('@/views/ContentCreateView.vue'),
     meta: { title: '新建内容', requiresAuth: true, permission: 'content.write' },
   },
   {
-    path: 'content/:id/edit',
-    name: 'content-editor',
+    path: 'content/drafts/:draftId',
+    name: 'content-draft-editor',
     component: () => import('@/views/ContentEditorView.vue'),
-    meta: { title: '内容编辑器', requiresAuth: true, permission: 'content.write' },
+    meta: { title: '内容编辑器', requiresAuth: true, permissionsAny: ['content.write', 'content.publish'] },
+  },
+  {
+    path: 'content/reviews',
+    name: 'content-reviews',
+    component: () => import('@/views/ContentReviewsView.vue'),
+    meta: { title: '内容审核', requiresAuth: true, permission: 'content.publish' },
+  },
+  {
+    path: 'content/published',
+    name: 'content-published',
+    component: () => import('@/views/PublishedContentView.vue'),
+    meta: { title: '已发布内容', requiresAuth: true, permission: 'content.read' },
+  },
+  {
+    path: 'content/published/:contentId',
+    name: 'content-published-detail',
+    component: () => import('@/views/PublishedContentDetailView.vue'),
+    meta: { title: '已发布内容详情', requiresAuth: true, permission: 'content.read' },
   },
   {
     path: 'site/general-information',
@@ -77,7 +95,11 @@ const workspaceChildren: RouteRecordRaw[] = [
     path: 'media',
     name: 'media',
     component: () => import('@/views/MediaView.vue'),
-    meta: { title: '媒体中心', requiresAuth: true, permission: 'media.write' },
+    meta: {
+      title: '媒体中心',
+      requiresAuth: true,
+      permission: 'media.write',
+    },
   },
   {
     path: 'rfqs',
@@ -100,17 +122,9 @@ const workspaceChildren: RouteRecordRaw[] = [
     meta: { title: 'Analytics', requiresAuth: true, permission: 'analytics.read' },
   },
   {
-    path: 'analytics/visits',
-    name: 'analytics-visits',
-    component: () => import('@/views/GuestAnalyticsView.vue'),
-    props: { mode: 'visits' },
-    meta: { title: '访问趋势', requiresAuth: true, permission: 'analytics.read' },
-  },
-  {
     path: 'analytics/sources',
     name: 'analytics-sources',
     component: () => import('@/views/GuestAnalyticsView.vue'),
-    props: { mode: 'sources' },
     meta: { title: '站外来源', requiresAuth: true, permission: 'analytics.read' },
   },
   {
@@ -156,12 +170,6 @@ const workspaceChildren: RouteRecordRaw[] = [
     name: 'settings',
     component: () => import('@/views/SettingsView.vue'),
     meta: { title: '系统设置', requiresAuth: true, permission: 'settings.manage' },
-  },
-  {
-    path: 'operations',
-    name: 'operations',
-    component: () => import('@/views/OperationsView.vue'),
-    meta: { title: '运维任务', requiresAuth: true, permission: 'operations.run' },
   },
   ...devtoolsRoutes,
   {
@@ -241,6 +249,11 @@ router.beforeEach(async (to) => {
   const permission = to.meta.permission as Permission | undefined
   if (permission && !auth.hasPermission(permission)) {
     return { name: 'forbidden', query: { permission, from: to.fullPath } }
+  }
+
+  const permissionsAny = to.meta.permissionsAny as readonly Permission[] | undefined
+  if (permissionsAny?.length && !permissionsAny.some((candidate) => auth.hasPermission(candidate))) {
+    return { name: 'forbidden', query: { permission: permissionsAny.join('|'), from: to.fullPath } }
   }
 
   return true

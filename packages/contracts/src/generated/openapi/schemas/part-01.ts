@@ -18,10 +18,28 @@ AcceptInvitationRequest: {
             password: string;
             token: string;
         };
+AdminDashboardSummary: {
+            analytics: components["schemas"]["AnalyticsConsentedMetrics"] | null;
+            draftContent: components["schemas"]["DashboardMetric"];
+            /** Format: date-time */
+            generatedAt: string;
+            openConflicts: components["schemas"]["DashboardMetric"];
+            openRfqs: components["schemas"]["DashboardMetric"];
+            readinessItemCount: number;
+            recentActivity: components["schemas"]["AuditEvent"][];
+        };
 AdminProductDetail: components["schemas"]["Product"] & {
             missingAssets: components["schemas"]["MissingAssetReference"][];
             presentation: components["schemas"]["ProductPresentation"] | null;
             sourceKind: components["schemas"]["DataClass"];
+        };
+AdminProductPage: {
+            dataStateCounts: components["schemas"]["ProductFacetCount"][];
+            familyCounts: components["schemas"]["ProductFacetCount"][];
+            items: components["schemas"]["Product"][];
+            nextCursor: string | null;
+            statusCounts: components["schemas"]["ProductFacetCount"][];
+            total: number;
         };
 AdminRoleRecord: {
             displayName: string;
@@ -36,6 +54,7 @@ AdminRoleRecord: {
 AdminRoleRecordPage: {
             items: components["schemas"]["AdminRoleRecord"][];
             nextCursor: string | null;
+            total: number;
         };
 AdminSession: {
             /** Format: date-time */
@@ -59,6 +78,7 @@ AdminUserRecord: {
             invitedAt: string | null;
             lastLoginAt: string | null;
             locale: string;
+            managerUserId: string | null;
             /** Format: int64 */
             revision: number;
             roles: string[];
@@ -71,6 +91,7 @@ AdminUserRecord: {
 AdminUserRecordPage: {
             items: components["schemas"]["AdminUserRecord"][];
             nextCursor: string | null;
+            total: number;
         };
 AnalyticsBusinessOutcomes: {
             contactRequests: number;
@@ -195,26 +216,20 @@ AnalyticsOverviewRange: {
         };
 /** @enum {string} */
         AnalyticsPolicyVersion: "analytics-v1";
-AnalyticsSummary: {
-            acceptedEventCount: number;
-            contactCount: number;
-            /** @constant */
-            containsPii: false;
-            rfqCount: number;
-            /** @constant */
-            source: "firstParty";
-        };
 AssetVersionReference: {
             /** Format: uuid */
             assetId: string;
-            /** Format: uuid */
-            versionId: string;
+        };
+AssignBusinessInboxRequest: {
+            assignedTo: string | null;
+            reason: string;
         };
 AuditEvent: {
             action: string;
             actor: string;
             after: unknown | null;
             before: unknown | null;
+            currentVersion: number | null;
             entityId: string | null;
             entityType: string;
             /** Format: uuid */
@@ -228,6 +243,7 @@ AuditEvent: {
 AuditEventPage: {
             items: components["schemas"]["AuditEvent"][];
             nextCursor: string | null;
+            total: number;
         };
 BackgroundOperation: {
             /** Format: date-time */
@@ -240,10 +256,6 @@ BackgroundOperation: {
             status: components["schemas"]["OperationStatus"];
             /** Format: date-time */
             updatedAt: string;
-        };
-BackgroundOperationPage: {
-            items: components["schemas"]["BackgroundOperation"][];
-            nextCursor: string | null;
         };
 BodyBlock: {
             /** Format: uuid */
@@ -263,6 +275,75 @@ BusinessContact: {
             name: string;
             phone?: string | null;
         };
+/** @enum {string} */
+        BusinessEntityType: "rfq" | "contact";
+BusinessInboxDetail: {
+            item: components["schemas"]["BusinessInboxItem"];
+            notes: components["schemas"]["BusinessInternalNote"][];
+            statusHistory: components["schemas"]["BusinessStatusHistoryEntry"][];
+        };
+BusinessInboxItem: {
+            assignedTo: string | null;
+            consent: boolean;
+            countryOrRegion: string | null;
+            entityType: components["schemas"]["BusinessEntityType"];
+            /** Format: uuid */
+            id: string;
+            journey: components["schemas"]["RfqJourney"] | null;
+            locale: string;
+            organization: string | null;
+            productContext: components["schemas"]["ProductContext"] | null;
+            reference: string;
+            /** Format: date-time */
+            retentionUntil: string;
+            /** Format: int64 */
+            revision: number;
+            sourcePath: string;
+            status: components["schemas"]["BusinessInboxStatus"];
+            /** Format: date-time */
+            submittedAt: string;
+            topic: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+BusinessInboxPage: {
+            items: components["schemas"]["BusinessInboxItem"][];
+            nextCursor: string | null;
+            total: number;
+        };
+/** @enum {string} */
+        BusinessInboxStatus: "new" | "triaged" | "assigned" | "qualified" | "closed" | "spam";
+BusinessInternalNote: {
+            body: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            createdBy: string;
+            /** Format: uuid */
+            entityId: string;
+            entityType: components["schemas"]["BusinessEntityType"];
+            /** Format: uuid */
+            id: string;
+        };
+BusinessPii: {
+            company: string | null;
+            countryOrRegion: string | null;
+            /** Format: email */
+            email: string;
+            message: string | null;
+            name: string;
+            phone: string | null;
+        };
+BusinessStatusHistoryEntry: {
+            /** Format: date-time */
+            changedAt: string;
+            changedBy: string;
+            fromStatus: components["schemas"]["BusinessInboxStatus"] | null;
+            /** Format: uuid */
+            id: string;
+            reason: string | null;
+            toStatus: components["schemas"]["BusinessInboxStatus"];
+        };
 CaseStudyTypeFields: {
             industry?: string | null;
             location?: string | null;
@@ -271,8 +352,81 @@ CaseStudyTypeFields: {
         CmsBodyPolicy: "required" | "optional" | "forbidden";
 /** @enum {string} */
         CmsContentKind: "home" | "page" | "solution" | "technology" | "article" | "news" | "faq" | "caseStudy" | "download" | "company" | "legal" | "generalInformation" | "navigation" | "footer";
+CmsDraftPage: {
+            items: components["schemas"]["CmsPrivateDraft"][];
+            nextCursor: string | null;
+            total: number;
+        };
+CmsDraftSharesRequest: {
+            userIds: string[];
+        };
+/** @enum {string} */
+        CmsDraftState: "editing" | "pendingReview";
+CmsPrivateDraft: {
+            basePublicationVersion: number;
+            /** Format: uuid */
+            contentId: string;
+            /** Format: date-time */
+            createdAt: string;
+            document: components["schemas"]["ContentDraftV2"];
+            /** Format: uuid */
+            draftId: string;
+            /** Format: int64 */
+            draftVersion: number;
+            ownerUserId: string | null;
+            rejectionReason: string | null;
+            state: components["schemas"]["CmsDraftState"];
+            /** Format: date-time */
+            updatedAt: string;
+        };
 /** @enum {string} */
         CmsPublicationStatusV2: "draft" | "published" | "archived";
+CmsPublishedContent: {
+            /** Format: uuid */
+            contentId: string;
+            document: components["schemas"]["ContentDraftV2"];
+            /** Format: int64 */
+            publicationVersion: number;
+            /** Format: date-time */
+            publishedAt: string;
+            publishedBy: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+CmsPublishedPage: {
+            items: components["schemas"]["CmsPublishedContent"][];
+            nextCursor: string | null;
+            total: number;
+        };
+CmsPublishResult: {
+            /** Format: uuid */
+            contentId: string;
+            /** Format: int64 */
+            publicationVersion: number;
+            /** Format: date-time */
+            publishedAt: string;
+        };
+CmsRejectRequest: {
+            reason: string;
+        };
+CmsReviewItem: {
+            draft: components["schemas"]["CmsPrivateDraft"];
+            /** Format: date-time */
+            submittedAt: string;
+            /** Format: uuid */
+            submittedByUserId: string;
+        };
+CmsReviewPage: {
+            items: components["schemas"]["CmsReviewItem"][];
+            nextCursor: string | null;
+            total: number;
+        };
+CmsSubmitResult: {
+            draft: components["schemas"]["CmsPrivateDraft"] | null;
+            publication: components["schemas"]["CmsPublishResult"] | null;
+            /** @enum {string} */
+            status: "pendingReview" | "published";
+        };
 /** @enum {string} */
         CollectionPresentation: "cards" | "list" | "compact";
 ConsentedAnalyticsEvent: {
@@ -312,38 +466,9 @@ ContactInformationInput: {
             postalCode?: string | null;
             region?: string | null;
         };
-ContactRequest: {
-            /** Format: uuid */
-            id: string;
-            reference: string;
-            request: components["schemas"]["CreateContactRequest"];
-            /** Format: date-time */
-            retentionUntil: string;
-            status: string;
-            /** Format: date-time */
-            submittedAt: string;
-        };
-ContactRequestPage: {
-            items: components["schemas"]["ContactRequest"][];
-            nextCursor: string | null;
-        };
 ContentBlock: components["schemas"]["HeroBlock"] | components["schemas"]["BodyBlock"] | components["schemas"]["MediaBlock"] | components["schemas"]["FeatureGridBlock"] | components["schemas"]["EvidenceBlock"] | components["schemas"]["CtaBlock"] | components["schemas"]["RelationCollectionBlock"] | components["schemas"]["FaqCollectionBlock"] | components["schemas"]["DownloadAssetBlock"] | components["schemas"]["ContactBlock"];
 /** @enum {string} */
         ContentBlockKind: "hero" | "body" | "media" | "featureGrid" | "evidence" | "cta" | "relationCollection" | "faqCollection" | "downloadAsset" | "contactBlock";
-ContentDiffChange: {
-            after: unknown | null;
-            before: unknown | null;
-            path: string;
-        };
-ContentDiffV2: {
-            /** Format: int64 */
-            baseRevision: number;
-            changes: components["schemas"]["ContentDiffChange"][];
-            /** Format: uuid */
-            contentId: string;
-            targetDraftVersion: number | null;
-            targetRevision: number | null;
-        };
 ContentDraftInput: {
             body: components["schemas"]["RichTextDocument"];
             /** @default false */
@@ -359,141 +484,4 @@ ContentDraftInput: {
             summary?: string | null;
             title: string;
         };
-ContentDraftV2: {
-            body?: components["schemas"]["TiptapDocument"] | null;
-            composition: components["schemas"]["PageComposition"];
-            /** Format: int64 */
-            draftVersion: number;
-            isPlaceholder: boolean;
-            kind: components["schemas"]["CmsContentKind"];
-            locale: string;
-            relations: components["schemas"]["ContentRelationReference"][];
-            /** @constant */
-            schemaVersion: 2;
-            seo: components["schemas"]["SeoInputV2"];
-            slug?: string | null;
-            summary?: string | null;
-            templateKey: components["schemas"]["ContentTemplateKey"];
-            title: string;
-            typeFields: components["schemas"]["ContentTypeFields"];
-        };
-ContentEntry: {
-            body: components["schemas"]["RichTextDocument"];
-            /** Format: int64 */
-            currentRevision: number;
-            /** Format: uuid */
-            id: string;
-            isPlaceholder: boolean;
-            kind: components["schemas"]["ContentKind"];
-            locale: string;
-            publishedRevision: number | null;
-            scheduledFor: string | null;
-            seo: components["schemas"]["SeoMetadata"];
-            slug: string;
-            status: components["schemas"]["PublicationStatus"];
-            summary: string | null;
-            title: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-/** @enum {string} */
-        ContentKind: "home" | "solution" | "technology" | "article" | "news" | "faq" | "caseStudy" | "download" | "company" | "legal" | "navigation" | "footer";
-ContentPage: {
-            items: components["schemas"]["ContentEntry"][];
-            nextCursor: string | null;
-        };
-ContentPreviewLink: {
-            /** Format: uuid */
-            contentId: string;
-            /** Format: date-time */
-            expiresAt: string;
-            /** Format: date-time */
-            issuedAt: string;
-            /** Format: int64 */
-            revision: number;
-            /** Format: uri */
-            readonly url: string;
-        };
-ContentPreviewResponse: {
-            content: components["schemas"]["PublicContentProjection"];
-            /** Format: date-time */
-            previewExpiresAt: string;
-        };
-ContentRecordV2: {
-            /** Format: date-time */
-            createdAt: string;
-            draft: components["schemas"]["ContentDraftV2"];
-            /** Format: uuid */
-            id: string;
-            latestRevision: number | null;
-            publishedRevision: number | null;
-            status: components["schemas"]["CmsPublicationStatusV2"];
-            /** Format: date-time */
-            updatedAt: string;
-            updatedBy: string;
-        };
-ContentRecordV2Page: {
-            counts: {
-                article?: number;
-                caseStudy?: number;
-                company?: number;
-                download?: number;
-                faq?: number;
-                footer?: number;
-                generalInformation?: number;
-                home?: number;
-                legal?: number;
-                navigation?: number;
-                news?: number;
-                page?: number;
-                solution?: number;
-                technology?: number;
-            };
-            items: components["schemas"]["ContentRecordV2"][];
-            nextCursor: string | null;
-            total: number;
-        };
-ContentRelationReference: {
-            /** Format: uuid */
-            id: string;
-            slot: string;
-            target: components["schemas"]["RelationTargetReference"];
-        };
-/** @enum {string} */
-        ContentRevisionKindV2: "manual" | "publish" | "restore";
-ContentRevisionV2: {
-            /** Format: uuid */
-            contentId: string;
-            /** Format: date-time */
-            createdAt: string;
-            createdBy: string;
-            document: components["schemas"]["ContentDraftV2"];
-            kind: components["schemas"]["ContentRevisionKindV2"];
-            reason: string;
-            /** Format: int64 */
-            revision: number;
-            /** Format: int64 */
-            sourceDraftVersion: number;
-        };
-ContentRevisionV2Page: {
-            items: components["schemas"]["ContentRevisionV2"][];
-            nextCursor: string | null;
-        };
-/** @enum {string} */
-        ContentSnapshotIntent: "manual" | "publish";
-ContentTemplateDefinition: {
-            allowedBlocks: components["schemas"]["ContentBlockKind"][];
-            bodyPolicy: components["schemas"]["CmsBodyPolicy"];
-            contentKind: components["schemas"]["CmsContentKind"];
-            key: components["schemas"]["ContentTemplateKey"];
-            requiredBlocks: components["schemas"]["ContentBlockKind"][];
-            routable: boolean;
-            routePattern: string | null;
-            singletonPerLocale: boolean;
-        };
-ContentTemplateDefinitionPage: {
-            items: components["schemas"]["ContentTemplateDefinition"][];
-        };
-/** @enum {string} */
-        ContentTemplateKey: "home" | "productIndex" | "productFamily" | "selector" | "compare" | "solutionIndex" | "solutionDetail" | "technologyIndex" | "technologyDetail" | "articleIndex" | "articleDetail" | "newsIndex" | "newsDetail" | "faqIndex" | "faqDetail" | "caseStudyIndex" | "caseStudyDetail" | "downloadIndex" | "downloadDetail" | "about" | "contact" | "rfqRouter" | "rfqForm" | "search" | "legal" | "navigation" | "footer" | "generalInformation";
 }

@@ -5,8 +5,7 @@ impl AppState {
         &self,
         product: &Product,
     ) -> Result<Vec<ValidationIssue>, ApiError> {
-        let pool = self.pool.as_ref().expect("checked by caller");
-        let mut connection = pool.acquire().await?;
+        let mut connection = self.pool.acquire().await?;
         self.postgres_product_publication_issues_on(&mut connection, product)
             .await
     }

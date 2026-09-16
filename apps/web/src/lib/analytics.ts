@@ -1,5 +1,5 @@
 import type { AnalyticsConsentReceipt, CreateAnalyticsEvent, JsonValue } from '@airtek/contracts'
-import { recordGuestVisit, submitAnalyticsConsent, submitAnalyticsEvent } from './api'
+import { newIdempotencyKey, recordGuestVisit, submitAnalyticsConsent, submitAnalyticsEvent } from './api'
 import type { PublicAnalyticsContext } from '@/types/content'
 
 export type AnalyticsEventName =
@@ -129,8 +129,7 @@ export function sanitizeAnalyticsProperties(
 }
 
 export function analyticsRuntimeDisabled(): boolean {
-  const contentPreview = typeof window !== 'undefined' && window.location.pathname === '/en/preview'
-  return contentPreview || (import.meta.env.DEV && import.meta.env.VITE_DISABLE_COOKIE_BANNER === 'true')
+  return import.meta.env.DEV && import.meta.env.VITE_DISABLE_COOKIE_BANNER === 'true'
 }
 
 export function currentAnalyticsConsent(): AnalyticsConsent | null {
@@ -324,7 +323,7 @@ export async function trackAnalyticsEvent(
     properties: sanitizeAnalyticsProperties(eventName, properties),
   }
   try {
-    return (await submitAnalyticsEvent(event)).accepted
+    return (await submitAnalyticsEvent(event, newIdempotencyKey())).accepted
   } catch {
     return false
   }

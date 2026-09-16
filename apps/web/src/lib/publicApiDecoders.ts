@@ -7,6 +7,7 @@ import type {
   ProductPage,
   SelectorResponse,
 } from '@airtek/contracts'
+import { parseOpenApiSchema } from '@airtek/contracts'
 import type { PublicContentProjection } from '@/types/projection'
 import { PUBLIC_PRODUCT_PAGE_SIZE } from './productPagination'
 import type {
@@ -90,6 +91,17 @@ function validResolvedLink(value: unknown): boolean {
     && typeof value.href === 'string'
 }
 
+function validResolvedMedia(value: unknown): boolean {
+  return isRecord(value)
+    && typeof value.assetId === 'string'
+    && typeof value.publicUrl === 'string'
+    && typeof value.downloadUrl === 'string'
+    && typeof value.originalName === 'string'
+    && typeof value.mediaType === 'string'
+    && Number.isInteger(value.byteSize)
+    && Number(value.byteSize) >= 0
+}
+
 export function publicContentProjectionResponse(value: unknown): PublicContentProjection {
   if (!isRecord(value)
     || value.schemaVersion !== 2
@@ -124,10 +136,12 @@ export function publicContentProjectionResponse(value: unknown): PublicContentPr
     || !Array.isArray(value.resolvedRelations)
     || !value.resolvedRelations.every(validResolvedRelation)
     || !Array.isArray(value.resolvedLinks)
-    || !value.resolvedLinks.every(validResolvedLink)) {
+    || !value.resolvedLinks.every(validResolvedLink)
+    || !Array.isArray(value.resolvedMedia)
+    || !value.resolvedMedia.every(validResolvedMedia)) {
     throw new Error('The server returned an invalid CMS V2 public projection.')
   }
-  return value as unknown as PublicContentProjection
+  return parseOpenApiSchema<PublicContentProjection>('PublicContentProjection', value)
 }
 
 function optionalPublicContentProjection(value: unknown): PublicContentProjection | null {
@@ -145,7 +159,7 @@ function productFamilyProjectionResponse(value: unknown): ProductFamilyProjectio
     || !Number.isInteger(value.sortOrder)) {
     throw new Error('The server returned an invalid product-family projection.')
   }
-  return value as unknown as ProductFamilyProjectionResponse
+  return parseOpenApiSchema<ProductFamilyProjectionResponse>('ProductFamilyPresentation', value)
 }
 
 export function siteBootstrapResponse(value: unknown): SiteBootstrapResponse {
@@ -229,7 +243,7 @@ export function publicDiscoveryResponse(value: unknown): PublicDiscoveryResponse
       || !Number.isFinite(Date.parse(entry.updatedAt))) {
       throw new Error('The server returned an invalid public discovery entry.')
     }
-    return entry as unknown as PublicDiscoveryEntryResponse
+    return parseOpenApiSchema<PublicDiscoveryEntryResponse>('DiscoveryEntry', entry)
   })
   return { generatedAt: value.generatedAt, entries }
 }
@@ -286,7 +300,7 @@ export function guestVisitResponse(value: unknown): GuestVisitResponse {
     || typeof value.retentionUntil !== 'string') {
     throw new Error('The server returned an invalid Guest visit record.')
   }
-  return value as unknown as GuestVisitResponse
+  return parseOpenApiSchema<GuestVisitResponse>('GuestVisit', value)
 }
 
 export function acceptedResponse(value: unknown): AcceptedResponse {
@@ -317,7 +331,7 @@ export function selectorResponse(value: unknown): SelectorResponse {
     || !value.explanations.every((item) => typeof item === 'string')) {
     throw new Error('The selector returned an invalid response.')
   }
-  return value as unknown as SelectorResponse
+  return parseOpenApiSchema<SelectorResponse>('SelectorResponse', value)
 }
 
 export function analyticsEventReceipt(value: unknown): AnalyticsEventReceipt {
@@ -339,7 +353,7 @@ export function analyticsConsentReceipt(value: unknown): AnalyticsConsentReceipt
     || typeof value.expiresAt !== 'string') {
     throw new Error('The server returned an invalid analytics consent receipt.')
   }
-  return value as unknown as AnalyticsConsentReceipt
+  return parseOpenApiSchema<AnalyticsConsentReceipt>('AnalyticsConsentReceipt', value)
 }
 
 export function productResponse(value: unknown): Product {
@@ -367,7 +381,7 @@ export function productResponse(value: unknown): Product {
     || !value.performanceCurves.every(validCurve)) {
     throw new Error('The server returned an invalid published product.')
   }
-  return value as unknown as Product
+  return parseOpenApiSchema<Product>('Product', value)
 }
 
 export function productPageResponse(value: unknown): ProductPage {

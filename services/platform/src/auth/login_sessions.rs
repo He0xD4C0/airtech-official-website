@@ -1,4 +1,6 @@
-async fn login(
+use super::*;
+
+pub(super) async fn login(
     State(state): State<AppState>,
     peer: Option<Extension<ConnectInfo<SocketAddr>>>,
     headers: HeaderMap,
@@ -66,7 +68,10 @@ async fn login(
     Ok(session_response(&state, issue, StatusCode::OK))
 }
 
-async fn session(State(state): State<AppState>, headers: HeaderMap) -> Result<Response, ApiError> {
+pub(super) async fn session(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Response, ApiError> {
     let principal = authenticate(&state, &headers).await?;
     let csrf_token = random_token();
     rotate_csrf(&state, &principal, &csrf_token).await?;
@@ -77,7 +82,10 @@ async fn session(State(state): State<AppState>, headers: HeaderMap) -> Result<Re
     Ok(session_refresh_response(&state, refreshed, csrf_token))
 }
 
-async fn logout(State(state): State<AppState>, headers: HeaderMap) -> Result<Response, ApiError> {
+pub(super) async fn logout(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Response, ApiError> {
     if cookie_value(&headers, SESSION_COOKIE).is_some() {
         match authenticate(&state, &headers).await {
             Ok(principal) => {
@@ -102,7 +110,7 @@ async fn logout(State(state): State<AppState>, headers: HeaderMap) -> Result<Res
     Ok(response)
 }
 
-async fn start_totp_enrollment(
+pub(super) async fn start_totp_enrollment(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
@@ -115,31 +123,17 @@ async fn start_totp_enrollment(
     let key = totp_encryption_key(&state)?;
     let secret = EnrollmentSecret::generate()?;
     let ciphertext = secret.seal(key, principal.user_id)?;
-    if let Some(pool) = &state.pool {
-        let result = sqlx::query(
+    let result = sqlx::query(
             "UPDATE users SET totp_secret_ciphertext=$1, updated_at=now() WHERE id=$2 AND totp_confirmed_at IS NULL",
         )
         .bind(&ciphertext)
         .bind(principal.user_id)
-        .execute(pool)
+        .execute(&state.pool)
         .await?;
-        if result.rows_affected() != 1 {
-            return Err(ApiError::conflict(
-                "TOTP is already enabled for this account.",
-            ));
-        }
-    } else {
-        let mut data = state.data.write().await;
-        let user = data
-            .admin_users
-            .get_mut(&principal.user_id)
-            .ok_or_else(|| ApiError::unauthorized("The admin account is unavailable."))?;
-        if user.totp_enabled {
-            return Err(ApiError::conflict(
-                "TOTP is already enabled for this account.",
-            ));
-        }
-        user.totp_secret_ciphertext = Some(ciphertext);
+    if result.rows_affected() != 1 {
+        return Err(ApiError::conflict(
+            "TOTP is already enabled for this account.",
+        ));
     }
     record_auth_audit(
         &state,
@@ -159,7 +153,7 @@ async fn start_totp_enrollment(
     }))
 }
 
-async fn confirm_totp_enrollment(
+pub(super) async fn confirm_totp_enrollment(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(request): Json<TotpCodeRequest>,
@@ -208,7 +202,7 @@ async fn confirm_totp_enrollment(
     }))
 }
 
-async fn regenerate_recovery_codes(
+pub(super) async fn regenerate_recovery_codes(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(request): Json<TotpCodeRequest>,
@@ -250,84 +244,51 @@ async fn regenerate_recovery_codes(
     }))
 }
 
-async fn list_sessions(
+pub(super) async fn list_sessions(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
     let principal = authenticate(&state, &headers).await?;
-    let now = Utc::now();
-    let mut sessions = if let Some(pool) = &state.pool {
-        sqlx::query(
-            r#"SELECT id, created_at, last_seen_at, expires_at
+    let mut sessions = sqlx::query(
+        r#"SELECT id, created_at, last_seen_at, expires_at
                FROM sessions WHERE user_id=$1 AND revoked_at IS NULL
                AND expires_at > now() AND last_seen_at > now() - interval '30 minutes'
                ORDER BY last_seen_at DESC"#,
-        )
-        .bind(principal.user_id)
-        .fetch_all(pool)
-        .await?
-        .into_iter()
-        .map(|row| {
-            let id: Uuid = row.try_get("id")?;
-            Ok(SessionSummary {
-                id,
-                current: id == principal.session_id,
-                created_at: row.try_get("created_at")?,
-                last_seen_at: row.try_get("last_seen_at")?,
-                expires_at: row.try_get("expires_at")?,
-            })
+    )
+    .bind(principal.user_id)
+    .fetch_all(&state.pool)
+    .await?
+    .into_iter()
+    .map(|row| {
+        let id: Uuid = row.try_get("id")?;
+        Ok(SessionSummary {
+            id,
+            current: id == principal.session_id,
+            created_at: row.try_get("created_at")?,
+            last_seen_at: row.try_get("last_seen_at")?,
+            expires_at: row.try_get("expires_at")?,
         })
-        .collect::<Result<Vec<_>, sqlx::Error>>()?
-    } else {
-        state
-            .data
-            .read()
-            .await
-            .admin_sessions
-            .values()
-            .filter(|session| {
-                session.user_id == principal.user_id
-                    && !session.revoked
-                    && session.expires_at > now
-                    && session.last_seen_at + Duration::minutes(SESSION_IDLE_MINUTES) > now
-            })
-            .map(|session| SessionSummary {
-                id: session.id,
-                current: session.id == principal.session_id,
-                created_at: session.created_at,
-                last_seen_at: session.last_seen_at,
-                expires_at: session.expires_at,
-            })
-            .collect()
-    };
+    })
+    .collect::<Result<Vec<_>, sqlx::Error>>()?;
     sessions.sort_by_key(|session| std::cmp::Reverse(session.last_seen_at));
     Ok(sensitive_json(sessions))
 }
 
-async fn revoke_session_by_id(
+pub(super) async fn revoke_session_by_id(
     State(state): State<AppState>,
     Path(session_id): Path<Uuid>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
     let principal = authenticate_with_csrf(&state, &headers).await?;
-    let revoked = if let Some(pool) = &state.pool {
-        sqlx::query(
-            "UPDATE sessions SET revoked_at=now() WHERE id=$1 AND user_id=$2 AND revoked_at IS NULL",
-        )
-        .bind(session_id)
-        .bind(principal.user_id)
-        .execute(pool)
-        .await?
-        .rows_affected()
-            == 1
-    } else {
-        let mut data = state.data.write().await;
-        data.admin_sessions
-            .get_mut(&session_id)
-            .filter(|session| session.user_id == principal.user_id && !session.revoked)
-            .map(|session| session.revoked = true)
-            .is_some()
-    };
+    let revoked = sqlx::query(
+        "UPDATE sessions SET revoked_at=now() WHERE id=$1 AND user_id=$2 AND revoked_at IS NULL",
+    )
+    .bind(session_id)
+    .bind(principal.user_id)
+    .execute(&state.pool)
+    .await?
+    .rows_affected()
+        == 1;
     if !revoked {
         return Err(ApiError::not_found("The active session was not found."));
     }

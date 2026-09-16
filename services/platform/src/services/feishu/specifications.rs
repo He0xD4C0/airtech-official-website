@@ -1,4 +1,6 @@
-fn validate_specifications(value: Option<&Value>, issues: &mut Vec<ValidationIssue>) {
+use super::*;
+
+pub(super) fn validate_specifications(value: Option<&Value>, issues: &mut Vec<ValidationIssue>) {
     let Some(value) = value else {
         return;
     };

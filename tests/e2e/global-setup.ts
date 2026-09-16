@@ -9,6 +9,7 @@ import {
   adminOrigin,
   adminSecondaryStorageStatePath,
   adminStorageStatePath,
+  adminTotpSecretPath,
   apiOrigin,
   browserCookiesForLocalGateway,
   isolatedStack,
@@ -17,6 +18,7 @@ import {
 } from './support/environment'
 import { totp } from './support/totp'
 import { cookieRequestHeader, mergeCookies, secureHostOnlyCookies } from './support/secure-cookie'
+import { upsertAndPublish } from './support/content-fixtures'
 
 async function seedAnalyticsProjection(): Promise<void> {
   const publicApi = await request.newContext({
@@ -63,6 +65,7 @@ async function seedAnalyticsProjection(): Promise<void> {
       ]
       for (const eventName of eventNames) {
         const event = await publicApi.post('/api/public/v1/analytics/events', {
+          headers: { 'Idempotency-Key': randomUUID() },
           data: {
             eventName,
             anonymousSessionId,
@@ -195,44 +198,6 @@ function v2DraftFromLegacy(payload: Record<string, unknown>): Record<string, unk
     throw new Error(`Unsupported legacy fixture kind: ${kind}`)
   }
   return draft
-}
-
-async function upsertAndPublish(
-  api: ApiContext,
-  csrf: string,
-  draft: Record<string, unknown>,
-): Promise<void> {
-  const listed = await api.get('/api/admin/v1/content?limit=100')
-  if (!listed.ok()) throw new Error(`Unable to inspect content fixtures (${listed.status()}): ${await listed.text()}`)
-  const listing = await listed.json() as { items: Array<Record<string, unknown>> }
-  let entry = listing.items.find((item) => {
-    const document = record(item.draft)
-    return document.kind === draft.kind
-      && (document.slug ?? null) === (draft.slug ?? null)
-      && document.locale === 'en'
-  })
-  if (!entry) {
-    const created = await api.post('/api/admin/v1/content', {
-      headers: {
-        'X-CSRF-Token': csrf,
-        'Idempotency-Key': randomUUID(),
-        'If-Match': '"draft-0"',
-      },
-      data: draft,
-    })
-    entry = await expectJson(created, `Unable to create ${String(draft.kind)} fixture`)
-  }
-  if (entry.status === 'published' && entry.publishedRevision != null) return
-  const document = record(entry.draft)
-  const published = await api.post(`/api/admin/v1/content/${String(entry.id)}/snapshots`, {
-    headers: {
-      'X-CSRF-Token': csrf,
-      'Idempotency-Key': randomUUID(),
-      'If-Match': `"draft-${Number(document.draftVersion)}"`,
-    },
-    data: { intent: 'publish', reason: 'Seed development fixture for the isolated E2E stack' },
-  })
-  await expectJson(published, `Unable to publish ${String(draft.kind)} fixture`)
 }
 
 async function createAndPublishContent(
@@ -433,6 +398,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
       throw new Error(`Unable to start E2E TOTP enrollment (${enrollment.status()}): ${await enrollment.text()}`)
     }
     const { secret } = await enrollment.json() as { secret: string }
+    await writeFile(adminTotpSecretPath, `${secret}\n`, { encoding: 'utf8', mode: 0o600 })
     const confirmation = await api.post('/api/admin/v1/auth/totp/confirm', {
       headers: { 'X-CSRF-Token': csrf },
       data: { code: totp(secret) },

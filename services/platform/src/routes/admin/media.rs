@@ -1,78 +1,85 @@
-use axum::body::Bytes;
-use crate::services::media;
+use super::*;
+
+pub(super) use crate::{
+    models::MediaAsset,
+    services::{
+        media,
+        media_assets::{self, MediaAssetFilter},
+    },
+};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct MediaReviewRequest {
-    status: String,
-    reason: String,
+pub(super) struct MediaAssetListQuery {
+    pub(super) cursor: Option<String>,
+    pub(super) limit: Option<usize>,
+    pub(super) q: Option<String>,
 }
 
-impl MediaReviewRequest {
-    fn validated_reason(&self) -> Result<&str, ApiError> {
-        let reason = self.reason.trim();
-        if reason.is_empty() {
-            return Err(ApiError::bad_request(
-                "A non-empty reason is required for every human media review decision.",
-            ));
-        }
-        if reason.chars().count() > 500 {
-            return Err(ApiError::bad_request(
-                "Media review reasons must be 500 characters or fewer.",
-            ));
-        }
-        Ok(reason)
-    }
+pub(super) async fn list_media_assets(
+    State(state): State<AppState>,
+    Extension(principal): Extension<AdminPrincipal>,
+    Query(query): Query<MediaAssetListQuery>,
+) -> Result<Json<media_assets::MediaAssetPage>, ApiError> {
+    require_media_read(&principal)?;
+    let filter = MediaAssetFilter::parse(query.q)?;
+    Ok(Json(
+        media_assets::list_media_assets(
+            &state,
+            filter,
+            CursorQuery {
+                cursor: query.cursor,
+                limit: query.limit,
+            },
+        )
+        .await?,
+    ))
 }
 
-async fn upload_media_asset(
+pub(super) async fn upload_media_asset(
     State(state): State<AppState>,
     Extension(principal): Extension<AdminPrincipal>,
     headers: HeaderMap,
-    body: Bytes,
+    multipart: Multipart,
 ) -> Result<Response, ApiError> {
     require_media_write(&principal)?;
-    let content_type = headers
-        .get(header::CONTENT_TYPE)
-        .and_then(|value| value.to_str().ok())
-        .map(str::to_owned);
+    let idempotency_key = crate::idempotency::idempotency_key(&headers)?;
     let asset = media::upload_media_asset(
         &state,
         &principal.email,
         Uuid::new_v4(),
-        content_type.as_deref(),
-        &body,
+        &idempotency_key,
+        multipart,
     )
     .await?;
     Ok(crate::routes::accepted(StatusCode::CREATED, asset))
 }
 
-async fn review_media_asset(
+pub(super) async fn get_media_asset(
     State(state): State<AppState>,
     Extension(principal): Extension<AdminPrincipal>,
     Path(asset_id): Path<Uuid>,
-    payload: Result<Json<MediaReviewRequest>, JsonRejection>,
-) -> Result<Json<MediaAssetSummary>, ApiError> {
-    require_media_write(&principal)?;
-    let Json(request) = payload.map_err(|_| {
-        ApiError::bad_request(
-            "Media review decisions require a status and a non-empty human review reason.",
-        )
-    })?;
-    let reason = request.validated_reason()?;
-    let asset = media::review_media_asset(
-        &state,
-        &principal.email,
-        Uuid::new_v4(),
-        asset_id,
-        &request.status,
-        Some(reason),
-    )
-    .await?;
-    Ok(Json(asset))
+) -> Result<Json<MediaAsset>, ApiError> {
+    require_media_read(&principal)?;
+    let pool = &state.pool;
+    Ok(Json(
+        crate::services::media_assets::load_media_asset(pool, asset_id).await?,
+    ))
 }
 
-fn require_media_write(principal: &AdminPrincipal) -> Result<(), ApiError> {
+pub(super) async fn list_media_references(
+    State(state): State<AppState>,
+    Extension(principal): Extension<AdminPrincipal>,
+    Path(asset_id): Path<Uuid>,
+    Query(query): Query<CursorQuery>,
+) -> Result<Json<CursorPage<crate::models::MediaAssetReference>>, ApiError> {
+    require_media_read(&principal)?;
+    Ok(Json(
+        crate::services::media_assets::list_media_references(&state, asset_id, query).await?,
+    ))
+}
+
+pub(super) fn require_media_write(principal: &AdminPrincipal) -> Result<(), ApiError> {
     if principal.has_permission("media.write") {
         Ok(())
     } else {
@@ -82,25 +89,12 @@ fn require_media_write(principal: &AdminPrincipal) -> Result<(), ApiError> {
     }
 }
 
-#[cfg(test)]
-mod media_review_request_tests {
-    use super::*;
-
-    #[test]
-    fn clean_and_quarantine_requests_require_a_trimmed_non_empty_reason() {
-        assert!(serde_json::from_str::<MediaReviewRequest>(r#"{"status":"clean"}"#).is_err());
-        for status in ["clean", "quarantined"] {
-            let blank = MediaReviewRequest {
-                status: status.to_owned(),
-                reason: " \n\t ".to_owned(),
-            };
-            assert!(blank.validated_reason().is_err());
-
-            let valid = MediaReviewRequest {
-                status: status.to_owned(),
-                reason: "  Human review evidence  ".to_owned(),
-            };
-            assert_eq!(valid.validated_reason().unwrap(), "Human review evidence");
-        }
+pub(super) fn require_media_read(principal: &AdminPrincipal) -> Result<(), ApiError> {
+    if principal.has_permission("media.write") || principal.has_permission("content.read") {
+        Ok(())
+    } else {
+        Err(ApiError::forbidden(
+            "The `content.read` or `media.write` permission is required.",
+        ))
     }
 }

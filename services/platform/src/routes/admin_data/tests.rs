@@ -1,10 +1,10 @@
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod cases {
+    use super::super::*;
     use crate::config::Config;
 
     #[test]
-    fn invitation_replay_is_encrypted_and_bound_to_the_idempotent_request() {
+    pub(super) fn invitation_replay_is_encrypted_and_bound_to_the_idempotent_request() {
         let config = Config::for_test();
         let key = config
             .invitation_replay_encryption_key

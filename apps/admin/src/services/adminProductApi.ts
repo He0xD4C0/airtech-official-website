@@ -1,4 +1,5 @@
 import { collectCursorPages, findInCursorPages } from './cursorPagination'
+import type { AdminProductPage, ProductFamily, ProductPublicationReport, PublicationStatus } from '@airtek/contracts'
 import { adminContractClient, cursorQuery, randomRequestId, revisionEtag } from './adminApiTransport'
 import type {
   BackendProduct,
@@ -13,15 +14,21 @@ import type {
 
 export interface ProductListRequest extends CursorPageRequest {
   q?: string
+  family?: ProductFamily
+  status?: PublicationStatus
+  dataState?: 'verified' | 'pending'
 }
 
 export const adminProductApi = {
-  async listProducts(request: ProductListRequest = {}): Promise<CursorPage<BackendProduct>> {
+  async listProducts(request: ProductListRequest = {}): Promise<AdminProductPage> {
     const result = await adminContractClient.get('/api/admin/v1/products', {
       parameters: {
         query: {
           ...cursorQuery(request),
           ...(request.q?.trim() ? { q: request.q.trim() } : {}),
+          ...(request.family ? { family: request.family } : {}),
+          ...(request.status ? { status: request.status } : {}),
+          ...(request.dataState ? { dataState: request.dataState } : {}),
         },
       },
     })
@@ -31,6 +38,12 @@ export const adminProductApi = {
   async getProduct(id: string): Promise<BackendProduct> {
     const result = await adminContractClient.get('/api/admin/v1/products/{id}', { parameters: { path: { id } } })
     return result.data
+  },
+
+  async getProductPublicationReadiness(id: string): Promise<ProductPublicationReport> {
+    return (await adminContractClient.get('/api/admin/v1/products/{id}/publication-readiness', {
+      parameters: { path: { id } },
+    })).data
   },
 
   findProduct: (id: string) => findInCursorPages(
@@ -90,6 +103,12 @@ export const adminProductApi = {
       parameters: { query: cursorQuery(pagination) },
     })
     return result.data
+  },
+
+  async getProductImport(id: string): Promise<ProductImportResult> {
+    return (await adminContractClient.get('/api/admin/v1/products/imports/{id}', {
+      parameters: { path: { id } },
+    })).data
   },
 
   async importProductMaster(csv: string, mappingVersion?: string): Promise<ProductImportAccepted> {

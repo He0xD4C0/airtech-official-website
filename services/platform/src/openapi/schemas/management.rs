@@ -213,6 +213,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "locale",
                 "status",
                 "revision",
+                "managerUserId",
                 "roles",
                 "totpEnabled",
                 "invitedAt",
@@ -227,6 +228,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "locale": {"type": "string"},
                 "status": string_enum(&["invited", "active", "disabled"]),
                 "revision": revision(),
+                "managerUserId": nullable(uuid()),
                 "roles": array(json!({"type": "string"})),
                 "totpEnabled": {"type": "boolean"},
                 "invitedAt": nullable(timestamp()),
@@ -240,7 +242,17 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         "UserAdminSummary".into(),
         json!({"allOf": [r("AdminUserRecord")]}),
     );
-    s.insert("AdminUserRecordPage".into(), page("AdminUserRecord"));
+    s.insert(
+        "AdminUserRecordPage".into(),
+        object(
+            &["items", "nextCursor", "total"],
+            json!({
+                "items": array(r("AdminUserRecord")),
+                "nextCursor": nullable(json!({"type": "string"})),
+                "total": {"type": "integer", "minimum": 0}
+            }),
+        ),
+    );
     s.insert(
         "UpdateAdminUser".into(),
         object(
@@ -250,6 +262,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "locale": {"type": "string"},
                 "status": string_enum(&["invited", "active", "disabled"]),
                 "roleKeys": array(json!({"type": "string"})),
+                "managerUserId": nullable(uuid()),
                 "reason": {"type": "string", "minLength": 10}
             }),
         ),
@@ -279,7 +292,17 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         "RoleDefinition".into(),
         json!({"allOf": [r("AdminRoleRecord")]}),
     );
-    s.insert("AdminRoleRecordPage".into(), page("AdminRoleRecord"));
+    s.insert(
+        "AdminRoleRecordPage".into(),
+        object(
+            &["items", "nextCursor", "total"],
+            json!({
+                "items": array(r("AdminRoleRecord")),
+                "nextCursor": nullable(json!({"type": "string"})),
+                "total": {"type": "integer", "minimum": 0}
+            }),
+        ),
+    );
     s.insert(
         "UpdateAdminRole".into(),
         object(

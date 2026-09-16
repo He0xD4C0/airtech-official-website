@@ -3,12 +3,7 @@ use super::*;
 impl AppState {
     /// Derive the database identifier used for a browser-provided anonymous
     /// session. PostgreSQL never stores the client UUID verbatim. The
-    /// in-memory adapter intentionally keeps the original ID for isolated unit
-    /// tests that do not have deployment secrets.
     pub(crate) fn analytics_storage_session_id(&self, external_id: Uuid) -> Result<Uuid, ApiError> {
-        if self.pool.is_none() {
-            return Ok(external_id);
-        }
         let secret = self
             .config
             .analytics_token_hmac_key
@@ -26,9 +21,7 @@ impl AppState {
         &self,
         receipt: &AnalyticsConsentReceipt,
     ) -> Result<(), ApiError> {
-        let Some(pool) = &self.pool else {
-            return Ok(());
-        };
+        let pool = &self.pool;
         let storage_session_id = self.analytics_storage_session_id(receipt.anonymous_session_id)?;
         sqlx::query(
             r#"INSERT INTO consent_records
@@ -53,9 +46,9 @@ impl AppState {
         &self,
         receipt_id: Uuid,
     ) -> Result<Option<AnalyticsConsentReceipt>, ApiError> {
-        if let Some(pool) = &self.pool {
-            let row = sqlx::query(
-                r#"SELECT requested.id, requested.anonymous_session_id,
+        let pool = &self.pool;
+        let row = sqlx::query(
+            r#"SELECT requested.id, requested.anonymous_session_id,
                           requested.policy_version, requested.analytics_allowed,
                           requested.granted_at, requested.expires_at
                    FROM consent_records requested
@@ -67,41 +60,21 @@ impl AppState {
                        ORDER BY latest.granted_at DESC, latest.id DESC
                        LIMIT 1
                      )"#,
-            )
-            .bind(receipt_id)
-            .fetch_optional(pool)
-            .await?;
-            return row
-                .map(|row| {
-                    Ok(AnalyticsConsentReceipt {
-                        consent_receipt: row.try_get("id")?,
-                        anonymous_session_id: row.try_get("anonymous_session_id")?,
-                        policy_version: row.try_get("policy_version")?,
-                        analytics_allowed: row.try_get("analytics_allowed")?,
-                        granted_at: row.try_get("granted_at")?,
-                        expires_at: row.try_get("expires_at")?,
-                    })
-                })
-                .transpose();
-        }
-
-        let data = self.data.read().await;
-        let requested = match data.analytics_consents.get(&receipt_id) {
-            Some(receipt) => receipt,
-            None => return Ok(None),
-        };
-        let latest = data
-            .analytics_consents
-            .values()
-            .filter(|candidate| candidate.anonymous_session_id == requested.anonymous_session_id)
-            .max_by(|left, right| {
-                left.granted_at
-                    .cmp(&right.granted_at)
-                    .then_with(|| left.consent_receipt.cmp(&right.consent_receipt))
-            });
-        Ok(latest
-            .filter(|latest| latest.consent_receipt == receipt_id)
-            .cloned())
+        )
+        .bind(receipt_id)
+        .fetch_optional(pool)
+        .await?;
+        row.map(|row| {
+            Ok(AnalyticsConsentReceipt {
+                consent_receipt: row.try_get("id")?,
+                anonymous_session_id: row.try_get("anonymous_session_id")?,
+                policy_version: row.try_get("policy_version")?,
+                analytics_allowed: row.try_get("analytics_allowed")?,
+                granted_at: row.try_get("granted_at")?,
+                expires_at: row.try_get("expires_at")?,
+            })
+        })
+        .transpose()
     }
 
     pub async fn persist_analytics_event(
@@ -120,43 +93,7 @@ impl AppState {
             .and_then(Value::as_str)
             .and_then(|value| Uuid::parse_str(value).ok())
             .ok_or_else(|| ApiError::bad_request("consentReceipt is invalid."))?;
-        let event_name = event
-            .get("eventName")
-            .and_then(Value::as_str)
-            .ok_or_else(|| ApiError::bad_request("eventName is invalid."))?
-            .to_owned();
-        let Some(pool) = &self.pool else {
-            let mut data = self.data.write().await;
-            let guest_visit_id = data
-                .guest_visits
-                .values()
-                .filter(|visit| {
-                    visit.anonymous_session_id == external_session_id
-                        && data.guest_visit_consent_records.get(&visit.id)
-                            == Some(&consent_record_id)
-                        && visit.retention_until > occurred_at
-                })
-                .max_by_key(|visit| visit.last_seen_at)
-                .map(|visit| visit.id)
-                .ok_or_else(|| {
-                    ApiError::validation(BTreeMap::from([(
-                        "anonymousSessionId".into(),
-                        vec![
-                            "Create the consented guest visit before sending analytics events."
-                                .into(),
-                        ],
-                    )]))
-                })?;
-            data.analytics_events.insert(
-                event_id,
-                StoredAnalyticsEvent {
-                    event_name,
-                    guest_visit_id,
-                    occurred_at,
-                },
-            );
-            return Ok(());
-        };
+        let pool = &self.pool;
         let storage_session_id = self.analytics_storage_session_id(external_session_id)?;
         let mut transaction = pool.begin().await?;
         let guest_visit_id = sqlx::query_scalar::<_, Uuid>(

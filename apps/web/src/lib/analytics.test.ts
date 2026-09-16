@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const apiMocks = vi.hoisted(() => ({
+  newIdempotencyKey: vi.fn(() => '11111111-1111-4111-8111-111111111111'),
   submitAnalyticsConsent: vi.fn(),
   submitAnalyticsEvent: vi.fn(),
   recordGuestVisit: vi.fn(),
@@ -9,7 +10,6 @@ const apiMocks = vi.hoisted(() => ({
 vi.mock('./api', () => apiMocks)
 import {
   analyticsConsentStorageKey,
-  analyticsRuntimeDisabled,
   anonymousAnalyticsSessionId,
   currentAnalyticsConsent,
   guestVisitAcquisition,
@@ -49,11 +49,6 @@ describe('consent-aware analytics', () => {
     setCurrentAnalyticsContext(undefined)
   })
 
-  it('disables all analytics on signed content previews', () => {
-    window.history.replaceState({}, '', '/en/preview?token=sensitive')
-    expect(analyticsRuntimeDisabled()).toBe(true)
-  })
-
   it('keeps an anonymous session and server receipt off until explicit consent', async () => {
     expect(currentAnalyticsConsent()).toBeNull()
     expect(anonymousAnalyticsSessionId()).toBeUndefined()
@@ -80,14 +75,6 @@ describe('consent-aware analytics', () => {
     expect(window.sessionStorage.length).toBe(0)
   })
 
-  it('does not request consent or analytics while preview mode disables tracking', async () => {
-    window.history.replaceState({}, '', '/en/preview?token=sensitive')
-    expect(await setAnalyticsConsent('accepted')).toBe(false)
-    expect(apiMocks.submitAnalyticsConsent).not.toHaveBeenCalled()
-    expect(apiMocks.submitAnalyticsEvent).not.toHaveBeenCalled()
-    expect(window.sessionStorage.length).toBe(0)
-  })
-
   it('binds every accepted event to the current anonymous session and receipt', async () => {
     window.history.replaceState({}, '', '/en/products')
     await setAnalyticsConsent('accepted')
@@ -103,7 +90,7 @@ describe('consent-aware analytics', () => {
       anonymousSessionId: expect.any(String),
       consentReceipt: expect.any(String),
       properties: { filterName: 'family', resultCount: 2 },
-    }))
+    }), expect.stringMatching(/^[0-9a-f-]{36}$/u))
   })
 
   it('sanitizes acquisition data and omits unapproved UTM or query fields', () => {
@@ -130,7 +117,7 @@ describe('consent-aware analytics', () => {
         contentId: '792406a9-2f19-425e-8508-78a205c0c764',
         publishedRevision: 3,
       },
-    }))
+    }), expect.stringMatching(/^[0-9a-f-]{36}$/u))
     expect(apiMocks.recordGuestVisit).toHaveBeenCalledTimes(1)
   })
 

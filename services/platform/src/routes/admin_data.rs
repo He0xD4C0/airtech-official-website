@@ -16,7 +16,6 @@ use ring::{
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
-use sqlx::Row;
 use uuid::Uuid;
 use zeroize::Zeroize;
 
@@ -28,18 +27,22 @@ use crate::{
         begin as begin_idempotency, idempotency_key as parse_idempotency_key, IdempotencyOutcome,
     },
     models::{
-        AdminProductDetail, AdminRoleRecord, AdminUserRecord, AuditEvent, CursorPage, DataClass,
-        GuestSourceDaily, GuestVisitAggregate, InviteAdminUser, ProductImportRequest,
-        ProductImportResult, ProductPresentation, ProductPrivatePricing, UpdateAdminRole,
-        UpdateAdminUser, UpdateProductPresentation, UserInvitation,
+        AdminProductDetail, AdminRoleRecord, AdminUserRecord, AuditEvent, CursorPage,
+        GuestSourceDaily, InviteAdminUser, ProductImportRequest, ProductImportResult,
+        UpdateAdminRole, UpdateAdminUser, UpdateProductPresentation, UserInvitation,
     },
-    pagination::{
-        cursor_limit, decode_scoped_cursor, encode_scoped_cursor, paginate_by_id, CursorQuery,
-    },
+    pagination::CursorQuery,
     routes::{actor, etag, parse_if_match},
-    services::product_import::{
-        load_product_import_result as load_stored_product_import, parse_product_master,
-        stage_and_queue_product_import,
+    services::{
+        admin_products::{load_admin_product_detail, overlay_product_presentation},
+        identity::{
+            load_admin_role, load_admin_role_in_transaction, load_admin_user,
+            load_admin_user_in_transaction, validate_roles,
+        },
+        product_import::{
+            load_product_import_result as load_stored_product_import, parse_product_master,
+            stage_and_queue_product_import,
+        },
     },
     state::AppState,
 };
@@ -59,7 +62,6 @@ pub fn router() -> Router<AppState> {
             "/products/{id}/presentation",
             patch(update_product_presentation),
         )
-        .route("/analytics/visits", get(list_guest_visits))
         .route("/analytics/sources", get(list_guest_sources))
         .route("/users", get(list_users))
         .route("/users/{id}", get(get_user).patch(update_user))
@@ -93,6 +95,29 @@ struct AnalyticsQuery {
     limit: Option<usize>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct IdentityListQuery {
+    cursor: Option<String>,
+    limit: Option<usize>,
+    q: Option<String>,
+    status: Option<String>,
+}
+
+fn identity_query_text(value: Option<String>) -> Result<Option<String>, ApiError> {
+    let value = value
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty());
+    if value
+        .as_ref()
+        .is_some_and(|value| value.chars().count() > 200)
+    {
+        Err(ApiError::bad_request("q must not exceed 200 characters."))
+    } else {
+        Ok(value)
+    }
+}
+
 impl AnalyticsQuery {
     fn pagination(&self) -> CursorQuery {
         CursorQuery {
@@ -102,25 +127,36 @@ impl AnalyticsQuery {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct AnalyticsCursor {
-    bucket_date: chrono::NaiveDate,
-    dimension_hash: Vec<u8>,
-}
-
-include!("admin_data/product_imports.rs");
-include!("admin_data/product_presentation.rs");
-include!("admin_data/analytics.rs");
-include!("admin_data/users.rs");
-include!("admin_data/roles.rs");
-include!("admin_data/invitations.rs");
-include!("admin_data/product_loading.rs");
-include!("admin_data/identity_storage.rs");
-include!("admin_data/analytics_memory.rs");
-include!("admin_data/audit.rs");
-include!("admin_data/product_validation.rs");
-include!("admin_data/invitation_replay.rs");
-include!("admin_data/analytics_pagination.rs");
-include!("admin_data/response_helpers.rs");
-include!("admin_data/tests.rs");
+#[path = "admin_data/product_imports.rs"]
+mod product_imports;
+use product_imports::*;
+#[path = "admin_data/product_presentation.rs"]
+mod product_presentation;
+use product_presentation::*;
+#[path = "admin_data/analytics.rs"]
+mod analytics;
+use analytics::*;
+#[path = "admin_data/users.rs"]
+mod users;
+use users::*;
+#[path = "admin_data/roles.rs"]
+mod roles;
+use roles::*;
+#[path = "admin_data/invitations.rs"]
+mod invitations;
+use invitations::*;
+#[path = "admin_data/audit.rs"]
+mod audit;
+use audit::*;
+#[path = "admin_data/product_validation.rs"]
+mod product_validation;
+use product_validation::*;
+#[path = "admin_data/invitation_replay.rs"]
+mod invitation_replay;
+use invitation_replay::*;
+#[path = "admin_data/response_helpers.rs"]
+mod response_helpers;
+use response_helpers::*;
+#[cfg(test)]
+#[path = "admin_data/tests.rs"]
+mod tests;

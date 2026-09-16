@@ -6,6 +6,74 @@
 import type { components } from '../components'
 
 export interface SchemasPart03 {
+LinkTargetContent: {
+            /** Format: uuid */
+            contentId: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            targetType: "content";
+        };
+LinkTargetExternal: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            targetType: "external";
+            /** Format: uri */
+            url: string;
+        };
+LinkTargetReference: components["schemas"]["LinkTargetContent"] | components["schemas"]["LinkTargetRoute"] | components["schemas"]["LinkTargetExternal"];
+LinkTargetRoute: {
+            path: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            targetType: "route";
+        };
+LoginRequest: {
+            /** Format: email */
+            email: string;
+            otp?: string | null;
+            /** Format: password */
+            password: string;
+        };
+MediaAsset: {
+            byteSize: number;
+            /** Format: date-time */
+            createdAt: string;
+            downloadUrl: string;
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            mediaType: "image/png" | "image/jpeg" | "image/webp";
+            originalName: string;
+            publicUrl: string;
+            sha256: string;
+            uploadedBy: string;
+        };
+MediaAssetPage: {
+            items: components["schemas"]["MediaAsset"][];
+            nextCursor: string | null;
+            total: number;
+        };
+MediaAssetReference: {
+            /** Format: uuid */
+            contentId: string;
+            /** Format: int64 */
+            contentRevision: number;
+            contentStatus: string;
+            contentTitle: string;
+            /** @enum {string} */
+            dependencyKind: "mediaInline" | "mediaDownload";
+            referencePath: string;
+        };
+MediaAssetReferencePage: {
+            items: components["schemas"]["MediaAssetReference"][];
+            nextCursor: string | null;
+        };
 MediaBlock: {
             caption?: string | null;
             /** Format: uuid */
@@ -25,43 +93,6 @@ MediaUseReference: {
             asset: components["schemas"]["AssetVersionReference"];
             decorative: boolean;
         };
-MigrationPreflightCounts: {
-            contentEntries: number;
-            contentRevisions: number;
-            generalInformationEntries: number;
-            mediaAssets: number;
-            mediaReferences: number;
-            newsEntries: number;
-            publicRoutes: number;
-            relations: number;
-        };
-MigrationPreflightIssue: {
-            code: components["schemas"]["MigrationPreflightIssueCode"];
-            entityId?: string | null;
-            jsonPath?: string | null;
-            message: string;
-            revision?: number | null;
-            severity: components["schemas"]["MigrationPreflightSeverity"];
-            source: components["schemas"]["MigrationPreflightSource"];
-        };
-/** @enum {string} */
-        MigrationPreflightIssueCode: "invalidLegacyPayload" | "unsupportedContentKind" | "unsupportedTemplate" | "embeddedPageSlots" | "unknownBlock" | "invalidTiptapDocument" | "typeFieldMismatch" | "invalidRelation" | "missingRelationTarget" | "relationHistoryUnavailable" | "missingMediaAsset" | "missingMediaVersion" | "duplicatePublicPath" | "missingPublicRoute" | "routeOwnershipMismatch" | "canonicalPathMismatch" | "scheduledPublicationUnsupported" | "revisionConversionFailed";
-MigrationPreflightReport: {
-            blockingIssueCount: number;
-            canMigrate: boolean;
-            convertible: components["schemas"]["MigrationPreflightCounts"];
-            /** Format: date-time */
-            generatedAt: string;
-            issues: components["schemas"]["MigrationPreflightIssue"][];
-            scanned: components["schemas"]["MigrationPreflightCounts"];
-            /** @constant */
-            targetSchemaVersion: 2;
-            warningCount: number;
-        };
-/** @enum {string} */
-        MigrationPreflightSeverity: "warning" | "blocking";
-/** @enum {string} */
-        MigrationPreflightSource: "content" | "contentRevision" | "news" | "generalInformation" | "media" | "relation" | "route";
 MissingAssetReference: {
             assetType: string;
             sourceReference: string;
@@ -111,7 +142,7 @@ OpenApiDocument: {
             [key: string]: unknown;
         };
 /** @enum {string} */
-        OperationKind: "migrationPreflight" | "migrationApply" | "backup" | "restoreValidate" | "retentionApply" | "searchReindex" | "cacheInvalidate" | "feishuSync" | "productImport";
+        OperationKind: "productImport";
 /** @enum {string} */
         OperationStatus: "queued" | "running" | "completed" | "failed";
 PageComposition: {
@@ -146,11 +177,15 @@ ProblemDetails: {
                 [key: string]: string[];
             };
             instance?: string | null;
+            issues?: components["schemas"]["DependencyProblemIssue"][];
             /** Format: uuid */
             requestId: string;
             status: number;
             title: string;
-            /** Format: uri */
+            /**
+             * Format: uri
+             * @description Stable application problem URIs are enumerated by StableProblemType. Numeric fallback URIs remain valid for generic protocol failures.
+             */
             type: string;
         };
 Product: {
@@ -196,6 +231,10 @@ ProductContext: {
             /** Format: int64 */
             publishedRevision: number;
             stableId: string;
+        };
+ProductFacetCount: {
+            count: number;
+            value: string;
         };
 /** @enum {string} */
         ProductFamily: "centrifugal" | "axial" | "crossFlow" | "inlineDuct" | "motors";
@@ -258,7 +297,7 @@ ProductImportRowError: {
 ProductImportRun: components["schemas"]["ProductImportResult"];
 ProductPage: {
             items: components["schemas"]["Product"][];
-            /** @description Opaque base64url v1 keyset cursor bound to the filters used for this page. */
+            /** @description Opaque base64url v2 keyset cursor bound to the active filters; v1 is accepted for one compatibility release. */
             nextCursor: string | null;
         };
 ProductPresentation: {
@@ -284,6 +323,17 @@ ProductPrivatePricing: {
             productId: string;
             sourceRowNumber: number;
             stableId: string;
+        };
+/** @enum {string} */
+        ProductPublicationAction: "publish";
+ProductPublicationReport: {
+            allowedActions: components["schemas"]["ProductPublicationAction"][];
+            /** Format: int64 */
+            currentRevision: number;
+            issues: components["schemas"]["ValidationIssue"][];
+            /** Format: uuid */
+            productId: string;
+            ready: boolean;
         };
 ProductRfqContext: {
             additionalMessage?: string;
@@ -358,6 +408,7 @@ PublicContentProjection: {
             /** Format: int64 */
             publishedRevision: number;
             resolvedLinks: components["schemas"]["ResolvedLinkTarget"][];
+            resolvedMedia: components["schemas"]["ResolvedMedia"][];
             resolvedRelations: components["schemas"]["ResolvedRelationCard"][];
             /** @constant */
             schemaVersion: 2;
@@ -441,58 +492,4 @@ ResolvedLinkTarget: {
             contentId: string;
             href: string;
         };
-ResolvedRelationCard: {
-            /** @enum {string} */
-            entityType: "content" | "product";
-            eyebrow: string | null;
-            href: string;
-            /** Format: uuid */
-            relationId: string;
-            summary: string | null;
-            tags: string[];
-            title: string;
-        };
-RestoreContentRevisionRequest: {
-            reason: string;
-        };
-RevisionRequest: {
-            reason: string;
-            /** Format: int64 */
-            revision: number;
-        };
-RfqDutyPoint: {
-            airflow: number;
-            /** @enum {string} */
-            airflowUnit: "m3/h" | "m³/h" | "CFM" | "cfm";
-            pressure: number;
-            /** @enum {string} */
-            pressureUnit: "Pa" | "pa" | "kPa" | "kpa" | "inH2O" | "inh2o";
-        };
-RfqElectricalContext: {
-            frequencyHz?: number;
-            voltage?: string;
-        };
-/** @enum {string} */
-        RfqJourney: "product" | "selection" | "project" | "replacement";
-RfqQuantity: number | string;
-RfqSubmission: {
-            /** Format: uuid */
-            id: string;
-            reference: string;
-            request: components["schemas"]["CreateRfqRequest"];
-            /** Format: date-time */
-            retentionUntil: string;
-            status: string;
-            /** Format: date-time */
-            submittedAt: string;
-        };
-RfqSubmissionPage: {
-            items: components["schemas"]["RfqSubmission"][];
-            nextCursor: string | null;
-        };
-RichTextDocument: {
-            doc: unknown;
-            schemaVersion: number;
-        };
-RoleDefinition: components["schemas"]["AdminRoleRecord"];
 }

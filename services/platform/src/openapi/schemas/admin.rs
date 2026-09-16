@@ -117,10 +117,42 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         json!({"fieldPath": {"type": "string"}, "baseValue": nullable(json!({})), "localValue": nullable(json!({})), "incomingValue": nullable(json!({})), "sourceOwned": {"type": "boolean"}})
     ));
     s.insert("SyncConflict".into(), object(
-        &["id", "syncRunId", "productId", "sourceRecordId", "diffs", "resolvedAt", "resolution"],
-        json!({"id": uuid(), "syncRunId": uuid(), "productId": nullable(uuid()), "sourceRecordId": {"type": "string"}, "diffs": array(r("FieldDiff")), "resolvedAt": nullable(timestamp()), "resolution": nullable(json!({"type": "string"}))})
+        &["id", "syncRunId", "productId", "sourceRecordId", "diffs", "resolvedAt", "resolution", "revision"],
+        json!({"id": uuid(), "syncRunId": uuid(), "productId": nullable(uuid()), "sourceRecordId": {"type": "string"}, "diffs": array(r("FieldDiff")), "resolvedAt": nullable(timestamp()), "resolution": nullable(json!({"type": "string"})), "revision": revision()})
     ));
-    s.insert("SyncConflictPage".into(), page("SyncConflict"));
+    s.insert("SyncConflictPage".into(), object(
+        &["items", "nextCursor", "total"],
+        json!({"items": array(r("SyncConflict")), "nextCursor": nullable(json!({"type": "string"})), "total": {"type": "integer", "minimum": 0}})
+    ));
+    s.insert(
+        "StagingValidationStatus".into(),
+        string_enum(&["pending", "valid", "invalid", "conflicted"]),
+    );
+    s.insert("StagingRecord".into(), object(
+        &["id", "syncRunId", "sourceSnapshotId", "sourceRecordId", "validationStatus", "normalizedPayload", "validationErrors", "createdAt"],
+        json!({"id": uuid(), "syncRunId": uuid(), "sourceSnapshotId": uuid(), "sourceRecordId": {"type": "string"}, "validationStatus": r("StagingValidationStatus"), "normalizedPayload": nullable(json!({})), "validationErrors": array(r("ValidationIssue")), "createdAt": timestamp()})
+    ));
+    s.insert("StagingRecordPage".into(), object(
+        &["items", "nextCursor", "total"],
+        json!({"items": array(r("StagingRecord")), "nextCursor": nullable(json!({"type": "string"})), "total": {"type": "integer", "minimum": 0}})
+    ));
+    s.insert("FeishuConnectionStatus".into(), object(
+        &["connectorId", "displayName", "configured", "enabled", "runnable", "unavailableReason", "updatedAt", "latestSync"],
+        json!({"connectorId": nullable(uuid()), "displayName": nullable(json!({"type": "string"})), "configured": {"type": "boolean"}, "enabled": {"type": "boolean"}, "runnable": {"type": "boolean"}, "unavailableReason": nullable(json!({"type": "string"})), "updatedAt": nullable(timestamp()), "latestSync": nullable(r("SyncRun"))})
+    ));
+    s.insert("SyncMapping".into(), object(
+        &["id", "connectorId", "version", "mapping", "schemaVersion", "active", "createdAt"],
+        json!({"id": uuid(), "connectorId": uuid(), "version": {"type": "string"}, "mapping": {}, "schemaVersion": {"type": "integer"}, "active": {"type": "boolean"}, "createdAt": timestamp()})
+    ));
+    s.insert("SyncMappingPage".into(), page("SyncMapping"));
+    s.insert(
+        "SyncConflictDecision".into(),
+        string_enum(&["acceptIncoming", "keepVerifiedLocal"]),
+    );
+    s.insert("ResolveSyncConflictRequest".into(), object(
+        &["decision", "evidenceReference", "reason", "expiresAt"],
+        json!({"decision": r("SyncConflictDecision"), "evidenceReference": nullable(json!({"type": "string", "minLength": 1})), "reason": {"type": "string", "minLength": 10, "maxLength": 2000}, "expiresAt": nullable(timestamp())})
+    ));
     s.insert("CreateTemporaryOverride".into(), object(
         &["productId", "fieldPath", "value", "reason"],
         json!({"productId": uuid(), "fieldPath": {"type": "string", "minLength": 1}, "value": {}, "reason": {"type": "string", "minLength": 10}, "expiresAt": nullable(timestamp())})
@@ -130,36 +162,15 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         json!({"id": uuid(), "productId": uuid(), "fieldPath": {"type": "string"}, "value": {}, "reason": {"type": "string"}, "createdAt": timestamp(), "expiresAt": timestamp(), "expired": {"type": "boolean"}})
     ));
     s.insert("TemporaryOverridePage".into(), page("TemporaryOverride"));
-    s.insert(
-        "OperationKind".into(),
-        string_enum(&[
-            "migrationPreflight",
-            "migrationApply",
-            "backup",
-            "restoreValidate",
-            "retentionApply",
-            "searchReindex",
-            "cacheInvalidate",
-            "feishuSync",
-            "productImport",
-        ]),
-    );
+    s.insert("OperationKind".into(), string_enum(&["productImport"]));
     s.insert(
         "OperationStatus".into(),
         string_enum(&["queued", "running", "completed", "failed"]),
     );
-    s.insert("CreateOperationRequest".into(), object(
-        &["kind", "reason", "confirmation"],
-        json!({"kind": r("OperationKind"), "reason": {"type": "string", "minLength": 10}, "confirmation": {"type": "string"}})
-    ));
     s.insert("BackgroundOperation".into(), object(
         &["id", "kind", "status", "reason", "createdAt", "updatedAt", "result"],
         json!({"id": uuid(), "kind": r("OperationKind"), "status": r("OperationStatus"), "reason": {"type": "string"}, "createdAt": timestamp(), "updatedAt": timestamp(), "result": nullable(json!({}))})
     ));
-    s.insert(
-        "BackgroundOperationPage".into(),
-        page("BackgroundOperation"),
-    );
     s.insert(
         "PlatformSettings".into(),
         object(
@@ -195,10 +206,13 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         }),
     );
     s.insert("AuditEvent".into(), object(
-        &["id", "actor", "action", "entityType", "entityId", "before", "after", "reason", "requestId", "occurredAt"],
-        json!({"id": uuid(), "actor": {"type": "string"}, "action": {"type": "string"}, "entityType": {"type": "string"}, "entityId": nullable(uuid()), "before": nullable(json!({})), "after": nullable(json!({})), "reason": nullable(json!({"type": "string"})), "requestId": uuid(), "occurredAt": timestamp()})
+        &["id", "actor", "action", "entityType", "entityId", "before", "after", "reason", "currentVersion", "requestId", "occurredAt"],
+        json!({"id": uuid(), "actor": {"type": "string"}, "action": {"type": "string"}, "entityType": {"type": "string"}, "entityId": nullable(uuid()), "before": nullable(json!({})), "after": nullable(json!({})), "reason": nullable(json!({"type": "string"})), "currentVersion": nullable(json!({"type": "integer", "minimum": 0})), "requestId": uuid(), "occurredAt": timestamp()})
     ));
-    s.insert("AuditEventPage".into(), page("AuditEvent"));
+    s.insert("AuditEventPage".into(), object(
+        &["items", "nextCursor", "total"],
+        json!({"items": array(r("AuditEvent")), "nextCursor": nullable(json!({"type": "string"})), "total": {"type": "integer", "minimum": 0}})
+    ));
     s.insert(
         "AnalyticsOverviewRange".into(),
         object(
@@ -239,6 +253,19 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             }),
         ),
     );
+    s.insert("DashboardMetric".into(), object(
+        &["available", "value", "unavailableReason"],
+        json!({"available": {"type": "boolean"}, "value": nullable(counter()), "unavailableReason": nullable(json!({"type": "string"}))})
+    ));
+    s.insert("AdminDashboardSummary".into(), object(
+        &["generatedAt", "draftContent", "openConflicts", "openRfqs", "analytics", "recentActivity", "readinessItemCount"],
+        json!({
+            "generatedAt": timestamp(), "draftContent": r("DashboardMetric"), "openConflicts": r("DashboardMetric"),
+            "openRfqs": r("DashboardMetric"),
+            "analytics": nullable(r("AnalyticsConsentedMetrics")), "recentActivity": array(r("AuditEvent")),
+            "readinessItemCount": counter()
+        })
+    ));
     s.insert(
         "AnalyticsOverview".into(),
         object(
@@ -260,10 +287,6 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             }),
         ),
     );
-    s.insert("AnalyticsSummary".into(), object(
-        &["acceptedEventCount", "rfqCount", "contactCount", "containsPii", "source"],
-        json!({"acceptedEventCount": counter(), "rfqCount": counter(), "contactCount": counter(), "containsPii": {"type": "boolean", "const": false}, "source": {"type": "string", "const": "firstParty"}})
-    ));
     #[cfg(feature = "devtools")]
     s.insert("TerminalToken".into(), object(&["token", "expiresInSeconds"], json!({"token": {"type": "string"}, "expiresInSeconds": {"type": "integer", "minimum": 1}})));
 }

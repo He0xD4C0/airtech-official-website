@@ -6,39 +6,33 @@
 import type { components } from '../components'
 
 export interface OperationsPart17 {
-createGuestVisit: {
+createRfqInternalNote: {
         parameters: {
             query?: never;
-            header?: never;
-            path?: never;
+            header: {
+                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
+                "Idempotency-Key": string;
+                /** @description Current entity ETag, formatted as revision-N. */
+                "If-Match": string;
+            };
+            path: {
+                id: string;
+            };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateGuestVisit"];
+                "application/json": components["schemas"]["CreateBusinessNoteRequest"];
             };
         };
         responses: {
-            /** @description Existing visit refreshed */
-            200: {
-                headers: {
-                    /** @description private, no-store, max-age=0 */
-                    "Cache-Control"?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GuestVisit"];
-                };
-            };
-            /** @description Anonymous visit created */
+            /** @description Business workflow result */
             201: {
                 headers: {
-                    /** @description private, no-store, max-age=0 */
-                    "Cache-Control"?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GuestVisit"];
+                    "application/json": components["schemas"]["BusinessInboxDetail"];
                 };
             };
             /** @description Malformed request */
@@ -133,24 +127,25 @@ createGuestVisit: {
             };
         };
     };
-getPublicMediaAsset: {
+getRfqPii: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                assetId: string;
+                id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Media object */
+            /** @description Explicit PII detail */
             200: {
                 headers: {
+                    "Cache-Control"?: "private, no-store, max-age=0";
                     [name: string]: unknown;
                 };
                 content: {
-                    "image/png": string;
+                    "application/json": components["schemas"]["BusinessPii"];
                 };
             };
             /** @description Malformed request */
@@ -245,24 +240,33 @@ getPublicMediaAsset: {
             };
         };
     };
-downloadPublicMediaAsset: {
+updateRfqInboxStatus: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
+                "Idempotency-Key": string;
+                /** @description Current entity ETag, formatted as revision-N. */
+                "If-Match": string;
+            };
             path: {
-                assetId: string;
+                id: string;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBusinessStatusRequest"];
+            };
+        };
         responses: {
-            /** @description Media attachment */
+            /** @description Business workflow result */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/octet-stream": string;
+                    "application/json": components["schemas"]["BusinessInboxItem"];
                 };
             };
             /** @description Malformed request */
@@ -357,14 +361,14 @@ downloadPublicMediaAsset: {
             };
         };
     };
-listPublishedNews: {
+listAdminRoles: {
         parameters: {
             query?: {
-                category?: string;
-                /** @description UUID cursor of the last News record returned by the previous page. */
+                /** @description Opaque endpoint-scoped cursor returned by the previous page. */
                 cursor?: string;
+                /** @description Page size; values outside 1 through 100 return Problem Details 400. */
                 limit?: number;
-                locale?: "en";
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -372,13 +376,13 @@ listPublishedNews: {
         };
         requestBody?: never;
         responses: {
-            /** @description Published News records */
+            /** @description Role definitions */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NewsPage"];
+                    "application/json": components["schemas"]["AdminRoleRecordPage"];
                 };
             };
             /** @description Malformed request */

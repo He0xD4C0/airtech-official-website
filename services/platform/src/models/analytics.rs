@@ -1,3 +1,5 @@
+use super::*;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CreateAnalyticsConsent {
@@ -82,6 +84,26 @@ pub struct AnalyticsOverview {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DashboardMetric {
+    pub available: bool,
+    pub value: Option<i64>,
+    pub unavailable_reason: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminDashboardSummary {
+    pub generated_at: DateTime<Utc>,
+    pub draft_content: DashboardMetric,
+    pub open_conflicts: DashboardMetric,
+    pub open_rfqs: DashboardMetric,
+    pub analytics: Option<AnalyticsConsentedMetrics>,
+    pub recent_activity: Vec<AuditEvent>,
+    pub readiness_item_count: i64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CreateGuestVisit {
     pub anonymous_session_id: Uuid,
@@ -119,18 +141,6 @@ pub struct GuestSourceDaily {
     pub utm_source: Option<String>,
     pub medium: Option<String>,
     pub campaign: Option<String>,
-    pub landing_path: String,
-    pub locale: String,
-    pub visits: i64,
-    pub page_views: i64,
-    pub rfq_starts: i64,
-    pub rfq_submissions: i64,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GuestVisitAggregate {
-    pub bucket_date: chrono::NaiveDate,
     pub landing_path: String,
     pub locale: String,
     pub visits: i64,

@@ -16,17 +16,20 @@ cargo run --bin airtek-worker
 ```
 
 `DATABASE_URL` is required by the API and Worker. PostgreSQL remains the runtime
-database, and SQLx is used only for application queries and transactions. The
-in-memory repository is available only to isolated Rust tests; it is not a
-server runtime mode and never seeds product specifications or values from the
-HTML demos.
+database, and SQLx is used only for application queries and transactions. No
+database-free business repository exists in runtime or tests.
 
 With PostgreSQL configured:
 
 ```sh
 pnpm db:migrate
+cargo run --bin airtek-maintenance -- prepare-runtime
 cargo run --bin airtek-api
 ```
+
+The maintenance command is idempotent and must complete after Flyway and before
+the API or Worker. Those long-running binaries only verify its versioned marker;
+they do not migrate or backfill data during startup.
 
 Flyway `13.4.0` exclusively owns schema versions and migration history through
 the independent, non-root `flyway-migrate` image. From the repository root, use
@@ -40,8 +43,7 @@ removes public schema creation, and refuses an incomplete privilege topology.
 In production, that runtime role must not own the database or schema objects.
 Local Compose alone explicitly
 allows its existing shared `airtek` owner for development-volume compatibility.
-The former Rust `airtek-migrate` binary has been removed, and `airtekctl` has no
-`migrate` subcommand.
+Application-owned migration and operations CLIs have been removed.
 
 Admin authentication uses an Argon2id password and a host-only HttpOnly session
 cookie. The one-time `AIRTEK_ADMIN_BOOTSTRAP_TOKEN` is accepted only by
@@ -50,9 +52,9 @@ credential.
 
 ### Existing SQLx v1-10 database takeover
 
-For a database previously migrated by SQLx versions 1 through 10, first create
-a backup, verify the restore path, and confirm the target environment, database,
-and credentials. Do not run the ordinary migration path first. Run:
+For a database previously migrated by SQLx versions 1 through 10, first confirm
+the target environment, database, and credentials. Do not run the ordinary
+migration path first. Run:
 
 ```sh
 docker compose run --rm flyway-migrate baseline
@@ -79,13 +81,6 @@ digits, 30-second steps and a one-step clock tolerance. Recovery codes contain
 are consumed atomically once. Active sessions have a 30-minute idle timeout and
 a 12-hour absolute timeout; users can list and revoke their own sessions.
 
-Content preview tokens are limited to one immutable revision and carry the
-issuing Admin user and session identifiers inside the signature. The Public
-preview endpoint performs a live PostgreSQL authorization check on every read:
-the user must remain active with confirmed TOTP and current `content.read`, and
-the issuing session must remain unrevoked and within both idle and absolute
-expiry. Preview responses remain private, `no-store`, and `noindex`.
-
 Public Contact, RFQ and Analytics writes use fixed-window source limits. With
 PostgreSQL the counters are durable; the isolated in-memory test store expires
 old counters and refuses new keys at a hard capacity. Raw client addresses are
@@ -101,25 +96,19 @@ The Compose profile assigns its gateway `172.28.0.10` and trusts only
 that local network conflicts. Never trust an entire private address range merely
 because it is private.
 
-The development-only CLI and PTY terminal require an explicit feature:
-
-```sh
-cargo run --features devtools --bin airtekctl -- diagnose
-cargo run --features devtools --bin airtekctl -- validate all
-cargo run --features devtools --bin airtekctl -- sync dry-run --mapping-version development
-cargo run --features devtools --bin airtekctl -- index rebuild
-cargo run --features devtools --bin airtekctl -- cache invalidate
-cargo run --features devtools --bin airtekctl -- jobs list
-```
+The development-only browser PTY terminal requires the explicit `devtools`
+feature. It opens the host `$SHELL` with the same non-root identity and working
+directory as the API process; there is no application-owned command language.
 
 The development seed is the only writer allowed to establish
 `developmentFixture` ownership. When an editor clears a seeded record's
 placeholder flag, the content/News/General Information transaction changes its
 origin to `editorial`; that transition is one-way, and later seed runs use the
 retained ledger only to recognize and skip the taken-over record. Content,
-News, General Information, Navigation, and Footer now share the unified CMS V2
-`/api/admin/v1/content` draft, snapshot, publish, diff, and restore lifecycle;
-the former dedicated News and General Information mutation APIs are removed.
+News, General Information, Navigation, and Footer use the CMS V2 private-draft,
+review, and current-publication APIs. Editing history and preview remain only in
+browser memory; the database stores no content snapshots or restorable body
+history. The former dedicated mutation APIs are removed.
 
 A devtools build refuses to start unless either PostgreSQL is configured for
 existing admin sessions or a sufficiently long setup bootstrap token is
@@ -136,12 +125,13 @@ working directory; no `sudo`, `setuid` or OS-user mapping is used.
 Terminal establishment, termination and input-frame metadata are written to the
 immutable platform audit log. For command frames the audit includes actor,
 session, time, byte count and a fixed reason, but deliberately excludes command
-text and PTY output. `airtekctl` reports provider work only as queued; the worker
-fails it explicitly when a Feishu, search or cache provider is not configured.
+text and PTY output. Feishu synchronization remains disabled until its provider
+adapter is connected; no placeholder job is queued.
 
-Production artifacts must be built with `--features production`. The crate rejects
-`production,devtools` at compile time and the CLI binary is not compiled unless the
-`devtools` feature is present.
+Production artifacts must be built with `--features production`. The crate
+rejects `production,devtools` at compile time. The production Platform image
+contains only API and Worker. The browser terminal and PTY tooling remain gated
+by `devtools` and are absent from production.
 
 ## OpenAPI contract
 
@@ -157,8 +147,9 @@ pnpm check:contracts
 ```
 
 The exporter is a Cargo example rather than a shipped runtime binary. The
-production Platform container contains only the selected API and Worker
-executables; schema migration ships as a separate non-root Flyway artifact.
+production Platform container contains the selected API and Worker plus the
+restricted operations CLI; schema migration ships as a separate non-root Flyway
+artifact.
 
 ## Boundaries
 
@@ -169,9 +160,11 @@ executables; schema migration ships as a separate non-root Flyway artifact.
 - `/robots.txt`: disallows the complete API origin.
 - sitemap paths are deliberately unregistered and return `404`.
 
-All exact product data must arrive through a traceable Feishu source snapshot,
-validation, staging, conflict handling and publication. Demo product values are not
-authoritative and are not present in this service.
+All exact product data must arrive through a traceable, owner-approved Product
+Master snapshot, validation, staging, conflict handling, and publication.
+Future Feishu synchronization is an input to that governed flow, not proof of a
+current approved snapshot. Demo product values are not authoritative and are
+not present in this service.
 
 Content and products keep mutable working records separately from immutable
 published revision snapshots. Publishing or rolling back atomically switches the

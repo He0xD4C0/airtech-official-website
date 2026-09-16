@@ -1,9 +1,11 @@
+use super::*;
+
 #[tokio::test]
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
 async fn platform_settings_compare_and_swap_is_atomic_across_instances() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    let sandbox = support::DatabaseClone::create(&database_url).await;
     sandbox.apply_current().await;
     let pool = sandbox.pool().clone();
     support::assert_flyway_schema_current(&pool).await;
@@ -95,7 +97,7 @@ async fn platform_settings_compare_and_swap_is_atomic_across_instances() {
 async fn product_publish_requires_an_atomic_accepted_postgres_evidence_chain() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    let sandbox = support::DatabaseClone::create(&database_url).await;
     sandbox.apply_current().await;
     let pool = sandbox.pool().clone();
     support::assert_flyway_schema_current(&pool).await;
@@ -197,9 +199,11 @@ async fn product_publish_requires_an_atomic_accepted_postgres_evidence_chain() {
     .execute(&pool)
     .await
     .unwrap();
-    let seeded = postgres_state(sandbox.connection_url());
+    let seeded = postgres_direct_media_state(sandbox.connection_url());
     seeded.persist_product(&product).await.unwrap();
-    seeded.hydrate().await.unwrap();
+    airtek_platform::services::runtime_preparation::prepare(&seeded.pool)
+        .await
+        .unwrap();
     let app = airtek_platform::routes::admin::router().with_state(seeded);
     let facts_payload_before =
         sqlx::query_scalar::<_, Value>("SELECT payload FROM products WHERE id=$1")
@@ -365,8 +369,10 @@ async fn product_publish_requires_an_atomic_accepted_postgres_evidence_chain() {
     .execute(&pool)
     .await
     .unwrap();
-    let blocked_state = postgres_state(sandbox.connection_url());
-    blocked_state.hydrate().await.unwrap();
+    let blocked_state = postgres_direct_media_state(sandbox.connection_url());
+    airtek_platform::services::runtime_preparation::prepare(&blocked_state.pool)
+        .await
+        .unwrap();
     let blocked_app = airtek_platform::routes::admin::router().with_state(blocked_state);
     let blocked_idempotency_key = format!("postgres-publish-blocked-{product_id}");
     let blocked = blocked_app

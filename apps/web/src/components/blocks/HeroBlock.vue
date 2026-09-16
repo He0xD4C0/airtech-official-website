@@ -17,7 +17,7 @@ const actions = (): Array<{ label: string; href: string }> => props.block.action
   const href = linkTargetHref(action.target, props.projection.resolvedLinks)
   return action.label && href ? [{ label: action.label, href }] : []
 })
-const mediaHref = computed(() => mediaAssetHref(props.block.media))
+const mediaHref = computed(() => mediaAssetHref(props.block.media, props.projection.resolvedMedia))
 </script>
 
 <template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Eye, Route, ShieldCheck } from 'lucide-vue-next'
+import { Route, ShieldCheck } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import AnalyticsOverviewPanels from '@/components/AnalyticsOverviewPanels.vue'
 import AnalyticsRangePicker from '@/components/AnalyticsRangePicker.vue'
@@ -88,10 +88,10 @@ watch(
 <template>
   <div class="page-stack">
     <PageHeader eyebrow="FIRST-PARTY ANALYTICS" title="网站表现" description="在统一 UTC 时间窗内查看已同意的第一方行为；RFQ 与 Contact 业务记录独立呈现，不伪装成行为漏斗。">
-      <template #actions><RouterLink class="button button--secondary" to="/analytics/visits"><Eye :size="16" />访问趋势</RouterLink><RouterLink class="button button--primary" to="/analytics/sources"><Route :size="16" />来源分析</RouterLink></template>
+      <template #actions><RouterLink class="button button--primary" to="/analytics/sources"><Route :size="16" />来源分析</RouterLink></template>
     </PageHeader>
 
-    <div class="analytics-toolbar"><div><button class="is-active" type="button">总览</button><RouterLink to="/analytics/visits">访问趋势</RouterLink><RouterLink to="/analytics/sources">站外来源</RouterLink></div><span class="inline-note">第一方聚合 · UTC</span></div>
+    <div class="analytics-toolbar"><div><span class="is-active" aria-current="page">总览</span><RouterLink to="/analytics/sources">站外来源</RouterLink></div><span class="inline-note">第一方聚合 · UTC</span></div>
 
     <AnalyticsRangePicker
       :range="range"

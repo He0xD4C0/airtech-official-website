@@ -1,3 +1,5 @@
+use super::*;
+
 /// Promote every normalized row from one durable import run into immutable
 /// draft product revisions. The transaction is all-or-nothing. A worker crash
 /// after this commit is harmless: the completed run is returned on retry and
@@ -145,7 +147,7 @@ pub async fn reset_staged_product_import_for_retry(
     Ok(())
 }
 
-async fn promote_verified_csv_product(
+pub(super) async fn promote_verified_csv_product(
     transaction: &mut Transaction<'_, Postgres>,
     import_run_id: Uuid,
     import_checksum: &str,

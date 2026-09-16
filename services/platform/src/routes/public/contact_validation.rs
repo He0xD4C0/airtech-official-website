@@ -1,4 +1,6 @@
-fn validate_contact(request: &CreateContactRequest) -> Result<(), ApiError> {
+use super::*;
+
+pub(super) fn validate_contact(request: &CreateContactRequest) -> Result<(), ApiError> {
     let mut errors = validate_business_contact(&request.contact);
     if request.topic.trim().is_empty() {
         errors.insert("topic".into(), vec!["Topic is required.".into()]);
@@ -25,7 +27,7 @@ fn validate_contact(request: &CreateContactRequest) -> Result<(), ApiError> {
     }
 }
 
-fn validate_business_contact(
+pub(super) fn validate_business_contact(
     contact: &crate::models::BusinessContact,
 ) -> BTreeMap<String, Vec<String>> {
     let mut errors = BTreeMap::new();
@@ -73,7 +75,7 @@ fn validate_business_contact(
     errors
 }
 
-fn validate_public_source_and_locale(
+pub(super) fn validate_public_source_and_locale(
     source_path: &str,
     locale: &str,
     expected_prefix: &str,
@@ -100,7 +102,7 @@ fn validate_public_source_and_locale(
     }
 }
 
-fn validate_required_text(
+pub(super) fn validate_required_text(
     field: &str,
     value: &str,
     maximum_length: usize,
@@ -116,7 +118,7 @@ fn validate_required_text(
     }
 }
 
-fn validate_optional_text(
+pub(super) fn validate_optional_text(
     field: &str,
     value: Option<&str>,
     maximum_length: usize,
@@ -132,7 +134,7 @@ fn validate_optional_text(
     }
 }
 
-fn valid_text(value: &str, maximum_length: usize) -> bool {
+pub(super) fn valid_text(value: &str, maximum_length: usize) -> bool {
     !value.trim().is_empty()
         && value.chars().count() <= maximum_length
         && !value.chars().any(char::is_control)

@@ -78,8 +78,8 @@ describe('admin product API', () => {
     const fetchMock = vi.fn(async (input: string | URL | Request) => {
       const url = String(input)
       return url.includes('cursor=after-first')
-        ? response({ items: [product(targetId)], nextCursor: null })
-        : response({ items: [product('10000000-0000-4000-8000-000000000001')], nextCursor: 'after-first' })
+        ? response(productPage([product(targetId)], null))
+        : response(productPage([product('10000000-0000-4000-8000-000000000001')], 'after-first'))
     })
     vi.stubGlobal('fetch', fetchMock)
 
@@ -205,3 +205,14 @@ describe('admin product API', () => {
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/operations/b0000000-0000-4000-8000-000000000001')
   })
 })
+
+function productPage(items: ReturnType<typeof product>[], nextCursor: string | null) {
+  return {
+    items,
+    nextCursor,
+    total: items.length,
+    familyCounts: [],
+    statusCounts: [],
+    dataStateCounts: [],
+  }
+}

@@ -11,13 +11,18 @@ describe('contract transport compatibility', () => {
       displayName: 'Production Admin',
       email: 'admin@example.test',
       role: 'Developer',
-      permissions: ['dashboard.read', 'devtools.shell', 'future.permission'],
+      permissions: [
+        'dashboard.read',
+        'media.write',
+        'devtools.shell',
+        'future.permission',
+      ],
       environment: 'production',
       totpEnabled: true,
     })))
 
     await expect(adminApi.session()).resolves.toMatchObject({
-      permissions: ['dashboard.read'],
+      permissions: ['dashboard.read', 'media.write'],
       environment: 'production',
     })
   })

@@ -1,10 +1,8 @@
-use crate::services::media;
+use super::*;
 
-/// Immutable public delivery for reviewed media objects.
-///
-/// The response is cacheable forever because a media asset id never changes
-/// bytes: replacement means a new row with a new id.
-async fn get_public_media(
+pub(super) use crate::services::media;
+
+pub(super) async fn get_public_media(
     State(state): State<AppState>,
     Path(asset_id): Path<Uuid>,
     headers: HeaderMap,
@@ -12,7 +10,7 @@ async fn get_public_media(
     media::deliver_media_asset(&state, asset_id, false, &headers).await
 }
 
-async fn download_public_media(
+pub(super) async fn download_public_media(
     State(state): State<AppState>,
     Path(asset_id): Path<Uuid>,
     headers: HeaderMap,

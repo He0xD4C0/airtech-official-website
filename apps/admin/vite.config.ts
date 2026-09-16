@@ -134,6 +134,19 @@ export default defineConfig(({ command, mode }) => {
       emptyOutDir: true,
       sourcemap: false,
       manifest: true,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('/node_modules/.pnpm/@tiptap+pm') || id.includes('/node_modules/@tiptap/pm/')) {
+              return 'editor-prosemirror'
+            }
+            if (id.includes('/node_modules/.pnpm/@tiptap+') || id.includes('/node_modules/@tiptap/')) {
+              return 'editor-tiptap'
+            }
+            return undefined
+          },
+        },
+      },
     },
   }
 })

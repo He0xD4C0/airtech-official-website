@@ -33,36 +33,34 @@ async function analyzeStable(page: Page): Promise<Awaited<ReturnType<AxeBuilder[
   return new AxeBuilder({ page }).analyze()
 }
 
+async function chooseArticleTemplate(page: Page): Promise<void> {
+  const cards = page.locator('.create-form__cards')
+  await cards.getByRole('button', { name: /^文章 /u }).click()
+  await cards.getByRole('button').filter({ hasText: 'articleDetail' }).click()
+}
+
 test.describe('Unified CMS content editor', () => {
   test.skip(!runAdminWorkflows, 'Run through pnpm test:e2e:stack so mutations use a disposable PostgreSQL volume.')
   test.describe.configure({ mode: 'serial' })
   test.use({ storageState: adminStorageStatePath })
 
-  test('serves list search, filters and type counts from the API', async ({ page }) => {
+  test('serves private draft search and counts from the API', async ({ page }) => {
     const listRequests: string[] = []
     page.on('request', (request) => {
-      if (request.url().includes('/api/admin/v1/content?')) listRequests.push(request.url())
+      if (request.url().includes('/api/admin/v1/content-drafts?')) listRequests.push(request.url())
     })
 
-    await page.goto(absolute(adminOrigin, '/content?kind=news'))
-    await expect(page.getByRole('heading', { name: '新闻内容' })).toBeVisible()
-    await expect(page.locator('.content-type-strip')).toContainText('全部内容')
-    await expect(page.locator('.content-type-strip button[aria-pressed="true"]')).toContainText('新闻')
-
-    const rows = page.locator('table.data-table tbody tr')
-    for (const row of await rows.all()) {
-      await expect(row.locator('td').nth(1)).toHaveText('新闻')
-    }
-
-    await page.getByPlaceholder('按标题或 slug 搜索（服务端）').fill('airtek-e2e')
+    await page.goto(absolute(adminOrigin, '/content/drafts'))
+    await expect(page.getByRole('heading', { name: '私人草稿', exact: true })).toBeVisible()
+    await page.getByPlaceholder('按标题或 slug 搜索').fill('airtek-e2e')
+    await page.getByRole('button', { name: '搜索' }).click()
     await expect.poll(() => listRequests.some((url) => url.includes('q=airtek-e2e')), { timeout: 5_000 }).toBe(true)
-    expect(listRequests.some((url) => url.includes('kind=news'))).toBe(true)
   })
 
-  test('creates, autosaves and reloads a draft without switching kind or template', async ({ page }, testInfo) => {
+  test('creates, explicitly saves and reloads a draft without switching kind or template', async ({ page }, testInfo) => {
     const slug = `e2e-cms-round-trip-${testInfo.workerIndex}-${testInfo.retry}`
-    await page.goto(absolute(adminOrigin, '/content/new'))
-    await page.locator('input[type="radio"][value="articleDetail"]').check()
+    await page.goto(absolute(adminOrigin, '/content/drafts/new'))
+    await chooseArticleTemplate(page)
     await page.getByLabel('标题', { exact: true }).fill('E2E CMS round trip')
     await page.getByLabel(/Slug/u).fill(slug)
     await page.getByRole('button', { name: '创建草稿' }).click()
@@ -72,8 +70,22 @@ test.describe('Unified CMS content editor', () => {
     await expect(page.getByLabel('内容类型')).toHaveCount(0)
     await expect(page.getByRole('combobox', { name: /模板|Template/u })).toHaveCount(0)
 
+    const writes: string[] = []
+    page.on('request', (request) => {
+      if (request.method() !== 'GET') writes.push(request.url())
+    })
     await page.getByLabel('标题', { exact: true }).fill('E2E CMS round trip updated')
-    await expect(page.locator('.save-state')).toContainText('已保存', { timeout: 15_000 })
+    await expect(page.locator('.save-state')).toContainText('有未保存更改')
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+Z' : 'Control+Z')
+    await expect(page.getByLabel('标题', { exact: true })).toHaveValue('E2E CMS round trip')
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+Shift+Z' : 'Control+Shift+Z')
+    await expect(page.getByLabel('标题', { exact: true })).toHaveValue('E2E CMS round trip updated')
+    await page.getByRole('button', { name: '本地预览' }).click()
+    await expect(page.getByRole('region', { name: '编辑器内存预览' })).toContainText('E2E CMS round trip updated')
+    expect(writes).toEqual([])
+    await page.getByRole('button', { name: '保存', exact: true }).click()
+    await expect(page.locator('.save-state')).toContainText('已保存')
+    expect(writes).toHaveLength(1)
 
     await page.reload()
     await expect(page.getByLabel('标题', { exact: true })).toHaveValue('E2E CMS round trip updated')
@@ -81,13 +93,13 @@ test.describe('Unified CMS content editor', () => {
 
   test('derives canonical as a read-only value', async ({ page }, testInfo) => {
     const slug = `e2e-canonical-derivation-${testInfo.workerIndex}-${testInfo.retry}`
-    await page.goto(absolute(adminOrigin, '/content/new'))
-    await page.locator('input[type="radio"][value="articleDetail"]').check()
+    await page.goto(absolute(adminOrigin, '/content/drafts/new'))
+    await chooseArticleTemplate(page)
     await page.getByLabel('标题', { exact: true }).fill('E2E canonical derivation')
     await page.getByLabel(/Slug/u).fill(slug)
     await page.getByRole('button', { name: '创建草稿' }).click()
 
-    await page.getByRole('tab', { name: 'SEO' }).click()
+    await page.getByRole('button', { name: 'SEO', exact: true }).click()
     await expect(page.locator('.canonical-preview code')).toHaveText(`/en/resources/articles/${slug}`)
     await expect(page.getByLabel(/canonical/i)).toHaveCount(0)
     expect(await page.locator(`input[value="${slug}"]`).count()).toBe(1)
@@ -106,17 +118,17 @@ test.describe('Unified CMS content editor', () => {
     const pageB = await contextB.newPage()
 
     try {
-      await pageA.goto(absolute(adminOrigin, '/content/new'))
-      await pageA.locator('input[type="radio"][value="articleDetail"]').check()
+      await pageA.goto(absolute(adminOrigin, '/content/drafts/new'))
+      await chooseArticleTemplate(pageA)
       await pageA.getByLabel('标题', { exact: true }).fill(initialTitle)
       await pageA.getByLabel(/Slug/u).fill(slug)
       await pageA.getByRole('button', { name: '创建草稿' }).click()
       await expect(pageA.getByRole('heading', { name: '基本信息' })).toBeVisible()
 
       const editorUrl = pageA.url()
-      const routeMatch = new URL(editorUrl).pathname.match(/^\/content\/([^/]+)\/edit$/u)
+      const routeMatch = new URL(editorUrl).pathname.match(/^\/content\/drafts\/([^/]+)$/u)
       if (!routeMatch?.[1]) throw new Error(`Unexpected content editor URL: ${editorUrl}`)
-      const draftPath = `/api/admin/v1/content/${routeMatch[1]}/draft`
+      const draftPath = `/api/admin/v1/content-drafts/${routeMatch[1]}`
       const isDraftRequest = (url: string, method: string): boolean => (
         new URL(url).pathname === draftPath && method === 'GET'
       )
@@ -129,15 +141,15 @@ test.describe('Unified CMS content editor', () => {
 
       await Promise.all([pageA.reload(), pageB.goto(editorUrl)])
       const [initialA, initialB] = await Promise.all([readA, readB])
-      const recordA = await initialA.json() as { draft: { draftVersion: number } }
-      const recordB = await initialB.json() as { draft: { draftVersion: number } }
+      const recordA = await initialA.json() as { draftVersion: number }
+      const recordB = await initialB.json() as { draftVersion: number }
       const initialEtag = initialA.headers().etag
 
       expect(initialA.ok()).toBe(true)
       expect(initialB.ok()).toBe(true)
-      expect(recordA.draft.draftVersion).toBeGreaterThan(0)
-      expect(recordB.draft.draftVersion).toBe(recordA.draft.draftVersion)
-      expect(initialEtag).toBe(`"draft-${recordA.draft.draftVersion}"`)
+      expect(recordA.draftVersion).toBeGreaterThan(0)
+      expect(recordB.draftVersion).toBe(recordA.draftVersion)
+      expect(initialEtag).toBe(`"draft-${recordA.draftVersion}"`)
       expect(initialB.headers().etag).toBe(initialEtag)
       await expect(pageA.getByLabel('标题', { exact: true })).toHaveValue(initialTitle)
       await expect(pageB.getByLabel('标题', { exact: true })).toHaveValue(initialTitle)
@@ -156,10 +168,10 @@ test.describe('Unified CMS content editor', () => {
       ))
       await pageA.getByRole('button', { name: '保存', exact: true }).click()
       const savedResponse = await saveA
-      const savedRecord = await savedResponse.json() as { draft: { title: string } }
+      const savedRecord = await savedResponse.json() as { document: { title: string } }
       expect(savedResponse.status()).toBe(200)
       expect(savedResponse.request().headers()['if-match']).toBe(initialEtag)
-      expect(savedRecord.draft.title).toBe(savedByA)
+      expect(savedRecord.document.title).toBe(savedByA)
       await expect(pageA.locator('.save-state')).toContainText('已保存')
 
       await pageB.getByLabel('标题', { exact: true }).fill(staleInB)
@@ -172,26 +184,17 @@ test.describe('Unified CMS content editor', () => {
       expect(conflictResponse.status()).toBe(409)
       expect(conflictResponse.request().headers()['if-match']).toBe(initialEtag)
 
-      const conflictDialog = pageB.getByRole('dialog', { name: '保存已停止：检测到并发编辑' })
-      await expect(conflictDialog).toBeVisible()
-      await expect(pageB.locator('.save-state')).toHaveText('保存已停止（版本冲突）')
+      await expect(pageB.locator('.save-state')).toHaveText('版本冲突')
+      await expect(pageB.locator('.save-error')).toBeVisible()
       await expect(pageB.getByLabel('标题', { exact: true })).toHaveValue(staleInB)
-      await expect(pageB.getByRole('button', { name: '保存', exact: true })).toBeDisabled()
-
-      await conflictDialog.getByRole('button', { name: '稍后处理' }).click()
       await pageB.getByLabel('标题', { exact: true }).fill(postConflictInB)
       await pageB.waitForTimeout(1_500)
       expect(patchRequestsFromB).toEqual([initialEtag])
-      await expect(pageB.locator('.conflict-banner[role="alert"]')).toContainText('自动保存已停止')
-
-      await pageB.getByRole('button', { name: '查看差异' }).click()
-      await conflictDialog.getByRole('button', { name: '重新载入服务器版本' }).click()
       const reloadB = pageB.waitForResponse((response) => (
         isDraftRequest(response.url(), response.request().method())
       ))
-      await conflictDialog.getByRole('button', { name: '确认丢弃并重新载入' }).click()
+      await pageB.getByRole('button', { name: '重新载入' }).click()
       expect((await reloadB).ok()).toBe(true)
-      await expect(conflictDialog).toBeHidden()
       await expect(pageB.getByLabel('标题', { exact: true })).toHaveValue(savedByA)
     } finally {
       await contextB.close()
@@ -200,15 +203,15 @@ test.describe('Unified CMS content editor', () => {
   })
 
   test('supports keyboard operation and passes axe checks', async ({ page }, testInfo) => {
-    await page.goto(absolute(adminOrigin, '/content'))
+    await page.goto(absolute(adminOrigin, '/content/drafts'))
     const listResults = await analyzeStable(page)
     expect(describeViolations(listResults.violations)).toBe('')
 
-    await page.goto(absolute(adminOrigin, '/content/new'))
+    await page.goto(absolute(adminOrigin, '/content/drafts/new'))
     const createResults = await analyzeStable(page)
     expect(describeViolations(createResults.violations)).toBe('')
 
-    await page.locator('input[type="radio"][value="articleDetail"]').check()
+    await chooseArticleTemplate(page)
     await page.getByLabel('标题', { exact: true }).fill('E2E keyboard editor')
     await page.getByLabel(/Slug/u).fill(`e2e-keyboard-editor-${testInfo.workerIndex}-${testInfo.retry}`)
     await page.getByRole('button', { name: '创建草稿' }).click()
@@ -228,8 +231,8 @@ test.describe('Unified CMS content editor', () => {
     }
     expect([...reachedNames].some((name) => name.includes('保存'))).toBe(true)
 
-    await page.getByRole('tab', { name: '区块' }).focus()
+    await page.getByRole('button', { name: '区块', exact: true }).focus()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('tab', { name: '区块' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('button', { name: '区块', exact: true })).toHaveClass(/is-active/u)
   })
 })

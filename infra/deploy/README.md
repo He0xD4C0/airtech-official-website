@@ -44,9 +44,9 @@ Build and scan five immutable artifacts:
   browser origins passed as Vite build arguments.
 - Admin Web from `infra/docker/Dockerfile.admin`, with the final Admin API
   browser origin passed at build time. Its production build forces DevTools off.
-- Platform from `infra/docker/Dockerfile.platform`. It supplies the API and
-  Worker only; it contains neither schema migration tools, `airtekctl`, nor
-  PTY/WebSocket dependencies.
+- Platform from `infra/docker/Dockerfile.platform`. It supplies only the API
+  and Worker; it contains no application-owned CLI, schema migration tools, or
+  DevTools PTY/WebSocket dependencies.
 - Migrations from `infra/docker/Dockerfile.flyway`, pinned to Flyway `13.4.0`.
   It is an independent, non-root one-shot artifact and is the sole owner of
   PostgreSQL schema versions.
@@ -83,18 +83,37 @@ Before deployment:
    Flyway role must be able to manage those
    database/schema grants; the production boundary rejects a shared DDL/runtime
    identity.
-7. Supply any initial setup token from protected configuration and remove it after the
+7. After Flyway succeeds, run the Platform image's one-shot
+   `airtek-maintenance prepare-runtime` command with the runtime `DATABASE_URL`.
+   Start API and Worker only after it exits successfully.
+8. Supply any initial setup token from a secret manager and remove it after the
    first Super Admin has been created.
-8. Configure the Platform API with `AIRTEK_MEDIA_STORAGE=s3`, the internal
-   `http://minio:9000` endpoint and the bucket-scoped application credentials.
-   Never give the application MinIO root credentials.
-9. Trust only the exact Gateway address plus any exact outer-proxy hops needed
+9. Configure the Platform API with `AIRTEK_MEDIA_STORAGE=s3`, the internal
+   `http://minio:9000` endpoint and the bucket-scoped API credentials. Never give
+   the application MinIO root credentials.
+10. Trust only the exact Gateway address plus any exact outer-proxy hops needed
    to interpret `X-Forwarded-For`; never trust a whole private range by default.
-10. Configure provider logs, health probes, off-host backups, restore targets, retention,
-   alerting and image/SBOM policy. These provider resources are intentionally
-   absent from this repository.
-11. Verify Search Console and webmaster files only on the Public origin. Admin
+11. Configure provider logs, health probes, off-host backups, restore targets,
+   retention, alerting and image/SBOM policy. These provider resources are
+   intentionally absent from this repository.
+12. Verify Search Console and webmaster files only on the Public origin. Admin
    and API must keep their crawl-denial and sitemap `404` behavior.
+
+## Direct media object identity
+
+Provision one private object-store identity from
+`infra/object-storage/media-api-policy.json`, replacing the bucket placeholder
+before attachment. It grants only GetObject, PutObject, and DeleteObject beneath
+the configured `media/*` prefix. DeleteObject is used solely to compensate an
+object whose catalogue transaction failed. The identity cannot list the bucket,
+alter bucket policy, or make the bucket public.
+
+The browser never receives object-store credentials or provider URLs. Successful
+PNG, JPEG, and WebP uploads are immediately served without authentication by
+the platform's public media route. Production must provide a private HTTPS
+endpoint, scoped credentials, monitoring, and a smoke test that covers
+upload, immediate GET, idempotent replay, conflict, and database-failure
+compensation.
 
 Run configuration and repository assertions before promotion:
 
@@ -140,16 +159,26 @@ The ECS deploy user needs write access only below `/opt/airtek`, read access to
 `/etc/airtek/production.env`, and permission to control Docker. Do not use the
 root account or place the host private key in the repository.
 
+## Deployment order
+
+The current schema target is V19. Deploy the migration artifact first, then the
+API and ordinary Worker, and finally Admin and Public Web. V17 introduces
+private drafts and review, V18 removes persisted content history, and V19 adds
+current-state query indexes. These migrations are forward-only.
+
+Before promotion, verify a fresh database migrates directly to V19 and a
+controlled legacy SQLx v1-v10 database passes
+`baseline -> migrate -> validate`.
+
 Run the non-root `flyway-migrate` artifact as a one-shot task before API and
 Worker start; both services wait for its successful completion. Database schema
 changes must remain compatible with the currently running Public/API release
-during a rolling update. Application rollback never replaces the database;
-restore operations require the separately configured isolated-restore flow.
+during a rolling update.
 
 For a new empty production database, run only the migrations artifact with
-`migrate`. For an existing database with SQLx versions 1 through 10, first back
-up the database, verify restoration, and confirm the selected environment,
-database, dedicated DDL credentials, runtime role, and ownership/grant topology.
+`migrate`. For an existing database with SQLx versions 1 through 10, confirm the
+selected environment, database, dedicated DDL credentials, runtime role, and
+ownership/grant topology.
 Then perform the one-time takeover using the production Compose boundary and
 the real secret-managed environment file:
 

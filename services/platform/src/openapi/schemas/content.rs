@@ -61,40 +61,5 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             "body": r("RichTextDocument"), "seo": r("SeoMetadataInput"), "isPlaceholder": {"type": "boolean", "default": false}
         }
     }));
-    s.insert(
-        "CreateContentPreviewRequest".into(),
-        json!({
-            "type": "object", "additionalProperties": false, "required": ["revision"],
-            "properties": {
-                "revision": revision(),
-                "expiresInSeconds": {"type": "integer", "minimum": 1, "maximum": 600, "default": 600}
-            }
-        }),
-    );
-    s.insert(
-        "ContentPreviewLink".into(),
-        object(
-            &["url", "contentId", "revision", "issuedAt", "expiresAt"],
-            json!({
-                "url": {"type": "string", "format": "uri", "readOnly": true},
-                "contentId": uuid(), "revision": revision(),
-                "issuedAt": timestamp(), "expiresAt": timestamp()
-            }),
-        ),
-    );
-    s.insert(
-        "ContentPreviewResponse".into(),
-        object(
-            &["content", "previewExpiresAt"],
-            json!({"content": r("PublicContentProjection"), "previewExpiresAt": timestamp()}),
-        ),
-    );
-    s.insert(
-        "RollbackContentRequest".into(),
-        object(
-            &["revision", "reason"],
-            json!({"revision": revision(), "reason": {"type": "string", "minLength": 10}}),
-        ),
-    );
     s.insert("ContentPage".into(), page("ContentEntry"));
 }

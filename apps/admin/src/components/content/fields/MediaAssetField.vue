@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { ImageIcon, LoaderCircle, RefreshCcw, Search, Trash2 } from 'lucide-vue-next'
-import type { AssetVersionReference, MediaUseReference } from '@airtek/contracts'
-import { contentApi, type MediaAssetSummary } from '@/services/contentApi'
+import type { AssetVersionReference, MediaAsset, MediaUseReference } from '@airtek/contracts'
+import { contentApi } from '@/services/contentApi'
 import { apiErrorMessage } from '@/services/cursorPagination'
 
 type MediaFieldValue = MediaUseReference | AssetVersionReference | null
@@ -22,7 +22,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: MediaFieldValue] }>()
 
 const dialogOpen = ref(false)
 const query = ref('')
-const options = ref<MediaAssetSummary[]>([])
+const options = ref<MediaAsset[]>([])
 const listState = ref<'idle' | 'loading' | 'ready' | 'empty' | 'error'>('idle')
 const listError = ref('')
 const searchInput = ref<HTMLInputElement | null>(null)
@@ -35,7 +35,6 @@ const selected = computed(() => {
   const asset = 'asset' in value ? value.asset : value
   return {
     assetId: asset.assetId,
-    versionId: asset.versionId,
     altText: 'altText' in value ? value.altText ?? '' : '',
     decorative: 'decorative' in value ? value.decorative : false,
   }
@@ -44,33 +43,28 @@ const selected = computed(() => {
 const selectionLabel = computed(() => {
   if (!selected.value) return '未选择资产'
   const name = options.value.find((entry) => entry.id === selected.value?.assetId)?.originalName
-  return name ?? `资产 ${selected.value.assetId.slice(0, 8)} · 版本 ${selected.value.versionId.slice(0, 8)}`
+  return name ?? `资产 ${selected.value.assetId.slice(0, 8)}`
 })
 
-function mediaValue(assetId: string, versionId: string): MediaUseReference {
+function mediaValue(assetId: string): MediaUseReference {
   return {
-    asset: { assetId, versionId },
+    asset: { assetId },
     altText: selected.value?.altText ?? null,
     decorative: selected.value?.decorative ?? false,
   }
 }
 
-function isSelectable(option: MediaAssetSummary): boolean {
-  return option.scanStatus === 'clean' && option.accessLevel === 'public'
-}
-
-function selectAsset(option: MediaAssetSummary): void {
-  if (!isSelectable(option)) return
+function selectAsset(option: MediaAsset): void {
   emit('update:modelValue', props.mode === 'asset'
-    ? { assetId: option.id, versionId: option.versionId }
-    : mediaValue(option.id, option.versionId))
+    ? { assetId: option.id }
+    : mediaValue(option.id))
   closeDialog()
 }
 
 function updateAltText(value: string): void {
   if (!selected.value || props.mode === 'asset') return
   emit('update:modelValue', {
-    asset: { assetId: selected.value.assetId, versionId: selected.value.versionId },
+    asset: { assetId: selected.value.assetId },
     altText: value || null,
     decorative: selected.value.decorative,
   })
@@ -79,7 +73,7 @@ function updateAltText(value: string): void {
 function updateDecorative(value: boolean): void {
   if (!selected.value || props.mode === 'asset') return
   emit('update:modelValue', {
-    asset: { assetId: selected.value.assetId, versionId: selected.value.versionId },
+    asset: { assetId: selected.value.assetId },
     altText: value ? null : selected.value.altText || null,
     decorative: value,
   })
@@ -153,7 +147,7 @@ defineExpose({ loadOptions })
       <span class="media-field__icon" aria-hidden="true"><ImageIcon :size="15" /></span>
       <div class="media-field__summary">
         <strong>{{ selectionLabel }}</strong>
-        <small v-if="selected">ID {{ selected.assetId.slice(0, 8) }}… · 版本 {{ selected.versionId.slice(0, 8) }}…</small>
+        <small v-if="selected">ID {{ selected.assetId }}</small>
         <small v-else>媒体只能从资产库选择，不接受手填 UUID 或 URL。</small>
       </div>
       <div class="media-field__actions">
@@ -203,7 +197,7 @@ defineExpose({ loadOptions })
           aria-describedby="media-asset-hint"
         >
           <h2 id="media-asset-title">选择{{ label }}</h2>
-          <p id="media-asset-hint" class="dialog-note">仅可选择已通过人工审核并标记为 clean 的公开资产。</p>
+          <p id="media-asset-hint" class="dialog-note">所有上传成功的图片都可立即选择；内容发布状态只控制网站是否展示。</p>
           <label class="search-field media-dialog__search">
             <Search :size="16" />
             <span class="sr-only">搜索媒体资产</span>
@@ -223,14 +217,13 @@ defineExpose({ loadOptions })
                 <button
                   class="media-dialog__option"
                   type="button"
-                  :disabled="!isSelectable(option)"
                   @click="selectAsset(option)"
                 >
                   <span>
                     <strong>{{ option.originalName }}</strong>
                     <small>{{ option.mediaType }} · {{ Math.max(1, Math.round(option.byteSize / 1024)) }} KB</small>
                   </span>
-                  <em>{{ option.scanStatus }} · {{ option.accessLevel }}</em>
+                  <em>可公开使用</em>
                 </button>
               </li>
             </ul>

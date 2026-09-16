@@ -11,7 +11,6 @@ pub mod idempotency;
 pub mod models;
 pub mod openapi;
 pub mod pagination;
-pub mod preview_token;
 pub mod rate_limit;
 pub mod routes;
 pub mod second_factor;

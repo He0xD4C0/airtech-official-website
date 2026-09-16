@@ -1,3 +1,5 @@
+use super::*;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AdminUserRecord {
@@ -7,12 +9,21 @@ pub struct AdminUserRecord {
     pub locale: String,
     pub status: String,
     pub revision: i64,
+    pub manager_user_id: Option<Uuid>,
     pub roles: Vec<String>,
     pub totp_enabled: bool,
     pub invited_at: Option<DateTime<Utc>>,
     pub last_login_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminUserPage {
+    pub items: Vec<AdminUserRecord>,
+    pub next_cursor: Option<String>,
+    pub total: usize,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -24,6 +35,14 @@ pub struct AdminRoleRecord {
     pub system_role: bool,
     pub revision: i64,
     pub permissions: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdminRolePage {
+    pub items: Vec<AdminRoleRecord>,
+    pub next_cursor: Option<String>,
+    pub total: usize,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -66,5 +85,6 @@ pub struct UpdateAdminUser {
     pub locale: Option<String>,
     pub status: Option<String>,
     pub role_keys: Option<Vec<String>>,
+    pub manager_user_id: Option<Option<Uuid>>,
     pub reason: String,
 }

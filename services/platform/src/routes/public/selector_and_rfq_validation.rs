@@ -1,4 +1,6 @@
-fn validate_selector(request: &SelectorRequest) -> Result<(), ApiError> {
+use super::*;
+
+pub(super) fn validate_selector(request: &SelectorRequest) -> Result<(), ApiError> {
     let mut errors = BTreeMap::new();
     if !request.airflow.is_finite() || request.airflow <= 0.0 {
         errors.insert(
@@ -43,85 +45,85 @@ fn validate_selector(request: &SelectorRequest) -> Result<(), ApiError> {
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
-enum RfqQuantity {
+pub(super) enum RfqQuantity {
     Integer(u64),
     Text(String),
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct RfqDutyPoint {
-    airflow: f64,
-    airflow_unit: String,
-    pressure: f64,
-    pressure_unit: String,
+pub(super) struct RfqDutyPoint {
+    pub(super) airflow: f64,
+    pub(super) airflow_unit: String,
+    pub(super) pressure: f64,
+    pub(super) pressure_unit: String,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct RfqElectricalContext {
-    voltage: Option<String>,
-    frequency_hz: Option<f64>,
+pub(super) struct RfqElectricalContext {
+    pub(super) voltage: Option<String>,
+    pub(super) frequency_hz: Option<f64>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct ProductRfqContext {
-    application: String,
-    quantity: Option<RfqQuantity>,
-    electrical: Option<RfqElectricalContext>,
-    environment: Option<String>,
-    priority: Option<String>,
-    additional_message: Option<String>,
+pub(super) struct ProductRfqContext {
+    pub(super) application: String,
+    pub(super) quantity: Option<RfqQuantity>,
+    pub(super) electrical: Option<RfqElectricalContext>,
+    pub(super) environment: Option<String>,
+    pub(super) priority: Option<String>,
+    pub(super) additional_message: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct SelectionRfqContext {
-    application: String,
-    duty_point: RfqDutyPoint,
-    quantity: Option<RfqQuantity>,
-    electrical: Option<RfqElectricalContext>,
-    environment: Option<String>,
-    priority: Option<String>,
-    additional_message: Option<String>,
-    maximum_diameter_mm: Option<f64>,
+pub(super) struct SelectionRfqContext {
+    pub(super) application: String,
+    pub(super) duty_point: RfqDutyPoint,
+    pub(super) quantity: Option<RfqQuantity>,
+    pub(super) electrical: Option<RfqElectricalContext>,
+    pub(super) environment: Option<String>,
+    pub(super) priority: Option<String>,
+    pub(super) additional_message: Option<String>,
+    pub(super) maximum_diameter_mm: Option<f64>,
     #[serde(default)]
-    required_certifications: Vec<String>,
-    control: Option<String>,
+    pub(super) required_certifications: Vec<String>,
+    pub(super) control: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct ProjectRfqContext {
-    application: String,
-    project_stage: String,
-    quantity: Option<RfqQuantity>,
-    electrical: Option<RfqElectricalContext>,
-    environment: Option<String>,
-    priority: Option<String>,
-    additional_message: Option<String>,
-    project_scale: Option<String>,
-    schedule: Option<String>,
-    engineering_needs: Option<String>,
+pub(super) struct ProjectRfqContext {
+    pub(super) application: String,
+    pub(super) project_stage: String,
+    pub(super) quantity: Option<RfqQuantity>,
+    pub(super) electrical: Option<RfqElectricalContext>,
+    pub(super) environment: Option<String>,
+    pub(super) priority: Option<String>,
+    pub(super) additional_message: Option<String>,
+    pub(super) project_scale: Option<String>,
+    pub(super) schedule: Option<String>,
+    pub(super) engineering_needs: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct ReplacementRfqContext {
-    application: String,
-    existing_model: String,
-    duty_point: RfqDutyPoint,
-    quantity: Option<RfqQuantity>,
-    electrical: Option<RfqElectricalContext>,
-    environment: Option<String>,
-    priority: Option<String>,
-    additional_message: Option<String>,
-    installation_constraints: Option<String>,
-    replacement_goal: Option<String>,
+pub(super) struct ReplacementRfqContext {
+    pub(super) application: String,
+    pub(super) existing_model: String,
+    pub(super) duty_point: RfqDutyPoint,
+    pub(super) quantity: Option<RfqQuantity>,
+    pub(super) electrical: Option<RfqElectricalContext>,
+    pub(super) environment: Option<String>,
+    pub(super) priority: Option<String>,
+    pub(super) additional_message: Option<String>,
+    pub(super) installation_constraints: Option<String>,
+    pub(super) replacement_goal: Option<String>,
 }
 
-fn validate_rfq(request: &CreateRfqRequest) -> Result<(), ApiError> {
+pub(super) fn validate_rfq(request: &CreateRfqRequest) -> Result<(), ApiError> {
     let mut errors = validate_business_contact(&request.contact);
     if !request.consent {
         errors.insert("consent".into(), vec!["Consent is required.".into()]);

@@ -30,6 +30,24 @@ pub(super) fn add_core(paths: &mut Map<String, Value>) {
     );
     add(
         paths,
+        "/internal/metrics",
+        "get",
+        op(
+            "getInternalMetrics",
+            "Return internal low-cardinality OpenMetrics telemetry",
+            "system",
+            [(
+                "200",
+                text_response(
+                    "OpenMetrics telemetry",
+                    "application/openmetrics-text",
+                    json!({"type": "string"}),
+                ),
+            )],
+        ),
+    );
+    add(
+        paths,
         "/openapi.json",
         "get",
         op(
@@ -100,24 +118,6 @@ pub(super) fn add_core(paths: &mut Map<String, Value>) {
             ],
         ),
     );
-    let mut preview_operation = op(
-        "getContentPreview",
-        "Get one exact content revision with a short-lived token bound to a currently authorized Admin session",
-        "publicPreview",
-        [(
-            "200",
-            json_response("Content preview", r("ContentPreviewResponse")),
-        )],
-    );
-    preview_operation["security"] = json!([{"previewToken": []}]);
-    preview_operation["responses"]["410"] =
-        problem_response("The signed preview token has expired");
-    add(
-        paths,
-        "/api/public/v1/content-preview",
-        "get",
-        preview_operation,
-    );
     add(
         paths,
         "/api/public/v1/products",
@@ -134,7 +134,7 @@ pub(super) fn add_core(paths: &mut Map<String, Value>) {
                 query_param("motorTechnology", false, json!({"type": "string"})),
                 json!({
                     "name": "cursor", "in": "query", "required": false,
-                    "description": "Opaque base64url v1 keyset cursor bound to the active family and motorTechnology filters.",
+                    "description": "Opaque base64url v2 keyset cursor bound to the active family and motorTechnology filters; v1 is accepted for one compatibility release.",
                     "schema": {"type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^[A-Za-z0-9_-]+$"}
                 }),
                 json!({
@@ -276,17 +276,20 @@ pub(super) fn add_core(paths: &mut Map<String, Value>) {
         paths,
         "/api/public/v1/analytics/events",
         "post",
-        body(
-            op(
-                "createAnalyticsEvent",
-                "Accept an allowlisted analytics event",
-                "publicAnalytics",
-                [(
-                    "202",
-                    json_response("Consent-aware event receipt", r("AnalyticsEventReceipt")),
-                )],
+        params(
+            body(
+                op(
+                    "createAnalyticsEvent",
+                    "Accept an idempotent allowlisted analytics event",
+                    "publicAnalytics",
+                    [(
+                        "202",
+                        json_response("Consent-aware event receipt", r("AnalyticsEventReceipt")),
+                    )],
+                ),
+                r("CreateAnalyticsEvent"),
             ),
-            r("CreateAnalyticsEvent"),
+            vec![idempotency_param()],
         ),
     );
 }
@@ -362,8 +365,8 @@ pub(super) fn add_data(paths: &mut Map<String, Value>) {
                 ),
                 json!({
                     "name": "cursor", "in": "query", "required": false,
-                    "description": "UUID cursor of the last News record returned by the previous page.",
-                    "schema": {"type": "string", "format": "uuid"}
+                    "description": "Opaque base64url v2 keyset cursor; a legacy News UUID is accepted for one compatibility release.",
+                    "schema": {"type": "string", "minLength": 1, "maxLength": 2048}
                 }),
                 json!({
                     "name": "limit", "in": "query", "required": false,

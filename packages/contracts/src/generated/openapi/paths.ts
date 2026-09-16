@@ -6,5 +6,6 @@
 import type { PathsPart01 } from './paths/part-01'
 import type { PathsPart02 } from './paths/part-02'
 import type { PathsPart03 } from './paths/part-03'
+import type { PathsPart04 } from './paths/part-04'
 
-export interface paths extends PathsPart01, PathsPart02, PathsPart03 {}
+export interface paths extends PathsPart01, PathsPart02, PathsPart03, PathsPart04 {}

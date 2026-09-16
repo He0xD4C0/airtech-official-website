@@ -6,7 +6,7 @@ import { downloadAssetHref, type PublicContentProjection } from '@/types/project
 type DownloadAssetValue = Extract<ContentBlock, { type: 'downloadAsset' }>
 
 const props = defineProps<{ block: DownloadAssetValue; projection: PublicContentProjection }>()
-const href = computed(() => downloadAssetHref(props.block.asset))
+const href = computed(() => downloadAssetHref(props.block.asset, props.projection.resolvedMedia))
 </script>
 
 <template>

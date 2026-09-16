@@ -24,8 +24,7 @@ pub fn document() -> Value {
         "components": {
             "securitySchemes": {
                 "adminSession": {"type": "apiKey", "in": "cookie", "name": "airtek_admin_session", "description": "Host-only HttpOnly cookie scoped to /api."},
-                "csrfToken": {"type": "apiKey", "in": "header", "name": "X-CSRF-Token", "description": "Required with the admin session on protected mutations."},
-                "previewToken": {"type": "http", "scheme": "bearer", "bearerFormat": "AIRTEK preview v1", "description": "Short-lived signed capability for exactly one content revision, bound to its issuing Admin user and session. Every read revalidates the active user, unrevoked and unexpired session, confirmed TOTP, and current content.read permission in PostgreSQL. Never send it in a query parameter to the API."}
+                "csrfToken": {"type": "apiKey", "in": "header", "name": "X-CSRF-Token", "description": "Required with the admin session on protected mutations."}
             },
             "schemas": schemas::build()
         },

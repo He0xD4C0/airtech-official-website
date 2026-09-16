@@ -1,3 +1,5 @@
+use super::*;
+
 pub const CMS_V2_SCHEMA_VERSION: u16 = 2;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -120,7 +122,6 @@ pub struct TiptapDocument {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AssetVersionReference {
     pub asset_id: Uuid,
-    pub version_id: Uuid,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]

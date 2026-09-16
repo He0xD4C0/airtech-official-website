@@ -18,4 +18,11 @@ No product value, curve, certification, download or case outcome in this scaffol
 - A published FAQ body represents a question with an H2-H4 ending in `?`; the following non-heading blocks are its answer until the next heading. Only complete textual pairs enter the accordion. `FAQPage` structured data is emitted only when every detected question is complete and the page is published, non-placeholder and indexable.
 - Article author, publication date and category are optional explicit document-root attributes named `author`, `publishedAt` and `category`. `authorType` must be `Person` or `Organization` before the author is added to structured data. Missing or invalid metadata is omitted; `updatedAt` remains a separately labeled update timestamp.
 - Article table-of-contents links are derived from the published H2-H4 nodes, with deterministic duplicate-safe anchors.
-- A published Download record may declare document-root attributes `version`, `applicableModels`, `resourceType`, `fileDescription`, `downloadUrl` and `fileStatus`. `fileStatus` is `{ scan, access }`; a button is exposed only for `scan: "clean"`, `access: "public"`, an indexable non-placeholder record, and a root-relative or credential-free HTTPS URL. Download-list filters use only descriptive metadata fetched from those published records; file URLs and internal status never enter list-card data.
+- Published CMS media/download blocks carry an immutable `assetId` plus source
+  version. Web never constructs or accepts a document-authored `downloadUrl` or
+  legacy `{ scan, access }` gate: it renders only the exact `resolvedMedia`
+  entry supplied by the public V2 projection. Inline blocks receive the
+  metadata-stripped display version; only an explicit download block may receive
+  the original attachment URL. A missing or revoked mapping is omitted and
+  logged rather than replaced with an unversioned/latest URL. Download-list
+  filters continue to use descriptive metadata only.

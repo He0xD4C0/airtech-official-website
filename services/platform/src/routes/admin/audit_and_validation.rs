@@ -1,32 +1,36 @@
-async fn list_audit(
+use super::*;
+
+pub(super) async fn list_audit(
     State(state): State<AppState>,
-    Query(query): Query<CursorQuery>,
-) -> Result<Json<CursorPage<AuditEvent>>, ApiError> {
-    let mut values = state.list_stored_audit().await?;
-    values.sort_by_key(|event| Reverse(event.occurred_at));
-    Ok(Json(paginate_by_id(
-        "admin.audit",
-        values,
-        query,
-        |event| event.id,
-    )?))
+    Query(query): Query<crate::services::audit_query::AuditQuery>,
+) -> Result<Json<crate::models::AuditEventPage>, ApiError> {
+    Ok(Json(
+        crate::services::audit_query::list(&state, query).await?,
+    ))
 }
 
-fn confirmation_phrase(kind: OperationKind) -> &'static str {
-    match kind {
-        OperationKind::MigrationPreflight => "PREFLIGHT MIGRATION",
-        OperationKind::MigrationApply => "APPLY MIGRATION",
-        OperationKind::Backup => "CREATE BACKUP",
-        OperationKind::RestoreValidate => "VALIDATE RESTORE",
-        OperationKind::RetentionApply => "APPLY RETENTION",
-        OperationKind::SearchReindex => "REBUILD SEARCH INDEX",
-        OperationKind::CacheInvalidate => "INVALIDATE PUBLIC CACHE",
-        OperationKind::FeishuSync => "START FEISHU SYNC",
-        OperationKind::ProductImport => "IMPORT PRODUCT MASTER",
-    }
+pub(super) async fn export_audit_csv(
+    State(state): State<AppState>,
+    Query(query): Query<crate::services::audit_query::AuditQuery>,
+) -> Result<Response, ApiError> {
+    let stream = crate::services::audit_query::csv_stream(state.pool.clone(), query)?;
+    let mut response = Response::new(axum::body::Body::from_stream(stream));
+    response.headers_mut().insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("text/csv; charset=utf-8"),
+    );
+    response.headers_mut().insert(
+        header::CONTENT_DISPOSITION,
+        HeaderValue::from_static("attachment; filename=airtek-audit.csv"),
+    );
+    Ok(response)
 }
 
-fn entity_response<T: serde::Serialize>(status: StatusCode, value: &T, revision: i64) -> Response {
+pub(super) fn entity_response<T: serde::Serialize>(
+    status: StatusCode,
+    value: &T,
+    revision: i64,
+) -> Response {
     let mut response = (status, Json(value)).into_response();
     response.headers_mut().insert(
         "etag",

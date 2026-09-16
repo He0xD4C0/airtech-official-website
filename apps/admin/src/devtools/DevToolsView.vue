@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { FitAddon } from '@xterm/addon-fit'
 import { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
-import { Circle, Code2, Plus, ShieldAlert, SquareTerminal, Trash2 } from 'lucide-vue-next'
+import { Circle, Plus, ShieldAlert, SquareTerminal, Trash2 } from 'lucide-vue-next'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { createDevtoolsTerminalToken, devtoolsTerminalUrl } from './devtoolsApi'
@@ -198,8 +198,7 @@ onBeforeUnmount(() => {
     </section>
 
     <section class="dev-command-grid">
-      <article class="panel"><Code2 :size="18" /><h2>平台 CLI</h2><p>开发数据库、同步、校验、索引、缓存、任务与诊断命令。</p><code>airtekctl --help</code></article>
-      <article class="panel"><SquareTerminal :size="18" /><h2>完整 PTY</h2><p>支持交互式输入、ANSI 输出、窗口 resize、空闲/绝对超时与退出码；页面断开时立即关闭终端。</p><code>shell: inherited uid</code></article>
+      <article class="panel"><SquareTerminal :size="18" /><h2>宿主 Shell</h2><p>直接连接启动网站服务的非 root 用户 Shell，支持交互式输入、ANSI 输出、窗口 resize、空闲/绝对超时与退出码。</p><code>shell: inherited uid</code></article>
     </section>
   </div>
 </template>

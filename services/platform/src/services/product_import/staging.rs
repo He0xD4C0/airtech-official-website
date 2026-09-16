@@ -1,3 +1,5 @@
+use super::*;
+
 /// Persist the encrypted source rows and the allow-listed normalized rows,
 /// then enqueue a worker job which refers only to the import run UUID.
 ///
@@ -217,11 +219,11 @@ pub async fn stage_and_queue_product_import(
     })
 }
 
-fn product_import_job_payload(import_run_id: Uuid) -> Value {
+pub(super) fn product_import_job_payload(import_run_id: Uuid) -> Value {
     json!({"importRunId": import_run_id})
 }
 
-async fn persist_staged_row(
+pub(super) async fn persist_staged_row(
     transaction: &mut Transaction<'_, Postgres>,
     parsed: &ParsedProductImport,
     row: &ImportedProductRow,
@@ -271,7 +273,7 @@ async fn persist_staged_row(
     Ok(())
 }
 
-async fn persist_import_findings(
+pub(super) async fn persist_import_findings(
     transaction: &mut Transaction<'_, Postgres>,
     parsed: &ParsedProductImport,
 ) -> Result<(), ApiError> {
@@ -312,7 +314,7 @@ async fn persist_import_findings(
     Ok(())
 }
 
-async fn persist_source_resolution_audit(
+pub(super) async fn persist_source_resolution_audit(
     transaction: &mut Transaction<'_, Postgres>,
     parsed: &ParsedProductImport,
     audit_actor: &str,

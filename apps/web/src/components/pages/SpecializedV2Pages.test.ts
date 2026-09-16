@@ -14,15 +14,13 @@ import SearchPage from './SearchPage.vue'
 import ComparePage from './ComparePage.vue'
 
 const mediaId = '11111111-1111-4111-8111-111111111111'
-const mediaVersionId = '22222222-2222-4222-8222-222222222222'
 const downloadId = '33333333-3333-4333-8333-333333333333'
-const downloadVersionId = '44444444-4444-4444-8444-444444444444'
 const blocks: ContentBlock[] = [
   {
     type: 'media',
     id: mediaId,
     media: {
-      asset: { assetId: mediaId, versionId: mediaVersionId },
+      asset: { assetId: mediaId },
       altText: 'Published V2 media',
       decorative: false,
     },
@@ -32,7 +30,7 @@ const blocks: ContentBlock[] = [
   {
     type: 'downloadAsset',
     id: downloadId,
-    asset: { assetId: downloadId, versionId: downloadVersionId },
+    asset: { assetId: downloadId },
     label: 'V2 controlled download',
     description: 'Published asset description',
   },
@@ -61,6 +59,20 @@ function pageWithProjection(
     updatedAt: '2026-09-11T00:00:00Z',
     resolvedRelations: [],
     resolvedLinks: [],
+    resolvedMedia: [
+      {
+        assetId: mediaId,
+        publicUrl: `/api/public/v1/media/${mediaId}`,
+        downloadUrl: `/api/public/v1/media/${mediaId}/download`,
+        mediaType: 'image/webp', byteSize: 100, originalName: 'media.webp',
+      },
+      {
+        assetId: downloadId,
+        publicUrl: `/api/public/v1/media/${downloadId}`,
+        downloadUrl: `/api/public/v1/media/${downloadId}/download`,
+        mediaType: 'image/png', byteSize: 200, originalName: 'controlled.png',
+      },
+    ],
   }
   return publicPageFixture(path, {
     kind,
@@ -142,7 +154,7 @@ describe('specialized V2 public pages', () => {
     for (const scenario of scenarios) {
       const html = await renderPage(scenario.component, scenario.page)
       expect(html, scenario.name).toContain('V2 media survives the specialized page')
-      expect(html, scenario.name).toContain(`src="/media/${mediaId}"`)
+      expect(html, scenario.name).toContain(`src="http://localhost:8080/api/public/v1/media/${mediaId}"`)
       expect(html, scenario.name).toContain('V2 controlled download')
       expect(html, scenario.name).toContain(scenario.workspace)
       expect(html, scenario.name).not.toContain('Legacy hero must not render')

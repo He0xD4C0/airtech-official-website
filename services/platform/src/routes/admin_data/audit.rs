@@ -1,5 +1,7 @@
+use super::*;
+
 #[allow(clippy::too_many_arguments)]
-async fn audit_mutation(
+pub(super) async fn audit_mutation(
     state: &AppState,
     headers: &HeaderMap,
     action: &str,
@@ -22,7 +24,7 @@ async fn audit_mutation(
         .await
 }
 
-fn mutation_audit_event(
+pub(super) fn mutation_audit_event(
     headers: &HeaderMap,
     action: &str,
     entity_type: &str,
@@ -40,42 +42,8 @@ fn mutation_audit_event(
         before,
         after,
         reason,
+        current_version: None,
         request_id: request_id(headers),
         occurred_at: Utc::now(),
     }
-}
-
-async fn insert_audit_event_in_transaction(
-    transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    event: &AuditEvent,
-) -> Result<(), ApiError> {
-    sqlx::query(
-        r#"INSERT INTO audit_log
-           (id,actor,action,entity_type,entity_id,before_value,after_value,
-            reason,request_id,occurred_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)"#,
-    )
-    .bind(event.id)
-    .bind(&event.actor)
-    .bind(&event.action)
-    .bind(&event.entity_type)
-    .bind(event.entity_id)
-    .bind(&event.before)
-    .bind(&event.after)
-    .bind(&event.reason)
-    .bind(event.request_id)
-    .bind(event.occurred_at)
-    .execute(&mut **transaction)
-    .await?;
-    Ok(())
-}
-
-async fn persist_memory_audit_if_needed(
-    state: &AppState,
-    event: AuditEvent,
-) -> Result<(), ApiError> {
-    if state.pool.is_none() {
-        state.persist_audit(event).await?;
-    }
-    Ok(())
 }

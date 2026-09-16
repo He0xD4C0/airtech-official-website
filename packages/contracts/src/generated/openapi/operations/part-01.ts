@@ -236,22 +236,34 @@ listGuestSources: {
             };
         };
     };
-getAnalyticsSummary: {
+listAuditEvents: {
         parameters: {
-            query?: never;
+            query?: {
+                action?: string;
+                actor?: string;
+                /** @description Opaque endpoint-scoped cursor returned by the previous page. */
+                cursor?: string;
+                from?: string;
+                /** @description Page size; values outside 1 through 100 return Problem Details 400. */
+                limit?: number;
+                q?: string;
+                resourceId?: string;
+                resourceType?: string;
+                to?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Analytics summary */
+            /** @description Audit events */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AnalyticsSummary"];
+                    "application/json": components["schemas"]["AuditEventPage"];
                 };
             };
             /** @description Malformed request */
@@ -346,14 +358,19 @@ getAnalyticsSummary: {
             };
         };
     };
-listGuestVisits: {
+exportAuditEventsCsv: {
         parameters: {
             query?: {
+                action?: string;
+                actor?: string;
                 /** @description Opaque endpoint-scoped cursor returned by the previous page. */
                 cursor?: string;
                 from?: string;
                 /** @description Page size; values outside 1 through 100 return Problem Details 400. */
                 limit?: number;
+                q?: string;
+                resourceId?: string;
+                resourceType?: string;
                 to?: string;
             };
             header?: never;
@@ -362,13 +379,13 @@ listGuestVisits: {
         };
         requestBody?: never;
         responses: {
-            /** @description Guest visit aggregates */
+            /** @description Filtered audit CSV */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GuestVisitAggregatePage"];
+                    "text/csv": string;
                 };
             };
             /** @description Malformed request */

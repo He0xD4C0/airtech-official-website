@@ -1,4 +1,6 @@
-fn product_family_presentations(
+use super::*;
+
+pub(super) fn product_family_presentations(
     categories: &[crate::models::ProductCategoryPresentationInput],
 ) -> Vec<ProductFamilyPresentation> {
     let mut presentations = categories
@@ -24,22 +26,10 @@ fn product_family_presentations(
     presentations
 }
 
-fn decode_guest_visit(row: &sqlx::postgres::PgRow) -> Result<GuestVisit, ApiError> {
-    Ok(GuestVisit {
-        id: row.try_get("id")?,
-        anonymous_session_id: row.try_get("anonymous_session_id")?,
-        landing_path: row.try_get("landing_path")?,
-        referrer_domain: row.try_get("referrer_host")?,
-        source: row.try_get("source_type")?,
-        medium: row.try_get("utm_medium")?,
-        campaign: row.try_get("utm_campaign")?,
-        first_seen_at: row.try_get("first_seen_at")?,
-        last_seen_at: row.try_get("last_seen_at")?,
-        retention_until: row.try_get("retention_until")?,
-    })
-}
-
-fn validate_guest_visit(config: &Config, request: &CreateGuestVisit) -> Result<(), ApiError> {
+pub(super) fn validate_guest_visit(
+    config: &Config,
+    request: &CreateGuestVisit,
+) -> Result<(), ApiError> {
     let mut errors = BTreeMap::new();
     if !valid_guest_landing_path(&request.landing_path) {
         errors.insert(

@@ -1,10 +1,12 @@
-async fn get_content(
+use super::*;
+
+pub(super) async fn get_content(
     State(state): State<AppState>,
     Path((kind, slug)): Path<(String, String)>,
     Query(query): Query<ContentQuery>,
 ) -> Result<Response, ApiError> {
     let kind = parse_content_kind(&kind)?;
-    let entry = super::public_data::load_v2_content_by_kind_slug(
+    let entry = crate::routes::public_data::load_v2_content_by_kind_slug(
         &state,
         kind,
         &slug,
@@ -16,7 +18,7 @@ async fn get_content(
     Ok(with_etag(entry, revision))
 }
 
-async fn list_products(
+pub(super) async fn list_products(
     State(state): State<AppState>,
     Query(query): Query<ProductQuery>,
 ) -> Result<Json<CursorPage<Product>>, ApiError> {
@@ -27,42 +29,26 @@ async fn list_products(
     let after = query
         .cursor
         .as_deref()
-        .map(|value| decode_product_cursor(value, &query))
+        .map(|value| decode_product_cursor(&state, value, &query))
         .transpose()?;
-    let mut products: Vec<_> = if let Some(pool) = &state.pool {
-        load_published_product_rows(pool, query.family, query.motor_technology.as_deref(), None)
-            .await?
-    } else {
-        state
-            .data
-            .read()
-            .await
-            .published_products
-            .values()
-            .filter(|product| {
-                query
-                    .family
-                    .map(|family| family == product.family)
-                    .unwrap_or(true)
-                    && query
-                        .motor_technology
-                        .as_ref()
-                        .map(|technology| product.motor_technology.as_ref() == Some(technology))
-                        .unwrap_or(true)
-            })
-            .cloned()
-            .collect()
-    };
-    products.sort_by(|left, right| left.stable_id.cmp(&right.stable_id));
-    if let Some(after) = after {
-        products.retain(|product| product.stable_id > after);
-    }
+    let mut products = load_published_product_rows(
+        &state.pool,
+        query.family,
+        query.motor_technology.as_deref(),
+        None,
+        None,
+        after
+            .as_ref()
+            .map(|value| (value.stable_id.as_str(), value.id.unwrap_or(Uuid::nil()))),
+        Some(limit + 1),
+    )
+    .await?;
     let has_more = products.len() > limit;
     products.truncate(limit);
     let next_cursor = has_more
         .then(|| products.last())
         .flatten()
-        .map(|product| encode_product_cursor(&product.stable_id, &query))
+        .map(|product| encode_product_cursor(product, &query))
         .transpose()?;
     Ok(Json(CursorPage {
         items: products,
@@ -72,17 +58,22 @@ async fn list_products(
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ProductCursor {
-    version: u8,
-    stable_id: String,
-    family: Option<ProductFamily>,
-    motor_technology: Option<String>,
+pub(super) struct ProductCursor {
+    pub(super) version: u8,
+    pub(super) stable_id: String,
+    pub(super) id: Option<Uuid>,
+    pub(super) family: Option<ProductFamily>,
+    pub(super) motor_technology: Option<String>,
 }
 
-fn encode_product_cursor(stable_id: &str, query: &ProductQuery) -> Result<String, ApiError> {
+pub(super) fn encode_product_cursor(
+    product: &Product,
+    query: &ProductQuery,
+) -> Result<String, ApiError> {
     let cursor = ProductCursor {
-        version: 1,
-        stable_id: stable_id.to_owned(),
+        version: 2,
+        stable_id: product.stable_id.clone(),
+        id: Some(product.id),
         family: query.family,
         motor_technology: query.motor_technology.clone(),
     };
@@ -91,7 +82,11 @@ fn encode_product_cursor(stable_id: &str, query: &ProductQuery) -> Result<String
         .map_err(|_| ApiError::internal("Product cursor serialization failed."))
 }
 
-fn decode_product_cursor(value: &str, query: &ProductQuery) -> Result<String, ApiError> {
+pub(super) fn decode_product_cursor(
+    state: &AppState,
+    value: &str,
+    query: &ProductQuery,
+) -> Result<ProductCursor, ApiError> {
     if value.is_empty() || value.len() > 2_048 {
         return Err(ApiError::bad_request("cursor is invalid."));
     }
@@ -100,7 +95,7 @@ fn decode_product_cursor(value: &str, query: &ProductQuery) -> Result<String, Ap
         .ok()
         .and_then(|value| serde_json::from_slice::<ProductCursor>(&value).ok())
         .filter(|cursor| {
-            cursor.version == 1
+            matches!(cursor.version, 1 | 2)
                 && !cursor.stable_id.is_empty()
                 && cursor.stable_id.len() <= 500
                 && cursor.family == query.family
@@ -109,33 +104,29 @@ fn decode_product_cursor(value: &str, query: &ProductQuery) -> Result<String, Ap
         .ok_or_else(|| {
             ApiError::bad_request("cursor is invalid or belongs to different product filters.")
         })?;
-    Ok(decoded.stable_id)
+    if decoded.version == 1 {
+        state.request_metrics.record_legacy_cursor(
+            crate::services::request_metrics::LegacyCursorEndpoint::PublicProducts,
+        );
+    }
+    Ok(decoded)
 }
 
-async fn get_product(
+pub(super) async fn get_product(
     State(state): State<AppState>,
     Path(slug): Path<String>,
     Query(query): Query<ProductDetailQuery>,
 ) -> Result<Response, ApiError> {
-    let products = if let Some(pool) = &state.pool {
-        load_published_product_rows(pool, query.family, None, Some(&slug)).await?
-    } else {
-        state
-            .data
-            .read()
-            .await
-            .published_products
-            .values()
-            .filter(|product| {
-                product.slug == slug
-                    && query
-                        .family
-                        .map(|family| product.family == family)
-                        .unwrap_or(true)
-            })
-            .cloned()
-            .collect()
-    };
+    let products = load_published_product_rows(
+        &state.pool,
+        query.family,
+        None,
+        Some(&slug),
+        None,
+        None,
+        Some(2),
+    )
+    .await?;
     let product = require_unique_published_product(products)?;
     let revision = product
         .published_revision
@@ -143,7 +134,7 @@ async fn get_product(
     Ok(with_etag(product, revision))
 }
 
-fn require_unique_published_product<T>(mut products: Vec<T>) -> Result<T, ApiError> {
+pub(super) fn require_unique_published_product<T>(mut products: Vec<T>) -> Result<T, ApiError> {
     match products.len() {
         0 => Err(ApiError::not_found("Published product was not found.")),
         1 => Ok(products.pop().expect("one product remains")),
@@ -153,40 +144,21 @@ fn require_unique_published_product<T>(mut products: Vec<T>) -> Result<T, ApiErr
     }
 }
 
-async fn select_products(
+pub(super) async fn select_products(
     State(state): State<AppState>,
     Json(request): Json<SelectorRequest>,
 ) -> Result<Json<SelectorResponse>, ApiError> {
     validate_selector(&request)?;
-    let products: Vec<Product> = if let Some(pool) = &state.pool {
-        load_published_product_rows(
-            pool,
-            request.preferred_family,
-            request.motor_technology.as_deref(),
-            None,
-        )
-        .await?
-    } else {
-        state
-            .data
-            .read()
-            .await
-            .published_products
-            .values()
-            .filter(|product| {
-                request
-                    .preferred_family
-                    .map(|family| family == product.family)
-                    .unwrap_or(true)
-                    && request
-                        .motor_technology
-                        .as_ref()
-                        .map(|technology| product.motor_technology.as_ref() == Some(technology))
-                        .unwrap_or(true)
-            })
-            .cloned()
-            .collect()
-    };
+    let products: Vec<Product> = load_published_product_rows(
+        &state.pool,
+        request.preferred_family,
+        request.motor_technology.as_deref(),
+        None,
+        None,
+        None,
+        None,
+    )
+    .await?;
 
     Ok(Json(crate::services::selector::evaluate(
         &request, &products,

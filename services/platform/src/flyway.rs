@@ -14,10 +14,17 @@ pub struct FlywayStatus {
 
 impl FlywayStatus {
     pub fn is_current(&self) -> bool {
+        self.is_current_through(REQUIRED_SCHEMA_VERSION)
+    }
+
+    pub fn is_current_through(&self, required_version: i64) -> bool {
+        if !(1..=REQUIRED_SCHEMA_VERSION).contains(&required_version) {
+            return false;
+        }
         self.current_version
-            .is_some_and(|version| version >= REQUIRED_SCHEMA_VERSION)
+            .is_some_and(|version| version >= required_version)
             && self.failed_migrations == 0
-            && self.covered_required_versions == REQUIRED_SCHEMA_VERSION
+            && self.covered_required_versions >= required_version
     }
 }
 

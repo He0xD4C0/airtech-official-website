@@ -1,4 +1,6 @@
-fn validate_reason(reason: &str) -> Result<(), ApiError> {
+use super::*;
+
+pub(super) fn validate_reason(reason: &str) -> Result<(), ApiError> {
     if reason.trim().len() < 10 || reason.len() > 1000 {
         Err(ApiError::bad_request(
             "reason must contain 10 to 1000 characters.",
@@ -8,14 +10,11 @@ fn validate_reason(reason: &str) -> Result<(), ApiError> {
     }
 }
 
-fn decode_json<T: serde::de::DeserializeOwned>(value: Value, entity: &str) -> Result<T, ApiError> {
-    serde_json::from_value(value).map_err(|error| {
-        tracing::error!(%error, entity, "stored JSON payload is invalid");
-        ApiError::service_unavailable(format!("Stored {entity} data is invalid."))
-    })
-}
-
-fn entity_response<T: Serialize>(status: StatusCode, value: &T, revision: i64) -> Response {
+pub(super) fn entity_response<T: Serialize>(
+    status: StatusCode,
+    value: &T,
+    revision: i64,
+) -> Response {
     let mut response = (status, Json(value)).into_response();
     response.headers_mut().insert(
         header::ETAG,
@@ -28,7 +27,7 @@ fn entity_response<T: Serialize>(status: StatusCode, value: &T, revision: i64) -
     response
 }
 
-fn request_id(headers: &HeaderMap) -> Uuid {
+pub(super) fn request_id(headers: &HeaderMap) -> Uuid {
     headers
         .get("x-request-id")
         .and_then(|value| value.to_str().ok())
@@ -36,7 +35,7 @@ fn request_id(headers: &HeaderMap) -> Uuid {
         .unwrap_or_else(Uuid::new_v4)
 }
 
-fn valid_locale(value: &str) -> bool {
+pub(super) fn valid_locale(value: &str) -> bool {
     (2..=35).contains(&value.len())
         && !value.starts_with('-')
         && !value.ends_with('-')

@@ -44,9 +44,9 @@
 
 .sidebar__context { padding: 0.8rem 0.8rem 0.45rem; }
 .sidebar__context-label { display: block; margin: 0 0 0.38rem 0.3rem; color: #6f8b90; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
-.sidebar__context button { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.55rem; width: 100%; padding: 0.58rem; border: 1px solid rgb(255 255 255 / 9%); border-radius: 9px; background: rgb(255 255 255 / 5%); color: white; text-align: left; }
+.sidebar__context-static { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0.55rem; width: 100%; padding: 0.58rem; border: 1px solid rgb(255 255 255 / 9%); border-radius: 9px; background: rgb(255 255 255 / 5%); color: white; text-align: left; }
 .sidebar__context-mark { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 7px; background: linear-gradient(140deg, var(--airtek-blue), var(--airtek-green-dark)); font-size: 0.63rem; font-weight: 800; }
-.sidebar__context button > span:nth-child(2) { display: flex; min-width: 0; flex-direction: column; }
+.sidebar__context-static > span:nth-child(2) { display: flex; min-width: 0; flex-direction: column; }
 .sidebar__context strong { overflow: hidden; font-size: 0.68rem; text-overflow: ellipsis; }
 .sidebar__context small { color: #86a0a4; font-size: 0.58rem; }
 
@@ -91,7 +91,6 @@
 .command-trigger > span { flex: 1; }
 .command-trigger kbd { display: flex; align-items: center; gap: 0.1rem; padding: 0.22rem 0.35rem; border: 1px solid #d8e1e0; border-radius: 5px; background: white; color: #718380; font-size: 0.56rem; }
 .environment-chip { padding: 0.3rem 0.45rem; border: 1px solid #e7d89e; border-radius: 6px; background: #fff9e8; color: #826004; font-size: 0.6rem; font-weight: 750; }
-.notification-dot { position: absolute; top: 0.35rem; right: 0.38rem; width: 0.43rem; height: 0.43rem; border: 2px solid white; border-radius: 50%; background: var(--airtek-green); }
 .workspace__main { width: 100%; max-width: 94rem; min-width: 0; margin: 0 auto; padding: 1.45rem; outline: none; }
 
 .shell-scrim { display: none; }

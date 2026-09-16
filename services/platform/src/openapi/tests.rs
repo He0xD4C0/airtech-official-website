@@ -12,9 +12,8 @@ fn documents_every_production_route() {
     let expected = [
         "/api/admin/v1/analytics/overview",
         "/api/admin/v1/analytics/sources",
-        "/api/admin/v1/analytics/summary",
-        "/api/admin/v1/analytics/visits",
         "/api/admin/v1/audit",
+        "/api/admin/v1/audit/export.csv",
         "/api/admin/v1/auth/invitations/accept",
         "/api/admin/v1/auth/login",
         "/api/admin/v1/auth/logout",
@@ -26,19 +25,31 @@ fn documents_every_production_route() {
         "/api/admin/v1/auth/totp/confirm",
         "/api/admin/v1/auth/totp/enrollment",
         "/api/admin/v1/contacts",
-        "/api/admin/v1/content",
-        "/api/admin/v1/content/templates",
-        "/api/admin/v1/content/{id}/diff",
-        "/api/admin/v1/content/{id}/draft",
-        "/api/admin/v1/content/{id}/revisions",
-        "/api/admin/v1/content/{id}/revisions/{revision}/restore",
-        "/api/admin/v1/content/{id}/snapshots",
+        "/api/admin/v1/contacts/{id}",
+        "/api/admin/v1/contacts/{id}/assignment",
+        "/api/admin/v1/contacts/{id}/notes",
+        "/api/admin/v1/contacts/{id}/pii",
+        "/api/admin/v1/contacts/{id}/status",
+        "/api/admin/v1/content-drafts",
+        "/api/admin/v1/content-drafts/templates",
+        "/api/admin/v1/content-drafts/{draftId}",
+        "/api/admin/v1/content-drafts/{draftId}/claim",
+        "/api/admin/v1/content-drafts/{draftId}/shares",
+        "/api/admin/v1/content-drafts/{draftId}/submit",
+        "/api/admin/v1/content-drafts/{draftId}/withdraw",
+        "/api/admin/v1/content-reviews",
+        "/api/admin/v1/content-reviews/{draftId}/approve",
+        "/api/admin/v1/content-reviews/{draftId}/reject",
+        "/api/admin/v1/dashboard/summary",
         "/api/admin/v1/feishu/conflicts",
+        "/api/admin/v1/feishu/conflicts/{id}/resolve",
+        "/api/admin/v1/feishu/connection-status",
+        "/api/admin/v1/feishu/mappings",
+        "/api/admin/v1/feishu/staging",
         "/api/admin/v1/feishu/sync-runs",
         "/api/admin/v1/media/assets",
-        "/api/admin/v1/media/assets/{id}/scan",
-        "/api/admin/v1/media/uploads",
-        "/api/admin/v1/operations",
+        "/api/admin/v1/media/assets/{id}",
+        "/api/admin/v1/media/assets/{id}/references",
         "/api/admin/v1/operations/{id}",
         "/api/admin/v1/operations/{id}/events",
         "/api/admin/v1/products",
@@ -47,9 +58,19 @@ fn documents_every_production_route() {
         "/api/admin/v1/products/{id}",
         "/api/admin/v1/products/{id}/presentation",
         "/api/admin/v1/products/{id}/private-pricing",
+        "/api/admin/v1/products/{id}/publication-readiness",
         "/api/admin/v1/products/{id}/publish",
         "/api/admin/v1/products/{id}/temporary-overrides",
+        "/api/admin/v1/products/{id}/validation-report",
+        "/api/admin/v1/published-content",
+        "/api/admin/v1/published-content/{contentId}",
+        "/api/admin/v1/published-content/{contentId}/drafts",
         "/api/admin/v1/rfqs",
+        "/api/admin/v1/rfqs/{id}",
+        "/api/admin/v1/rfqs/{id}/assignment",
+        "/api/admin/v1/rfqs/{id}/notes",
+        "/api/admin/v1/rfqs/{id}/pii",
+        "/api/admin/v1/rfqs/{id}/status",
         "/api/admin/v1/roles",
         "/api/admin/v1/roles/{id}",
         "/api/admin/v1/settings",
@@ -61,7 +82,6 @@ fn documents_every_production_route() {
         "/api/public/v1/analytics/consents",
         "/api/public/v1/analytics/events",
         "/api/public/v1/contact",
-        "/api/public/v1/content-preview",
         "/api/public/v1/content/{kind}/{slug}",
         "/api/public/v1/discovery",
         "/api/public/v1/guest-visits",
@@ -76,6 +96,7 @@ fn documents_every_production_route() {
         "/api/public/v1/selector",
         "/api/public/v1/site-bootstrap",
         "/healthz",
+        "/internal/metrics",
         "/openapi.json",
         "/readyz",
         "/robots.txt",
@@ -196,10 +217,7 @@ fn public_editorial_contract_is_cms_v2_only() {
             ["content"]["application/json"]["schema"]["$ref"],
         "#/components/schemas/PublicContentProjection"
     );
-    assert_eq!(
-        schemas["ContentPreviewResponse"]["properties"]["content"]["$ref"],
-        "#/components/schemas/PublicContentProjection"
-    );
+    assert!(schemas.get("ContentPreviewResponse").is_none());
 
     let template_required = schemas["ContentTemplateDefinition"]["required"]
         .as_array()
@@ -208,35 +226,118 @@ fn public_editorial_contract_is_cms_v2_only() {
 }
 
 #[test]
-fn every_human_media_review_requires_a_non_empty_reason() {
+fn media_contract_is_synchronous_direct_and_public() {
     let document = document();
-    let schema = &document["components"]["schemas"]["MediaAssetReviewRequest"];
+    let paths = &document["paths"];
+    let upload = &paths["/api/admin/v1/media/assets"]["post"];
+    assert_eq!(upload["operationId"], "uploadAdminMediaAsset");
+    assert!(upload["responses"].get("201").is_some());
+    assert!(upload["responses"].get("202").is_none());
+    assert!(upload["responses"].get("413").is_some());
+    assert!(upload["responses"].get("415").is_some());
+    assert!(paths.get("/api/admin/v1/media/uploads").is_none());
+    assert!(paths
+        .get("/api/admin/v1/media/assets/{id}/references")
+        .is_some());
+    assert!(paths.get("/api/public/v1/media/{assetId}").is_some());
+
+    let schema = &document["components"]["schemas"]["MediaAsset"];
     let required = schema["required"].as_array().expect("required fields");
-    assert!(required.contains(&json!("status")));
-    assert!(required.contains(&json!("reason")));
-    assert_eq!(schema["properties"]["reason"]["type"], "string");
-    assert_eq!(schema["properties"]["reason"]["minLength"], 1);
-    assert_eq!(schema["properties"]["reason"]["maxLength"], 500);
-    assert_eq!(schema["properties"]["reason"]["pattern"], r"\S");
+    for field in [
+        "id",
+        "publicUrl",
+        "downloadUrl",
+        "originalName",
+        "mediaType",
+        "byteSize",
+        "sha256",
+        "uploadedBy",
+        "createdAt",
+    ] {
+        assert!(required.contains(&json!(field)), "missing {field}");
+    }
 }
 
 #[test]
-fn admin_submit_publish_and_job_mutations_require_a_bounded_idempotency_key() {
+fn stable_media_and_dependency_problem_types_are_contractual() {
+    let document = document();
+    let schemas = &document["components"]["schemas"];
+    let expected_codes = crate::error::STABLE_DOMAIN_PROBLEM_CODES
+        .iter()
+        .map(|code| json!(code))
+        .collect::<Vec<_>>();
+    let expected_types = crate::error::STABLE_DOMAIN_PROBLEM_CODES
+        .iter()
+        .map(|code| json!(crate::error::problem_type_uri(code)))
+        .collect::<Vec<_>>();
+    assert_eq!(schemas["StableProblemCode"]["enum"], json!(expected_codes));
+    assert_eq!(schemas["StableProblemType"]["enum"], json!(expected_types));
+    assert_eq!(
+        schemas["ProblemDetails"]["properties"]["type"]["x-stable-domain-types"],
+        json!(expected_types)
+    );
+
+    for (path, method, status, code) in [
+        (
+            "/api/admin/v1/media/assets",
+            "post",
+            "409",
+            crate::error::MEDIA_IDEMPOTENCY_CONFLICT,
+        ),
+        (
+            "/api/admin/v1/media/assets",
+            "post",
+            "415",
+            crate::error::MEDIA_DECODE_FAILED,
+        ),
+    ] {
+        let example = &document["paths"][path][method]["responses"][status]["content"]
+            ["application/problem+json"]["examples"][code]["value"];
+        assert_eq!(example["type"], crate::error::problem_type_uri(code));
+        assert_eq!(example["status"], status.parse::<u16>().unwrap());
+    }
+}
+
+#[test]
+fn public_media_contract_is_asset_resolved() {
+    let document = document();
+    let paths = &document["paths"];
+    assert!(paths.get("/api/public/v1/media/{assetId}").is_some());
+
+    let schemas = &document["components"]["schemas"];
+    let required = schemas["PublicContentProjection"]["required"]
+        .as_array()
+        .expect("projection required fields");
+    assert!(required.contains(&json!("resolvedMedia")));
+    assert_eq!(
+        schemas["PublicContentProjection"]["properties"]["resolvedMedia"]["items"]["$ref"],
+        "#/components/schemas/ResolvedMedia"
+    );
+    for property in [
+        "assetId",
+        "publicUrl",
+        "downloadUrl",
+        "mediaType",
+        "byteSize",
+        "originalName",
+    ] {
+        assert!(schemas["ResolvedMedia"]["required"]
+            .as_array()
+            .expect("resolved media required fields")
+            .contains(&json!(property)));
+    }
+}
+
+#[test]
+fn mutations_require_a_bounded_idempotency_key() {
     let document = document();
     for (path, method) in [
-        ("/api/admin/v1/content", "post"),
-        ("/api/admin/v1/content/{id}/draft", "patch"),
-        ("/api/admin/v1/content/{id}/snapshots", "post"),
-        (
-            "/api/admin/v1/content/{id}/revisions/{revision}/restore",
-            "post",
-        ),
         ("/api/admin/v1/products/{id}/publish", "post"),
         ("/api/admin/v1/products/{id}/temporary-overrides", "post"),
-        ("/api/admin/v1/feishu/sync-runs", "post"),
-        ("/api/admin/v1/operations", "post"),
+        ("/api/admin/v1/media/assets", "post"),
         ("/api/admin/v1/products/imports", "post"),
         ("/api/admin/v1/products/{id}/presentation", "patch"),
+        ("/api/public/v1/analytics/events", "post"),
         ("/api/admin/v1/user-invitations", "post"),
         ("/api/admin/v1/user-invitations/{id}/revoke", "post"),
         ("/api/admin/v1/users/{id}", "patch"),
@@ -260,6 +361,13 @@ fn admin_submit_publish_and_job_mutations_require_a_bounded_idempotency_key() {
 fn unified_content_contract_removes_dedicated_editorial_mutations() {
     let document = document();
     for path in [
+        "/api/admin/v1/content",
+        "/api/admin/v1/content/{id}/draft",
+        "/api/admin/v1/content/{id}/snapshots",
+        "/api/admin/v1/content/{id}/revisions",
+        "/api/admin/v1/content/{id}/diff",
+        "/api/admin/v1/content/{id}/revisions/{revision}/restore",
+        "/api/public/v1/content-preview",
         "/api/admin/v1/news",
         "/api/admin/v1/news/{id}",
         "/api/admin/v1/general-information",
@@ -279,10 +387,13 @@ fn every_operation_has_an_id_and_problem_contracts() {
                 "{method} {path} has no operationId"
             );
             let responses = operation["responses"].as_object().expect("responses");
+            let has_success = responses
+                .keys()
+                .any(|status| status.starts_with('2') || status == "101");
+            let is_explicitly_unavailable =
+                operation["operationId"] == "startFeishuSyncRun" && responses.contains_key("409");
             assert!(
-                responses
-                    .keys()
-                    .any(|status| status.starts_with('2') || status == "101"),
+                has_success || is_explicitly_unavailable,
                 "{method} {path} has no success response"
             );
             assert_eq!(

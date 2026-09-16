@@ -1,12 +1,12 @@
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod cases {
+    use super::super::*;
 
-    fn guest_visit_fixture() -> CreateGuestVisit {
+    pub(super) fn guest_visit_fixture() -> CreateGuestVisit {
         CreateGuestVisit {
             anonymous_session_id: Uuid::new_v4(),
             consent_receipt: Uuid::new_v4(),
-            policy_version: super::super::public::ANALYTICS_POLICY_VERSION.into(),
+            policy_version: crate::routes::public::ANALYTICS_POLICY_VERSION.into(),
             landing_path: "/en/products/b23e280h128-102-b0".into(),
             referrer_domain: Some("search.example.com".into()),
             source: Some("google".into()),
@@ -16,7 +16,7 @@ mod tests {
     }
 
     #[test]
-    fn guest_visit_rejects_full_referrer_and_tracking_query() {
+    pub(super) fn guest_visit_rejects_full_referrer_and_tracking_query() {
         let mut request = guest_visit_fixture();
         request.landing_path = "/en/products?email=private@example.com".into();
         request.referrer_domain = Some("https://example.com/a?q=private".into());
@@ -26,7 +26,7 @@ mod tests {
     }
 
     #[test]
-    fn guest_visit_normalizes_safe_attribution_before_storage() {
+    pub(super) fn guest_visit_normalizes_safe_attribution_before_storage() {
         let mut request = guest_visit_fixture();
         request.referrer_domain = Some("  Search.Example.COM  ".into());
         request.source = Some("  Google-Ads  ".into());
@@ -46,7 +46,7 @@ mod tests {
     }
 
     #[test]
-    fn guest_visit_rejects_non_hostname_or_identifier_referrers() {
+    pub(super) fn guest_visit_rejects_non_hostname_or_identifier_referrers() {
         for referrer in [
             "192.0.2.10",
             "2001:db8::1",
@@ -69,7 +69,7 @@ mod tests {
     }
 
     #[test]
-    fn guest_visit_rejects_pii_like_attribution_values() {
+    pub(super) fn guest_visit_rejects_pii_like_attribution_values() {
         for value in [
             "person@example.com",
             "+86 13800138000",
@@ -97,7 +97,7 @@ mod tests {
     }
 
     #[test]
-    fn guest_visit_rejects_direct_and_encoded_identifiers_in_landing_path() {
+    pub(super) fn guest_visit_rejects_direct_and_encoded_identifiers_in_landing_path() {
         for landing_path in [
             "/en/ref/person@example.com",
             "/en/ref/person%40example.com",
@@ -119,13 +119,13 @@ mod tests {
     }
 
     #[test]
-    fn guest_visit_accepts_canonical_product_path_and_standard_utm_values() {
+    pub(super) fn guest_visit_accepts_canonical_product_path_and_standard_utm_values() {
         validate_guest_visit(&Config::for_test(), &guest_visit_fixture())
             .expect("canonical paths and non-PII UTM dimensions are accepted");
     }
 
     #[test]
-    fn guest_visit_rejects_names_and_unregistered_free_text_dimensions() {
+    pub(super) fn guest_visit_rejects_names_and_unregistered_free_text_dimensions() {
         for value in ["Jane Doe", "unregistered-campaign", "form-body-value"] {
             for field in ["source", "medium", "campaign"] {
                 let mut request = guest_visit_fixture();
@@ -144,13 +144,13 @@ mod tests {
     }
 
     #[test]
-    fn source_classification_is_data_minimized() {
+    pub(super) fn source_classification_is_data_minimized() {
         let request = guest_visit_fixture();
         assert_eq!(classify_source(&request), "paidSearch");
     }
 
     #[test]
-    fn configured_product_family_remains_visible_without_any_products() {
+    pub(super) fn configured_product_family_remains_visible_without_any_products() {
         let categories = [crate::models::ProductCategoryPresentationInput {
             code: ProductFamily::Axial,
             slug: "axial".into(),
@@ -163,13 +163,4 @@ mod tests {
         assert_eq!(presentations[0].code, ProductFamily::Axial);
         assert_eq!(presentations[0].slug, "axial");
     }
-
-    #[tokio::test]
-    async fn public_discovery_rejects_a_missing_site_shell() {
-        let error = published_site_shell_has_placeholder(&AppState::for_test(), "en")
-            .await
-            .expect_err("missing site shell must fail closed");
-        assert_eq!(error.status(), StatusCode::SERVICE_UNAVAILABLE);
-    }
-
 }

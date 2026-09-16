@@ -1,15 +1,16 @@
 #[cfg(test)]
-mod tests {
-    use super::{
+mod cases {
+    use super::super::{
         is_public_projection_topic, product_import_id_from_job_payload, resolve_integer_setting,
-        retention_job_is_due,
+        retention_job_is_due, COMPLETE_JOB_SQL, FAIL_JOB_SQL, JOB_LEASE_RENEW_INTERVAL,
+        JOB_LEASE_SECONDS, RENEW_JOB_LEASE_SQL,
     };
     use chrono::{Duration, Utc};
     use serde_json::json;
     use uuid::Uuid;
 
     #[test]
-    fn product_import_job_payload_is_reference_only() {
+    pub(super) fn product_import_job_payload_is_reference_only() {
         let id = Uuid::new_v4();
         assert_eq!(
             product_import_id_from_job_payload(&json!({"importRunId": id})).unwrap(),
@@ -28,9 +29,10 @@ mod tests {
     }
 
     #[test]
-    fn every_publication_topic_has_a_request_time_projection_consumer() {
+    pub(super) fn every_publication_topic_has_a_request_time_projection_consumer() {
         for topic in [
             "public.content.published",
+            "public.content.unpublished",
             "public.product.published",
             "public.news.published",
             "public.generalInformation.published",
@@ -41,7 +43,7 @@ mod tests {
     }
 
     #[test]
-    fn deployment_retention_values_apply_until_an_admin_overrides_migration_defaults() {
+    pub(super) fn deployment_retention_values_apply_until_an_admin_overrides_migration_defaults() {
         assert_eq!(
             resolve_integer_setting(
                 "guestVisitRetentionDays",
@@ -75,7 +77,7 @@ mod tests {
     }
 
     #[test]
-    fn daily_retention_schedule_is_due_only_without_active_or_recent_work() {
+    pub(super) fn daily_retention_schedule_is_due_only_without_active_or_recent_work() {
         let now = Utc::now();
         assert!(retention_job_is_due(None, now));
         assert!(!retention_job_is_due(
@@ -98,5 +100,14 @@ mod tests {
             Some(("failed", now - Duration::hours(25))),
             now
         ));
+    }
+
+    #[test]
+    pub(super) fn lease_renewal_has_headroom_and_all_lifecycle_writes_are_owner_fenced() {
+        assert!(JOB_LEASE_RENEW_INTERVAL.as_secs() * 2 < JOB_LEASE_SECONDS as u64);
+        for statement in [RENEW_JOB_LEASE_SQL, COMPLETE_JOB_SQL, FAIL_JOB_SQL] {
+            assert!(statement.contains("status='running'"));
+            assert!(statement.contains("lease_owner=$"));
+        }
     }
 }

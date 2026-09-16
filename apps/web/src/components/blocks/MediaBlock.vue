@@ -6,7 +6,7 @@ import { isDecorative, mediaAlt, mediaAssetHref, type PublicContentProjection } 
 type MediaBlockValue = Extract<ContentBlock, { type: 'media' }>
 
 const props = defineProps<{ block: MediaBlockValue; projection: PublicContentProjection }>()
-const src = computed(() => mediaAssetHref(props.block.media))
+const src = computed(() => mediaAssetHref(props.block.media, props.projection.resolvedMedia))
 </script>
 
 <template>

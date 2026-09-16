@@ -18,7 +18,7 @@ function content(overrides: Record<string, unknown> = {}): Record<string, unknow
     seo: { title: 'SEO from content projection', description: 'SEO description from projection.', indexable: true, socialImage: null },
     isPlaceholder: false, publishedRevision: 2,
     updatedAt: '2026-09-01T08:00:00Z',
-    resolvedRelations: [], resolvedLinks: [],
+    resolvedRelations: [], resolvedLinks: [], resolvedMedia: [],
     ...overrides,
   }
 }
@@ -265,6 +265,7 @@ describe('database-driven public SSR page loading', () => {
         href: '/en/company/about', eyebrow: 'Company', tags: [],
       }],
       resolvedLinks: [],
+      resolvedMedia: [],
     }
     const generalInformation = {
       ...v2Projection,

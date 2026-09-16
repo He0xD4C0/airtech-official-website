@@ -1,9 +1,11 @@
+use super::*;
+
 #[tokio::test]
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
 async fn public_rate_limit_survives_an_api_restart() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    let sandbox = support::DatabaseClone::create(&database_url).await;
     sandbox.apply_current().await;
     let pool = sandbox.pool().clone();
     support::assert_flyway_schema_current(&pool).await;
@@ -15,8 +17,10 @@ async fn public_rate_limit_survives_an_api_restart() {
     let run_id = Uuid::new_v4();
     let unique_source = Ipv6Addr::from(u128::from_be_bytes(*run_id.as_bytes()));
     let peer = SocketAddr::new(unique_source.into(), 41_000);
-    let first_state = postgres_state(sandbox.connection_url());
-    first_state.hydrate().await.expect("first hydration");
+    let first_state = postgres_direct_media_state(sandbox.connection_url());
+    airtek_platform::services::runtime_preparation::prepare(&first_state.pool)
+        .await
+        .expect("first runtime preparation");
     let first_app = build_router(first_state);
     for index in 0..5 {
         let response = first_app
@@ -27,8 +31,11 @@ async fn public_rate_limit_survives_an_api_restart() {
         assert_eq!(response.status(), StatusCode::CREATED);
     }
 
-    let restarted_state = postgres_state(sandbox.connection_url());
-    restarted_state.hydrate().await.expect("restart hydration");
+    let restarted_state = postgres_direct_media_state(sandbox.connection_url());
+    restarted_state
+        .verify_runtime_ready()
+        .await
+        .expect("restart readiness verification");
     let restarted_app = build_router(restarted_state.clone());
     let blocked = restarted_app
         .oneshot(contact_request(5, run_id, peer))
@@ -40,22 +47,11 @@ async fn public_rate_limit_survives_an_api_restart() {
         "application/problem+json"
     );
 
-    // Force the in-process mirror empty: the summary must still read durable
-    // COUNT(*) values rather than silently falling back to hydrated details.
-    restarted_state.data.write().await.contacts.clear();
-    let admin_handlers = airtek_platform::routes::admin::router().with_state(restarted_state);
-    let summary = admin_handlers
-        .oneshot(
-            Request::get("/analytics/summary")
-                .body(Body::empty())
-                .unwrap(),
-        )
+    let contact_count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM contact_requests")
+        .fetch_one(&pool)
         .await
-        .unwrap();
-    assert_eq!(summary.status(), StatusCode::OK);
-    let summary = summary.into_body().collect().await.unwrap().to_bytes();
-    let summary: serde_json::Value = serde_json::from_slice(&summary).unwrap();
-    assert_eq!(summary["contactCount"], baseline_contacts + 5);
+        .expect("durable contact count");
+    assert_eq!(contact_count, baseline_contacts + 5);
 
     drop(first_app);
     sandbox.cleanup().await;
@@ -63,100 +59,23 @@ async fn public_rate_limit_survives_an_api_restart() {
 
 #[tokio::test]
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
-async fn admin_idempotency_serializes_instances_and_survives_restart() {
+async fn retired_mixed_content_route_cannot_write_database() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    let sandbox = support::DatabaseClone::create(&database_url).await;
     sandbox.apply_current().await;
-    let pool = sandbox.pool().clone();
-    support::assert_flyway_schema_current(&pool).await;
-
-    let run_id = Uuid::new_v4();
-    let slug = format!("postgres-idempotency-{run_id}");
-    let key = format!("postgres-admin-idempotency-{run_id}");
-    let body = json!({
-        "schemaVersion": 2,
-        "kind": "article",
-        "slug": slug,
-        "locale": "en",
-        "templateKey": "articleDetail",
-        "title": "PostgreSQL cross-instance idempotency",
-        "summary": null,
-        "body": {"type": "doc", "content": []},
-        "typeFields": {
-            "type": "article", "category": null, "authorDisplayName": null,
-            "publicationAt": null, "cover": null, "featured": false
-        },
-        "composition": {"blocks": []},
-        "seo": {"title": null, "description": null, "indexable": false, "socialImage": null},
-        "relations": [],
-        "isPlaceholder": true,
-        "draftVersion": 1
-    })
-    .to_string();
-    let request = |body: String| {
-        Request::post("/content")
-            .header(
-                "x-airtek-authenticated-actor",
-                "postgres-contract@example.com",
-            )
-            .header("idempotency-key", &key)
-            .header(header::IF_MATCH, "\"draft-0\"")
-            .header(header::CONTENT_TYPE, "application/json")
-            .body(Body::from(body))
-            .unwrap()
-    };
-
-    let first = airtek_platform::routes::admin::router()
+    let app = airtek_platform::routes::admin::router()
         .with_state(postgres_state(sandbox.connection_url()));
-    let second = airtek_platform::routes::admin::router()
-        .with_state(postgres_state(sandbox.connection_url()));
-    let (first, replay) = tokio::join!(
-        first.oneshot(request(body.clone())),
-        second.oneshot(request(body.clone())),
-    );
-    let first = first.unwrap();
-    let replay = replay.unwrap();
-    assert_eq!(first.status(), StatusCode::CREATED);
-    assert_eq!(replay.status(), StatusCode::CREATED);
-    let first = first.into_body().collect().await.unwrap().to_bytes();
-    let replay = replay.into_body().collect().await.unwrap().to_bytes();
-    assert_eq!(first, replay);
-    let created: serde_json::Value = serde_json::from_slice(&first).unwrap();
-    let content_id = Uuid::parse_str(created["id"].as_str().unwrap()).unwrap();
-
-    let restarted = airtek_platform::routes::admin::router()
-        .with_state(postgres_state(sandbox.connection_url()));
-    let replay_after_restart = restarted
-        .clone()
-        .oneshot(request(body.clone()))
+    let response = app
+        .oneshot(Request::post("/content").body(Body::empty()).unwrap())
         .await
         .unwrap();
-    assert_eq!(replay_after_restart.status(), StatusCode::CREATED);
-    let different = restarted
-        .oneshot(request(body.replace(
-            "PostgreSQL cross-instance idempotency",
-            "Different PostgreSQL request",
-        )))
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    let content_count = sqlx::query_scalar::<_, i64>("SELECT count(*) FROM content_entries")
+        .fetch_one(sandbox.pool())
         .await
         .unwrap();
-    assert_eq!(different.status(), StatusCode::CONFLICT);
-
-    let content_count =
-        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM content_entries WHERE id=$1")
-            .bind(content_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-    let audit_count = sqlx::query_scalar::<_, i64>(
-        "SELECT COUNT(*) FROM audit_log WHERE action='content.create' AND entity_id=$1",
-    )
-    .bind(content_id)
-    .fetch_one(&pool)
-    .await
-    .unwrap();
-    assert_eq!(content_count, 1);
-    assert_eq!(audit_count, 1);
+    assert_eq!(content_count, 0);
 
     sandbox.cleanup().await;
 }

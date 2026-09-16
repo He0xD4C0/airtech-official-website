@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { CheckCircle2, FileSpreadsheet, LockKeyhole, RefreshCw, UploadCloud } from 'lucide-vue-next'
 import CursorPaginationControls from '@/components/CursorPaginationControls.vue'
 import DataStatePanel from '@/components/DataStatePanel.vue'
@@ -61,6 +61,16 @@ async function startImport(): Promise<void> {
   }
 }
 
+async function openImport(id: string): Promise<void> {
+  try {
+    result.value = await adminApi.getProductImport(id)
+    await nextTick()
+    document.querySelector<HTMLElement>('.import-result')?.focus()
+  } catch (error) {
+    ui.toast('导入详情读取失败', apiErrorMessage(error, '请检查该导入记录是否仍存在。'), 'danger')
+  }
+}
+
 onMounted(importPager.first)
 </script>
 
@@ -79,7 +89,7 @@ onMounted(importPager.first)
 
     <div class="security-baseline"><LockKeyhole :size="18" /><div><strong>报价只存入加密私有 Staging</strong><p>币种不做推断，报价不进入产品 revision、公开 API、SSR、日志或导出。</p></div><PermissionGate permission="product.pricing.read"><StatusBadge label="可查看私有字段" tone="warning" /><template #fallback><StatusBadge label="私有字段已隐藏" tone="success" /></template></PermissionGate></div>
 
-    <section v-if="result" class="panel import-result">
+    <section v-if="result" class="panel import-result" tabindex="-1">
       <header class="panel__header"><div><p class="eyebrow">LATEST IMPORT</p><h2>导入报告</h2></div><StatusBadge :label="result.reused ? '幂等复用' : result.status" :tone="result.status === 'failed' ? 'danger' : 'success'" /></header>
       <div class="import-metrics"><div><strong>{{ result.validRows }}</strong><span>有效产品</span></div><div><strong>{{ result.malformedRows }}</strong><span>残缺行</span></div><div><strong>{{ result.missingAssets.length }}</strong><span>缺失附件</span></div><div><strong>{{ result.mappingVersion }}</strong><span>Mapping</span></div></div>
       <p class="checksum"><CheckCircle2 :size="15" />SHA-256 <code>{{ result.checksum }}</code></p>
@@ -87,6 +97,6 @@ onMounted(importPager.first)
     </section>
 
     <DataStatePanel v-if="historyState !== 'ready'" :state="historyState" :title="historyState === 'empty' ? '暂无导入历史' : ''" @retry="importPager.refresh" />
-    <section v-else class="panel table-panel"><header class="panel__header table-panel__header"><div><p class="eyebrow">AUDIT TRAIL</p><h2>导入历史</h2></div></header><div class="data-table-wrap"><table class="data-table"><thead><tr><th>时间</th><th>Checksum</th><th>Mapping</th><th>有效/总行</th><th>缺失附件</th><th>状态</th></tr></thead><tbody><tr v-for="item in history" :key="item.id"><td>{{ new Date(item.createdAt).toLocaleString('zh-CN') }}</td><td><code>{{ item.checksum.slice(0, 12) }}…</code></td><td>{{ item.mappingVersion }}</td><td>{{ item.validRows }} / {{ item.totalRows }}</td><td>{{ item.missingAssets.length }}</td><td><StatusBadge :label="item.reused ? 'reused' : item.status" :tone="item.status === 'failed' ? 'danger' : 'success'" /></td></tr></tbody></table></div><CursorPaginationControls :item-count="history.length" :page-number="importPager.pageNumber.value" :can-previous="importPager.canPrevious.value" :can-next="importPager.canNext.value" :loading="importPager.loading.value" label="条导入记录" @previous="importPager.previous" @next="importPager.next" /></section>
+    <section v-else class="panel table-panel"><header class="panel__header table-panel__header"><div><p class="eyebrow">AUDIT TRAIL</p><h2>导入历史</h2></div></header><div class="data-table-wrap"><table class="data-table"><thead><tr><th>时间</th><th>Checksum</th><th>Mapping</th><th>有效/总行</th><th>缺失附件</th><th>状态</th><th>操作</th></tr></thead><tbody><tr v-for="item in history" :key="item.id"><td>{{ new Date(item.createdAt).toLocaleString('zh-CN') }}</td><td><code>{{ item.checksum.slice(0, 12) }}…</code></td><td>{{ item.mappingVersion }}</td><td>{{ item.validRows }} / {{ item.totalRows }}</td><td>{{ item.missingAssets.length }}</td><td><StatusBadge :label="item.reused ? 'reused' : item.status" :tone="item.status === 'failed' ? 'danger' : 'success'" /></td><td><button class="button button--quiet" type="button" @click="openImport(item.id)">查看详情</button></td></tr></tbody></table></div><CursorPaginationControls :item-count="history.length" :page-number="importPager.pageNumber.value" :can-previous="importPager.canPrevious.value" :can-next="importPager.canNext.value" :loading="importPager.loading.value" label="条导入记录" @previous="importPager.previous" @next="importPager.next" /></section>
   </div>
 </template>

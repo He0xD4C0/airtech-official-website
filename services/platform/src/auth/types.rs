@@ -1,21 +1,14 @@
+use super::*;
+
 pub const SESSION_COOKIE: &str = "airtek_admin_session";
 pub const CSRF_COOKIE: &str = "airtek_admin_csrf";
 pub const CSRF_HEADER: &str = "x-csrf-token";
-const SESSION_HOURS: i64 = 12;
-const SESSION_IDLE_MINUTES: i64 = 30;
-const RATE_WINDOW_MINUTES: i64 = 10;
-const RATE_BLOCK_MINUTES: i64 = 15;
-const RATE_MAX_FAILURES: u32 = 5;
-const RATE_MAX_MEMORY_KEYS: usize = 10_000;
-static DUMMY_PASSWORD_HASH: OnceLock<String> = OnceLock::new();
-
-#[derive(Clone, Debug)]
-pub struct AuthRateLimit {
-    pub attempts: u32,
-    pub window_started_at: DateTime<Utc>,
-    pub blocked_until: Option<DateTime<Utc>>,
-    pub updated_at: DateTime<Utc>,
-}
+pub(super) const SESSION_HOURS: i64 = 12;
+pub(super) const SESSION_IDLE_MINUTES: i64 = 30;
+pub(super) const RATE_WINDOW_MINUTES: i64 = 10;
+pub(super) const RATE_BLOCK_MINUTES: i64 = 15;
+pub(super) const RATE_MAX_FAILURES: u32 = 5;
+pub(super) static DUMMY_PASSWORD_HASH: OnceLock<String> = OnceLock::new();
 
 #[derive(Clone, Debug)]
 pub struct StoredUser {
@@ -28,24 +21,6 @@ pub struct StoredUser {
     pub active: bool,
     pub totp_enabled: bool,
     pub totp_secret_ciphertext: Option<Vec<u8>>,
-}
-
-#[derive(Clone, Debug)]
-pub struct StoredSession {
-    pub id: Uuid,
-    pub user_id: Uuid,
-    pub token_hash: Vec<u8>,
-    pub csrf_hash: Vec<u8>,
-    pub created_at: DateTime<Utc>,
-    pub last_seen_at: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
-    pub revoked: bool,
-}
-
-#[derive(Clone, Debug)]
-pub struct StoredRecoveryCode {
-    pub hash: String,
-    pub used: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -100,85 +75,85 @@ pub struct SessionUser {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct SetupRequest {
-    display_name: String,
-    email: String,
-    password: String,
-    bootstrap_token: String,
+pub(super) struct SetupRequest {
+    pub(super) display_name: String,
+    pub(super) email: String,
+    pub(super) password: String,
+    pub(super) bootstrap_token: String,
 }
 
 #[derive(Debug, Deserialize)]
-struct LoginRequest {
-    email: String,
-    password: String,
-    otp: Option<String>,
+pub(super) struct LoginRequest {
+    pub(super) email: String,
+    pub(super) password: String,
+    pub(super) otp: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct AcceptInvitationRequest {
-    token: String,
-    password: String,
+pub(super) struct AcceptInvitationRequest {
+    pub(super) token: String,
+    pub(super) password: String,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct InvitationAcceptance {
-    user_id: Uuid,
-    email: String,
-    display_name: String,
-    locale: String,
-    role_keys: Vec<String>,
-    status: &'static str,
-    accepted_at: DateTime<Utc>,
+pub(super) struct InvitationAcceptance {
+    pub(super) user_id: Uuid,
+    pub(super) email: String,
+    pub(super) display_name: String,
+    pub(super) locale: String,
+    pub(super) role_keys: Vec<String>,
+    pub(super) status: &'static str,
+    pub(super) accepted_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Deserialize)]
-struct TotpCodeRequest {
-    code: String,
+pub(super) struct TotpCodeRequest {
+    pub(super) code: String,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct TotpEnrollment {
-    secret: String,
-    otp_auth_uri: String,
-    algorithm: &'static str,
-    digits: u8,
-    period_seconds: u64,
+pub(super) struct TotpEnrollment {
+    pub(super) secret: String,
+    pub(super) otp_auth_uri: String,
+    pub(super) algorithm: &'static str,
+    pub(super) digits: u8,
+    pub(super) period_seconds: u64,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct RecoveryCodeSet {
-    recovery_codes: Vec<String>,
-    generated_at: DateTime<Utc>,
+pub(super) struct RecoveryCodeSet {
+    pub(super) recovery_codes: Vec<String>,
+    pub(super) generated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct SessionSummary {
-    id: Uuid,
-    current: bool,
-    created_at: DateTime<Utc>,
-    last_seen_at: DateTime<Utc>,
-    expires_at: DateTime<Utc>,
+pub(super) struct SessionSummary {
+    pub(super) id: Uuid,
+    pub(super) current: bool,
+    pub(super) created_at: DateTime<Utc>,
+    pub(super) last_seen_at: DateTime<Utc>,
+    pub(super) expires_at: DateTime<Utc>,
 }
 
-struct SessionIssue {
-    principal: AdminPrincipal,
-    session_token: String,
-    csrf_token: String,
+pub(super) struct SessionIssue {
+    pub(super) principal: AdminPrincipal,
+    pub(super) session_token: String,
+    pub(super) csrf_token: String,
 }
 
 #[derive(Clone, Copy)]
-enum SecondFactorMethod {
+pub(super) enum SecondFactorMethod {
     Totp,
     RecoveryCode,
 }
 
 impl SecondFactorMethod {
-    fn label(self) -> &'static str {
+    pub(super) fn label(self) -> &'static str {
         match self {
             Self::Totp => "totp",
             Self::RecoveryCode => "recoveryCode",

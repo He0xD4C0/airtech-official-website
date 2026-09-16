@@ -9,6 +9,7 @@ import PageHeader from '@/components/PageHeader.vue'
 import { contentApi } from '@/services/contentApi'
 import { draftFromTemplate } from '@/services/contentDraftDefaults'
 import { useContentEditorStore } from '@/stores/contentEditor'
+import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 
 type Section = 'general-information' | 'navigation' | 'footer'
@@ -16,6 +17,7 @@ type Section = 'general-information' | 'navigation' | 'footer'
 const props = defineProps<{ section: Section }>()
 
 const store = useContentEditorStore()
+const auth = useAuthStore()
 const ui = useUiStore()
 const loading = ref(true)
 const loadError = ref('')
@@ -44,8 +46,14 @@ const configuration = computed(() => ({
 }[props.section]))
 
 async function findRecordId(): Promise<string | null> {
-  const page = await contentApi.listContent({ kinds: [configuration.value.kind], limit: 1 })
-  return page.items[0]?.id ?? null
+  const drafts = await contentApi.listDrafts({ limit: 100 })
+  const own = drafts.items.find((item) => (
+    item.ownerUserId === auth.user?.id && item.document.kind === configuration.value.kind
+  ))
+  if (own) return own.draftId
+  const published = await contentApi.listPublished({ limit: 100 })
+  const current = published.items.find((item) => item.document.kind === configuration.value.kind)
+  return current ? (await contentApi.copyPublished(current.contentId)).draft.draftId : null
 }
 
 async function load(): Promise<void> {

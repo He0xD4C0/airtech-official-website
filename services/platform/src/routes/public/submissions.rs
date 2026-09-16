@@ -1,4 +1,6 @@
-async fn create_rfq(
+use super::*;
+
+pub(super) async fn create_rfq(
     State(state): State<AppState>,
     peer: Option<Extension<ConnectInfo<SocketAddr>>>,
     headers: HeaderMap,
@@ -36,9 +38,6 @@ async fn create_rfq(
         retention_until: submitted_at + Duration::days(retention_days),
     };
     state.persist_rfq(&submission).await?;
-    if state.pool.is_none() {
-        state.data.write().await.rfqs.insert(id, submission.clone());
-    }
     let accepted = AcceptedResponse {
         id,
         reference: submission.reference,
@@ -50,7 +49,7 @@ async fn create_rfq(
     Ok((StatusCode::CREATED, Json(accepted)).into_response())
 }
 
-async fn validate_product_rfq_context(
+pub(super) async fn validate_product_rfq_context(
     state: &AppState,
     request: &CreateRfqRequest,
 ) -> Result<(), ApiError> {
@@ -61,20 +60,18 @@ async fn validate_product_rfq_context(
         .product_context
         .as_ref()
         .expect("structural RFQ validation requires product context");
-    let published = if let Some(pool) = &state.pool {
-        load_published_product_rows(pool, None, None, None)
-            .await?
-            .into_iter()
-            .find(|product| product.id == context.product_id)
-    } else {
-        state
-            .data
-            .read()
-            .await
-            .published_products
-            .get(&context.product_id)
-            .cloned()
-    }
+    let published = load_published_product_rows(
+        &state.pool,
+        None,
+        None,
+        None,
+        Some(context.product_id),
+        None,
+        Some(1),
+    )
+    .await?
+    .into_iter()
+    .next()
     .ok_or_else(|| {
         ApiError::conflict(
             "The referenced product is not currently published; use Selection RFQ instead.",
@@ -91,7 +88,7 @@ async fn validate_product_rfq_context(
     Ok(())
 }
 
-async fn create_contact(
+pub(super) async fn create_contact(
     State(state): State<AppState>,
     peer: Option<Extension<ConnectInfo<SocketAddr>>>,
     headers: HeaderMap,
@@ -128,14 +125,6 @@ async fn create_contact(
         retention_until: submitted_at + Duration::days(retention_days),
     };
     state.persist_contact(&contact).await?;
-    if state.pool.is_none() {
-        state
-            .data
-            .write()
-            .await
-            .contacts
-            .insert(id, contact.clone());
-    }
     let accepted = AcceptedResponse {
         id,
         reference: contact.reference,
@@ -147,7 +136,7 @@ async fn create_contact(
     Ok((StatusCode::CREATED, Json(accepted)).into_response())
 }
 
-async fn create_analytics_consent(
+pub(super) async fn create_analytics_consent(
     State(state): State<AppState>,
     peer: Option<Extension<ConnectInfo<SocketAddr>>>,
     headers: HeaderMap,
@@ -177,14 +166,6 @@ async fn create_analytics_consent(
         expires_at: granted_at + Duration::days(ANALYTICS_CONSENT_LIFETIME_DAYS),
     };
     state.persist_analytics_consent(&receipt).await?;
-    if state.pool.is_none() {
-        state
-            .data
-            .write()
-            .await
-            .analytics_consents
-            .insert(receipt.consent_receipt, receipt.clone());
-    }
 
     let mut response = (StatusCode::CREATED, Json(receipt)).into_response();
     response.headers_mut().insert(
@@ -194,7 +175,7 @@ async fn create_analytics_consent(
     Ok(response)
 }
 
-async fn create_analytics_event(
+pub(super) async fn create_analytics_event(
     State(state): State<AppState>,
     peer: Option<Extension<ConnectInfo<SocketAddr>>>,
     headers: HeaderMap,
@@ -207,15 +188,24 @@ async fn create_analytics_event(
         ANALYTICS_POLICY,
     )
     .await?;
+    let idempotency =
+        match begin_idempotency(&state, "public.analytics.event.create", &headers, &event).await? {
+            IdempotencyOutcome::Replay(replay) => {
+                let status = replay.status()?;
+                let receipt: AnalyticsEventReceipt = replay.decode()?;
+                return Ok((status, Json(receipt)).into_response());
+            }
+            IdempotencyOutcome::Fresh(context) => context,
+        };
     if !event.consent_granted {
-        return Ok((
-            StatusCode::ACCEPTED,
-            Json(AnalyticsEventReceipt {
-                accepted: false,
-                event_id: None,
-            }),
-        )
-            .into_response());
+        let receipt = AnalyticsEventReceipt {
+            accepted: false,
+            event_id: None,
+        };
+        idempotency
+            .complete(&state, &receipt, StatusCode::ACCEPTED)
+            .await?;
+        return Ok((StatusCode::ACCEPTED, Json(receipt)).into_response());
     }
     validate_analytics_event(&event)?;
     validate_analytics_consent(&state, &event).await?;
@@ -230,18 +220,13 @@ async fn create_analytics_event(
         accepted: true,
         event_id: Some(event_id),
     };
-    if state.pool.is_none() {
-        state
-            .data
-            .write()
-            .await
-            .analytics_receipts
-            .insert(event_id, receipt.clone());
-    }
+    idempotency
+        .complete(&state, &receipt, StatusCode::ACCEPTED)
+        .await?;
     Ok((StatusCode::ACCEPTED, Json(receipt)).into_response())
 }
 
-async fn validate_analytics_consent(
+pub(super) async fn validate_analytics_consent(
     state: &AppState,
     event: &CreateAnalyticsEvent,
 ) -> Result<(), ApiError> {

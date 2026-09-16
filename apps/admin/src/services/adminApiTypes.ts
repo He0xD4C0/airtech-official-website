@@ -7,9 +7,7 @@ import type {
   AnalyticsOverview as ContractAnalyticsOverview,
   AuditEvent as ContractAuditEvent,
   BackgroundOperation as ContractBackgroundOperation,
-  ContentPreviewLink as ContractContentPreviewLink,
   GuestSourceDaily as ContractGuestSourceDaily,
-  GuestVisitAggregate as ContractGuestVisitAggregate,
   InvitationAcceptance as ContractInvitationAcceptance,
   MissingAssetReference as ContractMissingAssetReference,
   PerformanceCurve as ContractPerformanceCurve,
@@ -38,16 +36,10 @@ export type { CursorPage, CursorPageRequest } from './cursorPagination'
 export type AcceptInvitationRequest = ContractAcceptInvitationRequest
 export type InvitationAcceptance = ContractInvitationAcceptance
 
-export interface SiteNavigationLink {
-  label: string
-  href: string
-}
-
 export type ProductImportError = ContractProductImportError
 export type MissingProductAsset = ContractMissingAssetReference
 export type ProductImportResult = ContractProductImportResult
 export type ProductImportAccepted = ContractProductImportAccepted
-export type GuestVisitAggregate = ContractGuestVisitAggregate
 export type GuestSourceDaily = ContractGuestSourceDaily
 export type AnalyticsOverview = ContractAnalyticsOverview
 export type AdminUserRecord = ContractAdminUserRecord
@@ -56,7 +48,6 @@ export type ProductPrivatePricing = ContractProductPrivatePricing
 export type UpdateAdminUser = ContractUpdateAdminUser
 export type UpdateAdminRole = ContractUpdateAdminRole
 export type UserInvitation = ContractUserInvitation
-export type ContentPreviewLink = ContractContentPreviewLink
 export type BackendProduct = ContractProduct & {
   sourceKind?: ContractAdminProductDetail['sourceKind']
   missingAssets?: ContractAdminProductDetail['missingAssets']

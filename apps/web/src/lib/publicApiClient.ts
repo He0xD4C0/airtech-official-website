@@ -106,10 +106,11 @@ export function createPublicApiClient(options: PublicApiClientOptions) {
       return selectorResponse(result.data)
     },
 
-    async submitAnalyticsEvent(payload: CreateAnalyticsEvent) {
+    async submitAnalyticsEvent(payload: CreateAnalyticsEvent, idempotencyKey: string) {
       const result = await publicContractRequest(client.post('/api/public/v1/analytics/events', {
         body: payload,
         credentials: 'omit',
+        parameters: { header: { 'Idempotency-Key': idempotencyKey } },
       }))
       return analyticsEventReceipt(result.data)
     },

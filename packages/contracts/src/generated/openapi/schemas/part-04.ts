@@ -6,11 +6,58 @@
 import type { components } from '../components'
 
 export interface SchemasPart04 {
-RollbackContentRequest: {
+ResolvedMedia: {
+            /** Format: uuid */
+            assetId: string;
+            byteSize: number;
+            downloadUrl: string;
+            /** @enum {string} */
+            mediaType: "image/png" | "image/jpeg" | "image/webp";
+            originalName: string;
+            publicUrl: string;
+        };
+ResolvedRelationCard: {
+            /** @enum {string} */
+            entityType: "content" | "product";
+            eyebrow: string | null;
+            href: string;
+            /** Format: uuid */
+            relationId: string;
+            summary: string | null;
+            tags: string[];
+            title: string;
+        };
+ResolveSyncConflictRequest: {
+            decision: components["schemas"]["SyncConflictDecision"];
+            evidenceReference: string | null;
+            expiresAt: string | null;
+            reason: string;
+        };
+RevisionRequest: {
             reason: string;
             /** Format: int64 */
             revision: number;
         };
+RfqDutyPoint: {
+            airflow: number;
+            /** @enum {string} */
+            airflowUnit: "m3/h" | "m³/h" | "CFM" | "cfm";
+            pressure: number;
+            /** @enum {string} */
+            pressureUnit: "Pa" | "pa" | "kPa" | "kpa" | "inH2O" | "inh2o";
+        };
+RfqElectricalContext: {
+            frequencyHz?: number;
+            voltage?: string;
+        };
+/** @enum {string} */
+        RfqJourney: "product" | "selection" | "project" | "replacement";
+RfqQuantity: number | string;
+RichTextDocument: {
+            doc: unknown;
+            schemaVersion: number;
+        };
+RoleDefinition: components["schemas"]["AdminRoleRecord"];
 RouteResolution: {
             dataClass: components["schemas"]["DataClass"];
             entityId: string | null;
@@ -144,6 +191,34 @@ SpecValue: {
             unit: string | null;
             value: unknown | null;
         };
+/** @enum {string} */
+        StableProblemCode: "media_idempotency_conflict" | "media_decode_failed" | "content_dependency_conflict";
+/**
+         * Format: uri
+         * @enum {string}
+         */
+        StableProblemType: "https://api.airtekpower.example/problems/media_idempotency_conflict" | "https://api.airtekpower.example/problems/media_decode_failed" | "https://api.airtekpower.example/problems/content_dependency_conflict";
+StagingRecord: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            normalizedPayload: unknown | null;
+            sourceRecordId: string;
+            /** Format: uuid */
+            sourceSnapshotId: string;
+            /** Format: uuid */
+            syncRunId: string;
+            validationErrors: components["schemas"]["ValidationIssue"][];
+            validationStatus: components["schemas"]["StagingValidationStatus"];
+        };
+StagingRecordPage: {
+            items: components["schemas"]["StagingRecord"][];
+            nextCursor: string | null;
+            total: number;
+        };
+/** @enum {string} */
+        StagingValidationStatus: "pending" | "valid" | "invalid" | "conflicted";
 StartSyncRequest: {
             cursor?: string | null;
             /** @default false */
@@ -157,12 +232,33 @@ SyncConflict: {
             productId: string | null;
             resolution: string | null;
             resolvedAt: string | null;
+            /** Format: int64 */
+            revision: number;
             sourceRecordId: string;
             /** Format: uuid */
             syncRunId: string;
         };
+/** @enum {string} */
+        SyncConflictDecision: "acceptIncoming" | "keepVerifiedLocal";
 SyncConflictPage: {
             items: components["schemas"]["SyncConflict"][];
+            nextCursor: string | null;
+            total: number;
+        };
+SyncMapping: {
+            active: boolean;
+            /** Format: uuid */
+            connectorId: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            mapping: unknown;
+            schemaVersion: number;
+            version: string;
+        };
+SyncMappingPage: {
+            items: components["schemas"]["SyncMapping"][];
             nextCursor: string | null;
         };
 SyncRun: {
@@ -316,10 +412,15 @@ UpdateAdminRole: {
 UpdateAdminUser: {
             displayName?: string;
             locale?: string;
+            managerUserId?: string | null;
             reason: string;
             roleKeys?: string[];
             /** @enum {string} */
             status?: "invited" | "active" | "disabled";
+        };
+UpdateBusinessStatusRequest: {
+            reason: string;
+            status: components["schemas"]["BusinessInboxStatus"];
         };
 UpdatePlatformSettings: {
             reason: string;
@@ -360,5 +461,10 @@ UserInvitation: {
 UserInvitationPage: {
             items: components["schemas"]["UserInvitation"][];
             nextCursor: string | null;
+        };
+ValidationIssue: {
+            code: string;
+            detail: string;
+            fieldPath: string;
         };
 }

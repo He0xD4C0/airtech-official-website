@@ -2,21 +2,20 @@
 name = "airtek-platform"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.82"
+rust-version = "1.88"
 publish = false
 
 [features]
 default = []
 production = []
-devtools = ["dep:clap", "dep:portable-pty", "axum/ws"]
+devtools = ["dep:portable-pty", "axum/ws"]
 
 [dependencies]
 async-trait = "0.1"
 argon2 = { version = "0.5", features = ["std"] }
-axum = { version = "0.8", features = ["http2", "json", "macros"] }
+axum = { version = "0.8", features = ["http2", "json", "macros", "multipart"] }
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
-clap = { version = "4.5", features = ["derive", "env"], optional = true }
 data-encoding = "2"
 dotenvy = "0.15"
 futures-util = "0.3"
@@ -42,6 +41,7 @@ zeroize = "1.8"
 
 [dev-dependencies]
 http-body-util = "0.1"
+tokio = { version = "1", features = ["test-util"] }
 
 [[bin]]
 name = "airtek-api"
@@ -52,6 +52,5 @@ name = "airtek-worker"
 path = "src/bin/worker.rs"
 
 [[bin]]
-name = "airtekctl"
-path = "src/bin/airtekctl.rs"
-required-features = ["devtools"]
+name = "airtek-maintenance"
+path = "src/bin/maintenance.rs"

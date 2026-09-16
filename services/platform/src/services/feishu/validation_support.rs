@@ -1,16 +1,18 @@
-fn non_negative_finite(value: Option<&Value>) -> Option<f64> {
+use super::*;
+
+pub(super) fn non_negative_finite(value: Option<&Value>) -> Option<f64> {
     value
         .and_then(Value::as_f64)
         .filter(|value| value.is_finite() && *value >= 0.0)
 }
 
-fn positive_finite(value: Option<&Value>) -> Option<f64> {
+pub(super) fn positive_finite(value: Option<&Value>) -> Option<f64> {
     value
         .and_then(Value::as_f64)
         .filter(|value| value.is_finite() && *value > 0.0)
 }
 
-fn valid_fact_state(state: Option<&str>) -> bool {
+pub(super) fn valid_fact_state(state: Option<&str>) -> bool {
     matches!(
         state,
         Some(
@@ -27,7 +29,7 @@ fn valid_fact_state(state: Option<&str>) -> bool {
 /// Canonical, dimension-aware Product Master units. This is intentionally a
 /// schema registry, not a source of model values. New units must be introduced
 /// through a versioned mapping change rather than accepted as free text.
-fn valid_specification_unit(unit: &str) -> bool {
+pub(super) fn valid_specification_unit(unit: &str) -> bool {
     matches!(
         unit,
         "m3/h"
@@ -66,7 +68,7 @@ fn valid_specification_unit(unit: &str) -> bool {
     )
 }
 
-fn unit_requires_operating_condition(unit: &str) -> bool {
+pub(super) fn unit_requires_operating_condition(unit: &str) -> bool {
     matches!(
         unit,
         "m3/h"
@@ -89,7 +91,7 @@ fn unit_requires_operating_condition(unit: &str) -> bool {
     )
 }
 
-fn require_provenance(
+pub(super) fn require_provenance(
     value: &serde_json::Map<String, Value>,
     path: &str,
     issues: &mut Vec<ValidationIssue>,
@@ -109,7 +111,7 @@ fn require_provenance(
     }
 }
 
-fn required_text(
+pub(super) fn required_text(
     record: &serde_json::Map<String, Value>,
     field: &str,
     issues: &mut Vec<ValidationIssue>,
@@ -117,7 +119,7 @@ fn required_text(
     required_text_at(record, field, "", issues);
 }
 
-fn required_text_at(
+pub(super) fn required_text_at(
     record: &serde_json::Map<String, Value>,
     field: &str,
     prefix: &str,

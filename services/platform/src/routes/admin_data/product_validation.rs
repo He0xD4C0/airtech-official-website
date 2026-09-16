@@ -1,4 +1,8 @@
-fn validate_product_presentation(input: &UpdateProductPresentation) -> Result<(), ApiError> {
+use super::*;
+
+pub(super) fn validate_product_presentation(
+    input: &UpdateProductPresentation,
+) -> Result<(), ApiError> {
     let mut errors = BTreeMap::new();
     if !valid_locale(&input.locale) {
         errors.insert("locale".into(), vec!["Must be a valid locale tag.".into()]);
@@ -66,7 +70,7 @@ fn validate_product_presentation(input: &UpdateProductPresentation) -> Result<()
     }
 }
 
-fn validate_product_canonical(
+pub(super) fn validate_product_canonical(
     input: &UpdateProductPresentation,
     family: crate::models::ProductFamily,
 ) -> Result<(), ApiError> {
@@ -96,5 +100,5 @@ fn validate_product_canonical(
     Ok(())
 }
 
-const INVITATION_REPLAY_ENVELOPE_VERSION: u8 = 1;
-const INVITATION_REPLAY_NONCE_BYTES: usize = 12;
+pub(super) const INVITATION_REPLAY_ENVELOPE_VERSION: u8 = 1;
+pub(super) const INVITATION_REPLAY_NONCE_BYTES: usize = 12;

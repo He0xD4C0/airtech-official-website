@@ -1,14 +1,12 @@
-use std::{collections::HashMap, net::IpAddr};
+use std::net::IpAddr;
 
 use axum::http::HeaderMap;
-use chrono::{DateTime, Duration, Utc};
 use sha2::{Digest, Sha256};
 
 use crate::{config::IpCidr, error::ApiError, state::AppState};
 
 const MAX_FORWARDED_CHAIN_BYTES: usize = 1_024;
 const MAX_FORWARDED_HOPS: usize = 16;
-pub(crate) const MAX_IN_MEMORY_RATE_LIMIT_KEYS: usize = 4_096;
 
 #[derive(Clone, Copy)]
 pub struct PublicRateLimitPolicy {
@@ -41,12 +39,6 @@ pub const ANALYTICS_CONSENT_POLICY: PublicRateLimitPolicy = PublicRateLimitPolic
     window_seconds: 60 * 60,
 };
 
-#[derive(Clone, Debug)]
-pub struct InMemoryRateLimit {
-    request_count: u32,
-    expires_at: DateTime<Utc>,
-}
-
 pub async fn enforce_public_rate_limit(
     state: &AppState,
     headers: &HeaderMap,
@@ -58,15 +50,14 @@ pub async fn enforce_public_rate_limit(
         "{:x}",
         Sha256::digest(format!("{}|{source}", policy.scope).as_bytes())
     );
-    if let Some(pool) = &state.pool {
-        let mut transaction = pool.begin().await?;
-        // The expiry index keeps the durable key space bounded to recently
-        // active sources without storing a raw client address.
-        sqlx::query("DELETE FROM public_rate_limits WHERE expires_at <= now()")
-            .execute(&mut *transaction)
-            .await?;
-        let accepted = sqlx::query_scalar::<_, i32>(
-            r#"INSERT INTO public_rate_limits
+    let mut transaction = state.pool.begin().await?;
+    // The expiry index keeps the durable key space bounded to recently
+    // active sources without storing a raw client address.
+    sqlx::query("DELETE FROM public_rate_limits WHERE expires_at <= now()")
+        .execute(&mut *transaction)
+        .await?;
+    let accepted = sqlx::query_scalar::<_, i32>(
+        r#"INSERT INTO public_rate_limits
                (scope, source_hash, window_started_at, request_count, expires_at)
                VALUES ($1,$2,now(),1,now() + ($3::bigint * interval '1 second'))
                ON CONFLICT (scope, source_hash) DO UPDATE
@@ -74,58 +65,18 @@ pub async fn enforce_public_rate_limit(
                WHERE public_rate_limits.expires_at > now()
                  AND public_rate_limits.request_count < $4
                RETURNING request_count"#,
-        )
-        .bind(policy.scope)
-        .bind(&source_hash)
-        .bind(policy.window_seconds)
-        .bind(policy.limit as i32)
-        .fetch_optional(&mut *transaction)
-        .await?;
-        transaction.commit().await?;
-        if accepted.is_none() {
-            return Err(rate_limit_error());
-        }
-        return Ok(());
+    )
+    .bind(policy.scope)
+    .bind(&source_hash)
+    .bind(policy.window_seconds)
+    .bind(policy.limit as i32)
+    .fetch_optional(&mut *transaction)
+    .await?;
+    transaction.commit().await?;
+    if accepted.is_none() {
+        return Err(rate_limit_error());
     }
-
-    let now = Utc::now();
-    let mut data = state.data.write().await;
-    let accepted = consume_in_memory(
-        &mut data.public_rate_limits,
-        (policy.scope.to_owned(), source_hash),
-        policy.limit,
-        Duration::seconds(policy.window_seconds),
-        now,
-    );
-    accepted.then_some(()).ok_or_else(rate_limit_error)
-}
-
-fn consume_in_memory(
-    limits: &mut HashMap<(String, String), InMemoryRateLimit>,
-    key: (String, String),
-    limit: u32,
-    window: Duration,
-    now: DateTime<Utc>,
-) -> bool {
-    limits.retain(|_, entry| entry.expires_at > now);
-    if let Some(entry) = limits.get_mut(&key) {
-        if entry.request_count >= limit {
-            return false;
-        }
-        entry.request_count += 1;
-        return true;
-    }
-    if limits.len() >= MAX_IN_MEMORY_RATE_LIMIT_KEYS {
-        return false;
-    }
-    limits.insert(
-        key,
-        InMemoryRateLimit {
-            request_count: 1,
-            expires_at: now + window,
-        },
-    );
-    true
+    Ok(())
 }
 
 pub(crate) fn resolve_client_source(
@@ -221,28 +172,5 @@ mod tests {
             &["172.28.0.10/32".parse().unwrap()],
         );
         assert_eq!(source, "172.28.0.10");
-    }
-
-    #[test]
-    fn in_memory_key_space_is_hard_bounded() {
-        let now = Utc::now();
-        let mut limits = HashMap::new();
-        for index in 0..MAX_IN_MEMORY_RATE_LIMIT_KEYS {
-            assert!(consume_in_memory(
-                &mut limits,
-                ("scope".into(), format!("source-{index}")),
-                1,
-                Duration::hours(1),
-                now,
-            ));
-        }
-        assert!(!consume_in_memory(
-            &mut limits,
-            ("scope".into(), "one-too-many".into()),
-            1,
-            Duration::hours(1),
-            now,
-        ));
-        assert_eq!(limits.len(), MAX_IN_MEMORY_RATE_LIMIT_KEYS);
     }
 }

@@ -6,18 +6,206 @@
 import type { operations } from '../operations'
 
 export interface PathsPart02 {
-"/api/admin/v1/operations": {
+"/api/admin/v1/content-reviews/{draftId}/approve": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List predefined background operations */
-        get: operations["listBackgroundOperations"];
+        get?: never;
         put?: never;
-        /** Queue a predefined background operation */
-        post: operations["createBackgroundOperation"];
+        /** Atomically overwrite current publication and delete the draft */
+        post: operations["approveContentReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/content-reviews/{draftId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Return a draft to editing with its current rejection reason */
+        post: operations["rejectContentReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/dashboard/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get permission-aware server totals, publication work items, analytics and recent activity */
+        get: operations["getAdminDashboardSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/feishu/conflicts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List three-way product conflicts */
+        get: operations["listFeishuConflicts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/feishu/conflicts/{id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve a conflict only by accepting incoming data or retaining an evidenced local value temporarily */
+        post: operations["resolveFeishuConflict"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/feishu/connection-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read credential-safe Feishu connector status and latest run */
+        get: operations["getFeishuConnectionStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/feishu/mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List versioned Feishu field mappings */
+        get: operations["listFeishuMappings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/feishu/staging": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List server-filtered Feishu staging records and validation results */
+        get: operations["listFeishuStagingRecords"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/feishu/sync-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Feishu sync runs */
+        get: operations["listFeishuSyncRuns"];
+        put?: never;
+        /** Report that Feishu synchronization is unavailable until the provider adapter is connected */
+        post: operations["startFeishuSyncRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/media/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List media assets for the private draft editor */
+        get: operations["listAdminMediaAssets"];
+        put?: never;
+        /** Upload one PNG, JPEG, or WebP asset and make its API URL public immediately */
+        post: operations["uploadAdminMediaAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/media/assets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one public media asset */
+        get: operations["getAdminMediaAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/media/assets/{id}/references": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List CMS publication snapshots that reference a media asset */
+        get: operations["listAdminMediaAssetReferences"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -31,7 +219,7 @@ export interface PathsPart02 {
             path?: never;
             cookie?: never;
         };
-        /** Get background operation status */
+        /** Get Product Master import operation status */
         get: operations["getBackgroundOperation"];
         put?: never;
         post?: never;
@@ -48,7 +236,7 @@ export interface PathsPart02 {
             path?: never;
             cookie?: never;
         };
-        /** Stream operation status as a server-sent event */
+        /** Stream Product Master import status as a server-sent event */
         get: operations["streamBackgroundOperationEvents"];
         put?: never;
         post?: never;
@@ -126,6 +314,23 @@ export interface PathsPart02 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/products/{id}/publication-readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read server-authoritative product publication readiness */
+        get: operations["getProductPublicationReadiness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/products/{id}/publish": {
         parameters: {
             query?: never;
@@ -155,6 +360,23 @@ export interface PathsPart02 {
         put?: never;
         /** Create an expiring source-field override */
         post: operations["createTemporaryOverride"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/products/{id}/validation-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the stable product publication validation report */
+        get: operations["getProductValidationReport"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -196,6 +418,57 @@ export interface PathsPart02 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/published-content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List company current published content */
+        get: operations["listCurrentPublishedContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/published-content/{contentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read company current published content */
+        get: operations["getCurrentPublishedContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/published-content/{contentId}/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy current published content to the user's new private draft */
+        post: operations["copyPublishedContentToPrivateDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/rfqs": {
         parameters: {
             query?: never;
@@ -203,284 +476,8 @@ export interface PathsPart02 {
             path?: never;
             cookie?: never;
         };
-        /** List RFQs with permission-aware PII redaction */
-        get: operations["listRfqSubmissions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/roles": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List role definitions and their permission matrices */
-        get: operations["listAdminRoles"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/roles/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get one role definition and permission matrix */
-        get: operations["getAdminRole"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Update a role display name or permission matrix */
-        patch: operations["updateAdminRole"];
-        trace?: never;
-    };
-"/api/admin/v1/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get the allow-listed mutable business settings */
-        get: operations["getPlatformSettings"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Atomically update allow-listed mutable business settings */
-        patch: operations["updatePlatformSettings"];
-        trace?: never;
-    };
-"/api/admin/v1/user-invitations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List management user invitations */
-        get: operations["listUserInvitations"];
-        put?: never;
-        /** Create a time-bounded management user invitation */
-        post: operations["inviteAdminUser"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/user-invitations/{id}/revoke": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Revoke a pending management user invitation */
-        post: operations["revokeUserInvitation"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/users": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List management users and role assignments */
-        get: operations["listAdminUsers"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/users/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get one management user */
-        get: operations["getAdminUser"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Update a management user, status or role assignments */
-        patch: operations["updateAdminUser"];
-        trace?: never;
-    };
-"/api/admin/v1/users/{id}/sessions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Revoke all active sessions for one management user */
-        delete: operations["revokeAdminUserSessions"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/analytics/consents": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Record an anonymous analytics consent decision and issue a bounded receipt */
-        post: operations["createAnalyticsConsent"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/analytics/events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Accept an allowlisted analytics event */
-        post: operations["createAnalyticsEvent"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/contact": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Submit a contact request */
-        post: operations["createContactRequest"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/content-preview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get one exact content revision with a short-lived token bound to a currently authorized Admin session */
-        get: operations["getContentPreview"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/content/{kind}/{slug}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get published content */
-        get: operations["getPublishedContent"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/discovery": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List canonical indexable published URLs for sitemap generation */
-        get: operations["getPublicDiscovery"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/guest-visits": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create or refresh a consented anonymous first-party visit */
-        post: operations["createGuestVisit"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/media/{assetId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Serve one reviewed, public media object */
-        get: operations["getPublicMediaAsset"];
+        /** List always-redacted RFQ inbox items with server filtering and total count */
+        get: operations["listRfqInboxItems"];
         put?: never;
         post?: never;
         delete?: never;

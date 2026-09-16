@@ -145,14 +145,20 @@ describe('native V2 CMS page rendering', () => {
       typeFields: { type: 'download', resourceType: 'Manual', versionLabel: 'V2', versionNotes: null },
       extraBlocks: [{
         type: 'downloadAsset', id: '33333333-3333-4333-8333-333333333333',
-        asset: { assetId, versionId: '44444444-4444-4444-8444-444444444444' },
+        asset: { assetId },
         label: 'Download resource', description: 'Published file description.',
       }],
     })
+    projection.resolvedMedia = [{
+      assetId,
+      publicUrl: `/api/public/v1/media/${assetId}`,
+      downloadUrl: `/api/public/v1/media/${assetId}/download`,
+      mediaType: 'image/webp', byteSize: 200, originalName: 'approved-resource.webp',
+    }]
     const html = await render(pageWithProjection(path, projection))
     expect(html).toContain('Controlled resource context.')
     expect(html).toContain('Published file description.')
-    expect(html).toContain(`href="/media/${assetId}/download"`)
+    expect(html).toContain(`href="http://localhost:8080/api/public/v1/media/${assetId}/download"`)
     expect(html).toContain('Download resource')
   })
 })

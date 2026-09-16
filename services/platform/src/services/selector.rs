@@ -2,13 +2,29 @@ use std::cmp::Ordering;
 
 use crate::models::{
     CurvePoint, FactState, Product, PublicationStatus, SelectorCandidate, SelectorOutcome,
-    SelectorPriority, SelectorRequest, SelectorResponse,
+    SelectorPriority, SelectorRequest, SelectorResponse, SpecValue,
 };
 
 struct DutyMatch<'a> {
     product: &'a Product,
     available_pressure: f64,
     curve_index: usize,
+    ranking_value: f64,
+}
+
+impl SelectorPriority {
+    fn specification(self) -> Option<(&'static str, &'static str, &'static str)> {
+        match self {
+            Self::Efficiency => Some(("efficiency", "%", "efficiency")),
+            Self::Noise => Some(("noise", "dB(A)", "noise")),
+            Self::Size => Some(("diameter", "mm", "diameter")),
+            Self::Headroom => None,
+        }
+    }
+
+    fn prefers_higher(self) -> bool {
+        matches!(self, Self::Efficiency | Self::Headroom)
+    }
 }
 
 pub fn evaluate(request: &SelectorRequest, products: &[Product]) -> SelectorResponse {
@@ -33,6 +49,7 @@ pub fn evaluate(request: &SelectorRequest, products: &[Product]) -> SelectorResp
         return no_candidates("No published product record is available for the requested family.");
     }
 
+    let priority = request.priority.unwrap_or(SelectorPriority::Headroom);
     let mut matches = Vec::new();
     for product in eligible {
         let best = product
@@ -56,10 +73,23 @@ pub fn evaluate(request: &SelectorRequest, products: &[Product]) -> SelectorResp
             })
             .max_by(|left, right| left.1.partial_cmp(&right.1).unwrap_or(Ordering::Equal));
         if let Some((curve_index, available_pressure)) = best {
+            let ranking_value = if let Some((key, unit, _)) = priority.specification() {
+                match verified_numeric_spec(&product.specifications, key, unit) {
+                    Some(value) => value,
+                    None => {
+                        return engineering_review(format!(
+                            "A duty-point candidate is missing a verified numeric {key} specification in {unit}; ranking was not guessed or downgraded."
+                        ));
+                    }
+                }
+            } else {
+                available_pressure - request.pressure
+            };
             matches.push(DutyMatch {
                 product,
                 available_pressure,
                 curve_index,
+                ranking_value,
             });
         }
     }
@@ -70,15 +100,32 @@ pub fn evaluate(request: &SelectorRequest, products: &[Product]) -> SelectorResp
         );
     }
 
+    if let Some(maximum_diameter_mm) = request.maximum_diameter_mm {
+        let mut within_size = Vec::new();
+        for matched in matches {
+            let Some(diameter) =
+                verified_numeric_spec(&matched.product.specifications, "diameter", "mm")
+            else {
+                return engineering_review(
+                    "A duty-point candidate is missing a verified numeric diameter specification in mm, so the maximum diameter constraint cannot be evaluated."
+                        .into(),
+                );
+            };
+            if diameter <= maximum_diameter_mm {
+                within_size.push(matched);
+            }
+        }
+        matches = within_size;
+        if matches.is_empty() {
+            return no_candidates("No duty-point candidate fits the requested maximum diameter.");
+        }
+    }
+
     let unevaluated_constraints = [
         request
             .ambient_temperature_c
             .is_some()
             .then_some("ambient temperature"),
-        request
-            .maximum_diameter_mm
-            .is_some()
-            .then_some("maximum diameter"),
         request.frequency_hz.is_some().then_some("frequency"),
         (!request.required_certifications.is_empty()).then_some("certification"),
     ]
@@ -86,30 +133,20 @@ pub fn evaluate(request: &SelectorRequest, products: &[Product]) -> SelectorResp
     .flatten()
     .collect::<Vec<_>>();
     if !unevaluated_constraints.is_empty() {
-        return SelectorResponse {
-            outcome: SelectorOutcome::EngineeringReviewRequired,
-            candidates: vec![],
-            explanations: vec![format!(
+        return engineering_review(format!(
                 "Verified curves cover the duty point, but the current published selector contract cannot safely evaluate: {}.",
                 unevaluated_constraints.join(", ")
-            )],
-        };
+            ));
     }
 
-    let prefer_headroom = request.priority == Some(SelectorPriority::Headroom);
     matches.sort_by(|left, right| {
-        let left_margin = left.available_pressure - request.pressure;
-        let right_margin = right.available_pressure - request.pressure;
-        if prefer_headroom {
-            right_margin
-                .partial_cmp(&left_margin)
-                .unwrap_or(Ordering::Equal)
+        let order = if priority.prefers_higher() {
+            right.ranking_value.partial_cmp(&left.ranking_value)
         } else {
-            left_margin
-                .partial_cmp(&right_margin)
-                .unwrap_or(Ordering::Equal)
+            left.ranking_value.partial_cmp(&right.ranking_value)
         }
-        .then_with(|| left.product.stable_id.cmp(&right.product.stable_id))
+        .unwrap_or(Ordering::Equal);
+        order.then_with(|| left.product.stable_id.cmp(&right.product.stable_id))
     });
 
     let candidates = matches
@@ -137,13 +174,24 @@ pub fn evaluate(request: &SelectorRequest, products: &[Product]) -> SelectorResp
             if request.voltage.is_some() {
                 matched_constraints.push("The curve voltage matches the requested voltage exactly.".into());
             }
-            let mut warnings = Vec::new();
-            if request.priority.is_some() && !prefer_headroom {
-                warnings.push(
-                    "Rank uses verified duty-point pressure margin because the requested efficiency, noise or size metric is not normalized in the selector contract."
-                        .into(),
+            if request.maximum_diameter_mm.is_some() {
+                matched_constraints.push(
+                    "The verified diameter in mm is within the requested maximum.".into(),
                 );
             }
+            let ranking_explanation = match priority.specification() {
+                Some((_, unit, label)) => format!(
+                    "Ranked by verified {label} value {} {unit}.",
+                    matched.ranking_value
+                ),
+                None => format!(
+                    "Ranked by verified pressure headroom {} {} at the requested airflow.",
+                    matched.available_pressure - request.pressure,
+                    request.pressure_unit
+                ),
+            };
+            matched_constraints.push(ranking_explanation);
+            let mut warnings = Vec::new();
             if curve.test_method.as_deref().unwrap_or_default().is_empty() {
                 warnings.push("The published curve has no test-method label; confirm conditions during engineering review.".into());
             }
@@ -170,6 +218,37 @@ pub fn evaluate(request: &SelectorRequest, products: &[Product]) -> SelectorResp
             "Final suitability still depends on installation, controls, acoustics, certification and commercial review."
                 .into(),
         ],
+    }
+}
+
+fn verified_numeric_spec(specifications: &[SpecValue], key: &str, unit: &str) -> Option<f64> {
+    specifications.iter().find_map(|specification| {
+        if specification.key != key
+            || specification.state != FactState::Verified
+            || specification.unit.as_deref() != Some(unit)
+        {
+            return None;
+        }
+        let value = specification.value.as_ref()?;
+        let number = match value {
+            serde_json::Value::Number(value) => value.as_f64(),
+            serde_json::Value::String(value) => {
+                let trimmed = value.trim();
+                (!trimmed.is_empty() && trimmed == value)
+                    .then(|| trimmed.parse::<f64>().ok())
+                    .flatten()
+            }
+            _ => None,
+        }?;
+        number.is_finite().then_some(number)
+    })
+}
+
+fn engineering_review(reason: String) -> SelectorResponse {
+    SelectorResponse {
+        outcome: SelectorOutcome::EngineeringReviewRequired,
+        candidates: vec![],
+        explanations: vec![reason],
     }
 }
 
@@ -215,190 +294,5 @@ fn pressure_at(points: &[CurvePoint], airflow: f64) -> Option<f64> {
 }
 
 #[cfg(test)]
-mod tests {
-    use chrono::Utc;
-    use uuid::Uuid;
-
-    use super::*;
-    use crate::models::{PerformanceCurve, ProductFamily, PublicationStatus, SelectorRequest};
-
-    fn request() -> SelectorRequest {
-        SelectorRequest {
-            airflow: 100.0,
-            airflow_unit: "m3/h".into(),
-            pressure: 200.0,
-            pressure_unit: "Pa".into(),
-            ambient_temperature_c: None,
-            maximum_diameter_mm: None,
-            voltage: None,
-            frequency_hz: None,
-            required_certifications: vec![],
-            preferred_family: Some(ProductFamily::Axial),
-            motor_technology: None,
-            priority: Some(SelectorPriority::Efficiency),
-        }
-    }
-
-    fn product(state: FactState, points: Vec<CurvePoint>) -> Product {
-        Product {
-            id: Uuid::new_v4(),
-            stable_id: "AT-VERIFIED-001".into(),
-            model: Some("Verified model".into()),
-            slug: "verified-model".into(),
-            locale: "en".into(),
-            family: ProductFamily::Axial,
-            subtype: None,
-            motor_technology: None,
-            title: "Published verified product".into(),
-            summary: None,
-            seo: Default::default(),
-            sort_order: 0,
-            related_content_ids: Vec::new(),
-            specifications: vec![],
-            performance_curves: vec![PerformanceCurve {
-                airflow_unit: "m3/h".into(),
-                pressure_unit: "Pa".into(),
-                speed_rpm: None,
-                density_kg_m3: None,
-                voltage: None,
-                test_method: Some("Controlled test".into()),
-                source_reference: "verified-source".into(),
-                state,
-                points,
-            }],
-            source_snapshot_id: Uuid::new_v4(),
-            source_revision: "source-1".into(),
-            current_revision: 1,
-            published_revision: Some(1),
-            status: PublicationStatus::Published,
-            indexable: true,
-            updated_at: Utc::now(),
-        }
-    }
-
-    #[test]
-    fn interpolates_only_verified_published_curves() {
-        let response = evaluate(
-            &request(),
-            &[product(
-                FactState::Verified,
-                vec![
-                    CurvePoint {
-                        airflow: 0.0,
-                        pressure: 300.0,
-                    },
-                    CurvePoint {
-                        airflow: 200.0,
-                        pressure: 180.0,
-                    },
-                ],
-            )],
-        );
-        assert_eq!(response.outcome, SelectorOutcome::Matched);
-        assert_eq!(response.candidates.len(), 1);
-        assert_eq!(response.candidates[0].rank, 1);
-    }
-
-    #[test]
-    fn returns_no_candidate_when_the_verified_curve_misses_the_point() {
-        let response = evaluate(
-            &request(),
-            &[product(
-                FactState::Verified,
-                vec![
-                    CurvePoint {
-                        airflow: 0.0,
-                        pressure: 150.0,
-                    },
-                    CurvePoint {
-                        airflow: 200.0,
-                        pressure: 50.0,
-                    },
-                ],
-            )],
-        );
-        assert_eq!(response.outcome, SelectorOutcome::NoValidatedCandidates);
-        assert!(response.candidates.is_empty());
-    }
-
-    #[test]
-    fn fails_to_engineering_review_for_unmodeled_hard_constraints() {
-        let mut constrained = request();
-        constrained.required_certifications = vec!["Owner-approved requirement".into()];
-        let response = evaluate(
-            &constrained,
-            &[product(
-                FactState::Verified,
-                vec![
-                    CurvePoint {
-                        airflow: 0.0,
-                        pressure: 300.0,
-                    },
-                    CurvePoint {
-                        airflow: 200.0,
-                        pressure: 180.0,
-                    },
-                ],
-            )],
-        );
-        assert_eq!(response.outcome, SelectorOutcome::EngineeringReviewRequired);
-        assert!(response.candidates.is_empty());
-    }
-
-    #[test]
-    fn does_not_use_pending_curves() {
-        let response = evaluate(
-            &request(),
-            &[product(
-                FactState::PendingVerification,
-                vec![
-                    CurvePoint {
-                        airflow: 0.0,
-                        pressure: 300.0,
-                    },
-                    CurvePoint {
-                        airflow: 200.0,
-                        pressure: 180.0,
-                    },
-                ],
-            )],
-        );
-        assert_eq!(response.outcome, SelectorOutcome::NoValidatedCandidates);
-    }
-
-    #[test]
-    fn interpolation_rejects_duplicate_or_out_of_range_segments() {
-        assert_eq!(
-            pressure_at(
-                &[
-                    CurvePoint {
-                        airflow: 10.0,
-                        pressure: 20.0,
-                    },
-                    CurvePoint {
-                        airflow: 10.0,
-                        pressure: 30.0,
-                    },
-                ],
-                10.0
-            ),
-            None
-        );
-        assert_eq!(
-            pressure_at(
-                &[
-                    CurvePoint {
-                        airflow: 0.0,
-                        pressure: 300.0,
-                    },
-                    CurvePoint {
-                        airflow: 200.0,
-                        pressure: 100.0,
-                    },
-                ],
-                100.0
-            ),
-            Some(200.0)
-        );
-    }
-}
+#[path = "selector_tests.rs"]
+mod tests;

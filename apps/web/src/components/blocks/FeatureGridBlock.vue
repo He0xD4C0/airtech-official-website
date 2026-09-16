@@ -4,7 +4,11 @@ import { isDecorative, mediaAlt, mediaAssetHref, type PublicContentProjection } 
 
 type FeatureGridBlockValue = Extract<ContentBlock, { type: 'featureGrid' }>
 
-defineProps<{ block: FeatureGridBlockValue; projection: PublicContentProjection }>()
+const props = defineProps<{ block: FeatureGridBlockValue; projection: PublicContentProjection }>()
+
+function iconHref(item: FeatureGridBlockValue['items'][number]): string | undefined {
+  return mediaAssetHref(item.icon, props.projection.resolvedMedia)
+}
 </script>
 
 <template>
@@ -13,8 +17,8 @@ defineProps<{ block: FeatureGridBlockValue; projection: PublicContentProjection 
     <div class="card-grid collection-grid">
       <article v-for="item in block.items" :key="item.id" class="card collection-card">
         <img
-          v-if="mediaAssetHref(item.icon)"
-          :src="mediaAssetHref(item.icon)"
+          v-if="iconHref(item)"
+          :src="iconHref(item)"
           :alt="mediaAlt(item.icon)"
           :aria-hidden="isDecorative(item.icon) ? 'true' : undefined"
           loading="lazy"

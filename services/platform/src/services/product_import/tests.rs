@@ -1,9 +1,9 @@
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod cases {
+    use super::super::*;
     use crate::config::{ApprovedProductMaster, Config};
 
-    fn authority_for(parsed: &ParsedProductImport) -> ApprovedProductMaster {
+    pub(super) fn authority_for(parsed: &ParsedProductImport) -> ApprovedProductMaster {
         ApprovedProductMaster {
             sha256: parsed.result.checksum.clone(),
             mapping_version: parsed.result.mapping_version.clone(),
@@ -13,7 +13,7 @@ mod tests {
     }
 
     #[test]
-    fn import_keeps_valid_rows_reports_bad_rows_and_excludes_noise_and_price() {
+    pub(super) fn import_keeps_valid_rows_reports_bad_rows_and_excludes_noise_and_price() {
         let csv = concat!(
             "stable_id,model,family,title,price,currency,noise_db,image\n",
             "p-1,B23E280H128-102-B0,Centrifugal,Verified model,12.50,USD,55,missing.jpg\n",
@@ -40,7 +40,7 @@ mod tests {
     }
 
     #[test]
-    fn production_rejects_unapproved_modified_truncated_and_wrong_mapping_sources() {
+    pub(super) fn production_rejects_unapproved_modified_truncated_and_wrong_mapping_sources() {
         let config = Config::for_test();
         let key = config.product_staging_encryption_key.as_ref();
         let approved_csv = concat!(
@@ -106,7 +106,7 @@ mod tests {
     }
 
     #[test]
-    fn development_recognizes_the_registered_source_without_requiring_it() {
+    pub(super) fn development_recognizes_the_registered_source_without_requiring_it() {
         let config = Config::for_test();
         let parsed = parse_product_master(
             "stable_id,model,family\np-1,M1,Centrifugal\n",
@@ -139,7 +139,7 @@ mod tests {
     }
 
     #[test]
-    fn confidential_source_round_trips_only_with_row_bound_aad() {
+    pub(super) fn confidential_source_round_trips_only_with_row_bound_aad() {
         let csv = concat!(
             "stable_id,model,family,price,price_notes,noise_db\n",
             "p-1,M1,Centrifugal,12.50,never-expose-this-note,55\n"
@@ -184,7 +184,7 @@ mod tests {
     }
 
     #[test]
-    fn durable_job_payload_contains_only_the_import_run_reference() {
+    pub(super) fn durable_job_payload_contains_only_the_import_run_reference() {
         let id = Uuid::new_v4();
         let payload = product_import_job_payload(id);
         assert_eq!(payload, json!({"importRunId": id}));
@@ -195,7 +195,7 @@ mod tests {
     }
 
     #[test]
-    fn confirmed_master_pricing_headers_are_private_and_allowlisted_on_read() {
+    pub(super) fn confirmed_master_pricing_headers_are_private_and_allowlisted_on_read() {
         let csv = concat!(
             "文本,一级分类_Product #1,样品报价（sample）,100～500 pcs,500～1000pcs,1000～5000pcs,≥5000pcs,噪声(Noise Level)\n",
             "M1,离心风机 Centrifugal fans,sample,band-1,band-2,band-3,band-4,55\n"
@@ -228,7 +228,7 @@ mod tests {
     }
 
     #[test]
-    fn csv_parser_supports_commas_quotes_and_newlines() {
+    pub(super) fn csv_parser_supports_commas_quotes_and_newlines() {
         let rows =
             parse_csv("a,b\n1,\"two, three\"\n2,\"line one\nline two\"\n").expect("valid CSV");
         assert_eq!(rows.len(), 3);
@@ -237,7 +237,7 @@ mod tests {
     }
 
     #[test]
-    fn duplicate_stable_ids_are_malformed() {
+    pub(super) fn duplicate_stable_ids_are_malformed() {
         let config = Config::for_test();
         let parsed = parse_product_master(
             "stableId,family\np-1,axial\np-1,axial\n",
@@ -251,7 +251,8 @@ mod tests {
     }
 
     #[test]
-    fn verified_product_master_contract_is_370_valid_and_5_malformed_when_fixture_is_provided() {
+    pub(super) fn verified_product_master_contract_is_370_valid_and_5_malformed_when_fixture_is_provided(
+    ) {
         let Ok(path) = std::env::var("AIRTEK_PRODUCT_MASTER_TEST_CSV") else {
             return;
         };

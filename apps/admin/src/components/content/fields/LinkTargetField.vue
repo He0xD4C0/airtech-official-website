@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { Link2, LoaderCircle, Search } from 'lucide-vue-next'
-import type { ContentRecordV2, LinkTargetReference } from '@airtek/contracts'
+import type { CmsPublishedContent, LinkTargetReference } from '@airtek/contracts'
 import { contentApi } from '@/services/contentApi'
 import { apiErrorMessage } from '@/services/cursorPagination'
 
@@ -15,7 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const query = ref('')
-const results = ref<ContentRecordV2[]>([])
+const results = ref<CmsPublishedContent[]>([])
 const searchState = ref<'idle' | 'loading' | 'ready' | 'empty' | 'error'>('idle')
 const searchError = ref('')
 const resolvedLabel = ref('')
@@ -48,9 +48,9 @@ function updateUrl(value: string): void {
   emit('update:modelValue', { targetType: 'external', url: value })
 }
 
-function chooseContent(record: ContentRecordV2): void {
-  resolvedLabel.value = record.draft.title
-  emit('update:modelValue', { targetType: 'content', contentId: record.id })
+function chooseContent(record: CmsPublishedContent): void {
+  resolvedLabel.value = record.document.title
+  emit('update:modelValue', { targetType: 'content', contentId: record.contentId })
   results.value = []
   searchState.value = 'idle'
   query.value = ''
@@ -60,7 +60,7 @@ async function search(queryText: string): Promise<void> {
   searchState.value = 'loading'
   searchError.value = ''
   try {
-    const page = await contentApi.listContent({ q: queryText.trim() || undefined, limit: 8 })
+    const page = await contentApi.listPublished({ q: queryText.trim() || undefined, limit: 8 })
     results.value = page.items
     searchState.value = results.value.length ? 'ready' : 'empty'
   } catch (error) {
@@ -84,8 +84,8 @@ watch(contentId, async (id) => {
   resolvedLabel.value = ''
   if (!id) return
   try {
-    const { record } = await contentApi.getContentRecord(id)
-    resolvedLabel.value = record.draft.title
+    const record = await contentApi.getPublished(id)
+    resolvedLabel.value = record.document.title
   } catch {
     resolvedLabel.value = ''
   }
@@ -139,10 +139,10 @@ watch(contentId, async (id) => {
       <p v-else-if="searchState === 'error'" class="link-target__state link-target__state--error">{{ searchError }}</p>
       <p v-else-if="searchState === 'empty'" class="link-target__state">没有匹配的内容。</p>
       <ul v-else-if="searchState === 'ready'" class="link-target__results">
-        <li v-for="record in results" :key="record.id">
+        <li v-for="record in results" :key="record.contentId">
           <button type="button" @click="chooseContent(record)">
-            <strong>{{ record.draft.title }}</strong>
-            <small>{{ record.draft.kind }} · v{{ record.draft.draftVersion }}</small>
+            <strong>{{ record.document.title }}</strong>
+            <small>{{ record.document.kind }} · 发布 v{{ record.publicationVersion }}</small>
           </button>
         </li>
       </ul>

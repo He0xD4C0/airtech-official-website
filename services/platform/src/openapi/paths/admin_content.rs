@@ -1,18 +1,248 @@
-//! Unified CMS content, draft, snapshot, revision, and diff path definitions.
+//! Private draft, review queue, and current published content APIs.
 
 use serde_json::{json, Map, Value};
 
 use super::super::support::*;
 
 pub(super) fn add_paths(paths: &mut Map<String, Value>) {
-    add_collection_paths(paths);
-    add_draft_paths(paths);
-    add_snapshot_path(paths);
-    add_revision_paths(paths);
-    add_media_paths(paths);
+    add_drafts(paths);
+    add_reviews(paths);
+    add_published(paths);
+    add_media_list(paths);
 }
 
-fn add_media_paths(paths: &mut Map<String, Value>) {
+fn add_drafts(paths: &mut Map<String, Value>) {
+    add(
+        paths,
+        "/api/admin/v1/content-drafts",
+        "get",
+        admin(
+            params(
+                op(
+                    "listPrivateContentDrafts",
+                    "List private drafts visible to the current user",
+                    "adminContentDrafts",
+                    [("200", json_response("Private drafts", r("CmsDraftPage")))],
+                ),
+                list_params(),
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/content-drafts",
+        "post",
+        admin(
+            body(
+                op(
+                    "createPrivateContentDraft",
+                    "Create a new private draft",
+                    "adminContentDrafts",
+                    [("201", draft_response("Private draft created"))],
+                ),
+                r("ContentDraftV2"),
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/content-drafts/templates",
+        "get",
+        admin(
+            op(
+                "listContentDraftTemplates",
+                "List controlled CMS templates",
+                "adminContentDrafts",
+                [(
+                    "200",
+                    json_response("Templates", r("ContentTemplateDefinitionPage")),
+                )],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/content-drafts/{draftId}",
+        "get",
+        admin(
+            params(
+                op(
+                    "getPrivateContentDraft",
+                    "Read a visible private draft",
+                    "adminContentDrafts",
+                    [("200", draft_response("Private draft"))],
+                ),
+                vec![path_param("draftId", uuid())],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/content-drafts/{draftId}",
+        "patch",
+        admin(
+            params(
+                body(
+                    op(
+                        "savePrivateContentDraft",
+                        "Explicitly save an owned editing draft",
+                        "adminContentDrafts",
+                        [("200", draft_response("Private draft saved"))],
+                    ),
+                    r("ContentDraftV2"),
+                ),
+                vec![path_param("draftId", uuid()), draft_if_match()],
+            ),
+            true,
+        ),
+    );
+    add_mutation(
+        paths,
+        "/api/admin/v1/content-drafts/{draftId}/shares",
+        "put",
+        "setPrivateContentDraftShares",
+        "Replace read-only draft shares",
+        Some("CmsDraftSharesRequest"),
+        "CmsPrivateDraft",
+        false,
+    );
+    add_mutation(
+        paths,
+        "/api/admin/v1/content-drafts/{draftId}/claim",
+        "post",
+        "claimUnassignedPrivateContentDraft",
+        "Claim an unassigned migrated draft as Super Admin",
+        None,
+        "CmsPrivateDraft",
+        false,
+    );
+    add_mutation(
+        paths,
+        "/api/admin/v1/content-drafts/{draftId}/submit",
+        "post",
+        "submitPrivateContentDraft",
+        "Submit a clean saved draft for review or automatic publication",
+        None,
+        "CmsSubmitResult",
+        true,
+    );
+    add_mutation(
+        paths,
+        "/api/admin/v1/content-drafts/{draftId}/withdraw",
+        "post",
+        "withdrawPrivateContentDraft",
+        "Withdraw an owned pending draft",
+        None,
+        "CmsPrivateDraft",
+        false,
+    );
+}
+
+fn add_reviews(paths: &mut Map<String, Value>) {
+    add(
+        paths,
+        "/api/admin/v1/content-reviews",
+        "get",
+        admin(
+            params(
+                op(
+                    "listContentReviews",
+                    "List the current review queue",
+                    "adminContentReviews",
+                    [("200", json_response("Review queue", r("CmsReviewPage")))],
+                ),
+                list_params(),
+            ),
+            false,
+        ),
+    );
+    add_mutation(
+        paths,
+        "/api/admin/v1/content-reviews/{draftId}/approve",
+        "post",
+        "approveContentReview",
+        "Atomically overwrite current publication and delete the draft",
+        None,
+        "CmsPublishResult",
+        false,
+    );
+    add_mutation(
+        paths,
+        "/api/admin/v1/content-reviews/{draftId}/reject",
+        "post",
+        "rejectContentReview",
+        "Return a draft to editing with its current rejection reason",
+        Some("CmsRejectRequest"),
+        "CmsPrivateDraft",
+        false,
+    );
+}
+
+fn add_published(paths: &mut Map<String, Value>) {
+    add(
+        paths,
+        "/api/admin/v1/published-content",
+        "get",
+        admin(
+            params(
+                op(
+                    "listCurrentPublishedContent",
+                    "List company current published content",
+                    "adminPublishedContent",
+                    [(
+                        "200",
+                        json_response("Published content", r("CmsPublishedPage")),
+                    )],
+                ),
+                list_params(),
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/published-content/{contentId}",
+        "get",
+        admin(
+            params(
+                op(
+                    "getCurrentPublishedContent",
+                    "Read company current published content",
+                    "adminPublishedContent",
+                    [(
+                        "200",
+                        json_response("Published content", r("CmsPublishedContent")),
+                    )],
+                ),
+                vec![path_param("contentId", uuid())],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/published-content/{contentId}/drafts",
+        "post",
+        admin(
+            params(
+                op(
+                    "copyPublishedContentToPrivateDraft",
+                    "Copy current published content to the user's new private draft",
+                    "adminPublishedContent",
+                    [("201", draft_response("Private draft copied"))],
+                ),
+                vec![path_param("contentId", uuid())],
+            ),
+            true,
+        ),
+    );
+}
+
+fn add_media_list(paths: &mut Map<String, Value>) {
     add(
         paths,
         "/api/admin/v1/media/assets",
@@ -21,281 +251,67 @@ fn add_media_paths(paths: &mut Map<String, Value>) {
             params(
                 op(
                     "listAdminMediaAssets",
-                    "List media library assets for the unified content editor",
-                    "adminContent",
-                    [(
-                        "200",
-                        json_response("Media assets", r("MediaAssetSummaryPage")),
-                    )],
+                    "List media assets for the private draft editor",
+                    "adminContentDrafts",
+                    [("200", json_response("Media assets", r("MediaAssetPage")))],
                 ),
-                media_asset_params(),
+                list_params(),
             ),
             false,
         ),
     );
 }
 
-fn media_asset_params() -> Vec<Value> {
-    let mut values = admin_pagination_params();
-    values.push(query_param(
-        "q",
-        false,
-        json!({"type": "string", "maxLength": 200, "description": "Case-insensitive original name search."}),
-    ));
-    values.push(query_param(
-        "scanStatus",
-        false,
-        json!({"type": "string", "enum": ["pending", "clean", "quarantined", "failed"]}),
-    ));
-    values.push(query_param(
-        "accessLevel",
-        false,
-        json!({"type": "string", "enum": ["public", "authenticated", "internal"]}),
-    ));
-    values
-}
-
-fn add_collection_paths(paths: &mut Map<String, Value>) {
-    add(
-        paths,
-        "/api/admin/v1/content",
-        "get",
-        admin(
-            params(
-                op(
-                    "listAdminContentV2",
-                    "List unified CMS working records with server-side search, filters, sort, and type counts",
-                    "adminContent",
-                    [(
-                        "200",
-                        json_response("Content records", r("ContentRecordV2Page")),
-                    )],
-                ),
-                content_list_params(),
-            ),
-            false,
-        ),
+#[allow(clippy::too_many_arguments)]
+fn add_mutation(
+    paths: &mut Map<String, Value>,
+    path: &str,
+    method: &str,
+    operation_id: &str,
+    summary: &str,
+    request_schema: Option<&str>,
+    response_schema: &str,
+    if_match: bool,
+) {
+    let operation = op(
+        operation_id,
+        summary,
+        "adminContentDrafts",
+        [("200", json_response("Mutation result", r(response_schema)))],
     );
-    add(
-        paths,
-        "/api/admin/v1/content/templates",
-        "get",
-        admin(
-            op(
-                "listAdminContentTemplatesV2",
-                "List the controlled CMS template registry",
-                "adminContent",
-                [(
-                    "200",
-                    json_response(
-                        "Controlled content templates",
-                        r("ContentTemplateDefinitionPage"),
-                    ),
-                )],
-            ),
-            false,
-        ),
-    );
-    add(
-        paths,
-        "/api/admin/v1/content",
-        "post",
-        admin(
-            params(
-                body(
-                    op(
-                        "createAdminContentV2",
-                        "Create a unified CMS draft without creating a revision",
-                        "adminContent",
-                        [("201", content_response("Content draft created"))],
-                    ),
-                    r("ContentDraftV2"),
-                ),
-                vec![draft_if_match_param(), idempotency_param()],
-            ),
-            true,
-        ),
-    );
-}
-
-fn content_list_params() -> Vec<Value> {
-    let mut values = admin_pagination_params();
-    values.push(query_param(
-        "q",
-        false,
-        json!({"type": "string", "maxLength": 200, "description": "Case-insensitive title or slug search."}),
-    ));
-    values.push(query_param(
-        "kind",
-        false,
-        json!({"type": "string", "description": "Comma-separated CmsContentKind filters."}),
-    ));
-    values.push(query_param("status", false, r("CmsPublicationStatusV2")));
-    values.push(query_param(
-        "sort",
-        false,
-        json!({"type": "string", "enum": ["updatedAt", "title", "kind"], "default": "updatedAt"}),
-    ));
-    values.push(query_param(
-        "direction",
-        false,
-        json!({"type": "string", "enum": ["asc", "desc"]}),
-    ));
-    values
-}
-
-fn add_draft_paths(paths: &mut Map<String, Value>) {
-    add(
-        paths,
-        "/api/admin/v1/content/{id}/draft",
-        "get",
-        admin(
-            params(
-                op(
-                    "getAdminContentDraftV2",
-                    "Get the current unified CMS draft",
-                    "adminContent",
-                    [("200", content_response("Current content draft"))],
-                ),
-                vec![path_param("id", uuid())],
-            ),
-            false,
-        ),
-    );
-    add(
-        paths,
-        "/api/admin/v1/content/{id}/draft",
-        "patch",
-        admin(
-            params(
-                body(
-                    op(
-                        "updateAdminContentDraftV2",
-                        "Auto-save the draft and increment only draftVersion",
-                        "adminContent",
-                        [("200", content_response("Content draft saved"))],
-                    ),
-                    r("ContentDraftV2"),
-                ),
-                mutation_params(false),
-            ),
-            true,
-        ),
-    );
-}
-
-fn add_snapshot_path(paths: &mut Map<String, Value>) {
-    add(
-        paths,
-        "/api/admin/v1/content/{id}/snapshots",
-        "post",
-        admin(
-            params(
-                body(
-                    op(
-                        "createAdminContentSnapshotV2",
-                        "Create an immutable manual or published revision from the current draft",
-                        "adminContent",
-                        [("201", content_response("Content snapshot created"))],
-                    ),
-                    r("CreateContentSnapshotRequest"),
-                ),
-                mutation_params(false),
-            ),
-            true,
-        ),
-    );
-}
-
-fn add_revision_paths(paths: &mut Map<String, Value>) {
-    add(
-        paths,
-        "/api/admin/v1/content/{id}/revisions",
-        "get",
-        admin(
-            params(
-                op(
-                    "listAdminContentRevisionsV2",
-                    "List immutable unified CMS revisions",
-                    "adminContent",
-                    [(
-                        "200",
-                        json_response("Content revisions", r("ContentRevisionV2Page")),
-                    )],
-                ),
-                {
-                    let mut values = vec![path_param("id", uuid())];
-                    values.extend(admin_pagination_params());
-                    values
-                },
-            ),
-            false,
-        ),
-    );
-    add(
-        paths,
-        "/api/admin/v1/content/{id}/diff",
-        "get",
-        admin(
-            params(
-                op(
-                    "getAdminContentDiffV2",
-                    "Compare an immutable revision with another revision or the current draft",
-                    "adminContent",
-                    [("200", json_response("Content diff", r("ContentDiffV2")))],
-                ),
-                vec![
-                    path_param("id", uuid()),
-                    query_param("baseRevision", true, revision()),
-                    query_param("targetRevision", false, revision()),
-                ],
-            ),
-            false,
-        ),
-    );
-    add(
-        paths,
-        "/api/admin/v1/content/{id}/revisions/{revision}/restore",
-        "post",
-        admin(
-            params(
-                body(
-                    op(
-                        "restoreAdminContentRevisionV2",
-                        "Restore an immutable revision as a new draft and immutable restore revision",
-                        "adminContent",
-                        [("201", content_response("Content revision restored"))],
-                    ),
-                    r("RestoreContentRevisionRequest"),
-                ),
-                mutation_params(true),
-            ),
-            true,
-        ),
-    );
-}
-
-fn mutation_params(with_revision: bool) -> Vec<Value> {
-    let mut values = vec![path_param("id", uuid())];
-    if with_revision {
-        values.push(path_param("revision", revision()));
+    let operation = request_schema.map_or(operation.clone(), |schema| body(operation, r(schema)));
+    let mut parameters = vec![path_param("draftId", uuid())];
+    if if_match {
+        parameters.push(draft_if_match());
     }
-    values.push(draft_if_match_param());
-    values.push(idempotency_param());
+    add(
+        paths,
+        path,
+        method,
+        admin(params(operation, parameters), true),
+    );
+}
+
+fn list_params() -> Vec<Value> {
+    let mut values = admin_pagination_params();
+    values.push(query_param(
+        "q",
+        false,
+        json!({"type":"string","maxLength":200}),
+    ));
     values
 }
 
-fn draft_if_match_param() -> Value {
+fn draft_if_match() -> Value {
     json!({
-        "name": "If-Match", "in": "header", "required": true,
-        "description": "Current draft ETag. Creation requires draft-0.",
-        "schema": {"type": "string", "pattern": "^\\\"draft-[0-9]+\\\"$"}
+        "name":"If-Match","in":"header","required":true,
+        "schema":{"type":"string","pattern":"^\\\"draft-[0-9]+\\\"$"}
     })
 }
 
-fn content_response(description: &str) -> Value {
+fn draft_response(description: &str) -> Value {
     response_header(
-        json_response(description, r("ContentRecordV2")),
+        json_response(description, r("CmsPrivateDraft")),
         "ETag",
         "Current draft-N entity tag",
     )

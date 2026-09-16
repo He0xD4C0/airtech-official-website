@@ -8,6 +8,20 @@ permissions:
   contents: read
 
 jobs:
+  rust-msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.88.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: services/platform
+      - name: Compile the production platform at its declared MSRV
+        working-directory: services/platform
+        run: cargo check --locked --all-targets --features production
+
   contracts:
     runs-on: ubuntu-latest
     steps:
@@ -41,6 +55,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Test and enforce source line limits
+        run: pnpm test:source-lines && pnpm check:architecture
       - name: Build generated TypeScript contract package
         run: pnpm --filter @airtek/contracts build
       - run: pnpm lint
@@ -49,6 +65,7 @@ jobs:
         run: pnpm test
       - run: pnpm check:production
       - run: pnpm check:deployment
+      - run: pnpm check:media-boundary
 
   browser-contracts:
     runs-on: ubuntu-latest
@@ -107,10 +124,13 @@ jobs:
           --health-retries 20
     env:
       DATABASE_URL: postgres://airtek:airtek@127.0.0.1:5432/airtek
+      AIRTEK_TEST_DATABASE_URL: postgres://airtek:airtek@127.0.0.1:5432/airtek
+      AIRTEK_TEST_TEMPLATE_DATABASE: airtek_test_template
       FLYWAY_URL: jdbc:postgresql://127.0.0.1:5432/airtek
       FLYWAY_USER: airtek
       FLYWAY_PASSWORD: airtek
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: airtek_runtime
+      AIRTEK_FLYWAY_TARGET: 19
     steps:
       - uses: actions/checkout@v4
       - name: Generate a temporary CI-only runtime database password
@@ -126,6 +146,7 @@ jobs:
         with:
           workspaces: services/platform
       - run: cargo fmt --manifest-path services/platform/Cargo.toml --all -- --check
+      - run: node scripts/assert-postgres-runtime-boundary.mjs
       - run: cargo clippy --manifest-path services/platform/Cargo.toml --all-targets --features production -- -D warnings
       - name: Provision a distinct runtime database role
         run: |
@@ -139,16 +160,22 @@ jobs:
         run: docker build --file infra/docker/Dockerfile.flyway --tag airtek-flyway:ci .
       - name: Apply Flyway migrations twice and validate history
         run: |
-          docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE airtek-flyway:ci migrate
+          docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE -e AIRTEK_FLYWAY_TARGET airtek-flyway:ci migrate
           docker exec ${{ job.services.postgres.id }} psql --username airtek --dbname airtek --set ON_ERROR_STOP=1 --command "CREATE SEQUENCE public.ci_runtime_grant_sequence"
-          docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE airtek-flyway:ci migrate
-          docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE airtek-flyway:ci validate
+          docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE -e AIRTEK_FLYWAY_TARGET airtek-flyway:ci migrate
+          docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE -e AIRTEK_FLYWAY_TARGET airtek-flyway:ci validate
           docker exec ${{ job.services.postgres.id }} psql --username airtek --dbname airtek --set ON_ERROR_STOP=1 --command "DO \$\$ BEGIN IF NOT has_table_privilege('airtek_runtime', 'public.content_entries', 'SELECT') OR NOT has_sequence_privilege('airtek_runtime', 'public.ci_runtime_grant_sequence', 'USAGE') OR NOT has_database_privilege('airtek_runtime', current_database(), 'TEMPORARY') OR NOT has_table_privilege('airtek_runtime', 'public.flyway_schema_history', 'SELECT') OR has_table_privilege('airtek_runtime', 'public.flyway_schema_history', 'INSERT') OR has_table_privilege('airtek_runtime', 'public.flyway_schema_history', 'TRUNCATE') OR NOT has_schema_privilege('airtek_runtime', 'public', 'USAGE') OR has_schema_privilege('airtek_runtime', 'public', 'CREATE') THEN RAISE EXCEPTION 'runtime role boundary is invalid'; END IF; END \$\$"
           docker exec \
             -e "PGPASSWORD=${AIRTEK_RUNTIME_DATABASE_PASSWORD}" \
             "${{ job.services.postgres.id }}" \
             psql --host 127.0.0.1 --username airtek_runtime --dbname airtek \
             --no-password --set ON_ERROR_STOP=1 --command "SELECT 1"
+      - name: Prepare runtime data and create the isolated test template
+        run: |
+          cargo run --manifest-path services/platform/Cargo.toml --bin airtek-maintenance -- prepare-runtime
+          docker exec "${{ job.services.postgres.id }}" \
+            psql --username airtek --dbname postgres --set ON_ERROR_STOP=1 \
+            --command "CREATE DATABASE airtek_test_template TEMPLATE airtek"
       - name: Exercise guarded legacy SQLx history adoption
         run: |
           set -euo pipefail
@@ -171,6 +198,7 @@ jobs:
               -e FLYWAY_USER \
               -e FLYWAY_PASSWORD \
               -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE \
+              -e AIRTEK_FLYWAY_TARGET \
               airtek-flyway:ci "$@"
           }
 
@@ -289,16 +317,18 @@ jobs:
           done
       - name: Run Rust unit and HTTP contract tests
         run: cargo test --manifest-path services/platform/Cargo.toml
-      - name: Run PostgreSQL integration contracts serially
-        env:
-          AIRTEK_TEST_DATABASE_URL: ${{ env.DATABASE_URL }}
+      - name: Run PostgreSQL integration contracts with default test parallelism
         run: |
-          cargo test --manifest-path services/platform/Cargo.toml --features devtools --test postgres_contract -- --ignored --test-threads=1
-          cargo test --manifest-path services/platform/Cargo.toml --test retention_contract -- --ignored --test-threads=1
-          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract expired_private_staging_requires_atomic_cryptographic_erasure -- --ignored --exact --test-threads=1
-          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract synthetic_product_master_scale_is_private_promoted_draft_and_idempotent -- --ignored --exact --test-threads=1
-          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract feishu_takes_over_verified_csv_stable_id_and_projects_all_facts_atomically -- --ignored --exact --test-threads=1
-          cargo test --manifest-path services/platform/Cargo.toml --test migration_contract -- --ignored --test-threads=1
+          cargo test --manifest-path services/platform/Cargo.toml --features devtools --test postgres_contract -- --ignored
+          cargo test --manifest-path services/platform/Cargo.toml --test retention_contract -- --ignored
+          cargo test --manifest-path services/platform/Cargo.toml --features devtools --test migration_contract -- --ignored
+          cargo test --manifest-path services/platform/Cargo.toml --features devtools --test cms_current_dependencies_contract -- --ignored
+          cargo test --manifest-path services/platform/Cargo.toml --features devtools --test publication_dependency_migration_contract -- --ignored
+      - name: Run shared-state Product Master contracts one at a time
+        run: |
+          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract feishu_takeover_and_expiry::expired_private_staging_requires_atomic_cryptographic_erasure -- --ignored --exact
+          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract synthetic_master::synthetic_product_master_scale_is_private_promoted_draft_and_idempotent -- --ignored --exact
+          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract feishu_takeover_and_expiry::feishu_takes_over_verified_csv_stable_id_and_projects_all_facts_atomically -- --ignored --exact
       - run: cargo check --manifest-path services/platform/Cargo.toml --features production
       - run: cargo check --manifest-path services/platform/Cargo.toml --features devtools
       - name: Assert production and DevTools are mutually exclusive
@@ -307,10 +337,10 @@ jobs:
             echo "production+devtools unexpectedly compiled"
             exit 1
           fi
-      - name: Assert production dependency tree excludes CLI, PTY, and WebSocket packages
+      - name: Assert production dependency tree excludes DevTools CLI, PTY, and WebSocket packages
         run: |
           if cargo tree --manifest-path services/platform/Cargo.toml --features production | grep -E '(^| )((clap|portable-pty|tokio-tungstenite|tungstenite) v)'; then
-            echo "production dependency tree contains a CLI, PTY, or WebSocket package"
+            echo "production dependency tree contains a DevTools CLI, PTY, or WebSocket package"
             exit 1
           fi
 

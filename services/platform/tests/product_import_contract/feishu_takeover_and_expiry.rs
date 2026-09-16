@@ -1,3 +1,5 @@
+use super::*;
+
 #[tokio::test]
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
 async fn feishu_takes_over_verified_csv_stable_id_and_projects_all_facts_atomically() {

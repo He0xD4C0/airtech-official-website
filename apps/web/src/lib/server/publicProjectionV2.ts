@@ -4,6 +4,7 @@ import type {
   LinkTargetReference,
   NavigationItem,
 } from '@airtek/contracts'
+import { parseOpenApiSchema } from '@airtek/contracts'
 import type {
   Breadcrumb,
   CardEntry,
@@ -70,8 +71,20 @@ export function asProjection(value: unknown): PublicContentProjection | undefine
     || !Array.isArray(value.resolvedLinks)
     || !value.resolvedLinks.every((entry) => (
       isRecord(entry) && typeof entry.contentId === 'string' && typeof entry.href === 'string'
-    ))) return undefined
-  return value as unknown as PublicContentProjection
+    ))
+    || !Array.isArray(value.resolvedMedia)
+    || !value.resolvedMedia.every(isResolvedMedia)) return undefined
+  return parseOpenApiSchema<PublicContentProjection>('PublicContentProjection', value)
+}
+
+function isResolvedMedia(value: unknown): boolean {
+  return isRecord(value)
+    && typeof value.assetId === 'string'
+    && typeof value.publicUrl === 'string'
+    && typeof value.downloadUrl === 'string'
+    && typeof value.originalName === 'string'
+    && typeof value.mediaType === 'string'
+    && Number.isInteger(value.byteSize)
 }
 
 function isRelationCard(value: unknown): value is ResolvedRelationCard {

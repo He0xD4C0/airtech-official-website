@@ -1,4 +1,6 @@
-async fn site_bootstrap(
+use super::*;
+
+pub(super) async fn site_bootstrap(
     State(state): State<AppState>,
     Query(query): Query<LocaleQuery>,
 ) -> Result<Json<SiteBootstrap>, ApiError> {
@@ -28,7 +30,7 @@ async fn site_bootstrap(
     }))
 }
 
-pub(super) async fn published_site_shell_has_placeholder(
+pub(crate) async fn published_site_shell_has_placeholder(
     state: &AppState,
     locale: &str,
 ) -> Result<bool, ApiError> {
@@ -56,7 +58,7 @@ pub(super) async fn published_site_shell_has_placeholder(
     Ok(false)
 }
 
-fn valid_shell_information(information: &PublicContentProjection, locale: &str) -> bool {
+pub(super) fn valid_shell_information(information: &PublicContentProjection, locale: &str) -> bool {
     information.schema_version == crate::models::CMS_V2_SCHEMA_VERSION
         && information.kind == CmsContentKind::GeneralInformation
         && information.locale == locale
@@ -69,7 +71,7 @@ fn valid_shell_information(information: &PublicContentProjection, locale: &str) 
         )
 }
 
-fn valid_shell_content(
+pub(super) fn valid_shell_content(
     content: &PublicContentProjection,
     kind: CmsContentKind,
     locale: &str,
@@ -89,18 +91,18 @@ fn valid_shell_content(
         }
 }
 
-fn incomplete_site_shell() -> ApiError {
+pub(super) fn incomplete_site_shell() -> ApiError {
     ApiError::service_unavailable("The public site shell projection is incomplete.")
 }
 
-fn valid_required_text(value: Option<&str>, maximum_length: usize) -> bool {
+pub(super) fn valid_required_text(value: Option<&str>, maximum_length: usize) -> bool {
     value.is_some_and(|value| {
         let value = value.trim();
         !value.is_empty() && value.len() <= maximum_length && !value.chars().any(char::is_control)
     })
 }
 
-fn valid_site_home_path(path: &str, locale: &str) -> bool {
+pub(super) fn valid_site_home_path(path: &str, locale: &str) -> bool {
     let path = path.trim();
     let locale_root = format!("/{locale}");
     (path == locale_root || path.starts_with(&format!("{locale_root}/")))

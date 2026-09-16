@@ -1,4 +1,6 @@
-fn validate_locale(value: &str) -> Result<(), ApiError> {
+use super::*;
+
+pub(super) fn validate_locale(value: &str) -> Result<(), ApiError> {
     if valid_locale_tag(value) {
         Ok(())
     } else {
@@ -6,7 +8,7 @@ fn validate_locale(value: &str) -> Result<(), ApiError> {
     }
 }
 
-fn valid_locale_tag(value: &str) -> bool {
+pub(super) fn valid_locale_tag(value: &str) -> bool {
     (2..=35).contains(&value.len())
         && !value.starts_with('-')
         && !value.ends_with('-')
@@ -15,7 +17,7 @@ fn valid_locale_tag(value: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
 }
 
-fn validate_public_path(path: &str) -> Result<(), ApiError> {
+pub(super) fn validate_public_path(path: &str) -> Result<(), ApiError> {
     if path.starts_with('/')
         && path.len() <= 2_048
         && !path.contains('?')
@@ -29,16 +31,7 @@ fn validate_public_path(path: &str) -> Result<(), ApiError> {
     }
 }
 
-fn decode_data_class(value: String) -> DataClass {
-    match value.as_str() {
-        "developmentFixture" => DataClass::DevelopmentFixture,
-        "feishu" => DataClass::Feishu,
-        "verifiedCsv" => DataClass::VerifiedCsv,
-        _ => DataClass::Editorial,
-    }
-}
-
-fn valid_slug(value: &str) -> bool {
+pub(super) fn valid_slug(value: &str) -> bool {
     !value.is_empty()
         && value.len() <= 200
         && !value.starts_with('-')
@@ -48,6 +41,6 @@ fn valid_slug(value: &str) -> bool {
             .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
 }
 
-fn default_locale() -> String {
+pub(super) fn default_locale() -> String {
     "en".into()
 }
