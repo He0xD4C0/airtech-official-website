@@ -392,6 +392,18 @@ for (const variable of ['AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES', 'AIRTEK_ANALYTIC
   requireMatch(productionEnv, new RegExp(`^${variable}=`, 'mu'), `Production environment example must declare ${variable}.`)
 }
 
+const productionRelease = read('.github/workflows/release-production.yml')
+requireMatch(productionRelease, /^\s+packages:\s+write$/mu, 'Production image publishing must grant the workflow package write permission.')
+requireMatch(productionRelease, /registry:\s+ghcr\.io/u, 'Production images must publish to GHCR.')
+requireMatch(productionRelease, /password:\s*\$\{\{ github\.token \}\}/u, 'GHCR publishing must use the short-lived GitHub workflow token.')
+requireMatch(productionRelease, /tags:\s+\$\{\{ needs\.prepare\.outputs\.image_prefix \}\}-\$\{\{ matrix\.image \}\}:\$\{\{ needs\.prepare\.outputs\.release_sha \}\}/u, 'Production image tags must use the AIRTEKPOWER package prefix and immutable commit SHA.')
+forbidMatch(productionRelease, /ACR_/u, 'Production release workflow must not retain Alibaba Container Registry configuration.')
+requireMatch(productionRelease, /github\.event_name == 'workflow_run' && vars\.PRODUCTION_RELEASE_ENABLED == 'true'/u, 'Automatic deployment must remain independently gated after image publishing.')
+
+const productionDeploy = read('infra/deploy/deploy-app.sh')
+requireMatch(productionDeploy, /compose_release "\$release_dir" run --rm flyway-migrate validate\ncompose_release "\$release_dir" run --rm platform-maintenance\n/u, 'Production deployment must prepare runtime data immediately after Flyway validation.')
+requireMatch(productionDeploy, /AIRTEK_PLATFORM_IMAGE=\$image_prefix-platform:\$release_id/u, 'Production deployment must reference the GHCR AIRTEKPOWER platform package.')
+
 const localEnvExample = read('.env.example')
 for (const variable of [
   'AIRTEK_PUBLIC_HOST_PORT',

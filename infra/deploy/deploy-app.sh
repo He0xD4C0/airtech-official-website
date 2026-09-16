@@ -39,11 +39,11 @@ mkdir -p "$release_dir"
 cp "$source_compose" "$release_dir/compose.production.yaml"
 
 cat >"$release_dir/images.env" <<EOF
-AIRTEK_PUBLIC_WEB_IMAGE=$image_prefix/public-web:$release_id
-AIRTEK_ADMIN_WEB_IMAGE=$image_prefix/admin-web:$release_id
-AIRTEK_PLATFORM_IMAGE=$image_prefix/platform:$release_id
-AIRTEK_MIGRATIONS_IMAGE=$image_prefix/migrations:$release_id
-AIRTEK_GATEWAY_IMAGE=$image_prefix/gateway:$release_id
+AIRTEK_PUBLIC_WEB_IMAGE=$image_prefix-public-web:$release_id
+AIRTEK_ADMIN_WEB_IMAGE=$image_prefix-admin-web:$release_id
+AIRTEK_PLATFORM_IMAGE=$image_prefix-platform:$release_id
+AIRTEK_MIGRATIONS_IMAGE=$image_prefix-migrations:$release_id
+AIRTEK_GATEWAY_IMAGE=$image_prefix-gateway:$release_id
 EOF
 
 previous_release=
@@ -101,6 +101,7 @@ compose_release "$release_dir" config --quiet
 compose_release "$release_dir" pull
 compose_release "$release_dir" run --rm flyway-migrate migrate
 compose_release "$release_dir" run --rm flyway-migrate validate
+compose_release "$release_dir" run --rm platform-maintenance
 
 deployment_started=1
 compose_release "$release_dir" up -d --no-deps --remove-orphans --wait --wait-timeout 180 \

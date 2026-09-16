@@ -128,10 +128,14 @@ pnpm check:contracts
 
 ## GitHub application release
 
-`.github/workflows/release-production.yml` starts only after a successful `CI`
-run on `main`, or from an explicit manual dispatch with a full commit SHA. It
-builds five images, pushes immutable SHA tags, uploads only the application
-Compose file and `deploy-app.sh`, then updates `airtek-app`.
+`.github/workflows/release-production.yml` publishes after every successful
+`CI` run on `main`, or from an explicit manual dispatch with a full commit SHA.
+It builds five images and pushes immutable SHA tags to GitHub Container
+Registry (GHCR). A manual run publishes only by default; set
+`deploy_after_publish=true` only when the production server is ready. Automatic
+deployment remains disabled while `PRODUCTION_RELEASE_ENABLED=false`; once it
+is enabled, successful `main` releases upload only the application Compose file
+and `deploy-app.sh`, then update `airtek-app`.
 
 The server keeps `/etc/airtek/production.env` and its registry pull credential.
 The workflow never receives PostgreSQL superuser or MinIO root secrets. A failed
@@ -142,13 +146,20 @@ Create these GitHub repository variables before enabling the workflow:
 
 - `PRODUCTION_RELEASE_ENABLED=false` until the ECS and every secret are ready;
   change it to `true` only after the first manual release succeeds.
-- `ACR_REGISTRY`, `ACR_NAMESPACE`, and optional
-  `PRODUCTION_CONTAINER_PLATFORM` (defaults to `linux/amd64`).
+- Optional `PRODUCTION_CONTAINER_PLATFORM` (defaults to `linux/amd64`).
 - `PRODUCTION_PUBLIC_ORIGIN`, `PRODUCTION_ADMIN_ORIGIN`, and
   `PRODUCTION_API_ORIGIN`, all exact HTTPS origins.
 
-Create `ACR_USERNAME` and `ACR_PASSWORD` as repository secrets used only for
-image push. Give that registry identity no ECS or cloud-administration access.
+Image publishing uses the workflow's short-lived `GITHUB_TOKEN` with
+`packages: write`; no external registry credentials are required. Images use
+the names `ghcr.io/<owner>/airtekpower-{public-web,admin-web,platform,migrations,gateway}`
+and the full release commit SHA as their only deployment tag.
+
+Before deployment, authenticate the ECS Docker client to `ghcr.io` with a
+dedicated read-only GitHub token that has `read:packages`. Keep that credential
+only in the server's Docker credential store; never add it to the repository or
+the workflow. Public packages may be pulled anonymously if their visibility is
+deliberately changed after review.
 
 Create these secrets in the protected `production` Environment:
 
