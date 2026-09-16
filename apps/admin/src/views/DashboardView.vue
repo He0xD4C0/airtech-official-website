@@ -26,7 +26,7 @@ const tasks = computed(() => {
   if (!value) return []
   return [
     value.openConflicts.available ? { title: '检查 Feishu 字段冲突', detail: `${value.openConflicts.value ?? 0} 个冲突等待处理`, icon: Cable, tone: 'danger', to: '/integrations/feishu' } : null,
-    value.draftContent.available ? { title: '处理内容工作草稿', detail: `${value.draftContent.value ?? 0} 个草稿记录`, icon: BookOpenText, tone: 'warning', to: '/content' } : null,
+    value.draftContent.available ? { title: '处理私人草稿', detail: `${value.draftContent.value ?? 0} 个草稿记录`, icon: BookOpenText, tone: 'warning', to: '/content/drafts' } : null,
     value.openRfqs.available ? { title: '查看 RFQ 收件箱', detail: `${value.openRfqs.value ?? 0} 条未关闭 RFQ`, icon: Inbox, tone: 'blue', to: '/rfqs' } : null,
   ].filter((task): task is NonNullable<typeof task> => task !== null)
 })
@@ -52,8 +52,8 @@ onMounted(loadDashboard)
   <div class="page-stack">
     <PageHeader eyebrow="OVERVIEW" title="早上好，开始今天的发布工作" description="权限感知的全局计数、分析信号与工作项全部由服务端汇总。">
       <template #actions>
-        <RouterLink v-if="auth.hasPermission('content.read')" class="button button--secondary" to="/content"><Eye :size="16" />查看内容</RouterLink>
-        <RouterLink v-if="auth.hasPermission('content.write')" class="button button--primary" to="/content/new"><BookOpenText :size="16" />新建内容</RouterLink>
+        <RouterLink v-if="auth.hasPermission('content.read')" class="button button--secondary" to="/content/published"><Eye :size="16" />查看已发布内容</RouterLink>
+        <RouterLink v-if="auth.hasPermission('content.write')" class="button button--primary" to="/content/drafts/new"><BookOpenText :size="16" />新建私人草稿</RouterLink>
       </template>
     </PageHeader>
 

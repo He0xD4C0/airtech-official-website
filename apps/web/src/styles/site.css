@@ -163,15 +163,6 @@ textarea { resize: vertical; }
 .collection-grid { grid-template-columns: repeat(3, 1fr); }.collection-card { display: flex; min-height: 21rem; flex-direction: column; align-items: flex-start; padding: 2rem; }.collection-card h2 { margin-top: auto; font-size: 1.5rem; }.collection-card > .text-link { margin-top: auto; }.collection-card > p { line-height: 1.65; }
 .article-layout { display: grid; grid-template-columns: minmax(0, 1fr) 19rem; gap: 5rem; align-items: start; }.prose { max-width: 49rem; }.prose h2 { margin: 3rem 0 1rem; font-size: 1.7rem; }.prose p, .prose li { color: var(--airtek-dark-gray); font-size: 1.04rem; line-height: 1.85; }.prose blockquote { margin: 2.5rem 0; padding: 1.5rem 2rem; border-left: 4px solid var(--airtek-green); background: var(--airtek-green-soft); color: var(--airtek-ink); font-size: 1.3rem; line-height: 1.6; }.article-lead { font-size: 1.3rem !important; }.side-panel { position: sticky; top: 7rem; display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; border-top: 3px solid var(--airtek-green); background: var(--airtek-surface); }.side-panel h2 { font-size: 1.3rem; }.side-panel a { font-weight: 800; }.case-placeholder { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 3rem; background: var(--airtek-border); border: 1px solid var(--airtek-border); }.case-placeholder > div { padding: 2rem; background: #fff; }.case-placeholder span { color: var(--airtek-blue); font-size: .7rem; font-weight: 900; }
 .published-content { padding-top: clamp(3rem, 6vw, 6rem); }
-.content-preview-page { min-height: 60vh; background: #fff; }
-.content-preview-banner { position: sticky; top: 5rem; z-index: 35; border-block: 1px solid #ddbd5d; background: #fff4c9; color: #443307; }
-.content-preview-banner__inner { display: flex; min-height: 3.5rem; align-items: center; justify-content: space-between; gap: 1rem; padding-block: .7rem; }
-.content-preview-banner__inner strong { letter-spacing: .03em; }
-.content-preview-banner__inner span { font-size: .78rem; }
-.content-preview-hero { padding-block: clamp(3rem, 6vw, 5.5rem); border-bottom: 1px solid var(--airtek-border); background: linear-gradient(135deg, #fff9e5, #fff 65%); }
-.content-preview-hero h1 { max-width: 17ch; margin-bottom: 1.2rem; font-size: clamp(2.5rem, 5vw, 4.8rem); }
-.content-preview-summary { max-width: 49rem; font-size: 1.15rem; line-height: 1.75; }
-.content-preview-body { padding-top: clamp(3rem, 6vw, 5rem); }
 .published-editorial { padding-top: clamp(2.5rem, 5vw, 4.5rem); padding-bottom: 0; }
 .published-content-meta { color: var(--airtek-muted); font-size: .9rem; margin: 0 0 1.5rem; }
 .article-publication-meta { margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--airtek-border); }

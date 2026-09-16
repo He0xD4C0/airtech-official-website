@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { ImageIcon, LoaderCircle, RefreshCcw, Search, Trash2 } from 'lucide-vue-next'
-import type { AssetVersionReference, MediaUseReference } from '@airtek/contracts'
-import { contentApi, type MediaAssetSummary } from '@/services/contentApi'
+import type { AssetVersionReference, MediaAsset, MediaUseReference } from '@airtek/contracts'
+import { contentApi } from '@/services/contentApi'
 import { apiErrorMessage } from '@/services/cursorPagination'
 
 type MediaFieldValue = MediaUseReference | AssetVersionReference | null
@@ -22,7 +22,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: MediaFieldValue] }>()
 
 const dialogOpen = ref(false)
 const query = ref('')
-const options = ref<MediaAssetSummary[]>([])
+const options = ref<MediaAsset[]>([])
 const listState = ref<'idle' | 'loading' | 'ready' | 'empty' | 'error'>('idle')
 const listError = ref('')
 const searchInput = ref<HTMLInputElement | null>(null)
@@ -54,7 +54,7 @@ function mediaValue(assetId: string): MediaUseReference {
   }
 }
 
-function selectAsset(option: MediaAssetSummary): void {
+function selectAsset(option: MediaAsset): void {
   emit('update:modelValue', props.mode === 'asset'
     ? { assetId: option.id }
     : mediaValue(option.id))

@@ -61,9 +61,9 @@ async function loadNavigationBadges(): Promise<void> {
       if (rfqs.total) badges['/rfqs'] = String(rfqs.total)
     }))
   }
-  if (auth.hasPermission('content.read')) {
-    requests.push(contentApi.listContent({ kinds: ['news'], limit: 1 }).then((page) => {
-      if (page.total > 0) badges['/content?kind=news'] = `${page.total}`
+  if (auth.hasPermission('content.publish')) {
+    requests.push(contentApi.listReviews({ limit: 1 }).then((page) => {
+      if (page.total > 0) badges['/content/reviews'] = `${page.total}`
     }))
   }
 

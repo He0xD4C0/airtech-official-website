@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { LoaderCircle, Plus, Search, Trash2 } from 'lucide-vue-next'
 import type {
   CollectionPresentation,
-  ContentRecordV2,
+  CmsPublishedContent,
   ContentRelationReference,
   Product,
   RelationCollectionBlock,
@@ -25,7 +25,7 @@ const emit = defineEmits<{
 const PRESENTATIONS: CollectionPresentation[] = ['cards', 'list', 'compact']
 const pickerOpen = ref(false)
 const query = ref('')
-const contentResults = ref<ContentRecordV2[]>([])
+const contentResults = ref<CmsPublishedContent[]>([])
 const productResults = ref<Product[]>([])
 const searchState = ref<'idle' | 'loading' | 'ready' | 'empty' | 'error'>('idle')
 const searchError = ref('')
@@ -37,10 +37,10 @@ const blockRelations = computed(() => props.relations.filter((relation) => (
 )))
 
 function relationLabel(relation: ContentRelationReference): string {
-  const record = contentResults.value.find((entry) => entry.id === (
+  const record = contentResults.value.find((entry) => entry.contentId === (
     relation.target.targetType === 'content' ? relation.target.contentId : ''
   ))
-  if (record) return record.draft.title
+  if (record) return record.document.title
   const product = productResults.value.find((entry) => entry.id === (
     relation.target.targetType === 'product' ? relation.target.productId : ''
   ))
@@ -67,7 +67,7 @@ async function search(): Promise<void> {
   searchError.value = ''
   try {
     const [contentPage, productPage] = await Promise.all([
-      contentApi.listContent({ q: query.value.trim() || undefined, limit: 6 }).catch(() => null),
+      contentApi.listPublished({ q: query.value.trim() || undefined, limit: 6 }).catch(() => null),
       contentApi.searchProducts({ q: query.value.trim() || undefined, limit: 6 }).catch(() => null),
     ])
     contentResults.value = contentPage?.items ?? []
@@ -105,8 +105,8 @@ function closePicker(): void {
   searchState.value = 'idle'
 }
 
-function chooseContent(record: ContentRecordV2): void {
-  emit('add-relation', { targetType: 'content', contentId: record.id }, props.modelValue.id)
+function chooseContent(record: CmsPublishedContent): void {
+  emit('add-relation', { targetType: 'content', contentId: record.contentId }, props.modelValue.id)
   closePicker()
 }
 
@@ -185,10 +185,10 @@ defineExpose({ blockRelations })
       <template v-else-if="searchState === 'ready'">
         <p v-if="contentResults.length" class="relation-collection__group">内容</p>
         <ul class="relation-collection__results">
-          <li v-for="record in contentResults" :key="record.id">
+          <li v-for="record in contentResults" :key="record.contentId">
             <button type="button" @click="chooseContent(record)">
-              <strong>{{ record.draft.title }}</strong>
-              <small>{{ record.draft.kind }}</small>
+              <strong>{{ record.document.title }}</strong>
+              <small>{{ record.document.kind }}</small>
             </button>
           </li>
         </ul>

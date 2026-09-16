@@ -45,8 +45,9 @@ export const navigation: NavGroup[] = [
   {
     label: '网站数据',
     items: [
-      { label: '内容中心', to: '/content', icon: FileText, permission: 'content.read' },
-      { label: '新闻', to: '/content?kind=news', icon: Newspaper, permission: 'content.read' },
+      { label: '私人草稿', to: '/content/drafts', icon: FileText, permission: 'content.read' },
+      { label: '公司已发布内容', to: '/content/published', icon: Newspaper, permission: 'content.read' },
+      { label: '内容审核', to: '/content/reviews', icon: History, permission: 'content.publish' },
       { label: 'General Information', to: '/site/general-information', icon: Building2, permission: 'content.write' },
       { label: 'Navigation', to: '/site/navigation', icon: Waypoints, permission: 'content.write' },
       { label: 'Footer', to: '/site/footer', icon: SlidersHorizontal, permission: 'content.write' },
@@ -88,7 +89,7 @@ export const navigation: NavGroup[] = [
 ]
 
 export const quickActions: Array<{ label: string; to: string; icon: Component; permission?: Permission }> = [
-  { label: '新建内容', to: '/content/new', icon: Newspaper, permission: 'content.write' },
+  { label: '新建私人草稿', to: '/content/drafts/new', icon: Newspaper, permission: 'content.write' },
   { label: '导入 Product Master', to: '/products/imports', icon: FileUp, permission: 'product.write' },
   { label: '查看同步差异', to: '/integrations/feishu', icon: SlidersHorizontal, permission: 'integration.run' },
   { label: '处理新 RFQ', to: '/rfqs', icon: FolderKanban, permission: 'rfq.read' },

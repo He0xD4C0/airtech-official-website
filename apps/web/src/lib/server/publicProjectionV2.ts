@@ -4,6 +4,7 @@ import type {
   LinkTargetReference,
   NavigationItem,
 } from '@airtek/contracts'
+import { parseOpenApiSchema } from '@airtek/contracts'
 import type {
   Breadcrumb,
   CardEntry,
@@ -73,7 +74,7 @@ export function asProjection(value: unknown): PublicContentProjection | undefine
     ))
     || !Array.isArray(value.resolvedMedia)
     || !value.resolvedMedia.every(isResolvedMedia)) return undefined
-  return value as unknown as PublicContentProjection
+  return parseOpenApiSchema<PublicContentProjection>('PublicContentProjection', value)
 }
 
 function isResolvedMedia(value: unknown): boolean {

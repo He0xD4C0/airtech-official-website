@@ -69,7 +69,7 @@ async function submit(): Promise<void> {
     })
     const id = await store.create(draft)
     ui.toast('草稿已创建', '类型与模板已锁定，可开始编辑。')
-    await router.push(`/content/${id}/edit`)
+    await router.push(`/content/drafts/${id}`)
   } catch (error) {
     if (error instanceof ApiError && error.status === 409) {
       createError.value = '同一 kind + slug + locale 已存在内容，请更换 slug。'
@@ -99,7 +99,7 @@ onMounted(loadTemplates)
   <div class="page-stack">
     <PageHeader eyebrow="CONTENT / NEW" title="新建内容" description="选择受控模板后创建 working draft；类型与模板在创建后不可切换。">
       <template #actions>
-        <RouterLink class="button button--quiet" to="/content"><ArrowLeft :size="15" />返回内容中心</RouterLink>
+        <RouterLink class="button button--quiet" to="/content/drafts"><ArrowLeft :size="15" />返回私人草稿</RouterLink>
       </template>
     </PageHeader>
 

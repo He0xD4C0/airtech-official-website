@@ -1,273 +1,154 @@
 import type {
-  ContentDiffV2,
+  CmsDraftPage,
+  CmsPrivateDraft,
+  CmsPublishedContent,
+  CmsPublishedPage,
+  CmsPublishResult,
+  CmsReviewPage,
+  CmsSubmitResult,
   ContentDraftV2,
-  ContentPublicationReadiness,
-  ContentRecordV2,
-  ContentRevisionV2,
   ContentTemplateDefinition,
-  MediaAsset,
   MediaAssetPage,
   Product,
 } from '@airtek/contracts'
-import { adminContractClient, draftEtag, randomRequestId } from './adminApiTransport'
-
-export type ContentSortField = 'updatedAt' | 'title' | 'kind'
-export type SortDirection = 'asc' | 'desc'
-export type ContentStatusFilter = 'draft' | 'published' | 'archived'
-export type SnapshotIntent = 'manual'
+import { adminContractClient, draftEtag } from './adminApiTransport'
 
 export interface ContentListQuery {
   q?: string
-  kinds?: string[]
-  status?: ContentStatusFilter
-  sort?: ContentSortField
-  direction?: SortDirection
   cursor?: string
   limit?: number
 }
 
-export interface ContentListPage {
-  items: ContentRecordV2[]
-  nextCursor: string | null
-  total: number
-  counts: Record<string, number>
+export type ProductSearchQuery = ContentListQuery
+export interface ProductSearchPage { items: Product[]; nextCursor: string | null }
+export type MediaAssetQuery = ContentListQuery
+export interface DraftResult { draft: CmsPrivateDraft; etag: string }
+
+function query(value: ContentListQuery): { q?: string; cursor?: string; limit?: number } {
+  return {
+    ...(value.q?.trim() ? { q: value.q.trim() } : {}),
+    ...(value.cursor ? { cursor: value.cursor } : {}),
+    ...(value.limit === undefined ? {} : { limit: value.limit }),
+  }
 }
 
-export type MediaAssetSummary = MediaAsset
-
-export interface MediaAssetQuery {
-  q?: string
-  cursor?: string
-  limit?: number
-}
-
-export interface ProductSearchQuery {
-  q?: string
-  cursor?: string
-  limit?: number
-}
-
-export interface ProductSearchPage {
-  items: Product[]
-  nextCursor: string | null
-}
-
-export interface DraftRecordResult {
-  record: ContentRecordV2
-  etag: string
-}
-
-function queryWithoutUndefined<T extends Record<string, unknown>>(value: T): Record<string, unknown> {
-  return Object.fromEntries(
-    Object.entries(value).filter(([, entry]) => entry !== undefined && entry !== null && entry !== ''),
-  )
-}
-
-function draftResults(record: ContentRecordV2, etag: string | null): DraftRecordResult {
-  return { record, etag: etag ?? draftEtag(record.draft.draftVersion) }
+function draftResult(draft: CmsPrivateDraft, etag: string | null): DraftResult {
+  return { draft, etag: etag ?? draftEtag(draft.draftVersion) }
 }
 
 export const contentApi = {
-  async listContent(query: ContentListQuery = {}): Promise<ContentListPage> {
-    const result = await adminContractClient.get('/api/admin/v1/content', {
-      parameters: {
-        query: queryWithoutUndefined({
-          q: query.q?.trim() || undefined,
-          kind: query.kinds?.length ? query.kinds.join(',') : undefined,
-          status: query.status,
-          sort: query.sort,
-          direction: query.direction,
-          cursor: query.cursor,
-          limit: query.limit,
-        }),
-      },
-    })
-    return result.data as unknown as ContentListPage
+  async listDrafts(value: ContentListQuery = {}): Promise<CmsDraftPage> {
+    return (await adminContractClient.get('/api/admin/v1/content-drafts', {
+      parameters: { query: query(value) },
+    })).data
   },
 
   async listTemplates(): Promise<ContentTemplateDefinition[]> {
-    const result = await adminContractClient.get('/api/admin/v1/content/templates', {})
-    return (result.data as unknown as { items: ContentTemplateDefinition[] }).items
+    return (await adminContractClient.get('/api/admin/v1/content-drafts/templates')).data.items
   },
 
-  async getContentRecord(id: string): Promise<DraftRecordResult> {
-    const result = await adminContractClient.get('/api/admin/v1/content/{id}/draft', {
-      parameters: { path: { id } },
+  async getDraft(draftId: string): Promise<DraftResult> {
+    const result = await adminContractClient.get('/api/admin/v1/content-drafts/{draftId}', {
+      parameters: { path: { draftId } },
     })
-    return draftResults(result.data, result.etag)
+    return draftResult(result.data, result.etag)
   },
 
-  async createContent(draft: ContentDraftV2): Promise<DraftRecordResult> {
-    const result = await adminContractClient.post('/api/admin/v1/content', {
+  async createDraft(document: ContentDraftV2): Promise<DraftResult> {
+    const result = await adminContractClient.post('/api/admin/v1/content-drafts', { body: document })
+    return draftResult(result.data, result.etag)
+  },
+
+  async saveDraft(draftId: string, document: ContentDraftV2): Promise<DraftResult> {
+    const result = await adminContractClient.patch('/api/admin/v1/content-drafts/{draftId}', {
       parameters: {
-        header: {
-          'Idempotency-Key': randomRequestId(),
-          'If-Match': draftEtag(0, true),
-        },
+        path: { draftId },
+        header: { 'If-Match': draftEtag(document.draftVersion) },
       },
-      body: draft,
+      body: document,
     })
-    return draftResults(result.data, result.etag)
+    return draftResult(result.data, result.etag)
   },
 
-  async saveDraft(id: string, draft: ContentDraftV2): Promise<DraftRecordResult> {
-    const result = await adminContractClient.patch('/api/admin/v1/content/{id}/draft', {
+  async setShares(draftId: string, userIds: string[]): Promise<DraftResult> {
+    const result = await adminContractClient.put('/api/admin/v1/content-drafts/{draftId}/shares', {
+      parameters: { path: { draftId } },
+      body: { userIds },
+    })
+    return draftResult(result.data, result.etag)
+  },
+
+  async claimDraft(draftId: string): Promise<DraftResult> {
+    const result = await adminContractClient.post('/api/admin/v1/content-drafts/{draftId}/claim', {
+      parameters: { path: { draftId } },
+    })
+    return draftResult(result.data, result.etag)
+  },
+
+  async submit(draftId: string, draftVersion: number): Promise<CmsSubmitResult> {
+    return (await adminContractClient.post('/api/admin/v1/content-drafts/{draftId}/submit', {
       parameters: {
-        path: { id },
-        header: {
-          'Idempotency-Key': randomRequestId(),
-          'If-Match': draftEtag(draft.draftVersion),
-        },
+        path: { draftId },
+        header: { 'If-Match': draftEtag(draftVersion) },
       },
-      body: draft,
+    })).data
+  },
+
+  async withdraw(draftId: string): Promise<DraftResult> {
+    const result = await adminContractClient.post('/api/admin/v1/content-drafts/{draftId}/withdraw', {
+      parameters: { path: { draftId } },
     })
-    return draftResults(result.data, result.etag)
+    return draftResult(result.data, result.etag)
   },
 
-  async createSnapshot(
-    id: string,
-    draftVersion: number,
-    intent: SnapshotIntent,
-    reason: string,
-  ): Promise<DraftRecordResult> {
-    const result = await adminContractClient.post('/api/admin/v1/content/{id}/snapshots', {
-      parameters: {
-        path: { id },
-        header: {
-          'Idempotency-Key': randomRequestId(),
-          'If-Match': draftEtag(draftVersion),
-        },
-      },
-      body: { intent, reason },
+  async listReviews(value: ContentListQuery = {}): Promise<CmsReviewPage> {
+    return (await adminContractClient.get('/api/admin/v1/content-reviews', {
+      parameters: { query: query(value) },
+    })).data
+  },
+
+  async approve(draftId: string): Promise<CmsPublishResult> {
+    return (await adminContractClient.post('/api/admin/v1/content-reviews/{draftId}/approve', {
+      parameters: { path: { draftId } },
+    })).data
+  },
+
+  async reject(draftId: string, reason: string): Promise<DraftResult> {
+    const result = await adminContractClient.post('/api/admin/v1/content-reviews/{draftId}/reject', {
+      parameters: { path: { draftId } }, body: { reason },
     })
-    return draftResults(result.data, result.etag)
+    return draftResult(result.data, result.etag)
   },
 
-  async publicationReadiness(id: string): Promise<ContentPublicationReadiness> {
-    const result = await adminContractClient.get(
-      '/api/admin/v1/content/{id}/publication-readiness',
-      { parameters: { path: { id } } },
-    )
-    return result.data
+  async listPublished(value: ContentListQuery = {}): Promise<CmsPublishedPage> {
+    return (await adminContractClient.get('/api/admin/v1/published-content', {
+      parameters: { query: query(value) },
+    })).data
   },
 
-  async publishContent(
-    id: string,
-    draftVersion: number,
-    reason: string,
-  ): Promise<DraftRecordResult> {
-    const result = await adminContractClient.post('/api/admin/v1/content/{id}/publish', {
-      parameters: {
-        path: { id },
-        header: {
-          'Idempotency-Key': randomRequestId(),
-          'If-Match': draftEtag(draftVersion),
-        },
-      },
-      body: { reason },
+  async getPublished(contentId: string): Promise<CmsPublishedContent> {
+    return (await adminContractClient.get('/api/admin/v1/published-content/{contentId}', {
+      parameters: { path: { contentId } },
+    })).data
+  },
+
+  async copyPublished(contentId: string): Promise<DraftResult> {
+    const result = await adminContractClient.post('/api/admin/v1/published-content/{contentId}/drafts', {
+      parameters: { path: { contentId } },
     })
-    return draftResults(result.data, result.etag)
+    return draftResult(result.data, result.etag)
   },
 
-  async archiveContent(
-    id: string,
-    draftVersion: number,
-    reason: string,
-  ): Promise<DraftRecordResult> {
-    const result = await adminContractClient.post('/api/admin/v1/content/{id}/archive', {
-      parameters: {
-        path: { id },
-        header: {
-          'Idempotency-Key': randomRequestId(),
-          'If-Match': draftEtag(draftVersion),
-        },
-      },
-      body: { reason },
-    })
-    return draftResults(result.data, result.etag)
+  async listMediaAssets(value: MediaAssetQuery = {}): Promise<MediaAssetPage> {
+    return (await adminContractClient.get('/api/admin/v1/media/assets', {
+      parameters: { query: query(value) },
+    })).data
   },
 
-  async unpublishContent(
-    id: string,
-    draftVersion: number,
-    expectedPublishedRevision: number,
-    reason: string,
-  ): Promise<DraftRecordResult> {
-    const result = await adminContractClient.post('/api/admin/v1/content/{id}/unpublish', {
-      parameters: {
-        path: { id },
-        header: {
-          'Idempotency-Key': randomRequestId(),
-          'If-Match': draftEtag(draftVersion),
-        },
-      },
-      body: { expectedPublishedRevision, reason },
-    })
-    return draftResults(result.data, result.etag)
-  },
-
-  async listRevisions(id: string, limit = 100): Promise<ContentRevisionV2[]> {
-    const result = await adminContractClient.get('/api/admin/v1/content/{id}/revisions', {
-      parameters: { path: { id }, query: { limit } },
-    })
-    return result.data.items
-  },
-
-  async diff(id: string, baseRevision: number, targetRevision?: number): Promise<ContentDiffV2> {
-    const result = await adminContractClient.get('/api/admin/v1/content/{id}/diff', {
-      parameters: {
-        path: { id },
-        query: { baseRevision, ...(targetRevision === undefined ? {} : { targetRevision }) },
-      },
-    })
-    return result.data
-  },
-
-  async restoreRevision(
-    id: string,
-    draftVersion: number,
-    revision: number,
-    reason: string,
-  ): Promise<DraftRecordResult> {
-    const result = await adminContractClient.post(
-      '/api/admin/v1/content/{id}/revisions/{revision}/restore',
-      {
-        parameters: {
-          path: { id, revision },
-          header: {
-            'Idempotency-Key': randomRequestId(),
-            'If-Match': draftEtag(draftVersion),
-          },
-        },
-        body: { reason },
-      },
-    )
-    return draftResults(result.data, result.etag)
-  },
-
-  async listMediaAssets(query: MediaAssetQuery = {}): Promise<MediaAssetPage> {
-    const result = await adminContractClient.get('/api/admin/v1/media/assets', {
-      parameters: {
-        query: queryWithoutUndefined({
-          q: query.q?.trim() || undefined,
-          cursor: query.cursor,
-          limit: query.limit,
-        }),
-      },
-    })
-    return result.data
-  },
-
-  async searchProducts(query: ProductSearchQuery = {}): Promise<ProductSearchPage> {
+  async searchProducts(value: ProductSearchQuery = {}): Promise<ProductSearchPage> {
     const result = await adminContractClient.get('/api/admin/v1/products', {
-      parameters: {
-        query: queryWithoutUndefined({
-          q: query.q?.trim() || undefined,
-          cursor: query.cursor,
-          limit: query.limit,
-        }),
-      },
+      parameters: { query: query(value) },
     })
-    return result.data as unknown as ProductSearchPage
+    return { items: result.data.items, nextCursor: result.data.nextCursor }
   },
 }
