@@ -1,4 +1,6 @@
-fn add_private_no_store_headers(response: &mut Response) {
+use super::*;
+
+pub(super) fn add_private_no_store_headers(response: &mut Response) {
     response.headers_mut().insert(
         header::CACHE_CONTROL,
         HeaderValue::from_static("private, no-store, max-age=0"),
@@ -12,7 +14,7 @@ fn add_private_no_store_headers(response: &mut Response) {
 // record reviewable there (actor, request, entity, before/after and reason)
 // instead of hiding security-relevant values behind a partially filled map.
 #[allow(clippy::too_many_arguments)]
-async fn audit(
+pub(super) async fn audit(
     state: &AppState,
     headers: &HeaderMap,
     actor: &str,
@@ -33,6 +35,7 @@ async fn audit(
             before,
             after,
             reason,
+            current_version: None,
             request_id: headers
                 .get("x-request-id")
                 .and_then(|value| value.to_str().ok())

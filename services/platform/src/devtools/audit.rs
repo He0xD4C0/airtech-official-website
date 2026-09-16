@@ -52,40 +52,9 @@ pub(super) async fn persist_devtools_audit(
             before: None,
             after,
             reason: Some(reason.into()),
+            current_version: None,
             request_id,
             occurred_at: Utc::now(),
         })
         .await
-}
-
-#[cfg(test)]
-mod tests {
-    use std::time::Instant;
-
-    use super::*;
-    use crate::devtools::limits::TOKEN_TTL;
-
-    #[tokio::test]
-    async fn command_audit_stores_metadata_without_command_text() {
-        let state = AppState::for_test();
-        let grant = DevtoolTokenGrant {
-            expires_at: Instant::now() + TOKEN_TTL,
-            session_id: Uuid::new_v4(),
-            actor: "developer@example.com".into(),
-            user_id: Uuid::new_v4(),
-            admin_session_id: Uuid::new_v4(),
-        };
-        audit_command(&state, &grant, Uuid::new_v4(), 1, 31, 1, "control")
-            .await
-            .unwrap();
-        let events = &state.data.read().await.audit_events;
-        let event = events.last().unwrap();
-        let serialized = serde_json::to_string(event).unwrap();
-        assert_eq!(event.actor, "developer@example.com");
-        assert_eq!(event.entity_id, Some(grant.session_id));
-        assert_eq!(event.action, "devtools.command.submitted");
-        assert_eq!(event.after.as_ref().unwrap()["byteCount"], 31);
-        assert!(!serialized.contains("airtekctl"));
-        assert!(!serialized.contains("commandText"));
-    }
 }

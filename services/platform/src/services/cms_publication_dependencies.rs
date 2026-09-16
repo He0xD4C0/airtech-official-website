@@ -142,10 +142,7 @@ pub struct ExtractedPublicationDependencies {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PublicationDependencyTarget {
-    Content {
-        content_id: Uuid,
-        content_revision: i64,
-    },
+    Content(Uuid),
     Product {
         product_id: Uuid,
         product_revision: i64,
@@ -170,12 +167,8 @@ impl PublicationDependencyRow {
         digest.update([0]);
         digest.update(self.reference_path.as_bytes());
         match &self.target {
-            PublicationDependencyTarget::Content {
-                content_id,
-                content_revision,
-            } => {
+            PublicationDependencyTarget::Content(content_id) => {
                 digest.update(content_id.as_bytes());
-                digest.update(content_revision.to_be_bytes());
             }
             PublicationDependencyTarget::Product {
                 product_id,
@@ -286,32 +279,17 @@ pub async fn validate_document(
     validate_extracted(connection, extract_document(document)).await
 }
 
-pub async fn insert_snapshot(
+pub async fn replace_current(
     connection: &mut PgConnection,
     source_content_id: Uuid,
     source_revision: i64,
-    created_by: &str,
+    _created_by: &str,
     plan: &ValidatedPublicationDependencies,
 ) -> Result<(), sqlx::Error> {
-    let dependency_count = i32::try_from(plan.dependencies.len())
-        .map_err(|_| sqlx::Error::Protocol("CMS dependency count exceeds integer range".into()))?;
-    let blocking_issues = serde_json::to_value(&plan.blocking_issues)
-        .map_err(|error| sqlx::Error::Protocol(error.to_string()))?;
-    sqlx::query(
-        r#"INSERT INTO cms_publication_dependency_sets
-           (content_id,content_revision,extractor_version,extraction_status,
-            dependency_count,blocking_issues,created_by)
-           VALUES ($1,$2,$3,$4,$5,$6,$7)"#,
-    )
-    .bind(source_content_id)
-    .bind(source_revision)
-    .bind(CMS_DEPENDENCY_EXTRACTOR_VERSION)
-    .bind(plan.status().label())
-    .bind(dependency_count)
-    .bind(blocking_issues)
-    .bind(created_by)
-    .execute(&mut *connection)
-    .await?;
+    sqlx::query("DELETE FROM cms_current_publication_dependencies WHERE source_content_id=$1")
+        .bind(source_content_id)
+        .execute(&mut *connection)
+        .await?;
 
     for dependency in &plan.dependencies {
         insert_dependency_row(connection, source_content_id, source_revision, dependency).await?;
@@ -325,33 +303,25 @@ async fn insert_dependency_row(
     source_revision: i64,
     dependency: &PublicationDependencyRow,
 ) -> Result<(), sqlx::Error> {
-    let (content_id, content_revision, product_id, product_revision, asset_id) = match &dependency
-        .target
-    {
-        PublicationDependencyTarget::Content {
-            content_id,
-            content_revision,
-        } => (Some(*content_id), Some(*content_revision), None, None, None),
+    let (content_id, product_id, product_revision, asset_id) = match &dependency.target {
+        PublicationDependencyTarget::Content(content_id) => (Some(*content_id), None, None, None),
         PublicationDependencyTarget::Product {
             product_id,
             product_revision,
-        } => (None, None, Some(*product_id), Some(*product_revision), None),
-        PublicationDependencyTarget::Media(asset_id) => (None, None, None, None, Some(*asset_id)),
+        } => (None, Some(*product_id), Some(*product_revision), None),
+        PublicationDependencyTarget::Media(asset_id) => (None, None, None, Some(*asset_id)),
     };
     sqlx::query(
-        r#"INSERT INTO cms_publication_dependencies
-           (id,source_content_id,source_revision,reference_path,dependency_kind,
-            target_content_id,target_content_revision,target_product_id,
-            target_product_revision,target_media_asset_id)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)"#,
+        r#"INSERT INTO cms_current_publication_dependencies
+           (id,source_content_id,reference_path,dependency_kind,target_content_id,
+            target_product_id,target_product_revision,target_media_asset_id)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)"#,
     )
     .bind(dependency.stable_id(source_content_id, source_revision))
     .bind(source_content_id)
-    .bind(source_revision)
     .bind(&dependency.reference_path)
     .bind(dependency.kind.label())
     .bind(content_id)
-    .bind(content_revision)
     .bind(product_id)
     .bind(product_revision)
     .bind(asset_id)

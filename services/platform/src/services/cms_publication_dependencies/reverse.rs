@@ -18,18 +18,17 @@ pub async fn active_content_dependents(
 ) -> Result<Vec<ActiveContentDependent>, sqlx::Error> {
     let rows = sqlx::query(
         r#"SELECT dependency.source_content_id,
-                  dependency.source_revision,
+                  published.publication_version AS source_revision,
                   dependency.reference_path
-           FROM cms_publication_dependencies dependency
-           JOIN content_entries source
-             ON source.id=dependency.source_content_id
-            AND source.cms_published_revision=dependency.source_revision
+           FROM cms_current_publication_dependencies dependency
+           JOIN cms_published_content published
+             ON published.content_id=dependency.source_content_id
            WHERE dependency.target_content_id=$1
              AND dependency.source_content_id<>$1
            ORDER BY dependency.source_content_id,
-                    dependency.source_revision,
+                    published.publication_version,
                     dependency.reference_path
-           FOR KEY SHARE OF source"#,
+           FOR KEY SHARE OF published"#,
     )
     .bind(target_content_id)
     .fetch_all(&mut *connection)

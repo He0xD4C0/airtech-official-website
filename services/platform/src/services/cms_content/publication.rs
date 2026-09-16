@@ -14,7 +14,7 @@ use uuid::Uuid;
 use crate::{
     error::ApiError,
     models::{
-        AssetVersionReference, ContentBlock, ContentDraftV2, ContentRecordV2, ContentTypeFields,
+        AssetVersionReference, ContentBlock, ContentDraftV2, ContentTypeFields,
         LinkTargetReference, NavigationItem, RelationTargetReference, ResolvedLinkTarget,
         ResolvedRelationCard, ResolvedRelationEntityType,
     },
@@ -31,19 +31,17 @@ fn publication_blocked(detail: String) -> ApiError {
     )
 }
 
-/// Validates the published references and upserts the canonical `public_routes`
-/// row inside the caller's publish transaction.
-pub async fn publish_public_route(
+pub async fn publish_current_route(
     transaction: &mut Transaction<'_, Postgres>,
-    record: &ContentRecordV2,
+    content_id: Uuid,
+    draft: &ContentDraftV2,
 ) -> Result<()> {
-    let draft = &record.draft;
     validate_published_references(&mut *transaction, draft).await?;
     let definition = template_definition(draft.template_key)
         .ok_or_else(|| ApiError::internal("The CMS content template is not registered."))?;
     if !definition.routable {
         sqlx::query("DELETE FROM public_routes WHERE entity_type='content' AND entity_id=$1")
-            .bind(record.id)
+            .bind(content_id)
             .execute(&mut **transaction)
             .await?;
         return Ok(());
@@ -56,7 +54,7 @@ pub async fn publish_public_route(
             ))
         })?;
     if let Some((entity_type, entity_id)) =
-        conflicting_route_owner(&mut *transaction, &path, record.id, &draft.locale).await?
+        conflicting_route_owner(&mut *transaction, &path, content_id, &draft.locale).await?
     {
         return Err(route_conflict(&path, &entity_type, entity_id));
     }
@@ -74,7 +72,7 @@ pub async fn publish_public_route(
              updated_at=EXCLUDED.updated_at"#,
     )
     .bind(Uuid::new_v4())
-    .bind(record.id)
+    .bind(content_id)
     .bind(&draft.locale)
     .bind(&path)
     .bind(indexable)
@@ -98,7 +96,8 @@ pub async fn publish_public_route(
                 return Err(error.into());
             }
             let owner =
-                conflicting_route_owner(&mut *transaction, &path, record.id, &draft.locale).await?;
+                conflicting_route_owner(&mut *transaction, &path, content_id, &draft.locale)
+                    .await?;
             match owner {
                 Some((entity_type, entity_id)) => {
                     Err(route_conflict(&path, &entity_type, entity_id))
@@ -179,20 +178,17 @@ async fn content_relation_card(
 ) -> Result<Option<ResolvedRelationCard>> {
     let row = sqlx::query(
         r#"SELECT route.canonical_path,
-                  revision.document->>'title' AS title,
-                  revision.document->>'summary' AS summary,
-                  revision.document->'typeFields'->>'type' AS fields_type,
-                  revision.document->'typeFields'->>'category' AS category
+                  published.document->>'title' AS title,
+                  published.document->>'summary' AS summary,
+                  published.document->'typeFields'->>'type' AS fields_type,
+                  published.document->'typeFields'->>'category' AS category
            FROM public_routes route
-           JOIN content_entries entry
-             ON entry.id=route.entity_id AND entry.cms_published_revision IS NOT NULL
-           JOIN content_revisions revision
-             ON revision.content_id=entry.id AND revision.revision=entry.cms_published_revision
+           JOIN content_entries entry ON entry.id=route.entity_id
+           JOIN cms_published_content published ON published.content_id=entry.id
            WHERE route.entity_type='content' AND route.entity_id=$1 AND route.locale=$2
-             AND revision.document IS NOT NULL
-             AND revision.document->>'locale'=$2
-             AND revision.document->>'kind'=entry.kind
-             AND revision.document->>'templateKey'=entry.template_key
+             AND published.document->>'locale'=$2
+             AND published.document->>'kind'=entry.kind
+             AND published.document->>'templateKey'=entry.template_key
            LIMIT 1"#,
     )
     .bind(content_id)
@@ -269,15 +265,11 @@ pub async fn resolve_content_links(
            FROM public_routes route
            JOIN content_entries entry
              ON route.entity_type='content' AND entry.id=route.entity_id
-            AND entry.cms_published_revision IS NOT NULL
-           JOIN content_revisions revision
-             ON revision.content_id=entry.id
-            AND revision.revision=entry.cms_published_revision
-            AND revision.document IS NOT NULL
+           JOIN cms_published_content published ON published.content_id=entry.id
            WHERE route.locale=$1 AND route.entity_id = ANY($2)
-             AND revision.document->>'locale'=$1
-             AND revision.document->>'kind'=entry.kind
-             AND revision.document->>'templateKey'=entry.template_key"#,
+             AND published.document->>'locale'=$1
+             AND published.document->>'kind'=entry.kind
+             AND published.document->>'templateKey'=entry.template_key"#,
     )
     .bind(locale)
     .bind(ids.into_iter().collect::<Vec<_>>())

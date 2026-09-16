@@ -11,21 +11,18 @@ use sqlx::{
     postgres::{PgPoolOptions, PgRow},
     PgConnection, PgPool, Row,
 };
-use tokio::sync::{Mutex, OwnedMutexGuard, OwnedSemaphorePermit, RwLock, Semaphore};
+#[cfg(feature = "devtools")]
+use tokio::sync::RwLock;
+use tokio::sync::{Mutex, OwnedMutexGuard, OwnedSemaphorePermit, Semaphore};
 use uuid::Uuid;
 
 use crate::{
-    auth::{AuthRateLimit, StoredRecoveryCode, StoredSession, StoredUser},
     config::Config,
     error::ApiError,
     models::{
-        AnalyticsConsentReceipt, AnalyticsEventReceipt, AuditEvent, BackgroundOperation,
-        ContactRequest, ContentEntry, GeneralInformation, GuestVisit, NewsEntry, PlatformSettings,
-        Product, ProductImportResult, ProductPresentation, RfqSubmission, SourceSnapshot,
-        StagingRecord, StagingValidationStatus, StoredAnalyticsEvent, SyncConflict, SyncRun,
-        SyncRunStatus, TemporaryOverride, UpdatePlatformSettings, ValidationIssue,
+        AnalyticsConsentReceipt, AuditEvent, BackgroundOperation, ContactRequest, PlatformSettings,
+        Product, RfqSubmission, TemporaryOverride, UpdatePlatformSettings, ValidationIssue,
     },
-    rate_limit::InMemoryRateLimit,
     services::product_facts::project_product_facts,
     services::product_import::verify_product_master_authority,
     services::product_publication::{
@@ -48,7 +45,6 @@ mod product_validation_db;
 mod queries;
 mod settings;
 mod submissions;
-mod sync;
 
 #[cfg(feature = "devtools")]
 #[derive(Clone, Debug)]
@@ -58,14 +54,6 @@ pub(crate) struct DevtoolTokenGrant {
     pub actor: String,
     pub user_id: Uuid,
     pub admin_session_id: Uuid,
-}
-
-#[derive(Clone, Debug)]
-pub struct IdempotencyRecord {
-    pub request_hash: String,
-    pub response: Value,
-    pub response_status: u16,
-    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Clone, Debug)]
@@ -89,7 +77,6 @@ impl IdempotencyGuard {
     }
 }
 
-const IDEMPOTENCY_TTL_HOURS: i64 = 24;
 const MAX_IN_MEMORY_IDEMPOTENCY_KEYS: usize = 10_000;
 
 fn derive_analytics_storage_id(external_id: Uuid, secret: &[u8; 32]) -> Uuid {
@@ -102,50 +89,10 @@ fn derive_analytics_storage_id(external_id: Uuid, secret: &[u8; 32]) -> Uuid {
     Uuid::from_bytes(bytes)
 }
 
-#[derive(Default)]
-pub struct PlatformData {
-    pub settings: PlatformSettings,
-    pub content: HashMap<Uuid, ContentEntry>,
-    pub content_revisions: HashMap<Uuid, BTreeMap<i64, ContentEntry>>,
-    pub published_content: HashMap<Uuid, ContentEntry>,
-    pub news: HashMap<Uuid, NewsEntry>,
-    pub published_news: HashMap<Uuid, NewsEntry>,
-    pub general_information: HashMap<Uuid, GeneralInformation>,
-    pub general_information_revisions: HashMap<Uuid, BTreeMap<i64, GeneralInformation>>,
-    pub published_general_information: HashMap<Uuid, GeneralInformation>,
-    pub products: HashMap<Uuid, Product>,
-    pub product_revisions: HashMap<Uuid, BTreeMap<i64, Product>>,
-    pub product_presentations: HashMap<(Uuid, String), ProductPresentation>,
-    pub published_products: HashMap<Uuid, Product>,
-    pub source_snapshots: HashMap<Uuid, SourceSnapshot>,
-    pub staging_records: HashMap<Uuid, StagingRecord>,
-    pub sync_runs: HashMap<Uuid, SyncRun>,
-    pub conflicts: HashMap<Uuid, SyncConflict>,
-    pub temporary_overrides: HashMap<Uuid, TemporaryOverride>,
-    pub rfqs: HashMap<Uuid, RfqSubmission>,
-    pub contacts: HashMap<Uuid, ContactRequest>,
-    pub analytics_consents: HashMap<Uuid, AnalyticsConsentReceipt>,
-    pub analytics_receipts: HashMap<Uuid, AnalyticsEventReceipt>,
-    pub analytics_events: HashMap<Uuid, StoredAnalyticsEvent>,
-    pub guest_visits: HashMap<Uuid, GuestVisit>,
-    pub guest_visit_consent_records: HashMap<Uuid, Uuid>,
-    pub product_imports: HashMap<Uuid, ProductImportResult>,
-    pub operations: HashMap<Uuid, BackgroundOperation>,
-    pub audit_events: Vec<AuditEvent>,
-    pub idempotency: HashMap<(String, String), IdempotencyRecord>,
-    pub admin_users: HashMap<Uuid, StoredUser>,
-    pub admin_sessions: HashMap<Uuid, StoredSession>,
-    pub recovery_codes: HashMap<Uuid, Vec<StoredRecoveryCode>>,
-    pub auth_rate_limits: HashMap<String, AuthRateLimit>,
-    pub public_rate_limits: HashMap<(String, String), InMemoryRateLimit>,
-    pub outbox_events: Vec<Value>,
-}
-
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
-    pub pool: Option<PgPool>,
-    pub data: Arc<RwLock<PlatformData>>,
+    pub pool: PgPool,
     pub auth_hash_slots: Arc<Semaphore>,
     pub request_metrics: Arc<RequestMetrics>,
     idempotency_locks: Arc<Mutex<HashMap<String, Weak<Mutex<()>>>>>,
@@ -156,18 +103,7 @@ pub struct AppState {
     pub(crate) devtool_session_slots: Arc<Semaphore>,
 }
 
-fn overlay_presentation(product: &mut Product, presentation: &ProductPresentation) {
-    product.locale = presentation.locale.clone();
-    product.slug = presentation.slug.clone();
-    product.title = presentation.title.clone();
-    product.summary = presentation.summary.clone();
-    product.seo = presentation.seo.clone();
-    product.indexable = presentation.indexable;
-    product.sort_order = presentation.sort_order;
-    product.related_content_ids = presentation.related_content_ids.clone();
-}
-
-fn overlay_presentation_row(product: &mut Product, row: &PgRow) -> Result<(), ApiError> {
+pub(crate) fn overlay_presentation_row(product: &mut Product, row: &PgRow) -> Result<(), ApiError> {
     if row
         .try_get::<Option<i64>, _>("presentation_revision")?
         .is_none()
@@ -202,7 +138,7 @@ fn enum_label<T: serde::Serialize>(value: T) -> String {
         .unwrap_or_default()
 }
 
-fn decode_payload<T: serde::de::DeserializeOwned>(
+pub(crate) fn decode_payload<T: serde::de::DeserializeOwned>(
     value: Value,
     entity: &str,
 ) -> Result<T, ApiError> {
@@ -239,7 +175,7 @@ mod tests {
     }
 
     #[test]
-    fn production_state_refuses_the_in_memory_adapter() {
+    fn production_state_requires_postgresql() {
         let mut config = Config::for_test();
         config.production = true;
         config.database_url = None;

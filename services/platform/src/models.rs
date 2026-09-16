@@ -1,12 +1,37 @@
-include!("models/imports.rs");
-include!("models/cms_v2.rs");
-include!("models/cms_content.rs");
-include!("models/editorial.rs");
-include!("models/product.rs");
-include!("models/sync.rs");
-include!("models/submissions.rs");
-include!("models/analytics.rs");
-include!("models/identity.rs");
-include!("models/product_admin.rs");
-include!("models/operations.rs");
-include!("models/settings.rs");
+#[path = "models/imports.rs"]
+mod imports;
+use imports::*;
+#[path = "models/cms_v2.rs"]
+mod cms_v2;
+pub use cms_v2::*;
+#[path = "models/cms_workflow.rs"]
+mod cms_workflow;
+pub use cms_workflow::*;
+#[path = "models/editorial.rs"]
+mod editorial;
+pub use editorial::*;
+#[path = "models/product.rs"]
+mod product;
+pub use product::*;
+#[path = "models/sync.rs"]
+mod sync;
+pub use sync::*;
+#[path = "models/submissions.rs"]
+mod submissions;
+pub use submissions::*;
+#[path = "models/analytics.rs"]
+mod analytics;
+pub use analytics::*;
+#[path = "models/identity.rs"]
+mod identity;
+pub use identity::*;
+#[path = "models/product_admin.rs"]
+mod product_admin;
+pub use product_admin::*;
+#[path = "models/operations.rs"]
+mod operations;
+pub use operations::*;
+#[path = "models/settings.rs"]
+mod settings;
+use settings::*;
+pub use settings::*;

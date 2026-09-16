@@ -1,3 +1,5 @@
+use super::*;
+
 pub const CMS_V2_SCHEMA_VERSION: u16 = 2;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]

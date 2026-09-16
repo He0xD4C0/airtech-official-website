@@ -1,3 +1,5 @@
+use super::*;
+
 // Public CMS V2 projection. The platform resolves relations and content links
 // server-side so the website never guesses identifiers or paths.
 

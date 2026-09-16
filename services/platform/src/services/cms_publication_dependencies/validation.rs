@@ -59,18 +59,14 @@ async fn validate_content(
 ) -> Result<Option<PublicationDependencyRow>, sqlx::Error> {
     let route_locale = source_locale.as_deref().unwrap_or("");
     let row = sqlx::query(
-        r#"SELECT entry.locale,entry.status,entry.cms_published_revision,
-                  revision.revision IS NOT NULL AS revision_exists,
-                  revision.document,
+        r#"SELECT entry.locale,published.publication_version,published.document,
                   EXISTS (
                     SELECT 1 FROM public_routes route
                     WHERE route.entity_type='content' AND route.entity_id=entry.id
                       AND route.locale=$2 AND length(trim(route.canonical_path)) > 0
                   ) AS has_public_route
            FROM content_entries entry
-           LEFT JOIN content_revisions revision
-             ON revision.content_id=entry.id
-            AND revision.revision=entry.cms_published_revision
+           LEFT JOIN cms_published_content published ON published.content_id=entry.id
            WHERE entry.id=$1"#,
     )
     .bind(content_id)
@@ -88,7 +84,7 @@ async fn validate_content(
         );
         return Ok(None);
     };
-    let published_revision: Option<i64> = row.try_get("cms_published_revision")?;
+    let published_revision: Option<i64> = row.try_get("publication_version")?;
     let Some(published_revision) = published_revision else {
         push_issue(
             issues,
@@ -100,18 +96,6 @@ async fn validate_content(
         );
         return Ok(None);
     };
-    if row.try_get::<String, _>("status")? != "published"
-        || !row.try_get::<bool, _>("revision_exists")?
-    {
-        push_issue(
-            issues,
-            DependencyIssueCode::ContentNotPublished,
-            &dependency.reference_path,
-            DependencyGate::ContentPublished,
-            content_id,
-            "Referenced content publication state is inconsistent.",
-        );
-    }
     let document: Option<Value> = row.try_get("document")?;
     if document
         .as_ref()
@@ -155,16 +139,12 @@ async fn validate_content(
             );
         }
     }
-    Ok(row
-        .try_get::<bool, _>("revision_exists")?
-        .then_some(PublicationDependencyRow {
-            reference_path: dependency.reference_path,
-            kind: dependency.kind,
-            target: PublicationDependencyTarget::Content {
-                content_id,
-                content_revision: published_revision,
-            },
-        }))
+    let _ = published_revision;
+    Ok(Some(PublicationDependencyRow {
+        reference_path: dependency.reference_path,
+        kind: dependency.kind,
+        target: PublicationDependencyTarget::Content(content_id),
+    }))
 }
 
 async fn validate_product(

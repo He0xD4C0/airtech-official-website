@@ -1,3 +1,5 @@
+use super::*;
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct CursorPage<T> {
@@ -207,28 +209,4 @@ pub struct RouteResolution {
     pub indexable: bool,
     pub data_class: DataClass,
     pub page: Option<PublicContentProjection>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateContentPreviewRequest {
-    pub revision: i64,
-    pub expires_in_seconds: Option<u32>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ContentPreviewLink {
-    pub url: String,
-    pub content_id: Uuid,
-    pub revision: i64,
-    pub issued_at: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ContentPreviewResponse {
-    pub content: PublicContentProjection,
-    pub preview_expires_at: DateTime<Utc>,
 }

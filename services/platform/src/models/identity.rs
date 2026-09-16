@@ -1,3 +1,5 @@
+use super::*;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AdminUserRecord {
@@ -7,6 +9,7 @@ pub struct AdminUserRecord {
     pub locale: String,
     pub status: String,
     pub revision: i64,
+    pub manager_user_id: Option<Uuid>,
     pub roles: Vec<String>,
     pub totp_enabled: bool,
     pub invited_at: Option<DateTime<Utc>>,
@@ -82,5 +85,6 @@ pub struct UpdateAdminUser {
     pub locale: Option<String>,
     pub status: Option<String>,
     pub role_keys: Option<Vec<String>>,
+    pub manager_user_id: Option<Option<Uuid>>,
     pub reason: String,
 }

@@ -1,3 +1,5 @@
+use super::*;
+
 /// The small, deliberately allow-listed set of business policy values that can
 /// be changed from the Admin application. Deployment topology, credentials and
 /// analytics/provider configuration are intentionally not part of this model.
@@ -50,10 +52,10 @@ pub struct AcceptedResponse {
     pub accepted_at: DateTime<Utc>,
 }
 
-fn default_locale() -> String {
+pub(super) fn default_locale() -> String {
     "en".into()
 }
 
-fn editorial_data_class() -> DataClass {
+pub(super) fn editorial_data_class() -> DataClass {
     DataClass::Editorial
 }
