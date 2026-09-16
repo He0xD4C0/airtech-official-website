@@ -130,22 +130,25 @@ pnpm check:contracts
 
 `.github/workflows/release-production.yml` publishes after every successful
 `CI` run on `main`, or from an explicit manual dispatch with a full commit SHA.
-It builds five images and pushes immutable SHA tags to GitHub Container
-Registry (GHCR). A manual run publishes only by default; set
-`deploy_after_publish=true` only when the production server is ready. Automatic
-deployment remains disabled while `PRODUCTION_RELEASE_ENABLED=false`; once it
-is enabled, successful `main` releases upload only the application Compose file
-and `deploy-app.sh`, then update `airtek-app`.
+It builds five images and pushes them to GitHub Container Registry (GHCR). The
+workflow is publish-only: it has no SSH credentials, ECS configuration, or
+deployment job.
+
+When all three production origins are configured, the immutable tag is the full
+commit SHA. Until then, the workflow uses the Dockerfiles' reviewed local
+origins and publishes `<sha>-candidate`. Candidate images are pullable build
+artifacts, not production-release images, and never overwrite the production
+SHA tag.
 
 The server keeps `/etc/airtek/production.env` and its registry pull credential.
-The workflow never receives PostgreSQL superuser or MinIO root secrets. A failed
-application health check attempts to restore the previous image set; schema
-migrations are forward-only and are never automatically reversed.
+The publishing workflow never receives PostgreSQL superuser, MinIO root, or
+server access secrets. The separate deployment script retains its application
+health rollback; schema migrations are forward-only and are never automatically
+reversed.
 
-Create these GitHub repository variables before enabling the workflow:
+These GitHub repository variables are optional for candidate publishing and
+required only before producing deployable production images:
 
-- `PRODUCTION_RELEASE_ENABLED=false` until the ECS and every secret are ready;
-  change it to `true` only after the first manual release succeeds.
 - Optional `PRODUCTION_CONTAINER_PLATFORM` (defaults to `linux/amd64`).
 - `PRODUCTION_PUBLIC_ORIGIN`, `PRODUCTION_ADMIN_ORIGIN`, and
   `PRODUCTION_API_ORIGIN`, all exact HTTPS origins.
@@ -153,22 +156,18 @@ Create these GitHub repository variables before enabling the workflow:
 Image publishing uses the workflow's short-lived `GITHUB_TOKEN` with
 `packages: write`; no external registry credentials are required. Images use
 the names `ghcr.io/<owner>/airtekpower-{public-web,admin-web,platform,migrations,gateway}`
-and the full release commit SHA as their only deployment tag.
+and either the full release commit SHA or the distinct `<sha>-candidate` tag
+described above.
 
-Before deployment, authenticate the ECS Docker client to `ghcr.io` with a
+Before a later deployment, authenticate the server's Docker client to `ghcr.io` with a
 dedicated read-only GitHub token that has `read:packages`. Keep that credential
 only in the server's Docker credential store; never add it to the repository or
 the workflow. Public packages may be pulled anonymously if their visibility is
 deliberately changed after review.
 
-Create these secrets in the protected `production` Environment:
-
-- `ECS_HOST`, `ECS_PORT`, `ECS_USER`, `ECS_SSH_PRIVATE_KEY`, and the pinned
-  `ECS_SSH_KNOWN_HOSTS` entry for application deployment.
-
-The ECS deploy user needs write access only below `/opt/airtek`, read access to
-`/etc/airtek/production.env`, and permission to control Docker. Do not use the
-root account or place the host private key in the repository.
+Server deployment credentials are deliberately not accepted by the image
+publishing workflow. Add a separate, protected deployment workflow only when
+the target host and operational controls are ready.
 
 ## Deployment order
 
