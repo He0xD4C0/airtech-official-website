@@ -1,15 +1,17 @@
-enum ItemIdempotency {
+use super::*;
+
+pub(super) enum ItemIdempotency {
     Replay(Response),
     Fresh(crate::idempotency::IdempotencyContext),
 }
 
-enum DetailIdempotency {
+pub(super) enum DetailIdempotency {
     Replay(Response),
     Fresh(crate::idempotency::IdempotencyContext),
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn begin_item_idempotency<T: serde::Serialize>(
+pub(super) async fn begin_item_idempotency<T: serde::Serialize>(
     state: &AppState,
     entity_type: BusinessEntityType,
     action: &str,
@@ -40,7 +42,7 @@ async fn begin_item_idempotency<T: serde::Serialize>(
     }
 }
 
-async fn begin_detail_idempotency<T: serde::Serialize>(
+pub(super) async fn begin_detail_idempotency<T: serde::Serialize>(
     state: &AppState,
     entity_type: BusinessEntityType,
     id: Uuid,
@@ -70,7 +72,7 @@ async fn begin_detail_idempotency<T: serde::Serialize>(
     }
 }
 
-fn item_operation(entity_type: BusinessEntityType, action: &str) -> &'static str {
+pub(super) fn item_operation(entity_type: BusinessEntityType, action: &str) -> &'static str {
     match (entity_type, action) {
         (BusinessEntityType::Rfq, "assign") => "admin.business.rfq.assign",
         (BusinessEntityType::Rfq, _) => "admin.business.rfq.status",
@@ -79,20 +81,19 @@ fn item_operation(entity_type: BusinessEntityType, action: &str) -> &'static str
     }
 }
 
-fn note_operation(entity_type: BusinessEntityType) -> &'static str {
+pub(super) fn note_operation(entity_type: BusinessEntityType) -> &'static str {
     match entity_type {
         BusinessEntityType::Rfq => "admin.business.rfq.note",
         BusinessEntityType::Contact => "admin.business.contact.note",
     }
 }
 
-fn parse_business_status(value: String) -> Result<BusinessInboxStatus, ApiError> {
-    serde_json::from_value(Value::String(value)).map_err(|_| {
-        ApiError::bad_request("status is not a controlled business workflow state.")
-    })
+pub(super) fn parse_business_status(value: String) -> Result<BusinessInboxStatus, ApiError> {
+    serde_json::from_value(Value::String(value))
+        .map_err(|_| ApiError::bad_request("status is not a controlled business workflow state."))
 }
 
-fn require_business_mutation(principal: &AdminPrincipal) -> Result<(), ApiError> {
+pub(super) fn require_business_mutation(principal: &AdminPrincipal) -> Result<(), ApiError> {
     if principal.has_permission("rfq.assign") {
         Ok(())
     } else {
@@ -103,7 +104,7 @@ fn require_business_mutation(principal: &AdminPrincipal) -> Result<(), ApiError>
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn audit_business_mutation(
+pub(super) async fn audit_business_mutation(
     state: &AppState,
     headers: &HeaderMap,
     principal: &AdminPrincipal,

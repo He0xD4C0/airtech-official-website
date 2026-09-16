@@ -1,3 +1,5 @@
+use super::*;
+
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/auth/setup", post(setup))
@@ -18,7 +20,7 @@ pub fn router() -> Router<AppState> {
         )
 }
 
-async fn accept_invitation(
+pub(super) async fn accept_invitation(
     State(state): State<AppState>,
     peer: Option<Extension<ConnectInfo<SocketAddr>>>,
     headers: HeaderMap,
@@ -43,11 +45,7 @@ async fn accept_invitation(
         return Err(invalid_invitation());
     }
 
-    let Some(pool) = &state.pool else {
-        return Err(ApiError::service_unavailable(
-            "Invitation acceptance requires PostgreSQL persistence.",
-        ));
-    };
+    let pool = &state.pool;
     let _hash_slot = state
         .auth_hash_slots
         .clone()
@@ -210,11 +208,11 @@ async fn accept_invitation(
     Ok(response)
 }
 
-fn invalid_invitation() -> ApiError {
+pub(super) fn invalid_invitation() -> ApiError {
     ApiError::unauthorized("The invitation token is invalid, expired, revoked, or already used.")
 }
 
-async fn setup(
+pub(super) async fn setup(
     State(state): State<AppState>,
     peer: Option<Extension<ConnectInfo<SocketAddr>>>,
     headers: HeaderMap,
@@ -263,11 +261,8 @@ async fn setup(
     Ok(session_response(&state, issue, StatusCode::CREATED))
 }
 
-async fn has_admin_users(state: &AppState) -> Result<bool, ApiError> {
-    if let Some(pool) = &state.pool {
-        return Ok(sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM users)")
-            .fetch_one(pool)
-            .await?);
-    }
-    Ok(!state.data.read().await.admin_users.is_empty())
+pub(super) async fn has_admin_users(state: &AppState) -> Result<bool, ApiError> {
+    Ok(sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM users)")
+        .fetch_one(&state.pool)
+        .await?)
 }

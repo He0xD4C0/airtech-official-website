@@ -1,4 +1,9 @@
-fn required_payload_text<'a>(payload: &'a Value, key: &str) -> Result<&'a str, ApiError> {
+use super::*;
+
+pub(super) fn required_payload_text<'a>(
+    payload: &'a Value,
+    key: &str,
+) -> Result<&'a str, ApiError> {
     payload
         .get(key)
         .and_then(Value::as_str)
@@ -281,7 +286,7 @@ pub fn parse_product_master(
             if is_safe_optional_header(name) {
                 let value = field(&record, Some(index)).trim();
                 if !value.is_empty() {
-                    source_fields.insert(name.clone(), Value::String(value.to_owned()));
+                    source_fields.insert(name.to_owned(), Value::String(value.to_owned()));
                 }
             }
         }

@@ -99,10 +99,6 @@ impl IdempotencyContext {
         .await?;
         Ok(result.rows_affected() == 1)
     }
-
-    pub(crate) async fn finish_after_commit(self) -> Result<(), ApiError> {
-        self.guard.finish().await
-    }
 }
 
 impl StagedIdempotency {

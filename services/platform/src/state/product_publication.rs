@@ -9,7 +9,8 @@ impl AppState {
         let payload = serde_json::to_value(product)
             .map_err(|_| ApiError::internal("Product serialization failed."))?;
         let outbox_id = Uuid::new_v4();
-        if let Some(pool) = &self.pool {
+        {
+            let pool = &self.pool;
             let mut transaction = pool.begin().await?;
             sqlx::query("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
                 .execute(&mut *transaction)
@@ -178,54 +179,6 @@ impl AppState {
             .execute(&mut *transaction)
             .await?;
             transaction.commit().await?;
-        } else {
-            let mut issues = validate_product_master(working);
-            issues.extend(self.in_memory_product_publication_issues(working).await);
-            if !issues.is_empty() {
-                return Err(ApiError::validation(issues_as_errors(issues)));
-            }
-        }
-        if self.pool.is_none() {
-            let mut data = self.data.write().await;
-            let mut public_product = product.clone();
-            let presentation_revision = if let Some(presentation) = data
-                .product_presentations
-                .get_mut(&(product.id, product.locale.clone()))
-            {
-                presentation.published_revision = Some(presentation.revision);
-                public_product.slug = presentation.slug.clone();
-                public_product.title = presentation.title.clone();
-                public_product.summary = presentation.summary.clone();
-                public_product.seo = presentation.seo.clone();
-                public_product.indexable = presentation.indexable;
-                public_product.sort_order = presentation.sort_order;
-                public_product.related_content_ids = presentation.related_content_ids.clone();
-                presentation.revision
-            } else {
-                1
-            };
-            data.published_products.insert(product.id, public_product);
-            let outbox_payload = serde_json::json!({
-                "entityId": product.id,
-                "factRevision": product.current_revision,
-                "presentationRevision": presentation_revision,
-                "locale": product.locale
-            });
-            if !data.outbox_events.iter().any(|value| {
-                value.get("topic").and_then(Value::as_str) == Some("public.product.published")
-                    && value.get("aggregateId") == Some(&serde_json::json!(product.id))
-                    && value.pointer("/payload/factRevision")
-                        == Some(&serde_json::json!(product.current_revision))
-                    && value.pointer("/payload/presentationRevision")
-                        == Some(&serde_json::json!(presentation_revision))
-            }) {
-                data.outbox_events.push(serde_json::json!({
-                    "id": outbox_id,
-                    "topic": "public.product.published",
-                    "aggregateId": product.id,
-                    "payload": outbox_payload
-                }));
-            }
         }
         Ok(())
     }

@@ -1,4 +1,6 @@
-async fn get_operation(
+use super::*;
+
+pub(super) async fn get_operation(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<BackgroundOperation>, ApiError> {
@@ -10,7 +12,7 @@ async fn get_operation(
     Ok(Json(operation))
 }
 
-async fn operation_events(
+pub(super) async fn operation_events(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Sse<impl futures_util::Stream<Item = Result<Event, Infallible>>>, ApiError> {

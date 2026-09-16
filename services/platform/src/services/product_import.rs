@@ -121,11 +121,31 @@ pub fn verify_product_master_authority(
     })
 }
 
-include!("product_import/staging.rs");
-include!("product_import/promotion.rs");
-include!("product_import/loading_and_parsing.rs");
-include!("product_import/csv_and_crypto.rs");
-include!("product_import/normalization.rs");
-include!("product_import/specifications.rs");
-include!("product_import/operating_conditions_and_assets.rs");
-include!("product_import/tests.rs");
+#[path = "product_import/staging.rs"]
+mod staging;
+#[cfg(test)]
+use staging::product_import_job_payload;
+pub use staging::stage_and_queue_product_import;
+#[path = "product_import/promotion.rs"]
+mod promotion;
+pub use promotion::*;
+#[path = "product_import/loading_and_parsing.rs"]
+mod loading_and_parsing;
+use loading_and_parsing::*;
+pub use loading_and_parsing::*;
+#[path = "product_import/csv_and_crypto.rs"]
+mod csv_and_crypto;
+pub use csv_and_crypto::decrypt_private_pricing;
+use csv_and_crypto::{encrypt_confidential, parse_csv};
+#[path = "product_import/normalization.rs"]
+mod normalization;
+use normalization::*;
+#[path = "product_import/specifications.rs"]
+mod specifications;
+use specifications::*;
+#[path = "product_import/operating_conditions_and_assets.rs"]
+mod operating_conditions_and_assets;
+use operating_conditions_and_assets::*;
+#[cfg(test)]
+#[path = "product_import/tests.rs"]
+mod tests;

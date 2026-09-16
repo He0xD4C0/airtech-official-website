@@ -1,12 +1,14 @@
-const JOB_LEASE_SECONDS: i64 = 5 * 60;
-const JOB_LEASE_RENEW_INTERVAL: Duration = Duration::from_secs(60);
-const RENEW_JOB_LEASE_SQL: &str = r#"UPDATE jobs
+use super::*;
+
+pub(super) const JOB_LEASE_SECONDS: i64 = 5 * 60;
+pub(super) const JOB_LEASE_RENEW_INTERVAL: Duration = Duration::from_secs(60);
+pub(super) const RENEW_JOB_LEASE_SQL: &str = r#"UPDATE jobs
    SET lease_expires_at=now() + ($3 * interval '1 second'),updated_at=now()
    WHERE id=$1 AND status='running' AND lease_owner=$2"#;
-const COMPLETE_JOB_SQL: &str = r#"UPDATE jobs SET status='completed',result=$2,last_error=NULL,
+pub(super) const COMPLETE_JOB_SQL: &str = r#"UPDATE jobs SET status='completed',result=$2,last_error=NULL,
    lease_owner=NULL,lease_expires_at=NULL,updated_at=now()
    WHERE id=$1 AND status='running' AND lease_owner=$3"#;
-const FAIL_JOB_SQL: &str = r#"UPDATE jobs SET status=$2,result=$3,last_error=$4,
+pub(super) const FAIL_JOB_SQL: &str = r#"UPDATE jobs SET status=$2,result=$3,last_error=$4,
    available_at=CASE WHEN $2='queued' THEN now() +
      (LEAST(3600,30 * power(2,LEAST($5 - 1,7))) * interval '1 second')
      ELSE available_at END,
@@ -14,17 +16,17 @@ const FAIL_JOB_SQL: &str = r#"UPDATE jobs SET status=$2,result=$3,last_error=$4,
    updated_at=now()
    WHERE id=$1 AND status='running' AND lease_owner=$6"#;
 
-struct ClaimedJobLease {
-    job_id: Uuid,
-    owner: String,
+pub(super) struct ClaimedJobLease {
+    pub(super) job_id: Uuid,
+    pub(super) owner: String,
 }
 
-enum LeasedExecution<T> {
+pub(super) enum LeasedExecution<T> {
     Finished(T),
     Lost,
 }
 
-async fn execute_with_job_lease<F, T>(
+pub(super) async fn execute_with_job_lease<F, T>(
     pool: &PgPool,
     lease: &ClaimedJobLease,
     execution: F,
@@ -51,7 +53,10 @@ where
     }
 }
 
-async fn renew_job_lease(pool: &PgPool, lease: &ClaimedJobLease) -> Result<bool, ApiError> {
+pub(super) async fn renew_job_lease(
+    pool: &PgPool,
+    lease: &ClaimedJobLease,
+) -> Result<bool, ApiError> {
     let mut transaction = pool.begin().await?;
     let updated = sqlx::query(RENEW_JOB_LEASE_SQL)
         .bind(lease.job_id)
@@ -71,7 +76,7 @@ async fn renew_job_lease(pool: &PgPool, lease: &ClaimedJobLease) -> Result<bool,
     Ok(true)
 }
 
-async fn persist_job_success(
+pub(super) async fn persist_job_success(
     pool: &PgPool,
     lease: &ClaimedJobLease,
     output: &Value,
@@ -101,7 +106,7 @@ async fn persist_job_success(
     Ok(true)
 }
 
-async fn persist_job_failure(
+pub(super) async fn persist_job_failure(
     pool: &PgPool,
     lease: &ClaimedJobLease,
     job_type: &str,
@@ -136,18 +141,12 @@ async fn persist_job_failure(
         .bind(&output)
         .execute(&mut *transaction)
         .await?;
-    persist_related_failure(
-        &mut transaction,
-        lease.job_id,
-        job_type,
-        retrying,
-    )
-    .await?;
+    persist_related_failure(&mut transaction, lease.job_id, job_type, retrying).await?;
     transaction.commit().await?;
     Ok(true)
 }
 
-async fn persist_related_failure(
+pub(super) async fn persist_related_failure(
     transaction: &mut Transaction<'_, Postgres>,
     job_id: Uuid,
     job_type: &str,

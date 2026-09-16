@@ -18,16 +18,12 @@ pub fn router() -> Router<AppState> {
         .route("/robots.txt", get(robots))
 }
 
-async fn liveness(State(state): State<AppState>) -> Json<HealthStatus> {
+async fn liveness(State(_state): State<AppState>) -> Json<HealthStatus> {
     Json(HealthStatus {
         status: "ok".into(),
         service: "airtek-platform-api".into(),
         version: env!("CARGO_PKG_VERSION").into(),
-        persistence: if state.pool.is_some() {
-            "postgresqlConfigured".into()
-        } else {
-            "inMemory".into()
-        },
+        persistence: "postgresqlConfigured".into(),
         timestamp: Utc::now(),
     })
 }

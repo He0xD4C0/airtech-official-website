@@ -1,3 +1,5 @@
+use super::*;
+
 impl Config {
     pub fn from_env() -> Result<Self, ConfigError> {
         let host_raw = env::var("AIRTEK_API_HOST").unwrap_or_else(|_| "0.0.0.0".into());
@@ -15,9 +17,6 @@ impl Config {
         let admin_bootstrap_token = non_empty_env("AIRTEK_ADMIN_BOOTSTRAP_TOKEN");
         let totp_encryption_key = non_empty_env("AIRTEK_TOTP_ENCRYPTION_KEY")
             .map(|value| parse_totp_encryption_key(&value))
-            .transpose()?;
-        let preview_signing_key = non_empty_env("AIRTEK_PREVIEW_SIGNING_KEY")
-            .map(|value| parse_preview_signing_key(&value))
             .transpose()?;
         let invitation_replay_encryption_key =
             non_empty_env("AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY")
@@ -80,7 +79,6 @@ impl Config {
         require_production_keys(
             production,
             totp_encryption_key.as_ref(),
-            preview_signing_key.as_ref(),
             invitation_replay_encryption_key.as_ref(),
             product_staging_encryption_key.as_ref(),
             analytics_token_hmac_key.as_ref(),
@@ -93,7 +91,6 @@ impl Config {
             database_url,
             admin_bootstrap_token,
             totp_encryption_key,
-            preview_signing_key,
             invitation_replay_encryption_key,
             product_staging_encryption_key,
             analytics_token_hmac_key,
@@ -118,7 +115,6 @@ impl Config {
             database_url: None,
             admin_bootstrap_token: Some("test-bootstrap-token-please-change".into()),
             totp_encryption_key: Some(TotpEncryptionKey([0x42; 32])),
-            preview_signing_key: Some(PreviewSigningKey([0x24; 32])),
             invitation_replay_encryption_key: Some(InvitationReplayEncryptionKey([0x34; 32])),
             product_staging_encryption_key: Some(ProductStagingEncryptionKey([0x54; 32])),
             analytics_token_hmac_key: Some(AnalyticsTokenHmacKey([0x64; 32])),

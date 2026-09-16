@@ -1,16 +1,12 @@
-fn parse_totp_encryption_key(value: &str) -> Result<TotpEncryptionKey, ConfigError> {
+use super::*;
+
+pub(super) fn parse_totp_encryption_key(value: &str) -> Result<TotpEncryptionKey, ConfigError> {
     decode_32_byte_key(value)
         .map(TotpEncryptionKey)
         .map_err(|_| ConfigError::InvalidTotpEncryptionKey)
 }
 
-fn parse_preview_signing_key(value: &str) -> Result<PreviewSigningKey, ConfigError> {
-    decode_32_byte_key(value)
-        .map(PreviewSigningKey)
-        .map_err(|_| ConfigError::InvalidPreviewSigningKey)
-}
-
-fn parse_invitation_replay_encryption_key(
+pub(super) fn parse_invitation_replay_encryption_key(
     value: &str,
 ) -> Result<InvitationReplayEncryptionKey, ConfigError> {
     decode_32_byte_key(value)
@@ -18,7 +14,7 @@ fn parse_invitation_replay_encryption_key(
         .map_err(|_| ConfigError::InvalidInvitationReplayEncryptionKey)
 }
 
-fn parse_product_staging_encryption_key(
+pub(super) fn parse_product_staging_encryption_key(
     value: &str,
 ) -> Result<ProductStagingEncryptionKey, ConfigError> {
     decode_32_byte_key(value)
@@ -26,13 +22,15 @@ fn parse_product_staging_encryption_key(
         .map_err(|_| ConfigError::InvalidProductStagingEncryptionKey)
 }
 
-fn parse_analytics_token_hmac_key(value: &str) -> Result<AnalyticsTokenHmacKey, ConfigError> {
+pub(super) fn parse_analytics_token_hmac_key(
+    value: &str,
+) -> Result<AnalyticsTokenHmacKey, ConfigError> {
     decode_32_byte_key(value)
         .map(AnalyticsTokenHmacKey)
         .map_err(|_| ConfigError::InvalidAnalyticsTokenHmacKey)
 }
 
-fn decode_32_byte_key(value: &str) -> Result<[u8; 32], ()> {
+pub(super) fn decode_32_byte_key(value: &str) -> Result<[u8; 32], ()> {
     general_purpose::STANDARD
         .decode(value)
         .or_else(|_| general_purpose::URL_SAFE_NO_PAD.decode(value))
@@ -41,19 +39,15 @@ fn decode_32_byte_key(value: &str) -> Result<[u8; 32], ()> {
         .map_err(|_| ())
 }
 
-fn require_production_keys(
+pub(super) fn require_production_keys(
     production: bool,
     totp_encryption_key: Option<&TotpEncryptionKey>,
-    preview_signing_key: Option<&PreviewSigningKey>,
     invitation_replay_encryption_key: Option<&InvitationReplayEncryptionKey>,
     product_staging_encryption_key: Option<&ProductStagingEncryptionKey>,
     analytics_token_hmac_key: Option<&AnalyticsTokenHmacKey>,
 ) -> Result<(), ConfigError> {
     if production && totp_encryption_key.is_none() {
         return Err(ConfigError::MissingTotpEncryptionKey);
-    }
-    if production && preview_signing_key.is_none() {
-        return Err(ConfigError::MissingPreviewSigningKey);
     }
     if production && invitation_replay_encryption_key.is_none() {
         return Err(ConfigError::MissingInvitationReplayEncryptionKey);
@@ -67,7 +61,7 @@ fn require_production_keys(
     Ok(())
 }
 
-fn require_production_database(
+pub(super) fn require_production_database(
     production: bool,
     database_url: Option<&str>,
 ) -> Result<(), ConfigError> {
@@ -78,7 +72,7 @@ fn require_production_database(
     }
 }
 
-fn integer_env(
+pub(super) fn integer_env(
     name: &'static str,
     default: i64,
     minimum: i64,
@@ -94,7 +88,7 @@ fn integer_env(
     }
 }
 
-fn parse_approved_product_master(
+pub(super) fn parse_approved_product_master(
     production: bool,
     sha256: Option<String>,
     mapping_version: Option<String>,
@@ -148,7 +142,10 @@ fn parse_approved_product_master(
     }))
 }
 
-fn approved_product_master_count(name: &'static str, value: String) -> Result<i64, ConfigError> {
+pub(super) fn approved_product_master_count(
+    name: &'static str,
+    value: String,
+) -> Result<i64, ConfigError> {
     value
         .parse::<i64>()
         .ok()
@@ -156,7 +153,7 @@ fn approved_product_master_count(name: &'static str, value: String) -> Result<i6
         .ok_or(ConfigError::InvalidApprovedProductMasterCount(name))
 }
 
-fn analytics_dimension_env(
+pub(super) fn analytics_dimension_env(
     name: &'static str,
     maximum_length: usize,
 ) -> Result<BTreeSet<String>, ConfigError> {
@@ -176,7 +173,7 @@ fn analytics_dimension_env(
         .collect()
 }
 
-fn valid_analytics_dimension_identifier(value: &str, maximum_length: usize) -> bool {
+pub(super) fn valid_analytics_dimension_identifier(value: &str, maximum_length: usize) -> bool {
     !value.is_empty()
         && value.len() <= maximum_length
         && value.is_ascii()
@@ -193,7 +190,7 @@ fn valid_analytics_dimension_identifier(value: &str, maximum_length: usize) -> b
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':'))
 }
 
-fn parse_trusted_proxy_cidrs(value: &str) -> Result<Vec<IpCidr>, ConfigError> {
+pub(super) fn parse_trusted_proxy_cidrs(value: &str) -> Result<Vec<IpCidr>, ConfigError> {
     value
         .split(',')
         .map(str::trim)
@@ -206,14 +203,14 @@ fn parse_trusted_proxy_cidrs(value: &str) -> Result<Vec<IpCidr>, ConfigError> {
         .collect()
 }
 
-fn non_empty_env(name: &str) -> Option<String> {
+pub(super) fn non_empty_env(name: &str) -> Option<String> {
     env::var(name)
         .ok()
         .map(|value| value.trim().to_owned())
         .filter(|v| !v.is_empty())
 }
 
-fn validate_origin(name: &'static str, value: &str) -> Result<(), ConfigError> {
+pub(super) fn validate_origin(name: &'static str, value: &str) -> Result<(), ConfigError> {
     let valid_scheme = value.starts_with("http://") || value.starts_with("https://");
     let remainder = value
         .strip_prefix("http://")

@@ -1,10 +1,12 @@
-fn flatten(value: &Value) -> BTreeMap<String, Value> {
+use super::*;
+
+pub(super) fn flatten(value: &Value) -> BTreeMap<String, Value> {
     let mut output = BTreeMap::new();
     flatten_at("", value, &mut output);
     output
 }
 
-fn flatten_at(path: &str, value: &Value, output: &mut BTreeMap<String, Value>) {
+pub(super) fn flatten_at(path: &str, value: &Value, output: &mut BTreeMap<String, Value>) {
     match value {
         Value::Object(map) => {
             for (key, child) in map {

@@ -1,3 +1,5 @@
+use super::*;
+
 /// Materialize consented acquisition/funnel metrics immediately before removing
 /// the contributing raw records. Each raw visit/event is moved into the daily
 /// aggregate exactly once in the same transaction. Admin reporting can
@@ -12,7 +14,7 @@ pub async fn apply_retention(pool: &PgPool) -> Result<Value, String> {
     apply_retention_with_deployment_defaults(pool, 180, 24).await
 }
 
-async fn apply_retention_with_deployment_defaults(
+pub(super) async fn apply_retention_with_deployment_defaults(
     pool: &PgPool,
     guest_raw_retention_days: i64,
     guest_aggregate_retention_months: i64,
@@ -430,7 +432,7 @@ async fn apply_retention_with_deployment_defaults(
     }))
 }
 
-async fn deployment_aware_integer_setting(
+pub(super) async fn deployment_aware_integer_setting(
     transaction: &mut Transaction<'_, Postgres>,
     key: &str,
     deployment_default: i64,
@@ -459,7 +461,7 @@ async fn deployment_aware_integer_setting(
     resolve_integer_setting(key, setting, deployment_default, minimum, maximum)
 }
 
-fn resolve_integer_setting(
+pub(super) fn resolve_integer_setting(
     key: &str,
     setting: Option<(Value, String)>,
     deployment_default: i64,

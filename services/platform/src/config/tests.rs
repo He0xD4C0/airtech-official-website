@@ -1,9 +1,9 @@
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod cases {
+    use super::super::*;
 
     #[test]
-    fn trusted_proxy_cidrs_support_ipv4_ipv6_and_exact_addresses() {
+    pub(super) fn trusted_proxy_cidrs_support_ipv4_ipv6_and_exact_addresses() {
         let cidrs = parse_trusted_proxy_cidrs("172.28.0.0/24, 2001:db8::/32, 192.0.2.10")
             .expect("trusted proxy CIDRs");
         assert!(cidrs[0].contains("172.28.0.10".parse().unwrap()));
@@ -15,7 +15,7 @@ mod tests {
     }
 
     #[test]
-    fn invalid_trusted_proxy_cidr_is_rejected() {
+    pub(super) fn invalid_trusted_proxy_cidr_is_rejected() {
         assert!(matches!(
             parse_trusted_proxy_cidrs("172.28.0.0/64"),
             Err(ConfigError::InvalidTrustedProxyCidr(_))
@@ -23,7 +23,7 @@ mod tests {
     }
 
     #[test]
-    fn analytics_dimension_allowlists_are_normalized_and_reject_free_text() {
+    pub(super) fn analytics_dimension_allowlists_are_normalized_and_reject_free_text() {
         let values = " Google, linkedin-paid ,newsletter_2026 ";
         let parsed = values
             .split(',')
@@ -52,7 +52,7 @@ mod tests {
     }
 
     #[test]
-    fn totp_key_requires_exactly_32_decoded_bytes_and_is_redacted() {
+    pub(super) fn totp_key_requires_exactly_32_decoded_bytes_and_is_redacted() {
         let encoded = general_purpose::STANDARD.encode([7_u8; 32]);
         let key = parse_totp_encryption_key(&encoded).expect("valid key");
         assert_eq!(key.as_bytes(), &[7_u8; 32]);
@@ -61,22 +61,7 @@ mod tests {
     }
 
     #[test]
-    fn preview_key_is_independent_redacted_and_required_in_production() {
-        let encoded = general_purpose::STANDARD.encode([9_u8; 32]);
-        let key = parse_preview_signing_key(&encoded).expect("valid key");
-        assert_eq!(key.as_bytes(), &[9_u8; 32]);
-        assert_eq!(format!("{key:?}"), "[redacted]");
-        assert!(parse_preview_signing_key("too-short").is_err());
-        let totp_key = TotpEncryptionKey([7_u8; 32]);
-        assert!(matches!(
-            require_production_keys(true, Some(&totp_key), None, None, None, None),
-            Err(ConfigError::MissingPreviewSigningKey)
-        ));
-        assert!(require_production_keys(false, Some(&totp_key), None, None, None, None).is_ok());
-    }
-
-    #[test]
-    fn product_analytics_and_invitation_replay_keys_are_independent_and_redacted() {
+    pub(super) fn product_analytics_and_invitation_replay_keys_are_independent_and_redacted() {
         let encoded = general_purpose::STANDARD.encode([11_u8; 32]);
         let product = parse_product_staging_encryption_key(&encoded).expect("valid key");
         let analytics = parse_analytics_token_hmac_key(&encoded).expect("valid key");
@@ -92,49 +77,26 @@ mod tests {
     }
 
     #[test]
-    fn production_requires_product_staging_and_analytics_keys() {
+    pub(super) fn production_requires_product_staging_and_analytics_keys() {
         let totp = TotpEncryptionKey([1; 32]);
-        let preview = PreviewSigningKey([2; 32]);
         let invitation = InvitationReplayEncryptionKey([5; 32]);
         let product = ProductStagingEncryptionKey([3; 32]);
         let analytics = AnalyticsTokenHmacKey([4; 32]);
         assert!(matches!(
-            require_production_keys(
-                true,
-                Some(&totp),
-                Some(&preview),
-                Some(&invitation),
-                None,
-                Some(&analytics)
-            ),
+            require_production_keys(true, Some(&totp), Some(&invitation), None, Some(&analytics)),
             Err(ConfigError::MissingProductStagingEncryptionKey)
         ));
         assert!(matches!(
-            require_production_keys(
-                true,
-                Some(&totp),
-                Some(&preview),
-                Some(&invitation),
-                Some(&product),
-                None
-            ),
+            require_production_keys(true, Some(&totp), Some(&invitation), Some(&product), None),
             Err(ConfigError::MissingAnalyticsTokenHmacKey)
         ));
         assert!(matches!(
-            require_production_keys(
-                true,
-                Some(&totp),
-                Some(&preview),
-                None,
-                Some(&product),
-                Some(&analytics)
-            ),
+            require_production_keys(true, Some(&totp), None, Some(&product), Some(&analytics)),
             Err(ConfigError::MissingInvitationReplayEncryptionKey)
         ));
         assert!(require_production_keys(
             true,
             Some(&totp),
-            Some(&preview),
             Some(&invitation),
             Some(&product),
             Some(&analytics)
@@ -143,7 +105,7 @@ mod tests {
     }
 
     #[test]
-    fn production_requires_postgresql_configuration() {
+    pub(super) fn production_requires_postgresql_configuration() {
         assert!(matches!(
             require_production_database(true, None),
             Err(ConfigError::MissingProductionDatabase)
@@ -153,7 +115,7 @@ mod tests {
     }
 
     #[test]
-    fn production_requires_a_complete_exact_product_master_authority() {
+    pub(super) fn production_requires_a_complete_exact_product_master_authority() {
         assert!(matches!(
             parse_approved_product_master(true, None, None, None, None),
             Err(ConfigError::MissingApprovedProductMaster)
@@ -193,7 +155,7 @@ mod tests {
     }
 
     #[test]
-    fn development_may_start_without_product_master_authority() {
+    pub(super) fn development_may_start_without_product_master_authority() {
         assert_eq!(
             parse_approved_product_master(false, None, None, None, None).unwrap(),
             None

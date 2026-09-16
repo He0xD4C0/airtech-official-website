@@ -1,9 +1,9 @@
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod cases {
+    use super::super::*;
     use serde_json::json;
 
-    fn analytics_event(event_name: &str, source_path: &str) -> CreateAnalyticsEvent {
+    pub(super) fn analytics_event(event_name: &str, source_path: &str) -> CreateAnalyticsEvent {
         CreateAnalyticsEvent {
             event_name: event_name.into(),
             anonymous_session_id: Some(Uuid::new_v4()),
@@ -17,7 +17,7 @@ mod tests {
     }
 
     #[test]
-    fn analytics_source_path_rejects_direct_and_encoded_identifiers() {
+    pub(super) fn analytics_source_path_rejects_direct_and_encoded_identifiers() {
         for source_path in [
             "/en/ref/person@example.com",
             "/en/ref/person%40example.com",
@@ -37,7 +37,7 @@ mod tests {
     }
 
     #[test]
-    fn analytics_accepts_only_controlled_cta_dimensions() {
+    pub(super) fn analytics_accepts_only_controlled_cta_dimensions() {
         let mut event = analytics_event("ctaClicked", "/en/products");
         event.properties = BTreeMap::from([
             ("ctaId".into(), json!("request-quote")),
@@ -47,7 +47,7 @@ mod tests {
     }
 
     #[test]
-    fn analytics_controlled_dimensions_reject_arbitrary_identifiers() {
+    pub(super) fn analytics_controlled_dimensions_reject_arbitrary_identifiers() {
         for (event_name, properties) in [
             (
                 "pageView",
@@ -110,7 +110,7 @@ mod tests {
     }
 
     #[test]
-    fn product_detail_lookup_never_selects_an_arbitrary_slug_collision() {
+    pub(super) fn product_detail_lookup_never_selects_an_arbitrary_slug_collision() {
         let error = require_unique_published_product(vec!["axial", "centrifugal"])
             .expect_err("a cross-family slug collision must be disambiguated");
         assert_eq!(error.status(), StatusCode::CONFLICT);

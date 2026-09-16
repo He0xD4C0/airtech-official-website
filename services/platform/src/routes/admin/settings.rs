@@ -1,4 +1,6 @@
-async fn get_settings(State(state): State<AppState>) -> Result<Response, ApiError> {
+use super::*;
+
+pub(super) async fn get_settings(State(state): State<AppState>) -> Result<Response, ApiError> {
     let settings = state.platform_settings().await?;
     let revision = settings.revision;
     let mut response = entity_response(StatusCode::OK, &settings, revision);
@@ -6,7 +8,7 @@ async fn get_settings(State(state): State<AppState>) -> Result<Response, ApiErro
     Ok(response)
 }
 
-async fn update_settings(
+pub(super) async fn update_settings(
     State(state): State<AppState>,
     headers: HeaderMap,
     payload: Result<Json<UpdatePlatformSettings>, JsonRejection>,

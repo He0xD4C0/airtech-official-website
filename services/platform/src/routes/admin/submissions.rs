@@ -1,4 +1,6 @@
-use crate::{
+use super::*;
+
+pub(super) use crate::{
     models::{
         AssignBusinessInboxRequest, BusinessEntityType, BusinessInboxDetail, BusinessInboxItem,
         BusinessInboxPage, BusinessInboxStatus, BusinessPii, CreateBusinessNoteRequest,
@@ -9,29 +11,29 @@ use crate::{
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct BusinessInboxQuery {
-    cursor: Option<String>,
-    limit: Option<usize>,
-    q: Option<String>,
-    status: Option<String>,
-    assigned_to: Option<Uuid>,
+pub(super) struct BusinessInboxQuery {
+    pub(super) cursor: Option<String>,
+    pub(super) limit: Option<usize>,
+    pub(super) q: Option<String>,
+    pub(super) status: Option<String>,
+    pub(super) assigned_to: Option<Uuid>,
 }
 
-async fn list_rfqs(
+pub(super) async fn list_rfqs(
     State(state): State<AppState>,
     Query(query): Query<BusinessInboxQuery>,
 ) -> Result<Json<BusinessInboxPage>, ApiError> {
     list_business(&state, BusinessEntityType::Rfq, query).await
 }
 
-async fn list_contacts(
+pub(super) async fn list_contacts(
     State(state): State<AppState>,
     Query(query): Query<BusinessInboxQuery>,
 ) -> Result<Json<BusinessInboxPage>, ApiError> {
     list_business(&state, BusinessEntityType::Contact, query).await
 }
 
-async fn list_business(
+pub(super) async fn list_business(
     state: &AppState,
     entity_type: BusinessEntityType,
     query: BusinessInboxQuery,
@@ -41,46 +43,35 @@ async fn list_business(
         status: query.status.map(parse_business_status).transpose()?,
         assigned_to: query.assigned_to,
     };
-    let values = business_inbox::list(state, entity_type, &filter).await?;
-    let total = values.len();
-    let scope = format!(
-        "admin.business.{}|{:?}|{:?}|{:?}",
-        entity_type.label(),
-        filter.query,
-        filter.status,
-        filter.assigned_to
-    );
-    let page = crate::pagination::paginate_by_id_scoped(
-        &scope,
-        values,
-        CursorQuery {
-            cursor: query.cursor,
-            limit: query.limit,
-        },
-        |item| item.id,
-    )?;
-    Ok(Json(BusinessInboxPage {
-        items: page.items,
-        next_cursor: page.next_cursor,
-        total,
-    }))
+    Ok(Json(
+        business_inbox::list(
+            state,
+            entity_type,
+            &filter,
+            CursorQuery {
+                cursor: query.cursor,
+                limit: query.limit,
+            },
+        )
+        .await?,
+    ))
 }
 
-async fn get_rfq(
+pub(super) async fn get_rfq(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Response, ApiError> {
     business_detail_response(&state, BusinessEntityType::Rfq, id).await
 }
 
-async fn get_contact(
+pub(super) async fn get_contact(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Response, ApiError> {
     business_detail_response(&state, BusinessEntityType::Contact, id).await
 }
 
-async fn business_detail_response(
+pub(super) async fn business_detail_response(
     state: &AppState,
     entity_type: BusinessEntityType,
     id: Uuid,
@@ -93,7 +84,7 @@ async fn business_detail_response(
     ))
 }
 
-async fn get_rfq_pii(
+pub(super) async fn get_rfq_pii(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
     Extension(principal): Extension<AdminPrincipal>,
@@ -102,7 +93,7 @@ async fn get_rfq_pii(
     pii_response(&state, BusinessEntityType::Rfq, id, &principal, &headers).await
 }
 
-async fn get_contact_pii(
+pub(super) async fn get_contact_pii(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
     Extension(principal): Extension<AdminPrincipal>,
@@ -118,7 +109,7 @@ async fn get_contact_pii(
     .await
 }
 
-async fn pii_response(
+pub(super) async fn pii_response(
     state: &AppState,
     entity_type: BusinessEntityType,
     id: Uuid,
@@ -148,7 +139,7 @@ async fn pii_response(
     Ok(response)
 }
 
-async fn assign_rfq(
+pub(super) async fn assign_rfq(
     state: State<AppState>,
     path: Path<Uuid>,
     principal: Extension<AdminPrincipal>,
@@ -166,7 +157,7 @@ async fn assign_rfq(
     .await
 }
 
-async fn assign_contact(
+pub(super) async fn assign_contact(
     state: State<AppState>,
     path: Path<Uuid>,
     principal: Extension<AdminPrincipal>,
@@ -184,7 +175,7 @@ async fn assign_contact(
     .await
 }
 
-async fn assign_business(
+pub(super) async fn assign_business(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
     Extension(principal): Extension<AdminPrincipal>,
@@ -232,13 +223,11 @@ async fn assign_business(
         &request.reason,
     )
     .await?;
-    idempotency
-        .complete(&state, &item, StatusCode::OK)
-        .await?;
+    idempotency.complete(&state, &item, StatusCode::OK).await?;
     Ok(entity_response(StatusCode::OK, &item, item.revision))
 }
 
-async fn update_rfq_status(
+pub(super) async fn update_rfq_status(
     state: State<AppState>,
     path: Path<Uuid>,
     principal: Extension<AdminPrincipal>,
@@ -256,7 +245,7 @@ async fn update_rfq_status(
     .await
 }
 
-async fn update_contact_status(
+pub(super) async fn update_contact_status(
     state: State<AppState>,
     path: Path<Uuid>,
     principal: Extension<AdminPrincipal>,
@@ -274,7 +263,7 @@ async fn update_contact_status(
     .await
 }
 
-async fn update_business_status(
+pub(super) async fn update_business_status(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
     Extension(principal): Extension<AdminPrincipal>,
@@ -322,13 +311,11 @@ async fn update_business_status(
         &request.reason,
     )
     .await?;
-    idempotency
-        .complete(&state, &item, StatusCode::OK)
-        .await?;
+    idempotency.complete(&state, &item, StatusCode::OK).await?;
     Ok(entity_response(StatusCode::OK, &item, item.revision))
 }
 
-async fn add_rfq_note(
+pub(super) async fn add_rfq_note(
     state: State<AppState>,
     path: Path<Uuid>,
     principal: Extension<AdminPrincipal>,
@@ -346,7 +333,7 @@ async fn add_rfq_note(
     .await
 }
 
-async fn add_contact_note(
+pub(super) async fn add_contact_note(
     state: State<AppState>,
     path: Path<Uuid>,
     principal: Extension<AdminPrincipal>,
@@ -364,7 +351,7 @@ async fn add_contact_note(
     .await
 }
 
-async fn add_business_note(
+pub(super) async fn add_business_note(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
     Extension(principal): Extension<AdminPrincipal>,

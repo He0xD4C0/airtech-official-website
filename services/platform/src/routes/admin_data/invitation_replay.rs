@@ -1,4 +1,9 @@
-fn invitation_replay_aad(headers: &HeaderMap, input: &InviteAdminUser) -> Result<String, ApiError> {
+use super::*;
+
+pub(super) fn invitation_replay_aad(
+    headers: &HeaderMap,
+    input: &InviteAdminUser,
+) -> Result<String, ApiError> {
     let idempotency_key = parse_idempotency_key(headers)?;
     let key_hash = format!("{:x}", Sha256::digest(idempotency_key.as_bytes()));
     let input = serde_json::to_value(input)
@@ -9,7 +14,7 @@ fn invitation_replay_aad(headers: &HeaderMap, input: &InviteAdminUser) -> Result
     ))
 }
 
-fn seal_invitation_replay(
+pub(super) fn seal_invitation_replay(
     invitation: &UserInvitation,
     encryption_key: &InvitationReplayEncryptionKey,
     aad: &[u8],
@@ -44,7 +49,7 @@ fn seal_invitation_replay(
     Ok(envelope)
 }
 
-fn open_invitation_replay(
+pub(super) fn open_invitation_replay(
     envelope: &EncryptedInvitationReplay,
     encryption_key: &InvitationReplayEncryptionKey,
     aad: &[u8],
@@ -104,7 +109,7 @@ fn open_invitation_replay(
     Ok(invitation)
 }
 
-fn validate_invitation(input: &InviteAdminUser) -> Result<(), ApiError> {
+pub(super) fn validate_invitation(input: &InviteAdminUser) -> Result<(), ApiError> {
     if !input.email.contains('@') || input.email.len() > 254 {
         return Err(ApiError::bad_request("email is invalid."));
     }

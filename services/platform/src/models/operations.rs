@@ -1,10 +1,10 @@
+use super::*;
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum OperationKind {
     MigrationPreflight,
     MigrationApply,
-    Backup,
-    RestoreValidate,
     RetentionApply,
     SearchReindex,
     CacheInvalidate,
@@ -44,6 +44,7 @@ pub struct AuditEvent {
     pub before: Option<Value>,
     pub after: Option<Value>,
     pub reason: Option<String>,
+    pub current_version: Option<i64>,
     pub request_id: Uuid,
     pub occurred_at: DateTime<Utc>,
 }

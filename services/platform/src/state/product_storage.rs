@@ -2,9 +2,7 @@ use super::*;
 
 impl AppState {
     pub async fn persist_override(&self, value: &TemporaryOverride) -> Result<(), ApiError> {
-        let Some(pool) = &self.pool else {
-            return Ok(());
-        };
+        let pool = &self.pool;
         sqlx::query(
             r#"INSERT INTO product_temporary_overrides
                (id, product_id, field_path, value, reason, created_at, expires_at)
@@ -23,7 +21,8 @@ impl AppState {
     }
 
     pub async fn persist_product(&self, product: &Product) -> Result<(), ApiError> {
-        if let Some(pool) = &self.pool {
+        {
+            let pool = &self.pool;
             let mut transaction = pool.begin().await?;
             sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))")
                 .bind(format!("product:stable-id:{}", product.stable_id))
@@ -240,40 +239,6 @@ impl AppState {
             .execute(&mut *transaction)
             .await?;
             transaction.commit().await?;
-        }
-        if self.pool.is_none() {
-            let mut data = self.data.write().await;
-            let revisions = data.product_revisions.entry(product.id).or_default();
-            if revisions
-                .get(&product.current_revision)
-                .is_some_and(|stored| {
-                    stored.source_snapshot_id != product.source_snapshot_id
-                        || immutable_revision_payload(stored).ok()
-                            != immutable_revision_payload(product).ok()
-                })
-            {
-                return Err(ApiError::conflict(
-                    "An immutable Product revision already exists with different data.",
-                ));
-            }
-            revisions
-                .entry(product.current_revision)
-                .or_insert_with(|| product.clone());
-            data.product_presentations
-                .entry((product.id, product.locale.clone()))
-                .or_insert_with(|| ProductPresentation {
-                    locale: product.locale.clone(),
-                    slug: product.slug.clone(),
-                    title: product.title.clone(),
-                    summary: product.summary.clone(),
-                    seo: product.seo.clone(),
-                    indexable: product.indexable,
-                    sort_order: product.sort_order,
-                    related_content_ids: product.related_content_ids.clone(),
-                    revision: 1,
-                    published_revision: None,
-                    updated_at: product.updated_at,
-                });
         }
         Ok(())
     }

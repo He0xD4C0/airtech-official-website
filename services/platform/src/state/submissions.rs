@@ -2,9 +2,7 @@ use super::*;
 
 impl AppState {
     pub async fn persist_rfq(&self, value: &RfqSubmission) -> Result<(), ApiError> {
-        let Some(pool) = &self.pool else {
-            return Ok(());
-        };
+        let pool = &self.pool;
         sqlx::query(
             r#"INSERT INTO rfq_submissions
                (id, reference, journey, status, source_path, locale, submitted_at,
@@ -29,9 +27,7 @@ impl AppState {
     }
 
     pub async fn persist_contact(&self, value: &ContactRequest) -> Result<(), ApiError> {
-        let Some(pool) = &self.pool else {
-            return Ok(());
-        };
+        let pool = &self.pool;
         sqlx::query(
             r#"INSERT INTO contact_requests
                (id, reference, topic, status, source_path, locale, submitted_at,

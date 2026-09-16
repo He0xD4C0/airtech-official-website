@@ -1,14 +1,10 @@
-const RETENTION_SCHEDULE_CHECK_INTERVAL: Duration = Duration::from_secs(60 * 60);
-const RETENTION_JOB_CADENCE_HOURS: i64 = 24;
+use super::*;
+
+pub(super) const RETENTION_SCHEDULE_CHECK_INTERVAL: Duration = Duration::from_secs(60 * 60);
+pub(super) const RETENTION_JOB_CADENCE_HOURS: i64 = 24;
 
 pub async fn run(state: AppState) -> Result<(), ApiError> {
-    let Some(pool) = state.pool.clone() else {
-        tracing::warn!("worker is running without PostgreSQL; no durable jobs can be claimed");
-        tokio::signal::ctrl_c()
-            .await
-            .map_err(|_| ApiError::internal("Unable to install shutdown signal."))?;
-        return Ok(());
-    };
+    let pool = state.pool.clone();
 
     ensure_periodic_retention_job(&pool).await?;
     let mut interval = time::interval(Duration::from_secs(2));
@@ -92,7 +88,10 @@ pub async fn ensure_periodic_retention_job(pool: &PgPool) -> Result<Option<Uuid>
     Ok(Some(id))
 }
 
-fn retention_job_is_due(previous: Option<(&str, DateTime<Utc>)>, now: DateTime<Utc>) -> bool {
+pub(super) fn retention_job_is_due(
+    previous: Option<(&str, DateTime<Utc>)>,
+    now: DateTime<Utc>,
+) -> bool {
     match previous {
         None => true,
         Some(("queued" | "running", _)) => false,

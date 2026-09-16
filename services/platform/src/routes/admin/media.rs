@@ -1,6 +1,42 @@
-use crate::{models::MediaAsset, services::media};
+use super::*;
 
-async fn upload_media_asset(
+pub(super) use crate::{
+    models::MediaAsset,
+    services::{
+        media,
+        media_assets::{self, MediaAssetFilter},
+    },
+};
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct MediaAssetListQuery {
+    pub(super) cursor: Option<String>,
+    pub(super) limit: Option<usize>,
+    pub(super) q: Option<String>,
+}
+
+pub(super) async fn list_media_assets(
+    State(state): State<AppState>,
+    Extension(principal): Extension<AdminPrincipal>,
+    Query(query): Query<MediaAssetListQuery>,
+) -> Result<Json<media_assets::MediaAssetPage>, ApiError> {
+    require_media_read(&principal)?;
+    let filter = MediaAssetFilter::parse(query.q)?;
+    Ok(Json(
+        media_assets::list_media_assets(
+            &state,
+            filter,
+            CursorQuery {
+                cursor: query.cursor,
+                limit: query.limit,
+            },
+        )
+        .await?,
+    ))
+}
+
+pub(super) async fn upload_media_asset(
     State(state): State<AppState>,
     Extension(principal): Extension<AdminPrincipal>,
     headers: HeaderMap,
@@ -19,19 +55,19 @@ async fn upload_media_asset(
     Ok(crate::routes::accepted(StatusCode::CREATED, asset))
 }
 
-async fn get_media_asset(
+pub(super) async fn get_media_asset(
     State(state): State<AppState>,
     Extension(principal): Extension<AdminPrincipal>,
     Path(asset_id): Path<Uuid>,
 ) -> Result<Json<MediaAsset>, ApiError> {
     require_media_read(&principal)?;
-    let pool = crate::services::cms_content::require_postgres(&state)?;
+    let pool = &state.pool;
     Ok(Json(
         crate::services::media_assets::load_media_asset(pool, asset_id).await?,
     ))
 }
 
-async fn list_media_references(
+pub(super) async fn list_media_references(
     State(state): State<AppState>,
     Extension(principal): Extension<AdminPrincipal>,
     Path(asset_id): Path<Uuid>,
@@ -43,7 +79,7 @@ async fn list_media_references(
     ))
 }
 
-fn require_media_write(principal: &AdminPrincipal) -> Result<(), ApiError> {
+pub(super) fn require_media_write(principal: &AdminPrincipal) -> Result<(), ApiError> {
     if principal.has_permission("media.write") {
         Ok(())
     } else {
@@ -53,7 +89,7 @@ fn require_media_write(principal: &AdminPrincipal) -> Result<(), ApiError> {
     }
 }
 
-fn require_media_read(principal: &AdminPrincipal) -> Result<(), ApiError> {
+pub(super) fn require_media_read(principal: &AdminPrincipal) -> Result<(), ApiError> {
     if principal.has_permission("media.write") || principal.has_permission("content.read") {
         Ok(())
     } else {

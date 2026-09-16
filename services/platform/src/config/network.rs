@@ -1,7 +1,9 @@
+use super::*;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct IpCidr {
-    network: IpAddr,
-    prefix_len: u8,
+    pub(super) network: IpAddr,
+    pub(super) prefix_len: u8,
 }
 
 impl IpCidr {

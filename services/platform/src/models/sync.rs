@@ -1,3 +1,5 @@
+use super::*;
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum SyncRunStatus {

@@ -11,19 +11,18 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::Row;
 use uuid::Uuid;
 
+use crate::services::public_content::load_published_product_rows;
 use crate::{
     error::ApiError,
     idempotency::{begin as begin_idempotency, IdempotencyOutcome},
     models::{
         AcceptedResponse, AnalyticsConsentReceipt, AnalyticsEventReceipt, CmsContentKind,
-        ContactRequest, ContentPreviewResponse, CreateAnalyticsConsent, CreateAnalyticsEvent,
-        CreateContactRequest, CreateRfqRequest, CursorPage, Product, ProductFamily, ProductQuery,
-        RfqJourney, RfqSubmission, SelectorRequest, SelectorResponse,
+        ContactRequest, CreateAnalyticsConsent, CreateAnalyticsEvent, CreateContactRequest,
+        CreateRfqRequest, CursorPage, Product, ProductFamily, ProductQuery, RfqJourney,
+        RfqSubmission, SelectorRequest, SelectorResponse,
     },
-    preview_token::PreviewTokenError,
     rate_limit::{
         enforce_public_rate_limit, ANALYTICS_CONSENT_POLICY, ANALYTICS_POLICY, CONTACT_POLICY,
         RFQ_POLICY,
@@ -34,7 +33,6 @@ use crate::{
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/content-preview", get(get_content_preview))
         .route("/content/{kind}/{slug}", get(get_content))
         .route("/products", get(list_products))
         .route("/products/{slug}", get(get_product))
@@ -52,14 +50,33 @@ pub fn router() -> Router<AppState> {
 pub const ANALYTICS_POLICY_VERSION: &str = "analytics-v1";
 const ANALYTICS_CONSENT_LIFETIME_DAYS: i64 = 180;
 
-include!("public/preview.rs");
-include!("public/discovery.rs");
-include!("public/content_and_products.rs");
-include!("public/submissions.rs");
-include!("public/published_data.rs");
-include!("public/media.rs");
-include!("public/selector_and_rfq_validation.rs");
-include!("public/rfq_context_validation.rs");
-include!("public/contact_validation.rs");
-include!("public/analytics_validation.rs");
-include!("public/tests.rs");
+#[path = "public/discovery.rs"]
+mod discovery;
+use discovery::*;
+#[path = "public/content_and_products.rs"]
+mod content_and_products;
+use content_and_products::*;
+#[path = "public/submissions.rs"]
+mod submissions;
+use submissions::*;
+#[path = "public/published_data.rs"]
+mod published_data;
+use published_data::*;
+#[path = "public/media.rs"]
+mod media;
+use media::*;
+#[path = "public/selector_and_rfq_validation.rs"]
+mod selector_and_rfq_validation;
+use selector_and_rfq_validation::*;
+#[path = "public/rfq_context_validation.rs"]
+mod rfq_context_validation;
+use rfq_context_validation::*;
+#[path = "public/contact_validation.rs"]
+mod contact_validation;
+use contact_validation::*;
+#[path = "public/analytics_validation.rs"]
+mod analytics_validation;
+use analytics_validation::*;
+#[cfg(test)]
+#[path = "public/tests.rs"]
+mod tests;

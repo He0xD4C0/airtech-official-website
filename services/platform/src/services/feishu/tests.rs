@@ -1,13 +1,13 @@
 #[cfg(test)]
-mod tests {
+mod cases {
     use std::collections::BTreeSet;
 
     use serde_json::json;
 
-    use super::{conflicting_diffs, three_way_diff, validate_staging_payload};
+    use super::super::{conflicting_diffs, three_way_diff, validate_staging_payload};
 
     #[test]
-    fn detects_source_owned_three_way_conflict() {
+    pub(super) fn detects_source_owned_three_way_conflict() {
         let base = json!({"model": "A", "site": {"seoTitle": "Old"}});
         let local = json!({"model": "LOCAL", "site": {"seoTitle": "New"}});
         let incoming = json!({"model": "FEISHU", "site": {"seoTitle": "Old"}});
@@ -19,7 +19,7 @@ mod tests {
     }
 
     #[test]
-    fn verified_values_require_product_master_provenance() {
+    pub(super) fn verified_values_require_product_master_provenance() {
         let issues = validate_staging_payload(&json!({
             "stableId": "source-record-id",
             "sourceRevision": "revision-id",
@@ -32,7 +32,7 @@ mod tests {
     }
 
     #[test]
-    fn validates_verified_pq_units_provenance_and_monotonic_points() {
+    pub(super) fn validates_verified_pq_units_provenance_and_monotonic_points() {
         let issues = validate_staging_payload(&json!({
             "stableId": "AT_VALIDATED-001",
             "model": "VALIDATED-MODEL",
@@ -61,7 +61,7 @@ mod tests {
     }
 
     #[test]
-    fn accepts_a_traceable_normalized_verified_product_payload() {
+    pub(super) fn accepts_a_traceable_normalized_verified_product_payload() {
         let issues = validate_staging_payload(&json!({
             "stableId": "AT_VALIDATED-001",
             "model": "VALIDATED-MODEL",
@@ -93,7 +93,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_duplicate_specification_keys_and_unverified_values_without_state() {
+    pub(super) fn rejects_duplicate_specification_keys_and_unverified_values_without_state() {
         let issues = validate_staging_payload(&json!({
             "stableId": "AT_VALIDATED-001",
             "sourceRevision": "revision-id",

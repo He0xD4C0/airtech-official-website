@@ -19,9 +19,7 @@ pub async fn deliver_media_asset(
     download: bool,
     request_headers: &HeaderMap,
 ) -> Result<Response, ApiError> {
-    let pool = state.pool.as_ref().ok_or_else(|| {
-        ApiError::service_unavailable("PostgreSQL persistence is required for media delivery.")
-    })?;
+    let pool = &state.pool;
     let row = sqlx::query(
         r#"SELECT storage_key,media_type,original_name,checksum,storage_backend,byte_size
            FROM media_assets WHERE id=$1 AND deleted_at IS NULL"#,

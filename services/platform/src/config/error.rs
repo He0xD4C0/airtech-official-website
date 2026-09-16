@@ -1,3 +1,5 @@
+use super::*;
+
 #[derive(Debug, Error)]
 pub enum ConfigError {
     #[error("AIRTEK_API_HOST is not a valid IP address: {0}")]
@@ -10,10 +12,6 @@ pub enum ConfigError {
     InvalidTotpEncryptionKey,
     #[error("AIRTEK_TOTP_ENCRYPTION_KEY is required in production builds")]
     MissingTotpEncryptionKey,
-    #[error("AIRTEK_PREVIEW_SIGNING_KEY must be Base64 for exactly 32 bytes")]
-    InvalidPreviewSigningKey,
-    #[error("AIRTEK_PREVIEW_SIGNING_KEY is required in production builds")]
-    MissingPreviewSigningKey,
     #[error("AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY must be Base64 for exactly 32 bytes")]
     InvalidInvitationReplayEncryptionKey,
     #[error("AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY is required in production builds")]

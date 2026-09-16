@@ -1,86 +1,34 @@
-async fn list_users(
+use super::*;
+
+pub(super) async fn list_users(
     State(state): State<AppState>,
     Query(query): Query<IdentityListQuery>,
 ) -> Result<Json<crate::models::AdminUserPage>, ApiError> {
-    let search = identity_query_text(query.q)?.map(|value| value.to_lowercase());
+    let search = identity_query_text(query.q)?;
     let status = query
         .status
         .map(|value| match value.as_str() {
             "invited" | "active" | "disabled" => Ok(value),
-            _ => Err(ApiError::bad_request("status is not a controlled user state.")),
+            _ => Err(ApiError::bad_request(
+                "status is not a controlled user state.",
+            )),
         })
         .transpose()?;
-    let mut users = if let Some(pool) = &state.pool {
-        let rows = sqlx::query(
-            r#"SELECT user_account.id,user_account.email,user_account.display_name,
-                      user_account.locale,user_account.status,user_account.revision,
-                      user_account.totp_confirmed_at IS NOT NULL AS totp_enabled,
-                      user_account.invited_at,user_account.last_login_at,
-                      user_account.created_at,user_account.updated_at,
-                      COALESCE(array_agg(role.key ORDER BY role.key)
-                        FILTER (WHERE role.key IS NOT NULL),ARRAY[]::text[]) AS roles
-               FROM users user_account
-               LEFT JOIN user_roles assignment ON assignment.user_id=user_account.id
-               LEFT JOIN roles role ON role.id=assignment.role_id
-               GROUP BY user_account.id ORDER BY user_account.created_at DESC"#,
+    Ok(Json(
+        crate::services::identity::list_users(
+            &state,
+            search.as_deref(),
+            status.as_deref(),
+            CursorQuery {
+                cursor: query.cursor,
+                limit: query.limit,
+            },
         )
-        .fetch_all(pool)
-        .await?;
-        rows.into_iter()
-            .map(decode_admin_user)
-            .collect::<Result<Vec<_>, _>>()?
-    } else {
-        let now = Utc::now();
-        state
-            .data
-            .read()
-            .await
-            .admin_users
-            .values()
-            .map(|user| AdminUserRecord {
-                id: user.id,
-                email: user.email.clone(),
-                display_name: user.display_name.clone(),
-                locale: "zh-CN".into(),
-                status: if user.active { "active" } else { "disabled" }.into(),
-                revision: 1,
-                roles: vec![user.role.clone()],
-                totp_enabled: user.totp_enabled,
-                invited_at: None,
-                last_login_at: None,
-                created_at: now,
-                updated_at: now,
-            })
-            .collect()
-    };
-    users.sort_by_key(|user| std::cmp::Reverse(user.created_at));
-    users.retain(|user| {
-        status.as_ref().is_none_or(|value| &user.status == value)
-            && search.as_ref().is_none_or(|needle| {
-                format!("{} {} {}", user.display_name, user.email, user.roles.join(" "))
-                    .to_lowercase()
-                    .contains(needle)
-            })
-    });
-    let total = users.len();
-    let scope = format!("admin.users|{search:?}|{status:?}");
-    let page = crate::pagination::paginate_by_id_scoped(
-        &scope,
-        users,
-        CursorQuery {
-            cursor: query.cursor,
-            limit: query.limit,
-        },
-        |user| user.id,
-    )?;
-    Ok(Json(crate::models::AdminUserPage {
-        items: page.items,
-        next_cursor: page.next_cursor,
-        total,
-    }))
+        .await?,
+    ))
 }
 
-async fn get_user(
+pub(super) async fn get_user(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Response, ApiError> {
@@ -88,7 +36,7 @@ async fn get_user(
     Ok(entity_response(StatusCode::OK, &user, user.revision))
 }
 
-async fn update_user(
+pub(super) async fn update_user(
     State(state): State<AppState>,
     Extension(principal): Extension<AdminPrincipal>,
     Path(id): Path<Uuid>,
@@ -136,34 +84,12 @@ async fn update_user(
             "The administrator changed; reload before saving.",
         ));
     }
-    let after = if let Some(pool) = &state.pool {
+    let after = {
+        let pool = &state.pool;
         let mut transaction = pool.begin().await?;
-        sqlx::query("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
-            .execute(&mut *transaction)
-            .await?;
-        // Serialize every identity update that can change the active Super
-        // Admin set. Locking only the current user rows permits two concurrent
-        // removals to both observe another administrator.
-        sqlx::query(
-            "SELECT pg_advisory_xact_lock(hashtextextended('airtek.identity.super-admin',0))",
-        )
-        .execute(&mut *transaction)
-        .await?;
-        let target = sqlx::query(
-            r#"SELECT account.status,
-                      EXISTS(
-                        SELECT 1 FROM user_roles assignment
-                        JOIN roles role ON role.id=assignment.role_id
-                        WHERE assignment.user_id=account.id AND role.key='super-admin'
-                      ) AS is_super_admin
-               FROM users account WHERE account.id=$1 FOR UPDATE"#,
-        )
-        .bind(id)
-        .fetch_optional(&mut *transaction)
-        .await?
-        .ok_or_else(|| ApiError::not_found("Administrator was not found."))?;
-        let current_status: String = target.try_get("status")?;
-        let is_super_admin: bool = target.try_get("is_super_admin")?;
+        let target = crate::services::identity::prepare_user_update(&mut transaction, id).await?;
+        let current_status = target.status;
+        let is_super_admin = target.is_super_admin;
         let target_status_is_active =
             update.status.as_deref().unwrap_or(&current_status) == "active";
         let target_keeps_super_admin = update
@@ -175,14 +101,8 @@ async fn update_user(
             && is_super_admin
             && (!target_status_is_active || !target_keeps_super_admin);
         if removes_super_admin {
-            let active_super_admin_count = sqlx::query_scalar::<_, i64>(
-                r#"SELECT count(DISTINCT account.id) FROM users account
-                   JOIN user_roles assignment ON assignment.user_id=account.id
-                   JOIN roles role ON role.id=assignment.role_id
-                   WHERE account.status='active' AND role.key='super-admin'"#,
-            )
-            .fetch_one(&mut *transaction)
-            .await?;
+            let active_super_admin_count =
+                crate::services::identity::active_super_admin_count(&mut transaction).await?;
             if active_super_admin_count <= 1 {
                 transaction.rollback().await?;
                 return Err(ApiError::conflict(
@@ -190,56 +110,31 @@ async fn update_user(
                 ));
             }
         }
-        let result = sqlx::query(
-            r#"UPDATE users SET display_name=COALESCE($2,display_name),
-                      locale=COALESCE($3,locale),status=COALESCE($4,status),updated_at=$5,
-                      revision=revision+1
-               WHERE id=$1 AND revision=$6"#,
-        )
-        .bind(id)
-        .bind(update.display_name.as_deref())
-        .bind(update.locale.as_deref())
-        .bind(update.status.as_deref())
-        .bind(Utc::now())
-        .bind(expected)
-        .execute(&mut *transaction)
-        .await?;
-        if result.rows_affected() != 1 {
+        if crate::services::identity::update_user_record(&mut transaction, id, &update, expected)
+            .await?
+            != 1
+        {
             transaction.rollback().await?;
             return Err(ApiError::conflict(
                 "The administrator changed; reload before saving.",
             ));
         }
         if let Some(role_keys) = &update.role_keys {
-            validate_roles(&mut transaction, role_keys).await?;
-            sqlx::query("DELETE FROM user_roles WHERE user_id=$1")
-                .bind(id)
-                .execute(&mut *transaction)
-                .await?;
-            sqlx::query(
-                "INSERT INTO user_roles(user_id,role_id) SELECT $1,id FROM roles WHERE key=ANY($2)",
-            )
-            .bind(id)
-            .bind(role_keys)
-            .execute(&mut *transaction)
-            .await?;
+            crate::services::identity::replace_user_roles(&mut transaction, id, role_keys).await?;
         }
         if let Some(status) = &update.status {
             if status != &before.status {
-                sqlx::query(
-                    r#"INSERT INTO user_status_history
-                       (id,user_id,from_status,to_status,reason,changed_by,request_id,changed_at)
-                       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)"#,
+                crate::services::identity::insert_user_status_history(
+                    &mut transaction,
+                    crate::services::identity::UserStatusHistory {
+                        user_id: id,
+                        from_status: &before.status,
+                        to_status: status,
+                        reason: &update.reason,
+                        changed_by: principal.user_id,
+                        request_id: request_id(&headers),
+                    },
                 )
-                .bind(Uuid::new_v4())
-                .bind(id)
-                .bind(&before.status)
-                .bind(status)
-                .bind(&update.reason)
-                .bind(principal.user_id)
-                .bind(request_id(&headers))
-                .bind(Utc::now())
-                .execute(&mut *transaction)
                 .await?;
             }
         }
@@ -253,109 +148,35 @@ async fn update_user(
             Some(json!(after)),
             Some(update.reason),
         );
-        insert_audit_event_in_transaction(&mut transaction, &audit).await?;
+        crate::services::audit_log::insert_in_transaction(&mut transaction, &audit).await?;
         let staged = idempotency
             .stage_in_transaction(&mut transaction, &after, StatusCode::OK)
             .await?;
         transaction.commit().await?;
         staged.finish().await?;
         after
-    } else {
-        let removes_super_admin = before.status == "active"
-            && before.roles.iter().any(|role| role == "super-admin")
-            && (update
-                .status
-                .as_deref()
-                .is_some_and(|status| status != "active")
-                || update
-                    .role_keys
-                    .as_ref()
-                    .is_some_and(|roles| !roles.iter().any(|role| role == "super-admin")));
-        let mut data = state.data.write().await;
-        if removes_super_admin
-            && data
-                .admin_users
-                .values()
-                .filter(|user| user.active && user.role == "super-admin")
-                .count()
-                <= 1
-        {
-            return Err(ApiError::conflict(
-                "The last active Super Admin cannot become non-active or lose that role.",
-            ));
-        }
-        if let Some(user) = data.admin_users.get_mut(&id) {
-            if let Some(display_name) = &update.display_name {
-                user.display_name = display_name.clone();
-            }
-            if let Some(status) = &update.status {
-                user.active = status == "active";
-            }
-            if let Some(roles) = &update.role_keys {
-                user.role = roles.first().cloned().unwrap_or_else(|| "auditor".into());
-            }
-        }
-        drop(data);
-        let after = load_admin_user(&state, id).await?;
-        audit_mutation(
-            &state,
-            &headers,
-            "identity.user.update",
-            "user",
-            Some(id),
-            Some(json!(before)),
-            Some(json!(after)),
-            Some(update.reason),
-        )
-        .await?;
-        idempotency.complete(&state, &after, StatusCode::OK).await?;
-        after
     };
     Ok(entity_response(StatusCode::OK, &after, after.revision))
 }
 
-async fn revoke_user_sessions(
+pub(super) async fn revoke_user_sessions(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
     headers: HeaderMap,
 ) -> Result<StatusCode, ApiError> {
-    if let Some(pool) = &state.pool {
-        let mut transaction = pool.begin().await?;
-        let sessions_revoked = sqlx::query(
-            "UPDATE sessions SET revoked_at=COALESCE(revoked_at,now()) WHERE user_id=$1 AND revoked_at IS NULL",
-        )
-        .bind(id)
-        .execute(&mut *transaction)
-        .await?
-        .rows_affected();
-        let audit = mutation_audit_event(
-            &headers,
-            "identity.sessions.revoke",
-            "user",
-            Some(id),
-            None,
-            Some(json!({"sessionsRevoked": sessions_revoked})),
-            Some("Revoke all sessions for administrator".into()),
-        );
-        insert_audit_event_in_transaction(&mut transaction, &audit).await?;
-        transaction.commit().await?;
-    } else {
-        for session in state.data.write().await.admin_sessions.values_mut() {
-            if session.user_id == id {
-                session.revoked = true;
-            }
-        }
-        audit_mutation(
-            &state,
-            &headers,
-            "identity.sessions.revoke",
-            "user",
-            Some(id),
-            None,
-            Some(json!({"sessionsRevoked": true})),
-            Some("Revoke all sessions for administrator".into()),
-        )
-        .await?;
-    }
+    let mut transaction = state.pool.begin().await?;
+    let sessions_revoked =
+        crate::services::identity::revoke_user_sessions(&mut transaction, id).await?;
+    let audit = mutation_audit_event(
+        &headers,
+        "identity.sessions.revoke",
+        "user",
+        Some(id),
+        None,
+        Some(json!({"sessionsRevoked": sessions_revoked})),
+        Some("Revoke all sessions for administrator".into()),
+    );
+    crate::services::audit_log::insert_in_transaction(&mut transaction, &audit).await?;
+    transaction.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }

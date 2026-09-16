@@ -1,3 +1,5 @@
+use super::*;
+
 pub const API_PORT: u16 = 8080;
 
 /// Exact, deployment-owned authority registration for a production Product
@@ -23,9 +25,6 @@ pub struct Config {
     /// Deployment-provided AEAD key used only to seal TOTP secrets at rest.
     /// The wrapper intentionally redacts its Debug representation.
     pub totp_encryption_key: Option<TotpEncryptionKey>,
-    /// Dedicated deployment key used only for short-lived content preview
-    /// signatures. It is deliberately independent from the TOTP AEAD key.
-    pub preview_signing_key: Option<PreviewSigningKey>,
     /// Independent AEAD key used only for the short-lived encrypted replay of
     /// one-time invitation tokens. The database never stores a plaintext
     /// invitation token, while a client retry can still recover the exact
@@ -35,8 +34,7 @@ pub struct Config {
     /// fields such as price. It is never reused for authentication secrets.
     pub product_staging_encryption_key: Option<ProductStagingEncryptionKey>,
     /// Independent HMAC key for analytics visit capabilities. Keeping it
-    /// separate prevents an analytics token from becoming a signing oracle for
-    /// content preview or authentication material.
+    /// separate prevents an analytics token from becoming an authentication oracle.
     pub analytics_token_hmac_key: Option<AnalyticsTokenHmacKey>,
     pub guest_raw_retention_days: i64,
     pub guest_aggregate_retention_months: i64,
@@ -74,7 +72,6 @@ impl fmt::Debug for Config {
                 &self.admin_bootstrap_token.as_ref().map(|_| "[configured]"),
             )
             .field("totp_encryption_key", &self.totp_encryption_key)
-            .field("preview_signing_key", &self.preview_signing_key)
             .field(
                 "invitation_replay_encryption_key",
                 &self.invitation_replay_encryption_key,

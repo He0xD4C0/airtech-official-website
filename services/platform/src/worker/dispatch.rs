@@ -1,12 +1,11 @@
+use super::*;
+
 /// Claim and execute at most one durable job. The long-running worker uses the
 /// same entrypoint as integration tests and bounded operational invocations,
 /// which keeps retry and operation-status behavior observable without a
 /// second implementation.
 pub async fn run_one_pending_job(state: &AppState) -> Result<(), ApiError> {
-    let pool = state
-        .pool
-        .as_ref()
-        .ok_or_else(|| ApiError::service_unavailable("PostgreSQL is required for the worker."))?;
+    let pool = &state.pool;
     claim_and_run(
         pool,
         state.config.guest_raw_retention_days,
@@ -22,7 +21,7 @@ pub async fn run_one_pending_outbox_event(pool: &PgPool) -> Result<(), ApiError>
     claim_outbox_event(pool).await
 }
 
-async fn claim_outbox_event(pool: &PgPool) -> Result<(), ApiError> {
+pub(super) async fn claim_outbox_event(pool: &PgPool) -> Result<(), ApiError> {
     let mut transaction = pool.begin().await?;
     let row = sqlx::query(
         r#"SELECT id, topic, aggregate_id, payload, attempts, max_attempts
@@ -94,7 +93,7 @@ async fn claim_outbox_event(pool: &PgPool) -> Result<(), ApiError> {
     Ok(())
 }
 
-fn is_public_projection_topic(topic: &str) -> bool {
+pub(super) fn is_public_projection_topic(topic: &str) -> bool {
     matches!(
         topic,
         "public.content.published"
@@ -105,7 +104,7 @@ fn is_public_projection_topic(topic: &str) -> bool {
     )
 }
 
-async fn claim_and_run(
+pub(super) async fn claim_and_run(
     pool: &PgPool,
     guest_raw_retention_days: i64,
     guest_aggregate_retention_months: i64,
@@ -185,15 +184,8 @@ async fn claim_and_run(
             }
         }
         Err(detail) => {
-            if !persist_job_failure(
-                pool,
-                &lease,
-                &job_type,
-                attempts,
-                max_attempts,
-                &detail,
-            )
-            .await?
+            if !persist_job_failure(pool, &lease, &job_type, attempts, max_attempts, &detail)
+                .await?
             {
                 tracing::warn!(job_id = %id, job_type = %job_type, "discarded failed job result after lease ownership changed");
             }
@@ -202,14 +194,14 @@ async fn claim_and_run(
     Ok(())
 }
 
-const EXPIRED_ATTEMPT_BUDGET_ERROR: &str =
+pub(super) const EXPIRED_ATTEMPT_BUDGET_ERROR: &str =
     "job_lease_expired: the prior worker exhausted the attempt budget without a durable result";
 
 /// Finalize one abandoned last attempt before claiming new work. The row lock
 /// and old-owner predicate make the job, operation, and related state one
 /// owner-fenced transaction. A worker that eventually returns with the stale
 /// owner can no longer overwrite this terminal result.
-async fn terminalize_one_expired_exhausted_job(
+pub(super) async fn terminalize_one_expired_exhausted_job(
     transaction: &mut Transaction<'_, Postgres>,
 ) -> Result<bool, ApiError> {
     let row = sqlx::query(
@@ -264,13 +256,7 @@ async fn terminalize_one_expired_exhausted_job(
         .bind(&output)
         .execute(&mut **transaction)
         .await?;
-    persist_related_failure(
-        transaction,
-        id,
-        &job_type,
-        false,
-    )
-    .await?;
+    persist_related_failure(transaction, id, &job_type, false).await?;
     tracing::error!(
         job_id = %id,
         job_type = %job_type,
@@ -280,7 +266,7 @@ async fn terminalize_one_expired_exhausted_job(
     Ok(true)
 }
 
-async fn execute_job(
+pub(super) async fn execute_job(
     pool: &PgPool,
     job_type: &str,
     payload: Value,
@@ -299,20 +285,17 @@ async fn execute_job(
         }
         "productImport" => {
             let import_run_id = product_import_id_from_job_payload(&payload)?;
-            let report = promote_staged_product_import(
-                pool,
-                import_run_id,
-                approved_product_master,
-            )
-                .await
-                .map_err(|error| error.to_string())?;
+            let report =
+                promote_staged_product_import(pool, import_run_id, approved_product_master)
+                    .await
+                    .map_err(|error| error.to_string())?;
             Ok(json!({"import": report}))
         }
         _ => Err("This retired job type is no longer executable.".into()),
     }
 }
 
-fn product_import_id_from_job_payload(payload: &Value) -> Result<Uuid, String> {
+pub(super) fn product_import_id_from_job_payload(payload: &Value) -> Result<Uuid, String> {
     let object = payload
         .as_object()
         .ok_or_else(|| "Product import job payload must contain only importRunId.".to_owned())?;

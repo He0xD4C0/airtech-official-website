@@ -1,4 +1,6 @@
-fn super_admin_permissions() -> Vec<String> {
+use super::*;
+
+pub(super) fn super_admin_permissions() -> Vec<String> {
     #[allow(unused_mut)]
     let mut values = [
         "dashboard.read",
@@ -27,7 +29,8 @@ fn super_admin_permissions() -> Vec<String> {
     values
 }
 
-const MEDIA_ASSET_LIST_PERMISSIONS: &[&str] = &["content.read", "media.write"];
+pub(super) const MEDIA_ASSET_LIST_PERMISSIONS: &[&str] = &["content.read", "media.write"];
+pub(super) const CONTENT_DRAFT_READ_PERMISSIONS: &[&str] = &["content.read", "content.publish"];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AdminPermissionPolicy {
@@ -56,14 +59,13 @@ impl AdminPermissionPolicy {
     }
 }
 
-pub fn permission_policy(
-    path: &str,
-    method: &axum::http::Method,
-) -> Option<AdminPermissionPolicy> {
+pub fn permission_policy(path: &str, method: &axum::http::Method) -> Option<AdminPermissionPolicy> {
     if path.ends_with("/dashboard/summary") && *method == axum::http::Method::GET {
         Some(AdminPermissionPolicy::Authenticated)
     } else if path.ends_with("/media/assets") && *method == axum::http::Method::GET {
         Some(AdminPermissionPolicy::Any(MEDIA_ASSET_LIST_PERMISSIONS))
+    } else if path.contains("/content-drafts") && *method == axum::http::Method::GET {
+        Some(AdminPermissionPolicy::Any(CONTENT_DRAFT_READ_PERMISSIONS))
     } else {
         required_permission(path, method).map(AdminPermissionPolicy::Exact)
     }
@@ -80,6 +82,20 @@ pub fn required_permission(path: &str, method: &axum::http::Method) -> Option<&'
         None
     } else if path.contains("/media/") {
         Some(if write { "media.write" } else { "content.read" })
+    } else if path.contains("/content-reviews") {
+        Some("content.publish")
+    } else if path.contains("/published-content") {
+        Some(if write && path.ends_with("/drafts") {
+            "content.write"
+        } else {
+            "content.read"
+        })
+    } else if path.contains("/content-drafts") {
+        Some(if write {
+            "content.write"
+        } else {
+            "content.read"
+        })
     } else if (path.contains("/content/")
         || path.contains("/news/")
         || path.contains("/general-information/"))
@@ -111,9 +127,7 @@ pub fn required_permission(path: &str, method: &axum::http::Method) -> Option<&'
         })
     } else if path.contains("/feishu/") {
         Some("integration.run")
-    } else if (path.contains("/rfqs/") || path.contains("/contacts/"))
-        && path.ends_with("/pii")
-    {
+    } else if (path.contains("/rfqs/") || path.contains("/contacts/")) && path.ends_with("/pii") {
         Some("rfq.read_pii")
     } else if path.contains("/rfqs") || path.contains("/contacts") {
         Some(if write { "rfq.assign" } else { "rfq.read" })

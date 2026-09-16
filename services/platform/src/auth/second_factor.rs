@@ -1,4 +1,8 @@
-fn totp_encryption_key(state: &AppState) -> Result<&crate::config::TotpEncryptionKey, ApiError> {
+use super::*;
+
+pub(super) fn totp_encryption_key(
+    state: &AppState,
+) -> Result<&crate::config::TotpEncryptionKey, ApiError> {
     state.config.totp_encryption_key.as_ref().ok_or_else(|| {
         ApiError::service_unavailable(
             "TOTP is unavailable until AIRTEK_TOTP_ENCRYPTION_KEY is configured.",
@@ -6,28 +10,19 @@ fn totp_encryption_key(state: &AppState) -> Result<&crate::config::TotpEncryptio
     })
 }
 
-async fn stored_totp_ciphertext(state: &AppState, user_id: Uuid) -> Result<Vec<u8>, ApiError> {
-    if let Some(pool) = &state.pool {
-        return sqlx::query_scalar::<_, Option<Vec<u8>>>(
-            "SELECT totp_secret_ciphertext FROM users WHERE id=$1",
-        )
+pub(super) async fn stored_totp_ciphertext(
+    state: &AppState,
+    user_id: Uuid,
+) -> Result<Vec<u8>, ApiError> {
+    sqlx::query_scalar::<_, Option<Vec<u8>>>("SELECT totp_secret_ciphertext FROM users WHERE id=$1")
         .bind(user_id)
-        .fetch_optional(pool)
+        .fetch_optional(&state.pool)
         .await?
         .flatten()
-        .ok_or_else(|| ApiError::bad_request("Start TOTP enrollment before confirming it."));
-    }
-    state
-        .data
-        .read()
-        .await
-        .admin_users
-        .get(&user_id)
-        .and_then(|user| user.totp_secret_ciphertext.clone())
         .ok_or_else(|| ApiError::bad_request("Start TOTP enrollment before confirming it."))
 }
 
-async fn verify_pending_totp(
+pub(super) async fn verify_pending_totp(
     state: &AppState,
     user_id: Uuid,
     account: &str,
@@ -58,7 +53,7 @@ pub async fn verify_totp_reauthentication(
     Ok(())
 }
 
-async fn verify_principal_totp(
+pub(super) async fn verify_principal_totp(
     state: &AppState,
     principal: &AdminPrincipal,
     code: &str,
@@ -66,7 +61,7 @@ async fn verify_principal_totp(
     verify_pending_totp(state, principal.user_id, &principal.email, code).await
 }
 
-async fn verify_login_second_factor(
+pub(super) async fn verify_login_second_factor(
     state: &AppState,
     user: &StoredUser,
     code: &str,
@@ -87,25 +82,24 @@ async fn verify_login_second_factor(
         .then_some(SecondFactorMethod::RecoveryCode))
 }
 
-async fn consume_recovery_code(
+pub(super) async fn consume_recovery_code(
     state: &AppState,
     user_id: Uuid,
     normalized: &str,
 ) -> Result<bool, ApiError> {
-    if let Some(pool) = &state.pool {
-        let rows = sqlx::query(
-            "SELECT code_hash FROM recovery_codes WHERE user_id=$1 AND used_at IS NULL",
-        )
-        .bind(user_id)
-        .fetch_all(pool)
-        .await?;
-        for row in rows {
-            let encoded = row.try_get::<Vec<u8>, _>("code_hash")?;
-            let Ok(encoded) = String::from_utf8(encoded) else {
-                continue;
-            };
-            if verify_password(&encoded, normalized) {
-                let consumed = sqlx::query(
+    let pool = &state.pool;
+    let rows =
+        sqlx::query("SELECT code_hash FROM recovery_codes WHERE user_id=$1 AND used_at IS NULL")
+            .bind(user_id)
+            .fetch_all(pool)
+            .await?;
+    for row in rows {
+        let encoded = row.try_get::<Vec<u8>, _>("code_hash")?;
+        let Ok(encoded) = String::from_utf8(encoded) else {
+            continue;
+        };
+        if verify_password(&encoded, normalized) {
+            let consumed = sqlx::query(
                     "UPDATE recovery_codes SET used_at=now() WHERE user_id=$1 AND code_hash=$2 AND used_at IS NULL",
                 )
                 .bind(user_id)
@@ -114,25 +108,13 @@ async fn consume_recovery_code(
                 .await?
                 .rows_affected()
                     == 1;
-                return Ok(consumed);
-            }
-        }
-        return Ok(false);
-    }
-    let mut data = state.data.write().await;
-    let Some(codes) = data.recovery_codes.get_mut(&user_id) else {
-        return Ok(false);
-    };
-    for code in codes.iter_mut().filter(|code| !code.used) {
-        if verify_password(&code.hash, normalized) {
-            code.used = true;
-            return Ok(true);
+            return Ok(consumed);
         }
     }
     Ok(false)
 }
 
-fn new_recovery_code_set() -> Result<(Vec<String>, Vec<String>), ApiError> {
+pub(super) fn new_recovery_code_set() -> Result<(Vec<String>, Vec<String>), ApiError> {
     let codes = generate_recovery_codes()?;
     let hashes = codes
         .iter()
@@ -145,78 +127,42 @@ fn new_recovery_code_set() -> Result<(Vec<String>, Vec<String>), ApiError> {
     Ok((codes, hashes))
 }
 
-async fn persist_confirmed_totp(
+pub(super) async fn persist_confirmed_totp(
     state: &AppState,
     user_id: Uuid,
     hashes: &[String],
 ) -> Result<(), ApiError> {
-    if let Some(pool) = &state.pool {
-        let mut transaction = pool.begin().await?;
-        let result = sqlx::query(
-            r#"UPDATE users SET totp_confirmed_at=now(), updated_at=now()
+    let pool = &state.pool;
+    let mut transaction = pool.begin().await?;
+    let result = sqlx::query(
+        r#"UPDATE users SET totp_confirmed_at=now(), updated_at=now()
                WHERE id=$1 AND totp_confirmed_at IS NULL AND totp_secret_ciphertext IS NOT NULL"#,
-        )
-        .bind(user_id)
-        .execute(&mut *transaction)
-        .await?;
-        if result.rows_affected() != 1 {
-            return Err(ApiError::conflict(
-                "TOTP enrollment was already confirmed or is unavailable.",
-            ));
-        }
-        replace_recovery_codes_transaction(&mut transaction, user_id, hashes).await?;
-        transaction.commit().await?;
-        return Ok(());
-    }
-    let mut data = state.data.write().await;
-    let user = data
-        .admin_users
-        .get_mut(&user_id)
-        .ok_or_else(|| ApiError::unauthorized("The admin account is unavailable."))?;
-    if user.totp_enabled || user.totp_secret_ciphertext.is_none() {
+    )
+    .bind(user_id)
+    .execute(&mut *transaction)
+    .await?;
+    if result.rows_affected() != 1 {
         return Err(ApiError::conflict(
             "TOTP enrollment was already confirmed or is unavailable.",
         ));
     }
-    user.totp_enabled = true;
-    data.recovery_codes.insert(
-        user_id,
-        hashes
-            .iter()
-            .map(|hash| StoredRecoveryCode {
-                hash: hash.clone(),
-                used: false,
-            })
-            .collect(),
-    );
+    replace_recovery_codes_transaction(&mut transaction, user_id, hashes).await?;
+    transaction.commit().await?;
     Ok(())
 }
 
-async fn replace_recovery_codes(
+pub(super) async fn replace_recovery_codes(
     state: &AppState,
     user_id: Uuid,
     hashes: &[String],
 ) -> Result<(), ApiError> {
-    if let Some(pool) = &state.pool {
-        let mut transaction = pool.begin().await?;
-        replace_recovery_codes_transaction(&mut transaction, user_id, hashes).await?;
-        transaction.commit().await?;
-    } else {
-        state.data.write().await.recovery_codes.insert(
-            user_id,
-            hashes
-                .iter()
-                .map(|hash| StoredRecoveryCode {
-                    hash: hash.clone(),
-                    used: false,
-                })
-                .collect(),
-        );
-    }
+    let mut transaction = state.pool.begin().await?;
+    replace_recovery_codes_transaction(&mut transaction, user_id, hashes).await?;
+    transaction.commit().await?;
     Ok(())
 }
 
-async fn replace_recovery_codes_transaction(
+pub(super) async fn replace_recovery_codes_transaction(
     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     user_id: Uuid,
     hashes: &[String],
@@ -235,7 +181,7 @@ async fn replace_recovery_codes_transaction(
     Ok(())
 }
 
-async fn record_auth_audit(
+pub(super) async fn record_auth_audit(
     state: &AppState,
     actor: &str,
     action: &str,
@@ -262,6 +208,7 @@ async fn record_auth_audit(
             before: None,
             after: Some(after),
             reason: None,
+            current_version: None,
             request_id,
             occurred_at: Utc::now(),
         })

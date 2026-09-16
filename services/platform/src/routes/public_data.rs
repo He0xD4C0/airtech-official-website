@@ -10,20 +10,18 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use chrono::{Duration, Utc};
-use serde::Deserialize;
-use serde_json::Value;
-use sqlx::Row;
+use chrono::{DateTime, Duration, Utc};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
     config::Config,
     error::ApiError,
     models::{
-        CmsContentKind, ContentTypeFields, CreateGuestVisit, CursorPage, DataClass, GuestVisit,
-        NewsEntry, ProductFamilyPresentation, PublicContentProjection, RouteResolution,
-        SiteBootstrap,
+        CmsContentKind, ContentTypeFields, CreateGuestVisit, CursorPage, DataClass, NewsEntry,
+        ProductFamilyPresentation, PublicContentProjection, RouteResolution, SiteBootstrap,
     },
+    pagination::{decode_scoped_cursor, encode_scoped_cursor},
     routes::etag,
     state::AppState,
 };
@@ -65,13 +63,36 @@ struct NewsQuery {
     limit: Option<usize>,
 }
 
-include!("public_data/bootstrap.rs");
-include!("public_data/motor_technologies.rs");
-include!("public_data/route_resolution.rs");
-include!("public_data/news_and_visits.rs");
-include!("public_data/published_loaders.rs");
-include!("public_data/v2_projection.rs");
-include!("public_data/presentations.rs");
-include!("public_data/privacy_validation.rs");
-include!("public_data/content_helpers.rs");
-include!("public_data/tests.rs");
+#[path = "public_data/bootstrap.rs"]
+mod bootstrap;
+pub(crate) use bootstrap::published_site_shell_has_placeholder;
+use bootstrap::*;
+#[path = "public_data/motor_technologies.rs"]
+mod motor_technologies;
+use motor_technologies::*;
+#[path = "public_data/route_resolution.rs"]
+mod route_resolution;
+use route_resolution::*;
+#[path = "public_data/news_and_visits.rs"]
+mod news_and_visits;
+use news_and_visits::*;
+#[path = "public_data/published_loaders.rs"]
+mod published_loaders;
+pub(crate) use crate::services::public_content::load_v2_content_by_kind_slug;
+use crate::services::public_content::{
+    load_v2_news, load_v2_news_cursor_position, load_v2_route, load_v2_singleton,
+};
+use published_loaders::*;
+#[path = "public_data/presentations.rs"]
+mod presentations;
+use presentations::*;
+#[path = "public_data/privacy_validation.rs"]
+mod privacy_validation;
+pub(crate) use privacy_validation::valid_guest_landing_path;
+use privacy_validation::*;
+#[path = "public_data/content_helpers.rs"]
+mod content_helpers;
+use content_helpers::*;
+#[cfg(test)]
+#[path = "public_data/tests.rs"]
+mod tests;
