@@ -1,6 +1,7 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use uuid::Uuid;
 
 use crate::{error::ApiError, models::CursorPage};
@@ -24,6 +25,20 @@ struct ScopedCursor<T> {
     position: T,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum DecodedCursor<Legacy, Current> {
+    Legacy(Legacy),
+    Current(Current),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawScopedCursor {
+    version: u8,
+    scope: String,
+    position: Value,
+}
+
 pub fn cursor_limit(query: &CursorQuery) -> Result<usize, ApiError> {
     let limit = query.limit.unwrap_or(DEFAULT_LIMIT);
     if !(1..=MAX_LIMIT).contains(&limit) {
@@ -34,7 +49,7 @@ pub fn cursor_limit(query: &CursorQuery) -> Result<usize, ApiError> {
 
 pub fn encode_scoped_cursor<T: Serialize>(scope: &str, position: &T) -> Result<String, ApiError> {
     serde_json::to_vec(&ScopedCursor {
-        version: 1,
+        version: 2,
         scope: scope.into(),
         position,
     })
@@ -43,16 +58,47 @@ pub fn encode_scoped_cursor<T: Serialize>(scope: &str, position: &T) -> Result<S
 }
 
 pub fn decode_scoped_cursor<T: DeserializeOwned>(scope: &str, value: &str) -> Result<T, ApiError> {
+    let cursor = decode_raw_cursor(scope, value)?;
+    if cursor.version != 2 {
+        return Err(invalid_cursor());
+    }
+    serde_json::from_value(cursor.position).map_err(|_| invalid_cursor())
+}
+
+pub fn decode_scoped_cursor_compat<Legacy, Current>(
+    scope: &str,
+    value: &str,
+) -> Result<DecodedCursor<Legacy, Current>, ApiError>
+where
+    Legacy: DeserializeOwned,
+    Current: DeserializeOwned,
+{
+    let cursor = decode_raw_cursor(scope, value)?;
+    match cursor.version {
+        1 => serde_json::from_value(cursor.position)
+            .map(DecodedCursor::Legacy)
+            .map_err(|_| invalid_cursor()),
+        2 => serde_json::from_value(cursor.position)
+            .map(DecodedCursor::Current)
+            .map_err(|_| invalid_cursor()),
+        _ => Err(invalid_cursor()),
+    }
+}
+
+fn decode_raw_cursor(scope: &str, value: &str) -> Result<RawScopedCursor, ApiError> {
     if value.is_empty() || value.len() > MAX_CURSOR_BYTES {
-        return Err(ApiError::bad_request("cursor is invalid."));
+        return Err(invalid_cursor());
     }
     URL_SAFE_NO_PAD
         .decode(value)
         .ok()
-        .and_then(|value| serde_json::from_slice::<ScopedCursor<T>>(&value).ok())
-        .filter(|cursor| cursor.version == 1 && cursor.scope == scope)
-        .map(|cursor| cursor.position)
-        .ok_or_else(|| ApiError::bad_request("cursor is invalid or belongs to another list."))
+        .and_then(|value| serde_json::from_slice::<RawScopedCursor>(&value).ok())
+        .filter(|cursor| cursor.scope == scope)
+        .ok_or_else(invalid_cursor)
+}
+
+fn invalid_cursor() -> ApiError {
+    ApiError::bad_request("cursor is invalid or belongs to another list.")
 }
 
 pub fn paginate_by_id<T>(
@@ -187,5 +233,47 @@ mod tests {
             &cursor
         )
         .is_err());
+    }
+
+    #[test]
+    fn compatibility_decoder_distinguishes_v1_and_v2_positions() {
+        #[derive(Debug, PartialEq, Serialize, Deserialize)]
+        struct Position {
+            created_at: String,
+            id: Uuid,
+        }
+
+        let legacy_id = Uuid::new_v4();
+        let legacy = URL_SAFE_NO_PAD.encode(
+            serde_json::to_vec(&ScopedCursor {
+                version: 1,
+                scope: "admin.test".to_owned(),
+                position: legacy_id,
+            })
+            .unwrap(),
+        );
+        assert_eq!(
+            decode_scoped_cursor_compat::<Uuid, Position>("admin.test", &legacy).unwrap(),
+            DecodedCursor::Legacy(legacy_id)
+        );
+        assert!(decode_scoped_cursor::<Uuid>("admin.test", &legacy).is_err());
+
+        let current_position = Position {
+            created_at: "2026-09-16T00:00:00Z".into(),
+            id: Uuid::new_v4(),
+        };
+        let current = encode_scoped_cursor("admin.test", &current_position).unwrap();
+        assert_eq!(
+            decode_scoped_cursor_compat::<Uuid, Position>("admin.test", &current).unwrap(),
+            DecodedCursor::Current(current_position)
+        );
+    }
+
+    #[test]
+    fn strict_decoder_rejects_malformed_and_oversized_values() {
+        assert!(decode_scoped_cursor::<Uuid>("admin.test", "not-base64").is_err());
+        assert!(
+            decode_scoped_cursor::<Uuid>("admin.test", &"x".repeat(MAX_CURSOR_BYTES + 1)).is_err()
+        );
     }
 }

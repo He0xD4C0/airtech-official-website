@@ -1,9 +1,7 @@
-use chrono::Utc;
 use serde_json::Value;
 use sqlx::{PgPool, Postgres, Row, Transaction};
 use uuid::Uuid;
 
-use super::InboxFilter;
 use crate::{
     error::ApiError,
     models::{
@@ -106,95 +104,6 @@ pub(super) async fn insert_status_history(
     Ok(())
 }
 
-pub(super) async fn list_in_memory(
-    state: &AppState,
-    entity_type: BusinessEntityType,
-    filter: &InboxFilter,
-) -> Result<Vec<BusinessInboxItem>, ApiError> {
-    let now = Utc::now();
-    let data = state.data.read().await;
-    let values = match entity_type {
-        BusinessEntityType::Rfq => data
-            .rfqs
-            .values()
-            .map(|value| memory_rfq(value, now))
-            .collect(),
-        BusinessEntityType::Contact => data
-            .contacts
-            .values()
-            .map(|value| memory_contact(value, now))
-            .collect(),
-    };
-    Ok(apply_memory_filter(values, filter))
-}
-
-fn memory_rfq(value: &RfqSubmission, updated_at: chrono::DateTime<Utc>) -> BusinessInboxItem {
-    BusinessInboxItem {
-        id: value.id,
-        entity_type: BusinessEntityType::Rfq,
-        reference: value.reference.clone(),
-        journey: Some(value.request.journey),
-        topic: None,
-        organization: value.request.contact.company.clone(),
-        country_or_region: value.request.contact.country_or_region.clone(),
-        product_context: value.request.product_context.clone(),
-        source_path: value.request.source_path.clone(),
-        locale: value.request.locale.clone(),
-        consent: value.request.consent,
-        status: parse_status(value.status.clone()).unwrap_or(BusinessInboxStatus::New),
-        revision: 1,
-        assigned_to: None,
-        submitted_at: value.submitted_at,
-        updated_at,
-        retention_until: value.retention_until,
-    }
-}
-
-fn memory_contact(value: &ContactRequest, updated_at: chrono::DateTime<Utc>) -> BusinessInboxItem {
-    BusinessInboxItem {
-        id: value.id,
-        entity_type: BusinessEntityType::Contact,
-        reference: value.reference.clone(),
-        journey: None,
-        topic: Some(value.request.topic.clone()),
-        organization: value.request.contact.company.clone(),
-        country_or_region: value.request.contact.country_or_region.clone(),
-        product_context: None,
-        source_path: value.request.source_path.clone(),
-        locale: value.request.locale.clone(),
-        consent: value.request.consent,
-        status: parse_status(value.status.clone()).unwrap_or(BusinessInboxStatus::New),
-        revision: 1,
-        assigned_to: None,
-        submitted_at: value.submitted_at,
-        updated_at,
-        retention_until: value.retention_until,
-    }
-}
-
-fn apply_memory_filter(
-    mut values: Vec<BusinessInboxItem>,
-    filter: &InboxFilter,
-) -> Vec<BusinessInboxItem> {
-    values.retain(|item| {
-        filter.status.is_none_or(|status| item.status == status)
-            && filter
-                .assigned_to
-                .is_none_or(|assigned| item.assigned_to == Some(assigned))
-            && filter.query.as_ref().is_none_or(|query| {
-                let haystack = format!(
-                    "{} {} {}",
-                    item.reference,
-                    item.organization.as_deref().unwrap_or(""),
-                    item.country_or_region.as_deref().unwrap_or("")
-                );
-                haystack.to_lowercase().contains(&query.to_lowercase())
-            })
-    });
-    values.sort_by_key(|item| std::cmp::Reverse((item.updated_at, item.id)));
-    values
-}
-
 pub(super) fn note_from_row(row: sqlx::postgres::PgRow) -> Result<BusinessInternalNote, ApiError> {
     Ok(BusinessInternalNote {
         id: row.try_get("id")?,
@@ -262,9 +171,7 @@ pub(super) fn table(entity_type: BusinessEntityType) -> &'static str {
 }
 
 pub(super) fn require_pool(state: &AppState) -> Result<&PgPool, ApiError> {
-    state.pool.as_ref().ok_or_else(|| {
-        ApiError::service_unavailable("PostgreSQL is required for the business inbox workflow.")
-    })
+    Ok(&state.pool)
 }
 
 pub(super) fn validate_reason(reason: &str) -> Result<(), ApiError> {

@@ -1,12 +1,18 @@
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
 use crate::{
     error::ApiError,
     models::{
-        BusinessEntityType, BusinessInboxDetail, BusinessInboxItem, BusinessInboxStatus,
-        BusinessPii,
+        BusinessEntityType, BusinessInboxDetail, BusinessInboxItem, BusinessInboxPage,
+        BusinessInboxStatus, BusinessPii,
     },
+    pagination::{
+        cursor_limit, decode_scoped_cursor_compat, encode_scoped_cursor, CursorQuery, DecodedCursor,
+    },
+    services::request_metrics::LegacyCursorEndpoint,
     state::AppState,
 };
 
@@ -21,15 +27,44 @@ pub struct InboxFilter {
     pub assigned_to: Option<Uuid>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct InboxCursor {
+    updated_at: DateTime<Utc>,
+    id: Uuid,
+}
+
 pub async fn list(
     state: &AppState,
     entity_type: BusinessEntityType,
     filter: &InboxFilter,
-) -> Result<Vec<BusinessInboxItem>, ApiError> {
-    let Some(pool) = &state.pool else {
-        return list_in_memory(state, entity_type, filter).await;
-    };
+    pagination: CursorQuery,
+) -> Result<BusinessInboxPage, ApiError> {
+    let pool = &state.pool;
     let table = table(entity_type);
+    let limit = cursor_limit(&pagination)?;
+    let scope = format!(
+        "admin.business.{}|{:?}|{:?}|{:?}",
+        entity_type.label(),
+        filter.query,
+        filter.status,
+        filter.assigned_to
+    );
+    let after = match pagination.cursor.as_deref() {
+        Some(value) => Some(resolve_cursor(state, entity_type, filter, &scope, value).await?),
+        None => None,
+    };
+    let count_sql = format!(
+        r#"SELECT count(*) FROM {table}
+           WHERE ($1::text IS NULL OR status=$1)
+             AND ($2::uuid IS NULL OR assigned_to=$2)
+             AND ($3::text IS NULL OR reference ILIKE '%' || $3 || '%' OR payload::text ILIKE '%' || $3 || '%')"#,
+    );
+    let total = sqlx::query_scalar::<_, i64>(&count_sql)
+        .bind(filter.status.map(BusinessInboxStatus::label))
+        .bind(filter.assigned_to)
+        .bind(filter.query.as_deref())
+        .fetch_one(pool)
+        .await?;
     let sql = format!(
         r#"SELECT id,reference,status,revision,assigned_to,submitted_at,updated_at,
                   retention_until,source_path,locale,payload
@@ -37,17 +72,78 @@ pub async fn list(
            WHERE ($1::text IS NULL OR status=$1)
              AND ($2::uuid IS NULL OR assigned_to=$2)
              AND ($3::text IS NULL OR reference ILIKE '%' || $3 || '%' OR payload::text ILIKE '%' || $3 || '%')
-           ORDER BY updated_at DESC,id DESC"#,
+             AND ($4::timestamptz IS NULL OR (updated_at,id)<($4,$5))
+           ORDER BY updated_at DESC,id DESC LIMIT $6"#,
     );
     let rows = sqlx::query(&sql)
         .bind(filter.status.map(BusinessInboxStatus::label))
         .bind(filter.assigned_to)
         .bind(filter.query.as_deref())
+        .bind(after.as_ref().map(|value| value.updated_at))
+        .bind(after.as_ref().map(|value| value.id))
+        .bind(i64::try_from(limit + 1).unwrap_or(101))
         .fetch_all(pool)
         .await?;
-    rows.into_iter()
+    let mut items = rows
+        .into_iter()
         .map(|row| item_from_row(entity_type, row))
-        .collect()
+        .collect::<Result<Vec<_>, _>>()?;
+    let has_more = items.len() > limit;
+    items.truncate(limit);
+    let next_cursor = if has_more {
+        items
+            .last()
+            .map(|item| {
+                encode_scoped_cursor(
+                    &scope,
+                    &InboxCursor {
+                        updated_at: item.updated_at,
+                        id: item.id,
+                    },
+                )
+            })
+            .transpose()?
+    } else {
+        None
+    };
+    Ok(BusinessInboxPage {
+        items,
+        next_cursor,
+        total: usize::try_from(total).unwrap_or(usize::MAX),
+    })
+}
+
+async fn resolve_cursor(
+    state: &AppState,
+    entity_type: BusinessEntityType,
+    filter: &InboxFilter,
+    scope: &str,
+    value: &str,
+) -> Result<InboxCursor, ApiError> {
+    match decode_scoped_cursor_compat::<Uuid, InboxCursor>(scope, value)? {
+        DecodedCursor::Current(cursor) => Ok(cursor),
+        DecodedCursor::Legacy(id) => {
+            let sql = format!(
+                r#"SELECT updated_at FROM {} WHERE id=$1
+                   AND ($2::text IS NULL OR status=$2)
+                   AND ($3::uuid IS NULL OR assigned_to=$3)
+                   AND ($4::text IS NULL OR reference ILIKE '%' || $4 || '%' OR payload::text ILIKE '%' || $4 || '%')"#,
+                table(entity_type),
+            );
+            let updated_at = sqlx::query_scalar::<_, DateTime<Utc>>(&sql)
+                .bind(id)
+                .bind(filter.status.map(BusinessInboxStatus::label))
+                .bind(filter.assigned_to)
+                .bind(filter.query.as_deref())
+                .fetch_optional(&state.pool)
+                .await?
+                .ok_or_else(|| ApiError::bad_request("cursor is invalid or has expired."))?;
+            state
+                .request_metrics
+                .record_legacy_cursor(LegacyCursorEndpoint::BusinessInbox);
+            Ok(InboxCursor { updated_at, id })
+        }
+    }
 }
 
 pub async fn get(

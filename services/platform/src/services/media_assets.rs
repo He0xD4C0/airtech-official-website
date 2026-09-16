@@ -6,8 +6,10 @@ use uuid::Uuid;
 use crate::{
     error::ApiError,
     models::{CursorPage, MediaAsset, MediaAssetReference},
-    pagination::{cursor_limit, decode_scoped_cursor, encode_scoped_cursor, CursorQuery},
-    services::cms_content::require_postgres,
+    pagination::{
+        cursor_limit, decode_scoped_cursor_compat, encode_scoped_cursor, CursorQuery, DecodedCursor,
+    },
+    services::{cms_content::require_postgres, request_metrics::LegacyCursorEndpoint},
     state::AppState,
 };
 
@@ -64,7 +66,18 @@ pub async fn list_media_assets(
     let cursor = pagination
         .cursor
         .as_deref()
-        .map(|value| decode_scoped_cursor::<MediaAssetCursor>(&scope, value))
+        .map(|value| {
+            match decode_scoped_cursor_compat::<MediaAssetCursor, MediaAssetCursor>(&scope, value)?
+            {
+                DecodedCursor::Current(cursor) => Ok::<MediaAssetCursor, ApiError>(cursor),
+                DecodedCursor::Legacy(cursor) => {
+                    state
+                        .request_metrics
+                        .record_legacy_cursor(LegacyCursorEndpoint::MediaAssets);
+                    Ok::<MediaAssetCursor, ApiError>(cursor)
+                }
+            }
+        })
         .transpose()?;
     let pattern = filter
         .query
@@ -159,13 +172,14 @@ pub async fn list_media_references(
         ));
     }
     let rows = sqlx::query(
-        r#"SELECT dependency.source_content_id,dependency.source_revision,
-                  entry.title,entry.status,dependency.dependency_kind,
+        r#"SELECT dependency.source_content_id,published.publication_version AS source_revision,
+                  published.document->>'title' AS title,'published' AS status,
+                  dependency.dependency_kind,
                   dependency.reference_path
-           FROM cms_publication_dependencies dependency
-           JOIN content_entries entry ON entry.id=dependency.source_content_id
+           FROM cms_current_publication_dependencies dependency
+           JOIN cms_published_content published ON published.content_id=dependency.source_content_id
            WHERE dependency.target_media_asset_id=$1
-           ORDER BY dependency.created_at DESC,dependency.id DESC
+           ORDER BY published.updated_at DESC,dependency.id DESC
            OFFSET $2 LIMIT $3"#,
     )
     .bind(asset_id)
