@@ -6,104 +6,6 @@
 import type { components } from '../components'
 
 export interface SchemasPart04 {
-PublicContentProjection: {
-            body: components["schemas"]["TiptapDocument"] | null;
-            composition: components["schemas"]["PageComposition"];
-            /** Format: uuid */
-            id: string;
-            isPlaceholder: boolean;
-            kind: components["schemas"]["CmsContentKind"];
-            locale: string;
-            /** Format: int64 */
-            publishedRevision: number;
-            resolvedLinks: components["schemas"]["ResolvedLinkTarget"][];
-            resolvedMedia: components["schemas"]["ResolvedMedia"][];
-            resolvedRelations: components["schemas"]["ResolvedRelationCard"][];
-            /** @constant */
-            schemaVersion: 2;
-            seo: components["schemas"]["SeoInputV2"];
-            slug: string | null;
-            summary: string | null;
-            templateKey: components["schemas"]["ContentTemplateKey"];
-            title: string;
-            typeFields: components["schemas"]["ContentTypeFields"];
-            /** Format: date-time */
-            updatedAt: string;
-        };
-PublishContentRequest: {
-            reason: string;
-        };
-ReasonRequest: {
-            reason: string;
-        };
-RecoveryCodeSet: {
-            /** Format: date-time */
-            generatedAt: string;
-            readonly recoveryCodes: string[];
-        };
-RelationCollectionBlock: {
-            heading?: string | null;
-            /** Format: uuid */
-            id: string;
-            presentation: components["schemas"]["CollectionPresentation"];
-            relationIds: string[];
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "relationCollection";
-        };
-RelationTargetContent: {
-            /** Format: uuid */
-            contentId: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            targetType: "content";
-        };
-RelationTargetProduct: {
-            /** Format: uuid */
-            productId: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            targetType: "product";
-        };
-RelationTargetReference: components["schemas"]["RelationTargetContent"] | components["schemas"]["RelationTargetProduct"];
-ReplacementRfqContext: {
-            additionalMessage?: string;
-            application: string;
-            dutyPoint: components["schemas"]["RfqDutyPoint"];
-            electrical?: components["schemas"]["RfqElectricalContext"];
-            environment?: string;
-            existingModel: string;
-            installationConstraints?: string;
-            /** @enum {string} */
-            priority?: "efficiency" | "noise" | "size" | "headroom";
-            quantity?: components["schemas"]["RfqQuantity"];
-            replacementGoal?: string;
-        };
-ReplacementRfqRequest: {
-            /** @enum {boolean} */
-            consent: true;
-            contact: components["schemas"]["BusinessContact"];
-            context: components["schemas"]["ReplacementRfqContext"];
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            journey: "replacement";
-            /** @enum {string} */
-            locale: "en";
-            sourcePath: string;
-        };
-ResolvedLinkTarget: {
-            /** Format: uuid */
-            contentId: string;
-            href: string;
-        };
 ResolvedMedia: {
             /** Format: uuid */
             assetId: string;
@@ -131,9 +33,6 @@ ResolveSyncConflictRequest: {
             expiresAt: string | null;
             reason: string;
         };
-RestoreContentRevisionRequest: {
-            reason: string;
-        };
 RevisionRequest: {
             reason: string;
             /** Format: int64 */
@@ -159,11 +58,6 @@ RichTextDocument: {
             schemaVersion: number;
         };
 RoleDefinition: components["schemas"]["AdminRoleRecord"];
-RollbackContentRequest: {
-            reason: string;
-            /** Format: int64 */
-            revision: number;
-        };
 RouteResolution: {
             dataClass: components["schemas"]["DataClass"];
             entityId: string | null;
@@ -495,5 +389,82 @@ TiptapTextNode: {
             text: string;
             /** @enum {string} */
             type: "text";
+        };
+TotpCodeRequest: {
+            code: string;
+        };
+TotpEnrollment: {
+            /** @constant */
+            algorithm: "SHA1";
+            /** @constant */
+            digits: 6;
+            /** Format: uri */
+            readonly otpAuthUri: string;
+            /** @constant */
+            periodSeconds: 30;
+            readonly secret: string;
+        };
+UpdateAdminRole: {
+            displayName?: string;
+            permissions?: string[];
+            reason: string;
+        };
+UpdateAdminUser: {
+            displayName?: string;
+            locale?: string;
+            managerUserId?: string | null;
+            reason: string;
+            roleKeys?: string[];
+            /** @enum {string} */
+            status?: "invited" | "active" | "disabled";
+        };
+UpdateBusinessStatusRequest: {
+            reason: string;
+            status: components["schemas"]["BusinessInboxStatus"];
+        };
+UpdatePlatformSettings: {
+            reason: string;
+            retentionDeletionGraceDays?: number;
+            rfqRetentionDays?: number;
+            temporaryOverrideDefaultDays?: number;
+        };
+UpdateProductPresentation: {
+            indexable: boolean;
+            locale: string;
+            reason: string;
+            /** @default [] */
+            relatedContentIds: string[];
+            seo: components["schemas"]["SeoMetadataInput"];
+            slug: string;
+            /** @default 0 */
+            sortOrder: number;
+            summary?: string | null;
+            title: string;
+        };
+UserAdminSummary: components["schemas"]["AdminUserRecord"];
+UserInvitation: {
+            displayName: string;
+            /** Format: email */
+            email: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: uuid */
+            id: string;
+            readonly invitationToken?: string;
+            /** Format: date-time */
+            invitedAt: string;
+            locale: string;
+            roleKeys: string[];
+            /** @enum {string} */
+            status: "pending" | "accepted" | "revoked" | "expired";
+        };
+UserInvitationPage: {
+            items: components["schemas"]["UserInvitation"][];
+            nextCursor: string | null;
+        };
+ValidationIssue: {
+            code: string;
+            detail: string;
+            fieldPath: string;
         };
 }

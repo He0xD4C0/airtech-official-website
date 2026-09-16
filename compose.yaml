@@ -88,13 +88,33 @@ services:
       FLYWAY_USER: ${FLYWAY_USER:-airtek}
       FLYWAY_PASSWORD: ${FLYWAY_PASSWORD:-airtek}
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: ${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:-airtek}
-      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:-16}
+      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:-19}
       # Local compatibility for the existing single-role development volume.
       # The production boundary cannot pass this override.
       AIRTEK_FLYWAY_ALLOW_SHARED_ROLE: "true"
     depends_on:
       postgres:
         condition: service_healthy
+    restart: "no"
+
+  platform-maintenance:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.platform
+      args:
+        AIRTEK_PLATFORM_FEATURES: ${AIRTEK_PLATFORM_FEATURES:-devtools}
+        CARGO_REGISTRY_MIRROR: ${AIRTEK_CARGO_MIRROR:-}
+        HTTP_PROXY: ${AIRTEK_BUILD_PROXY:-}
+        HTTPS_PROXY: ${AIRTEK_BUILD_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
+    entrypoint: ["/usr/local/bin/airtek-maintenance"]
+    command: ["prepare-runtime"]
+    environment:
+      DATABASE_URL: ${AIRTEK_DATABASE_URL_INTERNAL:-postgres://airtek:airtek@postgres:5432/airtek}
+      RUST_LOG: ${RUST_LOG:-airtek_platform=info}
+    depends_on:
+      flyway-migrate:
+        condition: service_completed_successfully
     restart: "no"
 
   platform-api:
@@ -114,7 +134,6 @@ services:
       AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:-http://localhost:3100}
       AIRTEK_ADMIN_BOOTSTRAP_TOKEN: ${AIRTEK_ADMIN_BOOTSTRAP_TOKEN:-local-development-bootstrap-change-me}
       AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:-}
-      AIRTEK_PREVIEW_SIGNING_KEY: ${AIRTEK_PREVIEW_SIGNING_KEY:-}
       AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: ${AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY:-}
       AIRTEK_ANALYTICS_TOKEN_HMAC_KEY: ${AIRTEK_ANALYTICS_TOKEN_HMAC_KEY:-}
       AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY: ${AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY:-}
@@ -142,7 +161,7 @@ services:
     ports:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_API_HOST_PORT:-8080}:8080"
     depends_on:
-      flyway-migrate:
+      platform-maintenance:
         condition: service_completed_successfully
       minio-create-bucket:
         condition: service_completed_successfully
@@ -171,7 +190,6 @@ services:
       AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:-http://localhost:3000}
       AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:-http://localhost:3100}
       AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:-}
-      AIRTEK_PREVIEW_SIGNING_KEY: ${AIRTEK_PREVIEW_SIGNING_KEY:-}
       AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: ${AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY:-}
       AIRTEK_ANALYTICS_TOKEN_HMAC_KEY: ${AIRTEK_ANALYTICS_TOKEN_HMAC_KEY:-}
       AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY: ${AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY:-}
@@ -187,7 +205,7 @@ services:
       AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS: ${AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS:-}
       RUST_LOG: ${RUST_LOG:-airtek_platform=info}
     depends_on:
-      flyway-migrate:
+      platform-maintenance:
         condition: service_completed_successfully
     mem_limit: 768m
     restart: unless-stopped

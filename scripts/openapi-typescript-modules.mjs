@@ -76,9 +76,14 @@ export function writeModularOpenApiTypes(rawPath, outputRoot) {
   ].join('\n'))
 }
 
-export function compareGeneratedTree(expectedRoot, actualRoot) {
-  const expectedFiles = walkFiles(expectedRoot)
-  const actualFiles = walkFiles(actualRoot)
+export function compareGeneratedTree(expectedRoot, actualRoot, excludedRelative = []) {
+  const excluded = new Set(excludedRelative)
+  const expectedFiles = walkFiles(expectedRoot).filter((path) => (
+    !excluded.has(normalize(relative(expectedRoot, path)))
+  ))
+  const actualFiles = walkFiles(actualRoot).filter((path) => (
+    !excluded.has(normalize(relative(actualRoot, path)))
+  ))
   const expectedRelative = expectedFiles.map((path) => normalize(relative(expectedRoot, path)))
   const actualRelative = actualFiles.map((path) => normalize(relative(actualRoot, path)))
   if (expectedRelative.join('\n') !== actualRelative.join('\n')) {

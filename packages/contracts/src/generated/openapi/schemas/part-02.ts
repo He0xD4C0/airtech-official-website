@@ -6,48 +6,48 @@
 import type { components } from '../components'
 
 export interface SchemasPart02 {
-ContentPublicationReadiness: {
-            allowedActions: components["schemas"]["ContentPublicationAction"][];
-            /** Format: uuid */
-            contentId: string;
+ContentDraftV2: {
+            body?: components["schemas"]["TiptapDocument"] | null;
+            composition: components["schemas"]["PageComposition"];
             /** Format: int64 */
             draftVersion: number;
-            issues: components["schemas"]["PublicationReadinessIssue"][];
-            ready: boolean;
+            isPlaceholder: boolean;
+            kind: components["schemas"]["CmsContentKind"];
+            locale: string;
+            relations: components["schemas"]["ContentRelationReference"][];
+            /** @constant */
+            schemaVersion: 2;
+            seo: components["schemas"]["SeoInputV2"];
+            slug?: string | null;
+            summary?: string | null;
+            templateKey: components["schemas"]["ContentTemplateKey"];
+            title: string;
+            typeFields: components["schemas"]["ContentTypeFields"];
         };
-ContentRecordV2: {
-            /** Format: date-time */
-            createdAt: string;
-            draft: components["schemas"]["ContentDraftV2"];
+ContentEntry: {
+            body: components["schemas"]["RichTextDocument"];
+            /** Format: int64 */
+            currentRevision: number;
             /** Format: uuid */
             id: string;
-            latestRevision: number | null;
+            isPlaceholder: boolean;
+            kind: components["schemas"]["ContentKind"];
+            locale: string;
             publishedRevision: number | null;
-            status: components["schemas"]["CmsPublicationStatusV2"];
+            scheduledFor: string | null;
+            seo: components["schemas"]["SeoMetadata"];
+            slug: string;
+            status: components["schemas"]["PublicationStatus"];
+            summary: string | null;
+            title: string;
             /** Format: date-time */
             updatedAt: string;
-            updatedBy: string;
         };
-ContentRecordV2Page: {
-            counts: {
-                article?: number;
-                caseStudy?: number;
-                company?: number;
-                download?: number;
-                faq?: number;
-                footer?: number;
-                generalInformation?: number;
-                home?: number;
-                legal?: number;
-                navigation?: number;
-                news?: number;
-                page?: number;
-                solution?: number;
-                technology?: number;
-            };
-            items: components["schemas"]["ContentRecordV2"][];
+/** @enum {string} */
+        ContentKind: "home" | "solution" | "technology" | "article" | "news" | "faq" | "caseStudy" | "download" | "company" | "legal" | "navigation" | "footer";
+ContentPage: {
+            items: components["schemas"]["ContentEntry"][];
             nextCursor: string | null;
-            total: number;
         };
 ContentRelationReference: {
             /** Format: uuid */
@@ -55,28 +55,6 @@ ContentRelationReference: {
             slot: string;
             target: components["schemas"]["RelationTargetReference"];
         };
-/** @enum {string} */
-        ContentRevisionKindV2: "manual" | "publish" | "restore";
-ContentRevisionV2: {
-            /** Format: uuid */
-            contentId: string;
-            /** Format: date-time */
-            createdAt: string;
-            createdBy: string;
-            document: components["schemas"]["ContentDraftV2"];
-            kind: components["schemas"]["ContentRevisionKindV2"];
-            reason: string;
-            /** Format: int64 */
-            revision: number;
-            /** Format: int64 */
-            sourceDraftVersion: number;
-        };
-ContentRevisionV2Page: {
-            items: components["schemas"]["ContentRevisionV2"][];
-            nextCursor: string | null;
-        };
-/** @enum {string} */
-        ContentSnapshotIntent: "manual";
 ContentTemplateDefinition: {
             allowedBlocks: components["schemas"]["ContentBlockKind"][];
             bodyPolicy: components["schemas"]["CmsBodyPolicy"];
@@ -187,16 +165,6 @@ CreateContactRequest: {
             message: string;
             sourcePath: string;
             topic: string;
-        };
-CreateContentPreviewRequest: {
-            /** @default 600 */
-            expiresInSeconds?: number;
-            /** Format: int64 */
-            revision: number;
-        };
-CreateContentSnapshotRequest: {
-            intent: components["schemas"]["ContentSnapshotIntent"];
-            reason: string;
         };
 CreateGuestVisit: {
             /** Format: uuid */
@@ -485,5 +453,44 @@ HealthStatus: {
             /** Format: date-time */
             timestamp: string;
             version: string;
+        };
+HeroBlock: {
+            actions: components["schemas"]["EditorialAction"][];
+            eyebrow?: string | null;
+            heading?: string | null;
+            /** Format: uuid */
+            id: string;
+            lead?: string | null;
+            media?: components["schemas"]["MediaUseReference"] | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "hero";
+            variant: components["schemas"]["HeroVariant"];
+        };
+/** @enum {string} */
+        HeroVariant: "standard" | "splitMedia" | "minimal";
+InvitationAcceptance: {
+            /** Format: date-time */
+            acceptedAt: string;
+            displayName: string;
+            /** Format: email */
+            email: string;
+            locale: string;
+            roleKeys: string[];
+            /** @constant */
+            status: "active";
+            /** Format: uuid */
+            userId: string;
+        };
+InviteAdminUser: {
+            displayName: string;
+            /** Format: email */
+            email: string;
+            roleKeys: string[];
+        };
+LegalTypeFields: {
+            effectiveDate?: string | null;
         };
 }

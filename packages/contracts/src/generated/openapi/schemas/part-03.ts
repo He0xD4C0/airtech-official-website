@@ -6,45 +6,6 @@
 import type { components } from '../components'
 
 export interface SchemasPart03 {
-HeroBlock: {
-            actions: components["schemas"]["EditorialAction"][];
-            eyebrow?: string | null;
-            heading?: string | null;
-            /** Format: uuid */
-            id: string;
-            lead?: string | null;
-            media?: components["schemas"]["MediaUseReference"] | null;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "hero";
-            variant: components["schemas"]["HeroVariant"];
-        };
-/** @enum {string} */
-        HeroVariant: "standard" | "splitMedia" | "minimal";
-InvitationAcceptance: {
-            /** Format: date-time */
-            acceptedAt: string;
-            displayName: string;
-            /** Format: email */
-            email: string;
-            locale: string;
-            roleKeys: string[];
-            /** @constant */
-            status: "active";
-            /** Format: uuid */
-            userId: string;
-        };
-InviteAdminUser: {
-            displayName: string;
-            /** Format: email */
-            email: string;
-            roleKeys: string[];
-        };
-LegalTypeFields: {
-            effectiveDate?: string | null;
-        };
 LinkTargetContent: {
             /** Format: uuid */
             contentId: string;
@@ -132,43 +93,6 @@ MediaUseReference: {
             asset: components["schemas"]["AssetVersionReference"];
             decorative: boolean;
         };
-MigrationPreflightCounts: {
-            contentEntries: number;
-            contentRevisions: number;
-            generalInformationEntries: number;
-            mediaAssets: number;
-            mediaReferences: number;
-            newsEntries: number;
-            publicRoutes: number;
-            relations: number;
-        };
-MigrationPreflightIssue: {
-            code: components["schemas"]["MigrationPreflightIssueCode"];
-            entityId?: string | null;
-            jsonPath?: string | null;
-            message: string;
-            revision?: number | null;
-            severity: components["schemas"]["MigrationPreflightSeverity"];
-            source: components["schemas"]["MigrationPreflightSource"];
-        };
-/** @enum {string} */
-        MigrationPreflightIssueCode: "invalidLegacyPayload" | "unsupportedContentKind" | "unsupportedTemplate" | "embeddedPageSlots" | "unknownBlock" | "invalidTiptapDocument" | "typeFieldMismatch" | "invalidRelation" | "missingRelationTarget" | "relationHistoryUnavailable" | "missingMediaAsset" | "missingMediaVersion" | "duplicatePublicPath" | "missingPublicRoute" | "routeOwnershipMismatch" | "canonicalPathMismatch" | "scheduledPublicationUnsupported" | "revisionConversionFailed";
-MigrationPreflightReport: {
-            blockingIssueCount: number;
-            canMigrate: boolean;
-            convertible: components["schemas"]["MigrationPreflightCounts"];
-            /** Format: date-time */
-            generatedAt: string;
-            issues: components["schemas"]["MigrationPreflightIssue"][];
-            scanned: components["schemas"]["MigrationPreflightCounts"];
-            /** @constant */
-            targetSchemaVersion: 2;
-            warningCount: number;
-        };
-/** @enum {string} */
-        MigrationPreflightSeverity: "warning" | "blocking";
-/** @enum {string} */
-        MigrationPreflightSource: "content" | "contentRevision" | "news" | "generalInformation" | "media" | "relation" | "route";
 MissingAssetReference: {
             assetType: string;
             sourceReference: string;
@@ -373,7 +297,7 @@ ProductImportRowError: {
 ProductImportRun: components["schemas"]["ProductImportResult"];
 ProductPage: {
             items: components["schemas"]["Product"][];
-            /** @description Opaque base64url v1 keyset cursor bound to the filters used for this page. */
+            /** @description Opaque base64url v2 keyset cursor bound to the active filters; v1 is accepted for one compatibility release. */
             nextCursor: string | null;
         };
 ProductPresentation: {
@@ -471,13 +395,101 @@ ProjectRfqRequest: {
             locale: "en";
             sourcePath: string;
         };
-PublicationReadinessIssue: {
-            code: string;
-            detail: string;
-            failedGate: string | null;
-            path: string;
-            targetId: string | null;
-        };
 /** @enum {string} */
         PublicationStatus: "draft" | "scheduled" | "published" | "archived";
+PublicContentProjection: {
+            body: components["schemas"]["TiptapDocument"] | null;
+            composition: components["schemas"]["PageComposition"];
+            /** Format: uuid */
+            id: string;
+            isPlaceholder: boolean;
+            kind: components["schemas"]["CmsContentKind"];
+            locale: string;
+            /** Format: int64 */
+            publishedRevision: number;
+            resolvedLinks: components["schemas"]["ResolvedLinkTarget"][];
+            resolvedMedia: components["schemas"]["ResolvedMedia"][];
+            resolvedRelations: components["schemas"]["ResolvedRelationCard"][];
+            /** @constant */
+            schemaVersion: 2;
+            seo: components["schemas"]["SeoInputV2"];
+            slug: string | null;
+            summary: string | null;
+            templateKey: components["schemas"]["ContentTemplateKey"];
+            title: string;
+            typeFields: components["schemas"]["ContentTypeFields"];
+            /** Format: date-time */
+            updatedAt: string;
+        };
+ReasonRequest: {
+            reason: string;
+        };
+RecoveryCodeSet: {
+            /** Format: date-time */
+            generatedAt: string;
+            readonly recoveryCodes: string[];
+        };
+RelationCollectionBlock: {
+            heading?: string | null;
+            /** Format: uuid */
+            id: string;
+            presentation: components["schemas"]["CollectionPresentation"];
+            relationIds: string[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "relationCollection";
+        };
+RelationTargetContent: {
+            /** Format: uuid */
+            contentId: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            targetType: "content";
+        };
+RelationTargetProduct: {
+            /** Format: uuid */
+            productId: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            targetType: "product";
+        };
+RelationTargetReference: components["schemas"]["RelationTargetContent"] | components["schemas"]["RelationTargetProduct"];
+ReplacementRfqContext: {
+            additionalMessage?: string;
+            application: string;
+            dutyPoint: components["schemas"]["RfqDutyPoint"];
+            electrical?: components["schemas"]["RfqElectricalContext"];
+            environment?: string;
+            existingModel: string;
+            installationConstraints?: string;
+            /** @enum {string} */
+            priority?: "efficiency" | "noise" | "size" | "headroom";
+            quantity?: components["schemas"]["RfqQuantity"];
+            replacementGoal?: string;
+        };
+ReplacementRfqRequest: {
+            /** @enum {boolean} */
+            consent: true;
+            contact: components["schemas"]["BusinessContact"];
+            context: components["schemas"]["ReplacementRfqContext"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            journey: "replacement";
+            /** @enum {string} */
+            locale: "en";
+            sourcePath: string;
+        };
+ResolvedLinkTarget: {
+            /** Format: uuid */
+            contentId: string;
+            href: string;
+        };
 }

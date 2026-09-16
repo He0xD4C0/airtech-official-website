@@ -129,8 +129,7 @@ export function sanitizeAnalyticsProperties(
 }
 
 export function analyticsRuntimeDisabled(): boolean {
-  const contentPreview = typeof window !== 'undefined' && window.location.pathname === '/en/preview'
-  return contentPreview || (import.meta.env.DEV && import.meta.env.VITE_DISABLE_COOKIE_BANNER === 'true')
+  return import.meta.env.DEV && import.meta.env.VITE_DISABLE_COOKIE_BANNER === 'true'
 }
 
 export function currentAnalyticsConsent(): AnalyticsConsent | null {

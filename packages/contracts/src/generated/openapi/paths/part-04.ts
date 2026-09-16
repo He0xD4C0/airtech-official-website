@@ -6,6 +6,23 @@
 import type { operations } from '../operations'
 
 export interface PathsPart04 {
+"/api/public/v1/site-bootstrap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the published site shell and default company information */
+        get: operations["getSiteBootstrap"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/healthz": {
         parameters: {
             query?: never;

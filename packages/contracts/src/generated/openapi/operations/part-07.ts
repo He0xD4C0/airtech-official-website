@@ -6,26 +6,24 @@
 import type { components } from '../components'
 
 export interface OperationsPart07 {
-getAdminContentDraftV2: {
+claimUnassignedPrivateContentDraft: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                id: string;
+                draftId: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Current content draft */
+            /** @description Mutation result */
             200: {
                 headers: {
-                    /** @description Current draft-N entity tag */
-                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContentRecordV2"];
+                    "application/json": components["schemas"]["CmsPrivateDraft"];
                 };
             };
             /** @description Malformed request */
@@ -120,35 +118,28 @@ getAdminContentDraftV2: {
             };
         };
     };
-updateAdminContentDraftV2: {
+setPrivateContentDraftShares: {
         parameters: {
             query?: never;
-            header: {
-                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
-                "Idempotency-Key": string;
-                /** @description Current draft ETag. Creation requires draft-0. */
-                "If-Match": string;
-            };
+            header?: never;
             path: {
-                id: string;
+                draftId: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ContentDraftV2"];
+                "application/json": components["schemas"]["CmsDraftSharesRequest"];
             };
         };
         responses: {
-            /** @description Content draft saved */
+            /** @description Mutation result */
             200: {
                 headers: {
-                    /** @description Current draft-N entity tag */
-                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContentRecordV2"];
+                    "application/json": components["schemas"]["CmsPrivateDraft"];
                 };
             };
             /** @description Malformed request */
@@ -243,24 +234,26 @@ updateAdminContentDraftV2: {
             };
         };
     };
-getAdminContentPublicationReadinessV2: {
+submitPrivateContentDraft: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "If-Match": string;
+            };
             path: {
-                id: string;
+                draftId: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Publication readiness */
+            /** @description Mutation result */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContentPublicationReadiness"];
+                    "application/json": components["schemas"]["CmsSubmitResult"];
                 };
             };
             /** @description Malformed request */
@@ -355,35 +348,24 @@ getAdminContentPublicationReadinessV2: {
             };
         };
     };
-publishAdminContentV2: {
+withdrawPrivateContentDraft: {
         parameters: {
             query?: never;
-            header: {
-                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
-                "Idempotency-Key": string;
-                /** @description Current draft ETag. Creation requires draft-0. */
-                "If-Match": string;
-            };
+            header?: never;
             path: {
-                id: string;
+                draftId: string;
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PublishContentRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description Content published */
-            201: {
+            /** @description Mutation result */
+            200: {
                 headers: {
-                    /** @description Current draft-N entity tag */
-                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContentRecordV2"];
+                    "application/json": components["schemas"]["CmsPrivateDraft"];
                 };
             };
             /** @description Malformed request */

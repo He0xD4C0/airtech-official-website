@@ -6,7 +6,7 @@
 import type { operations } from '../operations'
 
 export interface PathsPart02 {
-"/api/admin/v1/content/{id}/snapshots": {
+"/api/admin/v1/content-reviews/{draftId}/approve": {
         parameters: {
             query?: never;
             header?: never;
@@ -15,15 +15,15 @@ export interface PathsPart02 {
         };
         get?: never;
         put?: never;
-        /** Create an immutable manual revision */
-        post: operations["createAdminContentSnapshotV2"];
+        /** Atomically overwrite current publication and delete the draft */
+        post: operations["approveContentReview"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/content/{id}/unpublish": {
+"/api/admin/v1/content-reviews/{draftId}/reject": {
         parameters: {
             query?: never;
             header?: never;
@@ -32,25 +32,8 @@ export interface PathsPart02 {
         };
         get?: never;
         put?: never;
-        /** Explicitly unpublish content while preserving its draft and immutable history */
-        post: operations["unpublishAdminContentV2"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content/templates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List the controlled CMS template registry */
-        get: operations["listAdminContentTemplatesV2"];
-        put?: never;
-        post?: never;
+        /** Return a draft to editing with its current rejection reason */
+        post: operations["rejectContentReview"];
         delete?: never;
         options?: never;
         head?: never;
@@ -184,7 +167,7 @@ export interface PathsPart02 {
             path?: never;
             cookie?: never;
         };
-        /** List media library assets for the unified content editor */
+        /** List media assets for the private draft editor */
         get: operations["listAdminMediaAssets"];
         put?: never;
         /** Upload one PNG, JPEG, or WebP asset and make its API URL public immediately */
@@ -435,6 +418,57 @@ export interface PathsPart02 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/published-content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List company current published content */
+        get: operations["listCurrentPublishedContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/published-content/{contentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read company current published content */
+        get: operations["getCurrentPublishedContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/published-content/{contentId}/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy current published content to the user's new private draft */
+        post: operations["copyPublishedContentToPrivateDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/rfqs": {
         parameters: {
             query?: never;
@@ -446,40 +480,6 @@ export interface PathsPart02 {
         get: operations["listRfqInboxItems"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/rfqs/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get an always-redacted RFQ item, immutable notes and status history */
-        get: operations["getRfqInboxItem"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/rfqs/{id}/assignment": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Assign or unassign for an RFQ item with a required reason */
-        post: operations["assignRfqInboxItem"];
         delete?: never;
         options?: never;
         head?: never;

@@ -1,6 +1,6 @@
 {
   "generatedFrom": "packages/contracts/openapi/openapi.production.json",
-  "operationCount": 77,
+  "operationCount": 79,
   "operations": [
     {
       "method": "GET",
@@ -790,18 +790,14 @@
     },
     {
       "method": "GET",
-      "path": "/api/admin/v1/content",
-      "operationId": "listAdminContentV2",
+      "path": "/api/admin/v1/content-drafts",
+      "operationId": "listPrivateContentDrafts",
       "permission": "content.read",
       "request": {
         "parameters": [
           "cursor",
           "limit",
-          "q",
-          "kind",
-          "status",
-          "sort",
-          "direction"
+          "q"
         ],
         "body": []
       },
@@ -811,7 +807,7 @@
           "types": [
             {
               "mediaType": "application/json",
-              "type": "ContentRecordV2Page"
+              "type": "CmsDraftPage"
             }
           ]
         }
@@ -834,14 +830,11 @@
     },
     {
       "method": "POST",
-      "path": "/api/admin/v1/content",
-      "operationId": "createAdminContentV2",
+      "path": "/api/admin/v1/content-drafts",
+      "operationId": "createPrivateContentDraft",
       "permission": "content.write",
       "request": {
-        "parameters": [
-          "If-Match",
-          "Idempotency-Key"
-        ],
+        "parameters": [],
         "body": [
           {
             "mediaType": "application/json",
@@ -855,7 +848,7 @@
           "types": [
             {
               "mediaType": "application/json",
-              "type": "ContentRecordV2"
+              "type": "CmsPrivateDraft"
             }
           ]
         }
@@ -864,75 +857,25 @@
         "strategy": "none"
       },
       "idempotency": {
-        "required": true,
-        "header": "Idempotency-Key"
+        "required": false
       },
       "concurrency": {
-        "required": true,
-        "header": "If-Match"
+        "required": false
       },
       "audit": {
         "required": true,
-        "action": "createAdminContentV2"
-      },
-      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/v1/content/{id}/archive",
-      "operationId": "archiveAdminContentV2",
-      "permission": "content.write",
-      "request": {
-        "parameters": [
-          "id",
-          "If-Match",
-          "Idempotency-Key"
-        ],
-        "body": [
-          {
-            "mediaType": "application/json",
-            "type": "ArchiveContentRequest"
-          }
-        ]
-      },
-      "response": [
-        {
-          "status": 200,
-          "types": [
-            {
-              "mediaType": "application/json",
-              "type": "ContentRecordV2"
-            }
-          ]
-        }
-      ],
-      "pagination": {
-        "strategy": "none"
-      },
-      "idempotency": {
-        "required": true,
-        "header": "Idempotency-Key"
-      },
-      "concurrency": {
-        "required": true,
-        "header": "If-Match"
-      },
-      "audit": {
-        "required": true,
-        "action": "archiveAdminContentV2"
+        "action": "createPrivateContentDraft"
       },
       "frontendConsumer": "apps/admin/src/services/contentApi.ts"
     },
     {
       "method": "GET",
-      "path": "/api/admin/v1/content/{id}/diff",
-      "operationId": "getAdminContentDiffV2",
+      "path": "/api/admin/v1/content-drafts/{draftId}",
+      "operationId": "getPrivateContentDraft",
       "permission": "content.read",
       "request": {
         "parameters": [
-          "id",
-          "baseRevision",
-          "targetRevision"
+          "draftId"
         ],
         "body": []
       },
@@ -942,43 +885,7 @@
           "types": [
             {
               "mediaType": "application/json",
-              "type": "ContentDiffV2"
-            }
-          ]
-        }
-      ],
-      "pagination": {
-        "strategy": "none"
-      },
-      "idempotency": {
-        "required": false
-      },
-      "concurrency": {
-        "required": false
-      },
-      "audit": {
-        "required": false
-      },
-      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
-    },
-    {
-      "method": "GET",
-      "path": "/api/admin/v1/content/{id}/draft",
-      "operationId": "getAdminContentDraftV2",
-      "permission": "content.read",
-      "request": {
-        "parameters": [
-          "id"
-        ],
-        "body": []
-      },
-      "response": [
-        {
-          "status": 200,
-          "types": [
-            {
-              "mediaType": "application/json",
-              "type": "ContentRecordV2"
+              "type": "CmsPrivateDraft"
             }
           ]
         }
@@ -999,14 +906,13 @@
     },
     {
       "method": "PATCH",
-      "path": "/api/admin/v1/content/{id}/draft",
-      "operationId": "updateAdminContentDraftV2",
+      "path": "/api/admin/v1/content-drafts/{draftId}",
+      "operationId": "savePrivateContentDraft",
       "permission": "content.write",
       "request": {
         "parameters": [
-          "id",
-          "If-Match",
-          "Idempotency-Key"
+          "draftId",
+          "If-Match"
         ],
         "body": [
           {
@@ -1021,7 +927,7 @@
           "types": [
             {
               "mediaType": "application/json",
-              "type": "ContentRecordV2"
+              "type": "CmsPrivateDraft"
             }
           ]
         }
@@ -1030,8 +936,7 @@
         "strategy": "none"
       },
       "idempotency": {
-        "required": true,
-        "header": "Idempotency-Key"
+        "required": false
       },
       "concurrency": {
         "required": true,
@@ -1039,18 +944,18 @@
       },
       "audit": {
         "required": true,
-        "action": "updateAdminContentDraftV2"
+        "action": "savePrivateContentDraft"
       },
       "frontendConsumer": "apps/admin/src/services/contentApi.ts"
     },
     {
-      "method": "GET",
-      "path": "/api/admin/v1/content/{id}/publication-readiness",
-      "operationId": "getAdminContentPublicationReadinessV2",
-      "permission": "content.read",
+      "method": "POST",
+      "path": "/api/admin/v1/content-drafts/{draftId}/claim",
+      "operationId": "claimUnassignedPrivateContentDraft",
+      "permission": "content.write",
       "request": {
         "parameters": [
-          "id"
+          "draftId"
         ],
         "body": []
       },
@@ -1060,7 +965,7 @@
           "types": [
             {
               "mediaType": "application/json",
-              "type": "ContentPublicationReadiness"
+              "type": "CmsPrivateDraft"
             }
           ]
         }
@@ -1075,35 +980,34 @@
         "required": false
       },
       "audit": {
-        "required": false
+        "required": true,
+        "action": "claimUnassignedPrivateContentDraft"
       },
       "frontendConsumer": "apps/admin/src/services/contentApi.ts"
     },
     {
-      "method": "POST",
-      "path": "/api/admin/v1/content/{id}/publish",
-      "operationId": "publishAdminContentV2",
-      "permission": "content.publish",
+      "method": "PUT",
+      "path": "/api/admin/v1/content-drafts/{draftId}/shares",
+      "operationId": "setPrivateContentDraftShares",
+      "permission": "content.write",
       "request": {
         "parameters": [
-          "id",
-          "If-Match",
-          "Idempotency-Key"
+          "draftId"
         ],
         "body": [
           {
             "mediaType": "application/json",
-            "type": "PublishContentRequest"
+            "type": "CmsDraftSharesRequest"
           }
         ]
       },
       "response": [
         {
-          "status": 201,
+          "status": 200,
           "types": [
             {
               "mediaType": "application/json",
-              "type": "ContentRecordV2"
+              "type": "CmsPrivateDraft"
             }
           ]
         }
@@ -1112,29 +1016,26 @@
         "strategy": "none"
       },
       "idempotency": {
-        "required": true,
-        "header": "Idempotency-Key"
+        "required": false
       },
       "concurrency": {
-        "required": true,
-        "header": "If-Match"
+        "required": false
       },
       "audit": {
         "required": true,
-        "action": "publishAdminContentV2"
+        "action": "setPrivateContentDraftShares"
       },
       "frontendConsumer": "apps/admin/src/services/contentApi.ts"
     },
     {
-      "method": "GET",
-      "path": "/api/admin/v1/content/{id}/revisions",
-      "operationId": "listAdminContentRevisionsV2",
-      "permission": "content.read",
+      "method": "POST",
+      "path": "/api/admin/v1/content-drafts/{draftId}/submit",
+      "operationId": "submitPrivateContentDraft",
+      "permission": "content.write",
       "request": {
         "parameters": [
-          "id",
-          "cursor",
-          "limit"
+          "draftId",
+          "If-Match"
         ],
         "body": []
       },
@@ -1144,53 +1045,7 @@
           "types": [
             {
               "mediaType": "application/json",
-              "type": "ContentRevisionV2Page"
-            }
-          ]
-        }
-      ],
-      "pagination": {
-        "strategy": "cursor",
-        "cursor": "cursor",
-        "limit": "limit"
-      },
-      "idempotency": {
-        "required": false
-      },
-      "concurrency": {
-        "required": false
-      },
-      "audit": {
-        "required": false
-      },
-      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/v1/content/{id}/revisions/{revision}/restore",
-      "operationId": "restoreAdminContentRevisionV2",
-      "permission": "content.write",
-      "request": {
-        "parameters": [
-          "id",
-          "revision",
-          "If-Match",
-          "Idempotency-Key"
-        ],
-        "body": [
-          {
-            "mediaType": "application/json",
-            "type": "RestoreContentRevisionRequest"
-          }
-        ]
-      },
-      "response": [
-        {
-          "status": 201,
-          "types": [
-            {
-              "mediaType": "application/json",
-              "type": "ContentRecordV2"
+              "type": "CmsSubmitResult"
             }
           ]
         }
@@ -1199,8 +1054,7 @@
         "strategy": "none"
       },
       "idempotency": {
-        "required": true,
-        "header": "Idempotency-Key"
+        "required": false
       },
       "concurrency": {
         "required": true,
@@ -1208,73 +1062,20 @@
       },
       "audit": {
         "required": true,
-        "action": "restoreAdminContentRevisionV2"
+        "action": "submitPrivateContentDraft"
       },
       "frontendConsumer": "apps/admin/src/services/contentApi.ts"
     },
     {
       "method": "POST",
-      "path": "/api/admin/v1/content/{id}/snapshots",
-      "operationId": "createAdminContentSnapshotV2",
+      "path": "/api/admin/v1/content-drafts/{draftId}/withdraw",
+      "operationId": "withdrawPrivateContentDraft",
       "permission": "content.write",
       "request": {
         "parameters": [
-          "id",
-          "If-Match",
-          "Idempotency-Key"
+          "draftId"
         ],
-        "body": [
-          {
-            "mediaType": "application/json",
-            "type": "CreateContentSnapshotRequest"
-          }
-        ]
-      },
-      "response": [
-        {
-          "status": 201,
-          "types": [
-            {
-              "mediaType": "application/json",
-              "type": "ContentRecordV2"
-            }
-          ]
-        }
-      ],
-      "pagination": {
-        "strategy": "none"
-      },
-      "idempotency": {
-        "required": true,
-        "header": "Idempotency-Key"
-      },
-      "concurrency": {
-        "required": true,
-        "header": "If-Match"
-      },
-      "audit": {
-        "required": true,
-        "action": "createAdminContentSnapshotV2"
-      },
-      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/v1/content/{id}/unpublish",
-      "operationId": "unpublishAdminContentV2",
-      "permission": "content.publish",
-      "request": {
-        "parameters": [
-          "id",
-          "If-Match",
-          "Idempotency-Key"
-        ],
-        "body": [
-          {
-            "mediaType": "application/json",
-            "type": "UnpublishContentRequest"
-          }
-        ]
+        "body": []
       },
       "response": [
         {
@@ -1282,7 +1083,7 @@
           "types": [
             {
               "mediaType": "application/json",
-              "type": "ContentRecordV2"
+              "type": "CmsPrivateDraft"
             }
           ]
         }
@@ -1291,23 +1092,21 @@
         "strategy": "none"
       },
       "idempotency": {
-        "required": true,
-        "header": "Idempotency-Key"
+        "required": false
       },
       "concurrency": {
-        "required": true,
-        "header": "If-Match"
+        "required": false
       },
       "audit": {
         "required": true,
-        "action": "unpublishAdminContentV2"
+        "action": "withdrawPrivateContentDraft"
       },
       "frontendConsumer": "apps/admin/src/services/contentApi.ts"
     },
     {
       "method": "GET",
-      "path": "/api/admin/v1/content/templates",
-      "operationId": "listAdminContentTemplatesV2",
+      "path": "/api/admin/v1/content-drafts/templates",
+      "operationId": "listContentDraftTemplates",
       "permission": "content.read",
       "request": {
         "parameters": [],
@@ -1335,6 +1134,125 @@
       },
       "audit": {
         "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/content-reviews",
+      "operationId": "listContentReviews",
+      "permission": "content.publish",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit",
+          "q"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "CmsReviewPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/content-reviews/{draftId}/approve",
+      "operationId": "approveContentReview",
+      "permission": "content.publish",
+      "request": {
+        "parameters": [
+          "draftId"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "CmsPublishResult"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "approveContentReview"
+      },
+      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/content-reviews/{draftId}/reject",
+      "operationId": "rejectContentReview",
+      "permission": "content.publish",
+      "request": {
+        "parameters": [
+          "draftId"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "CmsRejectRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "CmsPrivateDraft"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "rejectContentReview"
       },
       "frontendConsumer": "apps/admin/src/services/contentApi.ts"
     },
@@ -2351,6 +2269,119 @@
     },
     {
       "method": "GET",
+      "path": "/api/admin/v1/published-content",
+      "operationId": "listCurrentPublishedContent",
+      "permission": "content.read",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit",
+          "q"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "CmsPublishedPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/published-content/{contentId}",
+      "operationId": "getCurrentPublishedContent",
+      "permission": "content.read",
+      "request": {
+        "parameters": [
+          "contentId"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "CmsPublishedContent"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/published-content/{contentId}/drafts",
+      "operationId": "copyPublishedContentToPrivateDraft",
+      "permission": "content.write",
+      "request": {
+        "parameters": [
+          "contentId"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 201,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "CmsPrivateDraft"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "copyPublishedContentToPrivateDraft"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+    },
+    {
+      "method": "GET",
       "path": "/api/admin/v1/rfqs",
       "operationId": "listRfqInboxItems",
       "permission": "rfq.read",
@@ -2807,7 +2838,10 @@
       "operationId": "listUserInvitations",
       "permission": "identity.manage",
       "request": {
-        "parameters": [],
+        "parameters": [
+          "cursor",
+          "limit"
+        ],
         "body": []
       },
       "response": [
@@ -2822,7 +2856,9 @@
         }
       ],
       "pagination": {
-        "strategy": "none"
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
       },
       "idempotency": {
         "required": false

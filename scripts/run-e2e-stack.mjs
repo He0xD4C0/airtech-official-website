@@ -23,6 +23,7 @@ const e2eProductMasterMapping = process.env.AIRTEK_PRODUCT_IMPORT_MAPPING_VERSIO
 const playwrightArgs = (process.env.E2E_PLAYWRIGHT_ARGS ?? '').trim()
   ? (process.env.E2E_PLAYWRIGHT_ARGS ?? '').trim().split(/\s+/)
   : []
+const composeBuildArgument = process.env.E2E_SKIP_BUILD === 'true' ? '--no-build' : '--build'
 const environment = {
   ...process.env,
   COMPOSE_PROJECT_NAME: project,
@@ -103,7 +104,7 @@ let testStatus = 1
 try {
   run('docker', ['compose', 'down', '--volumes', '--remove-orphans'])
   const upStatus = run('docker', [
-    'compose', 'up', '--build', '--detach', '--wait', '--wait-timeout', '300',
+    'compose', 'up', composeBuildArgument, '--detach', '--wait', '--wait-timeout', '300',
   ])
   if (upStatus !== 0) {
     run('docker', ['compose', 'logs', '--no-color'])

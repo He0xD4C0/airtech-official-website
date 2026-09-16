@@ -346,25 +346,43 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/content": {
+"/api/admin/v1/content-drafts": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List unified CMS working records with server-side search, filters, sort, and type counts */
-        get: operations["listAdminContentV2"];
+        /** List private drafts visible to the current user */
+        get: operations["listPrivateContentDrafts"];
         put?: never;
-        /** Create a unified CMS draft without creating a revision */
-        post: operations["createAdminContentV2"];
+        /** Create a new private draft */
+        post: operations["createPrivateContentDraft"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/content/{id}/archive": {
+"/api/admin/v1/content-drafts/{draftId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a visible private draft */
+        get: operations["getPrivateContentDraft"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Explicitly save an owned editing draft */
+        patch: operations["savePrivateContentDraft"];
+        trace?: never;
+    };
+"/api/admin/v1/content-drafts/{draftId}/claim": {
         parameters: {
             query?: never;
             header?: never;
@@ -373,24 +391,24 @@ export interface PathsPart01 {
         };
         get?: never;
         put?: never;
-        /** Archive content only after it has been explicitly unpublished */
-        post: operations["archiveAdminContentV2"];
+        /** Claim an unassigned migrated draft as Super Admin */
+        post: operations["claimUnassignedPrivateContentDraft"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/content/{id}/diff": {
+"/api/admin/v1/content-drafts/{draftId}/shares": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Compare an immutable revision with another revision or the current draft */
-        get: operations["getAdminContentDiffV2"];
-        put?: never;
+        get?: never;
+        /** Replace read-only draft shares */
+        put: operations["setPrivateContentDraftShares"];
         post?: never;
         delete?: never;
         options?: never;
@@ -398,42 +416,7 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/content/{id}/draft": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get the current unified CMS draft */
-        get: operations["getAdminContentDraftV2"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Auto-save the draft and increment only draftVersion */
-        patch: operations["updateAdminContentDraftV2"];
-        trace?: never;
-    };
-"/api/admin/v1/content/{id}/publication-readiness": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read server-authoritative publication blockers and allowed actions */
-        get: operations["getAdminContentPublicationReadinessV2"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content/{id}/publish": {
+"/api/admin/v1/content-drafts/{draftId}/submit": {
         parameters: {
             query?: never;
             header?: never;
@@ -442,32 +425,15 @@ export interface PathsPart01 {
         };
         get?: never;
         put?: never;
-        /** Publish the current draft after transactional server-side revalidation */
-        post: operations["publishAdminContentV2"];
+        /** Submit a clean saved draft for review or automatic publication */
+        post: operations["submitPrivateContentDraft"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/content/{id}/revisions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List immutable unified CMS revisions */
-        get: operations["listAdminContentRevisionsV2"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content/{id}/revisions/{revision}/restore": {
+"/api/admin/v1/content-drafts/{draftId}/withdraw": {
         parameters: {
             query?: never;
             header?: never;
@@ -476,8 +442,42 @@ export interface PathsPart01 {
         };
         get?: never;
         put?: never;
-        /** Restore an immutable revision as a new draft and immutable restore revision */
-        post: operations["restoreAdminContentRevisionV2"];
+        /** Withdraw an owned pending draft */
+        post: operations["withdrawPrivateContentDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/content-drafts/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List controlled CMS templates */
+        get: operations["listContentDraftTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/content-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the current review queue */
+        get: operations["listContentReviews"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

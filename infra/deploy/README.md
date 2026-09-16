@@ -50,14 +50,17 @@ Before deployment:
    Flyway role must be able to manage those
    database/schema grants; the production boundary rejects a shared DDL/runtime
    identity.
-6. Supply any initial setup token from a secret manager and remove it after the
+6. After Flyway succeeds, run the Platform image's one-shot
+   `airtek-maintenance prepare-runtime` command with the runtime `DATABASE_URL`.
+   Start API and Worker only after it exits successfully.
+7. Supply any initial setup token from a secret manager and remove it after the
    first Super Admin has been created.
-7. Trust only the exact Gateway address plus any exact outer-proxy hops needed
+8. Trust only the exact Gateway address plus any exact outer-proxy hops needed
    to interpret `X-Forwarded-For`; never trust a whole private range by default.
-8. Configure provider logs, health probes, backups, restore targets, retention,
-   alerting and image/SBOM policy. These provider resources are intentionally
+9. Configure provider logs, health probes, retention, alerting and image/SBOM
+   policy. These provider resources are intentionally
    absent from this repository.
-9. Verify Search Console and webmaster files only on the Public origin. Admin
+10. Verify Search Console and webmaster files only on the Public origin. Admin
    and API must keep their crawl-denial and sitemap `404` behavior.
 
 ## Direct media object identity
@@ -72,7 +75,7 @@ alter bucket policy, or make the bucket public.
 The browser never receives object-store credentials or provider URLs. Successful
 PNG, JPEG, and WebP uploads are immediately served without authentication by
 the platform's public media route. Production must provide a private HTTPS
-endpoint, scoped credentials, monitoring, backups, and a smoke test that covers
+endpoint, scoped credentials, monitoring, and a smoke test that covers
 upload, immediate GET, idempotent replay, conflict, and database-failure
 compensation.
 
@@ -87,28 +90,24 @@ pnpm check:contracts
 
 ## Deployment order
 
-The current schema target is V15. Deploy the migration artifact first, then the
-API and ordinary Worker, and finally Admin and Public Web. V13 defines direct
-public media, V14 defines immutable CMS dependency snapshots, and V15 defines
-Admin workflow fields, notes, and indexes. These migrations are forward-only;
-application rollback does not roll back PostgreSQL.
+The current schema target is V19. Deploy the migration artifact first, then the
+API and ordinary Worker, and finally Admin and Public Web. V17 introduces
+private drafts and review, V18 removes persisted content history, and V19 adds
+current-state query indexes. These migrations are forward-only.
 
-Before promotion, verify a fresh database migrates directly to V15 and a
+Before promotion, verify a fresh database migrates directly to V19 and a
 controlled legacy SQLx v1-v10 database passes
-`baseline -> migrate -> validate`. The current development environment is
-disposable, but production data must be backed up and restored in an isolated
-target before takeover.
+`baseline -> migrate -> validate`.
 
 Run the non-root `flyway-migrate` artifact as a one-shot task before API and
 Worker start; both services wait for its successful completion. Database schema
 changes must remain compatible with the currently running Public/API release
-during a rolling update. Application rollback never replaces the database;
-restore operations require the separately configured isolated-restore flow.
+during a rolling update.
 
 For a new empty production database, run only the migrations artifact with
-`migrate`. For an existing database with SQLx versions 1 through 10, first back
-up the database, verify restoration, and confirm the selected environment,
-database, dedicated DDL credentials, runtime role, and ownership/grant topology.
+`migrate`. For an existing database with SQLx versions 1 through 10, confirm the
+selected environment, database, dedicated DDL credentials, runtime role, and
+ownership/grant topology.
 Then perform the one-time takeover using the production Compose boundary and
 the real secret-managed environment file:
 

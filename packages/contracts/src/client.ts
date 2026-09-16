@@ -1,4 +1,5 @@
 import type { paths, ProblemDetails } from './generated/openapi'
+import { parseOpenApiResponse, parseOpenApiSchema } from './runtime'
 
 export type ContractHttpMethod = 'get' | 'put' | 'post' | 'delete' | 'options' | 'head' | 'patch' | 'trace'
 
@@ -181,6 +182,81 @@ type RuntimeRequestOptions = Omit<RequestInit, 'method' | 'body' | 'headers'> & 
   headers?: HeadersInit
 }
 
+type RuntimeRequester = (
+  method: ContractHttpMethod,
+  path: string,
+  options?: RuntimeRequestOptions,
+) => Promise<ContractResponse<unknown>>
+type RuntimeExecutor = (
+  method: ContractHttpMethod,
+  path: string,
+  options?: RuntimeRequestOptions,
+) => Promise<Response>
+
+class ContractClientAdapter implements ContractClient {
+  constructor(
+    private readonly requester: RuntimeRequester,
+    private readonly executor: RuntimeExecutor,
+  ) {}
+
+  async request<M extends ContractHttpMethod, P extends ContractPath<M>>(
+    method: M,
+    path: P,
+    ...options: ContractOptionsTuple<ContractOperation<M, P>>
+  ): Promise<ContractResponse<ContractSuccessBody<ContractOperation<M, P>>>> {
+    const result = await this.requester(method, path, options[0] as RuntimeRequestOptions | undefined)
+    return result as ContractResponse<ContractSuccessBody<ContractOperation<M, P>>>
+  }
+
+  raw<M extends ContractHttpMethod, P extends ContractPath<M>>(
+    method: M,
+    path: P,
+    ...options: ContractOptionsTuple<ContractOperation<M, P>>
+  ): Promise<Response> {
+    return this.executor(method, path, options[0] as RuntimeRequestOptions | undefined)
+  }
+
+  async get<P extends ContractPath<'get'>>(
+    path: P,
+    ...options: ContractOptionsTuple<ContractOperation<'get', P>>
+  ): Promise<ContractResponse<ContractSuccessBody<ContractOperation<'get', P>>>> {
+    const result = await this.requester('get', path, options[0] as RuntimeRequestOptions | undefined)
+    return result as ContractResponse<ContractSuccessBody<ContractOperation<'get', P>>>
+  }
+
+  async post<P extends ContractPath<'post'>>(
+    path: P,
+    ...options: ContractOptionsTuple<ContractOperation<'post', P>>
+  ): Promise<ContractResponse<ContractSuccessBody<ContractOperation<'post', P>>>> {
+    const result = await this.requester('post', path, options[0] as RuntimeRequestOptions | undefined)
+    return result as ContractResponse<ContractSuccessBody<ContractOperation<'post', P>>>
+  }
+
+  async put<P extends ContractPath<'put'>>(
+    path: P,
+    ...options: ContractOptionsTuple<ContractOperation<'put', P>>
+  ): Promise<ContractResponse<ContractSuccessBody<ContractOperation<'put', P>>>> {
+    const result = await this.requester('put', path, options[0] as RuntimeRequestOptions | undefined)
+    return result as ContractResponse<ContractSuccessBody<ContractOperation<'put', P>>>
+  }
+
+  async patch<P extends ContractPath<'patch'>>(
+    path: P,
+    ...options: ContractOptionsTuple<ContractOperation<'patch', P>>
+  ): Promise<ContractResponse<ContractSuccessBody<ContractOperation<'patch', P>>>> {
+    const result = await this.requester('patch', path, options[0] as RuntimeRequestOptions | undefined)
+    return result as ContractResponse<ContractSuccessBody<ContractOperation<'patch', P>>>
+  }
+
+  async delete<P extends ContractPath<'delete'>>(
+    path: P,
+    ...options: ContractOptionsTuple<ContractOperation<'delete', P>>
+  ): Promise<ContractResponse<ContractSuccessBody<ContractOperation<'delete', P>>>> {
+    const result = await this.requester('delete', path, options[0] as RuntimeRequestOptions | undefined)
+    return result as ContractResponse<ContractSuccessBody<ContractOperation<'delete', P>>>
+  }
+}
+
 /**
  * Contract-driven client. Exact path templates, parameter objects, request
  * bodies and successful response bodies are derived from the generated
@@ -236,26 +312,13 @@ export function createContractClient(options: ApiClientOptions): ContractClient 
   ): Promise<ContractResponse<unknown>> {
     const response = await execute(method, path, requestOptions)
     return {
-      data: await responseBody(response),
+      data: await responseBody(response, method, path),
       response,
       etag: response.headers.get('ETag'),
     }
   }
 
-  return {
-    request: request as unknown as ContractClient['request'],
-    raw: execute as ContractClient['raw'],
-    get: ((path: string, requestOptions?: RuntimeRequestOptions) =>
-      request('get', path, requestOptions)) as unknown as ContractClient['get'],
-    post: ((path: string, requestOptions?: RuntimeRequestOptions) =>
-      request('post', path, requestOptions)) as unknown as ContractClient['post'],
-    put: ((path: string, requestOptions?: RuntimeRequestOptions) =>
-      request('put', path, requestOptions)) as unknown as ContractClient['put'],
-    patch: ((path: string, requestOptions?: RuntimeRequestOptions) =>
-      request('patch', path, requestOptions)) as unknown as ContractClient['patch'],
-    delete: ((path: string, requestOptions?: RuntimeRequestOptions) =>
-      request('delete', path, requestOptions)) as unknown as ContractClient['delete'],
-  }
+  return new ContractClientAdapter(request, execute)
 }
 
 /** Backward-compatible untyped transport for incremental application migration. */
@@ -343,10 +406,19 @@ function isBodyInit(value: unknown): value is BodyInit {
     || value instanceof ReadableStream
 }
 
-async function responseBody(response: Response): Promise<unknown> {
+async function responseBody(
+  response: Response,
+  method?: ContractHttpMethod,
+  pathTemplate?: string,
+): Promise<unknown> {
   if (response.status === 204 || response.status === 205) return undefined
   const contentType = response.headers.get('Content-Type')?.toLowerCase() || ''
-  if (contentType.includes('json')) return await response.json()
+  if (contentType.includes('json')) {
+    const value: unknown = await response.json()
+    return method && pathTemplate
+      ? parseOpenApiResponse(method, pathTemplate, response.status, value)
+      : value
+  }
   return await response.text()
 }
 
@@ -358,6 +430,12 @@ async function apiError(response: Response): Promise<ApiError> {
     detail: response.statusText || 'Request failed',
     requestId: response.headers.get('X-Request-ID') || '00000000-0000-0000-0000-000000000000',
   }
-  const problem = await response.clone().json().catch(() => fallback) as ProblemDetails
+  const raw: unknown = await response.clone().json().catch(() => fallback)
+  let problem = fallback
+  try {
+    problem = parseOpenApiSchema<ProblemDetails>('ProblemDetails', raw)
+  } catch {
+    problem = fallback
+  }
   return new ApiError(problem, response)
 }

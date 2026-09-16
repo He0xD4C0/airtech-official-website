@@ -202,7 +202,7 @@ pub(super) fn product_page() -> Value {
         json!({
             "items": array(r("Product")),
             "nextCursor": {
-                "description": "Opaque base64url v1 keyset cursor bound to the filters used for this page.",
+                "description": "Opaque base64url v2 keyset cursor bound to the active filters; v1 is accepted for one compatibility release.",
                 "anyOf": [
                     {"type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^[A-Za-z0-9_-]+$"},
                     {"type": "null"}

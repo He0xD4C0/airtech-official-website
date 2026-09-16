@@ -13,7 +13,19 @@ services:
       FLYWAY_USER: ${FLYWAY_USER:?set the migration role}
       FLYWAY_PASSWORD: ${FLYWAY_PASSWORD:?set the migration role password from the secret manager}
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: ${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:?set the existing API and Worker database role}
-      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:?set AIRTEK_FLYWAY_TARGET=16}
+      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:?set AIRTEK_FLYWAY_TARGET=19}
+    restart: "no"
+
+  platform-maintenance:
+    image: ${AIRTEK_PLATFORM_IMAGE:?set AIRTEK_PLATFORM_IMAGE to an immutable image reference}
+    entrypoint: ["/usr/local/bin/airtek-maintenance"]
+    command: ["prepare-runtime"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
+      RUST_LOG: ${RUST_LOG:-airtek_platform=info}
+    depends_on:
+      flyway-migrate:
+        condition: service_completed_successfully
     restart: "no"
 
   platform-api:
@@ -25,7 +37,6 @@ services:
       AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:?set AIRTEK_ADMIN_ORIGIN}
       AIRTEK_ADMIN_BOOTSTRAP_TOKEN: ${AIRTEK_ADMIN_BOOTSTRAP_TOKEN:-}
       AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:?set AIRTEK_TOTP_ENCRYPTION_KEY from the secret manager}
-      AIRTEK_PREVIEW_SIGNING_KEY: ${AIRTEK_PREVIEW_SIGNING_KEY:?set AIRTEK_PREVIEW_SIGNING_KEY from the secret manager}
       AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: ${AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY:?set AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY from the secret manager}
       AIRTEK_ANALYTICS_TOKEN_HMAC_KEY: ${AIRTEK_ANALYTICS_TOKEN_HMAC_KEY:?set AIRTEK_ANALYTICS_TOKEN_HMAC_KEY from the secret manager}
       AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY: ${AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY:?set AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY from the secret manager}
@@ -52,7 +63,7 @@ services:
     expose:
       - "8080"
     depends_on:
-      flyway-migrate:
+      platform-maintenance:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/readyz"]
@@ -70,7 +81,6 @@ services:
       AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:?set AIRTEK_PUBLIC_ORIGIN}
       AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:?set AIRTEK_ADMIN_ORIGIN}
       AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:?set AIRTEK_TOTP_ENCRYPTION_KEY from the secret manager}
-      AIRTEK_PREVIEW_SIGNING_KEY: ${AIRTEK_PREVIEW_SIGNING_KEY:?set AIRTEK_PREVIEW_SIGNING_KEY from the secret manager}
       AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: ${AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY:?set AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY from the secret manager}
       AIRTEK_ANALYTICS_TOKEN_HMAC_KEY: ${AIRTEK_ANALYTICS_TOKEN_HMAC_KEY:?set AIRTEK_ANALYTICS_TOKEN_HMAC_KEY from the secret manager}
       AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY: ${AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY:?set AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY from the secret manager}
@@ -86,7 +96,7 @@ services:
       AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS: ${AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS:-}
       RUST_LOG: ${RUST_LOG:-airtek_platform=info}
     depends_on:
-      flyway-migrate:
+      platform-maintenance:
         condition: service_completed_successfully
     mem_limit: 768m
     restart: unless-stopped

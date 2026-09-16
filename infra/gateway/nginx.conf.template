@@ -37,19 +37,6 @@ server {
   location = /admin { return 404; }
   location ^~ /admin/ { return 404; }
 
-  # The query string contains the short-lived preview bearer capability. Do
-  # not copy it into the default Nginx access log.
-  location = /en/preview {
-    access_log off;
-    proxy_pass http://public-web:3000;
-    proxy_http_version 1.1;
-    proxy_hide_header Content-Security-Policy;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-Host $host;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-  }
-
   # Direct media objects are served through the platform API so the public
   # origin never exposes the object-storage endpoint or a shared bucket. Every
   # non-deleted upload is readable from its permanent application URL.

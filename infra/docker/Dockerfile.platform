@@ -21,7 +21,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
         echo "registry = \"${CARGO_REGISTRY_MIRROR}\""; \
       } > "${CARGO_HOME}/config.toml"; \
     fi \
-    && cargo build --locked --release --manifest-path services/platform/Cargo.toml --features "$AIRTEK_PLATFORM_FEATURES" --bin airtek-api --bin airtek-worker
+    && cargo build --locked --release --manifest-path services/platform/Cargo.toml --features "$AIRTEK_PLATFORM_FEATURES" --bin airtek-api --bin airtek-worker --bin airtek-maintenance
 
 FROM debian:bookworm-slim
 RUN apt-get update \
@@ -30,6 +30,7 @@ RUN apt-get update \
     && useradd --system --uid 10001 --create-home airtek
 COPY --from=build /workspace/services/platform/target/release/airtek-api /usr/local/bin/airtek-api
 COPY --from=build /workspace/services/platform/target/release/airtek-worker /usr/local/bin/airtek-worker
+COPY --from=build /workspace/services/platform/target/release/airtek-maintenance /usr/local/bin/airtek-maintenance
 USER 10001
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/airtek-api"]

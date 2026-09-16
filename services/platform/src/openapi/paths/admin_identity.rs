@@ -116,14 +116,17 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
         "/api/admin/v1/user-invitations",
         "get",
         admin(
-            op(
-                "listUserInvitations",
-                "List management user invitations",
-                "adminIdentity",
-                [(
-                    "200",
-                    json_response("User invitations", r("UserInvitationPage")),
-                )],
+            params(
+                op(
+                    "listUserInvitations",
+                    "List management user invitations",
+                    "adminIdentity",
+                    [(
+                        "200",
+                        json_response("User invitations", r("UserInvitationPage")),
+                    )],
+                ),
+                admin_pagination_params(),
             ),
             false,
         ),

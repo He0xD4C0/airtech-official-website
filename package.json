@@ -21,13 +21,17 @@
     "db:migrate": "docker compose run --rm flyway-migrate migrate",
     "db:info": "docker compose run --rm flyway-migrate info",
     "db:validate": "docker compose run --rm flyway-migrate validate",
-    "check:production": "pnpm build:production && node scripts/assert-production-isolation.mjs && node scripts/assert-admin-ui-boundary.mjs",
+    "check:production": "pnpm check:source-lines && pnpm check:postgres-boundary && pnpm build:production && node scripts/assert-production-isolation.mjs && node scripts/assert-admin-ui-boundary.mjs",
     "check:admin-ui": "node scripts/assert-admin-ui-boundary.mjs",
+    "check:source-lines": "node scripts/assert-source-line-limits.mjs",
+    "check:architecture": "node scripts/assert-architecture.mjs && pnpm check:source-lines",
+    "check:postgres-boundary": "node scripts/assert-postgres-runtime-boundary.mjs",
+    "test:source-lines": "node --test scripts/assert-source-line-limits.test.mjs",
     "check:deployment": "node scripts/assert-deployment-config.mjs",
     "check:media-boundary": "node scripts/assert-direct-media-boundary.mjs",
     "check:isolation": "node scripts/smoke-isolation.mjs",
-    "generate:contracts": "node scripts/generate-openapi.mjs && node scripts/generate-admin-operation-matrix.mjs && pnpm --filter @airtek/contracts typecheck",
-    "check:contracts": "node scripts/generate-openapi.mjs --check && node scripts/generate-admin-operation-matrix.mjs --check && pnpm --filter @airtek/contracts typecheck"
+    "generate:contracts": "node scripts/generate-openapi.mjs && node scripts/generate-openapi-runtime.mjs && node scripts/generate-admin-operation-matrix.mjs && pnpm --filter @airtek/contracts typecheck",
+    "check:contracts": "node scripts/generate-openapi.mjs --check && node scripts/generate-openapi-runtime.mjs --check && node scripts/generate-admin-operation-matrix.mjs --check && pnpm --filter @airtek/contracts typecheck"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.10.2",

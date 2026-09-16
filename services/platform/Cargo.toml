@@ -2,7 +2,7 @@
 name = "airtek-platform"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.82"
+rust-version = "1.88"
 publish = false
 
 [features]
@@ -50,3 +50,7 @@ path = "src/bin/api.rs"
 [[bin]]
 name = "airtek-worker"
 path = "src/bin/worker.rs"
+
+[[bin]]
+name = "airtek-maintenance"
+path = "src/bin/maintenance.rs"

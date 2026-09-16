@@ -7,7 +7,6 @@ import type {
   AnalyticsOverview as ContractAnalyticsOverview,
   AuditEvent as ContractAuditEvent,
   BackgroundOperation as ContractBackgroundOperation,
-  ContentPreviewLink as ContractContentPreviewLink,
   GuestSourceDaily as ContractGuestSourceDaily,
   InvitationAcceptance as ContractInvitationAcceptance,
   MissingAssetReference as ContractMissingAssetReference,
@@ -49,7 +48,6 @@ export type ProductPrivatePricing = ContractProductPrivatePricing
 export type UpdateAdminUser = ContractUpdateAdminUser
 export type UpdateAdminRole = ContractUpdateAdminRole
 export type UserInvitation = ContractUserInvitation
-export type ContentPreviewLink = ContractContentPreviewLink
 export type BackendProduct = ContractProduct & {
   sourceKind?: ContractAdminProductDetail['sourceKind']
   missingAssets?: ContractAdminProductDetail['missingAssets']

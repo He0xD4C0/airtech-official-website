@@ -167,7 +167,7 @@ fn product_relation_target_cannot_copy_product_facts() {
 }
 
 #[test]
-fn templates_general_information_and_migration_report_are_exact() {
+fn templates_and_general_information_are_exact() {
     let schemas = schemas();
     let templates = schemas["ContentTemplateKey"]["enum"]
         .as_array()
@@ -192,68 +192,6 @@ fn templates_general_information_and_migration_report_are_exact() {
     assert!(general_information["properties"]
         .get("navigationCta")
         .is_some());
-
-    assert_eq!(
-        keys(&schemas["MigrationPreflightReport"]["properties"]),
-        BTreeSet::from([
-            "blockingIssueCount",
-            "canMigrate",
-            "convertible",
-            "generatedAt",
-            "issues",
-            "scanned",
-            "targetSchemaVersion",
-            "warningCount",
-        ])
-    );
-    assert_eq!(
-        schemas["MigrationPreflightSource"]["enum"],
-        json!([
-            "content",
-            "contentRevision",
-            "news",
-            "generalInformation",
-            "media",
-            "relation",
-            "route"
-        ])
-    );
-    assert_eq!(
-        schemas["MigrationPreflightIssueCode"]["enum"],
-        json!([
-            "invalidLegacyPayload",
-            "unsupportedContentKind",
-            "unsupportedTemplate",
-            "embeddedPageSlots",
-            "unknownBlock",
-            "invalidTiptapDocument",
-            "typeFieldMismatch",
-            "invalidRelation",
-            "missingRelationTarget",
-            "relationHistoryUnavailable",
-            "missingMediaAsset",
-            "missingMediaVersion",
-            "duplicatePublicPath",
-            "missingPublicRoute",
-            "routeOwnershipMismatch",
-            "canonicalPathMismatch",
-            "scheduledPublicationUnsupported",
-            "revisionConversionFailed"
-        ])
-    );
-    assert_eq!(
-        keys(&schemas["MigrationPreflightCounts"]["properties"]),
-        BTreeSet::from([
-            "contentEntries",
-            "contentRevisions",
-            "generalInformationEntries",
-            "mediaAssets",
-            "mediaReferences",
-            "newsEntries",
-            "publicRoutes",
-            "relations",
-        ])
-    );
 }
 
 #[test]

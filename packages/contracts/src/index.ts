@@ -1,5 +1,6 @@
 export type * from './generated/openapi'
 export * from './client'
+export * from './runtime'
 
 import type {
   DiscoveryDocument,

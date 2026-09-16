@@ -1,117 +1,96 @@
-//! Unified CMS service envelopes and mutation request schemas.
+//! Private draft, review, and current publication schemas.
 
 use serde_json::{json, Map, Value};
 
 use super::super::super::support::*;
 
 pub(super) fn add(s: &mut Map<String, Value>) {
-    add_enums_and_requests(s);
-    add_records(s);
-    add_diff(s);
-}
-
-fn add_enums_and_requests(s: &mut Map<String, Value>) {
     s.insert(
-        "ContentRevisionKindV2".into(),
-        string_enum(&["manual", "publish", "restore"]),
-    );
-    s.insert("ContentSnapshotIntent".into(), string_enum(&["manual"]));
-    s.insert(
-        "CreateContentSnapshotRequest".into(),
-        object(
-            &["intent", "reason"],
-            json!({
-                "intent": r("ContentSnapshotIntent"),
-                "reason": {"type": "string", "minLength": 10, "maxLength": 2000}
-            }),
-        ),
+        "CmsDraftState".into(),
+        string_enum(&["editing", "pendingReview"]),
     );
     s.insert(
-        "RestoreContentRevisionRequest".into(),
-        object(
-            &["reason"],
-            json!({"reason": {"type": "string", "minLength": 10, "maxLength": 2000}}),
-        ),
-    );
-    s.insert(
-        "UnpublishContentRequest".into(),
-        object(
-            &["expectedPublishedRevision", "reason"],
-            json!({
-                "expectedPublishedRevision": revision(),
-                "reason": {"type": "string", "minLength": 1, "maxLength": 2000}
-            }),
-        ),
-    );
-    s.insert(
-        "ArchiveContentRequest".into(),
-        object(
-            &["reason"],
-            json!({"reason": {"type": "string", "minLength": 10, "maxLength": 2000}}),
-        ),
-    );
-}
-
-fn add_records(s: &mut Map<String, Value>) {
-    s.insert(
-        "ContentRecordV2".into(),
+        "CmsPrivateDraft".into(),
         object(
             &[
-                "id",
-                "status",
-                "draft",
-                "latestRevision",
-                "publishedRevision",
+                "draftId",
+                "contentId",
+                "ownerUserId",
+                "document",
+                "draftVersion",
+                "basePublicationVersion",
+                "state",
+                "rejectionReason",
                 "createdAt",
                 "updatedAt",
-                "updatedBy",
             ],
             json!({
-                "id": uuid(),
-                "status": r("CmsPublicationStatusV2"),
-                "draft": r("ContentDraftV2"),
-                "latestRevision": nullable(revision()),
-                "publishedRevision": nullable(revision()),
-                "createdAt": timestamp(),
-                "updatedAt": timestamp(),
-                "updatedBy": {"type": "string", "minLength": 1, "maxLength": 320}
+                "draftId":uuid(),"contentId":uuid(),"ownerUserId":nullable(uuid()),
+                "document":r("ContentDraftV2"),"draftVersion":revision(),
+                "basePublicationVersion":{"type":"integer","minimum":0},
+                "state":r("CmsDraftState"),
+                "rejectionReason":nullable(json!({"type":"string","maxLength":2000})),
+                "createdAt":timestamp(),"updatedAt":timestamp()
             }),
         ),
     );
     s.insert(
-        "ContentRevisionV2".into(),
+        "CmsPublishedContent".into(),
         object(
             &[
                 "contentId",
-                "revision",
-                "sourceDraftVersion",
-                "kind",
                 "document",
-                "reason",
-                "createdBy",
-                "createdAt",
+                "publicationVersion",
+                "publishedBy",
+                "publishedAt",
+                "updatedAt",
             ],
             json!({
-                "contentId": uuid(),
-                "revision": revision(),
-                "sourceDraftVersion": revision(),
-                "kind": r("ContentRevisionKindV2"),
-                "document": r("ContentDraftV2"),
-                "reason": {"type": "string", "minLength": 1, "maxLength": 2000},
-                "createdBy": {"type": "string", "minLength": 1, "maxLength": 320},
-                "createdAt": timestamp()
+                "contentId":uuid(),"document":r("ContentDraftV2"),
+                "publicationVersion":revision(),"publishedBy":nullable(uuid()),
+                "publishedAt":timestamp(),"updatedAt":timestamp()
             }),
         ),
     );
     s.insert(
-        "ContentRecordV2Page".into(),
+        "CmsReviewItem".into(),
         object(
-            &["items", "nextCursor", "total", "counts"],
+            &["draft","submittedByUserId","submittedAt"],
+            json!({"draft":r("CmsPrivateDraft"),"submittedByUserId":uuid(),"submittedAt":timestamp()}),
+        ),
+    );
+    s.insert("CmsDraftPage".into(), cms_page("CmsPrivateDraft"));
+    s.insert("CmsPublishedPage".into(), cms_page("CmsPublishedContent"));
+    s.insert("CmsReviewPage".into(), cms_page("CmsReviewItem"));
+    s.insert(
+        "CmsDraftSharesRequest".into(),
+        object(
+            &["userIds"],
+            json!({"userIds":{"type":"array","maxItems":100,"uniqueItems":true,"items":uuid()}}),
+        ),
+    );
+    s.insert(
+        "CmsRejectRequest".into(),
+        object(
+            &["reason"],
+            json!({"reason":{"type":"string","minLength":1,"maxLength":2000}}),
+        ),
+    );
+    s.insert(
+        "CmsPublishResult".into(),
+        object(
+            &["contentId", "publicationVersion", "publishedAt"],
+            json!({"contentId":uuid(),"publicationVersion":revision(),"publishedAt":timestamp()}),
+        ),
+    );
+    s.insert(
+        "CmsSubmitResult".into(),
+        object(
+            &["status", "draft", "publication"],
             json!({
-                "items": array(r("ContentRecordV2")),
-                "nextCursor": nullable(json!({"type": "string"})),
-                "total": {"type": "integer", "minimum": 0},
-                "counts": content_kind_counts()
+                "status":string_enum(&["pendingReview","published"]),
+                "draft":nullable(r("CmsPrivateDraft")),
+                "publication":nullable(r("CmsPublishResult"))
             }),
         ),
     );
@@ -119,66 +98,18 @@ fn add_records(s: &mut Map<String, Value>) {
         "ContentTemplateDefinitionPage".into(),
         object(
             &["items"],
-            json!({"items": array(r("ContentTemplateDefinition"))}),
+            json!({"items":array(r("ContentTemplateDefinition"))}),
         ),
     );
-    s.insert("ContentRevisionV2Page".into(), page("ContentRevisionV2"));
 }
 
-/// Type counts are a closed map over `CmsContentKind`; CMS V2 object schemas
-/// must set `additionalProperties: false`.
-fn content_kind_counts() -> Value {
-    let mut properties = Map::new();
-    for kind in [
-        "home",
-        "page",
-        "solution",
-        "technology",
-        "article",
-        "news",
-        "faq",
-        "caseStudy",
-        "download",
-        "company",
-        "legal",
-        "generalInformation",
-        "navigation",
-        "footer",
-    ] {
-        properties.insert(kind.into(), json!({"type": "integer", "minimum": 0}));
-    }
-    object(&[], Value::Object(properties))
-}
-
-fn add_diff(s: &mut Map<String, Value>) {
-    s.insert(
-        "ContentDiffChange".into(),
-        object(
-            &["path", "before", "after"],
-            json!({
-                "path": {"type": "string", "minLength": 1, "maxLength": 2000},
-                "before": nullable(json!({})),
-                "after": nullable(json!({}))
-            }),
-        ),
-    );
-    s.insert(
-        "ContentDiffV2".into(),
-        object(
-            &[
-                "contentId",
-                "baseRevision",
-                "targetRevision",
-                "targetDraftVersion",
-                "changes",
-            ],
-            json!({
-                "contentId": uuid(),
-                "baseRevision": revision(),
-                "targetRevision": nullable(revision()),
-                "targetDraftVersion": nullable(revision()),
-                "changes": {"type": "array", "maxItems": 5000, "items": r("ContentDiffChange")}
-            }),
-        ),
-    );
+fn cms_page(item: &str) -> Value {
+    object(
+        &["items", "nextCursor", "total"],
+        json!({
+            "items":array(r(item)),
+            "nextCursor":nullable(json!({"type":"string"})),
+            "total":{"type":"integer","minimum":0}
+        }),
+    )
 }

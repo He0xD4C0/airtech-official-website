@@ -30,17 +30,16 @@ fn documents_every_production_route() {
         "/api/admin/v1/contacts/{id}/notes",
         "/api/admin/v1/contacts/{id}/pii",
         "/api/admin/v1/contacts/{id}/status",
-        "/api/admin/v1/content",
-        "/api/admin/v1/content/templates",
-        "/api/admin/v1/content/{id}/archive",
-        "/api/admin/v1/content/{id}/diff",
-        "/api/admin/v1/content/{id}/draft",
-        "/api/admin/v1/content/{id}/publication-readiness",
-        "/api/admin/v1/content/{id}/publish",
-        "/api/admin/v1/content/{id}/revisions",
-        "/api/admin/v1/content/{id}/revisions/{revision}/restore",
-        "/api/admin/v1/content/{id}/snapshots",
-        "/api/admin/v1/content/{id}/unpublish",
+        "/api/admin/v1/content-drafts",
+        "/api/admin/v1/content-drafts/templates",
+        "/api/admin/v1/content-drafts/{draftId}",
+        "/api/admin/v1/content-drafts/{draftId}/claim",
+        "/api/admin/v1/content-drafts/{draftId}/shares",
+        "/api/admin/v1/content-drafts/{draftId}/submit",
+        "/api/admin/v1/content-drafts/{draftId}/withdraw",
+        "/api/admin/v1/content-reviews",
+        "/api/admin/v1/content-reviews/{draftId}/approve",
+        "/api/admin/v1/content-reviews/{draftId}/reject",
         "/api/admin/v1/dashboard/summary",
         "/api/admin/v1/feishu/conflicts",
         "/api/admin/v1/feishu/conflicts/{id}/resolve",
@@ -63,6 +62,9 @@ fn documents_every_production_route() {
         "/api/admin/v1/products/{id}/publish",
         "/api/admin/v1/products/{id}/temporary-overrides",
         "/api/admin/v1/products/{id}/validation-report",
+        "/api/admin/v1/published-content",
+        "/api/admin/v1/published-content/{contentId}",
+        "/api/admin/v1/published-content/{contentId}/drafts",
         "/api/admin/v1/rfqs",
         "/api/admin/v1/rfqs/{id}",
         "/api/admin/v1/rfqs/{id}/assignment",
@@ -80,7 +82,6 @@ fn documents_every_production_route() {
         "/api/public/v1/analytics/consents",
         "/api/public/v1/analytics/events",
         "/api/public/v1/contact",
-        "/api/public/v1/content-preview",
         "/api/public/v1/content/{kind}/{slug}",
         "/api/public/v1/discovery",
         "/api/public/v1/guest-visits",
@@ -216,10 +217,7 @@ fn public_editorial_contract_is_cms_v2_only() {
             ["content"]["application/json"]["schema"]["$ref"],
         "#/components/schemas/PublicContentProjection"
     );
-    assert_eq!(
-        schemas["ContentPreviewResponse"]["properties"]["content"]["$ref"],
-        "#/components/schemas/PublicContentProjection"
-    );
+    assert!(schemas.get("ContentPreviewResponse").is_none());
 
     let template_required = schemas["ContentTemplateDefinition"]["required"]
         .as_array()
@@ -292,18 +290,6 @@ fn stable_media_and_dependency_problem_types_are_contractual() {
             "415",
             crate::error::MEDIA_DECODE_FAILED,
         ),
-        (
-            "/api/admin/v1/content/{id}/snapshots",
-            "post",
-            "422",
-            crate::error::CONTENT_DEPENDENCY_CONFLICT,
-        ),
-        (
-            "/api/admin/v1/content/{id}/unpublish",
-            "post",
-            "409",
-            crate::error::CONTENT_DEPENDENCY_CONFLICT,
-        ),
     ] {
         let example = &document["paths"][path][method]["responses"][status]["content"]
             ["application/problem+json"]["examples"][code]["value"];
@@ -346,14 +332,6 @@ fn public_media_contract_is_asset_resolved() {
 fn mutations_require_a_bounded_idempotency_key() {
     let document = document();
     for (path, method) in [
-        ("/api/admin/v1/content", "post"),
-        ("/api/admin/v1/content/{id}/draft", "patch"),
-        ("/api/admin/v1/content/{id}/snapshots", "post"),
-        ("/api/admin/v1/content/{id}/archive", "post"),
-        (
-            "/api/admin/v1/content/{id}/revisions/{revision}/restore",
-            "post",
-        ),
         ("/api/admin/v1/products/{id}/publish", "post"),
         ("/api/admin/v1/products/{id}/temporary-overrides", "post"),
         ("/api/admin/v1/media/assets", "post"),
@@ -383,6 +361,13 @@ fn mutations_require_a_bounded_idempotency_key() {
 fn unified_content_contract_removes_dedicated_editorial_mutations() {
     let document = document();
     for path in [
+        "/api/admin/v1/content",
+        "/api/admin/v1/content/{id}/draft",
+        "/api/admin/v1/content/{id}/snapshots",
+        "/api/admin/v1/content/{id}/revisions",
+        "/api/admin/v1/content/{id}/diff",
+        "/api/admin/v1/content/{id}/revisions/{revision}/restore",
+        "/api/public/v1/content-preview",
         "/api/admin/v1/news",
         "/api/admin/v1/news/{id}",
         "/api/admin/v1/general-information",

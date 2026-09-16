@@ -87,6 +87,11 @@ function permissionFor(path, method) {
   if (path === '/api/admin/v1/dashboard/summary') return 'authenticated; metrics filtered by caller permissions'
   if (path === '/api/admin/v1/media/assets' && method === 'get') return 'content.read | media.write'
   if (path.includes('/media/')) return write ? 'media.write' : 'content.read'
+  if (path.includes('/content-reviews')) return 'content.publish'
+  if (path.includes('/published-content')) {
+    return write && path.endsWith('/drafts') ? 'content.write' : 'content.read'
+  }
+  if (path.includes('/content-drafts')) return write ? 'content.write' : 'content.read'
   if (path.endsWith('/content') || path.includes('/content/')) {
     if (path.endsWith('/publish') || path.endsWith('/unpublish')) return 'content.publish'
     return write ? 'content.write' : 'content.read'

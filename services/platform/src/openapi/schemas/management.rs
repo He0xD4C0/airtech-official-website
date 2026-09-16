@@ -213,6 +213,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "locale",
                 "status",
                 "revision",
+                "managerUserId",
                 "roles",
                 "totpEnabled",
                 "invitedAt",
@@ -227,6 +228,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "locale": {"type": "string"},
                 "status": string_enum(&["invited", "active", "disabled"]),
                 "revision": revision(),
+                "managerUserId": nullable(uuid()),
                 "roles": array(json!({"type": "string"})),
                 "totpEnabled": {"type": "boolean"},
                 "invitedAt": nullable(timestamp()),
@@ -260,6 +262,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "locale": {"type": "string"},
                 "status": string_enum(&["invited", "active", "disabled"]),
                 "roleKeys": array(json!({"type": "string"})),
+                "managerUserId": nullable(uuid()),
                 "reason": {"type": "string", "minLength": 10}
             }),
         ),

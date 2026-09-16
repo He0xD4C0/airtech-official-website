@@ -6,18 +6,14 @@
 import type { components } from '../components'
 
 export interface OperationsPart06 {
-listAdminContentV2: {
+listPrivateContentDrafts: {
         parameters: {
             query?: {
                 /** @description Opaque endpoint-scoped cursor returned by the previous page. */
                 cursor?: string;
-                direction?: "asc" | "desc";
-                kind?: string;
                 /** @description Page size; values outside 1 through 100 return Problem Details 400. */
                 limit?: number;
                 q?: string;
-                sort?: "updatedAt" | "title" | "kind";
-                status?: components["schemas"]["CmsPublicationStatusV2"];
             };
             header?: never;
             path?: never;
@@ -25,13 +21,13 @@ listAdminContentV2: {
         };
         requestBody?: never;
         responses: {
-            /** @description Content records */
+            /** @description Private drafts */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContentRecordV2Page"];
+                    "application/json": components["schemas"]["CmsDraftPage"];
                 };
             };
             /** @description Malformed request */
@@ -126,15 +122,10 @@ listAdminContentV2: {
             };
         };
     };
-createAdminContentV2: {
+createPrivateContentDraft: {
         parameters: {
             query?: never;
-            header: {
-                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
-                "Idempotency-Key": string;
-                /** @description Current draft ETag. Creation requires draft-0. */
-                "If-Match": string;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -144,7 +135,7 @@ createAdminContentV2: {
             };
         };
         responses: {
-            /** @description Content draft created */
+            /** @description Private draft created */
             201: {
                 headers: {
                     /** @description Current draft-N entity tag */
@@ -152,7 +143,7 @@ createAdminContentV2: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContentRecordV2"];
+                    "application/json": components["schemas"]["CmsPrivateDraft"];
                 };
             };
             /** @description Malformed request */
@@ -247,27 +238,18 @@ createAdminContentV2: {
             };
         };
     };
-archiveAdminContentV2: {
+getPrivateContentDraft: {
         parameters: {
             query?: never;
-            header: {
-                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
-                "Idempotency-Key": string;
-                /** @description Current draft ETag. Creation requires draft-0. */
-                "If-Match": string;
-            };
+            header?: never;
             path: {
-                id: string;
+                draftId: string;
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ArchiveContentRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description Content archived */
+            /** @description Private draft */
             200: {
                 headers: {
                     /** @description Current draft-N entity tag */
@@ -275,7 +257,7 @@ archiveAdminContentV2: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContentRecordV2"];
+                    "application/json": components["schemas"]["CmsPrivateDraft"];
                 };
             };
             /** @description Malformed request */
@@ -370,27 +352,32 @@ archiveAdminContentV2: {
             };
         };
     };
-getAdminContentDiffV2: {
+savePrivateContentDraft: {
         parameters: {
-            query: {
-                baseRevision: number;
-                targetRevision?: number;
+            query?: never;
+            header: {
+                "If-Match": string;
             };
-            header?: never;
             path: {
-                id: string;
+                draftId: string;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContentDraftV2"];
+            };
+        };
         responses: {
-            /** @description Content diff */
+            /** @description Private draft saved */
             200: {
                 headers: {
+                    /** @description Current draft-N entity tag */
+                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContentDiffV2"];
+                    "application/json": components["schemas"]["CmsPrivateDraft"];
                 };
             };
             /** @description Malformed request */

@@ -206,8 +206,8 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         }),
     );
     s.insert("AuditEvent".into(), object(
-        &["id", "actor", "action", "entityType", "entityId", "before", "after", "reason", "requestId", "occurredAt"],
-        json!({"id": uuid(), "actor": {"type": "string"}, "action": {"type": "string"}, "entityType": {"type": "string"}, "entityId": nullable(uuid()), "before": nullable(json!({})), "after": nullable(json!({})), "reason": nullable(json!({"type": "string"})), "requestId": uuid(), "occurredAt": timestamp()})
+        &["id", "actor", "action", "entityType", "entityId", "before", "after", "reason", "currentVersion", "requestId", "occurredAt"],
+        json!({"id": uuid(), "actor": {"type": "string"}, "action": {"type": "string"}, "entityType": {"type": "string"}, "entityId": nullable(uuid()), "before": nullable(json!({})), "after": nullable(json!({})), "reason": nullable(json!({"type": "string"})), "currentVersion": nullable(json!({"type": "integer", "minimum": 0})), "requestId": uuid(), "occurredAt": timestamp()})
     ));
     s.insert("AuditEventPage".into(), object(
         &["items", "nextCursor", "total"],

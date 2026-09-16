@@ -224,7 +224,8 @@ forbidMatch(adminVite, /connect-src 'self' http:\/\/localhost:8080 ws:\/\/localh
 const platformConfig = `${read('services/platform/src/config.rs')}\n${read('services/platform/src/config/types.rs')}`
 requireMatch(platformConfig, /pub const API_PORT:\s*u16\s*=\s*8080;/u, 'Rust API must use the fixed application port 8080.')
 const platformApi = read('services/platform/src/bin/api.rs')
-requireMatch(platformApi, /config\.database_url\.is_none\(\)/u, 'The running Rust API must reject the test-only in-memory repository.')
+requireMatch(platformApi, /AppState::new\(config\)\?/u, 'The running Rust API must construct the PostgreSQL-only application state.')
+requireMatch(platformApi, /verify_runtime_ready\(\)\.await\?/u, 'The running Rust API must verify one-shot runtime preparation.')
 
 const gatewayDockerfile = read('infra/docker/Dockerfile.gateway')
 requireMatch(gatewayDockerfile, /infra\/gateway\/nginx\.conf\.template/u, 'Gateway image must package the checked-in Host router.')
@@ -235,12 +236,19 @@ const compose = read('compose.yaml')
 const minioImage = 'quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e'
 const minioMcImage = 'quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727'
 requireMatch(compose, /^\s{2}flyway-migrate:\s*$/mu, 'Compose must define the one-shot Flyway migration service.')
+requireMatch(compose, /^\s{2}platform-maintenance:\s*$/mu, 'Compose must define one-shot runtime data preparation.')
 requireMatch(serviceBlock(compose, 'flyway-migrate'), /dockerfile:\s*infra\/docker\/Dockerfile\.flyway/u, 'Compose migration service must build the Flyway image.')
 for (const variable of ['FLYWAY_URL', 'FLYWAY_USER', 'FLYWAY_PASSWORD', 'FLYWAY_PLACEHOLDERS_RUNTIME_ROLE']) {
   requireMatch(serviceBlock(compose, 'flyway-migrate'), new RegExp(`${variable}:\\s*\\$\\{${variable}`, 'u'), `Local Flyway must receive ${variable} from .env.`)
 }
 requireMatch(serviceBlock(compose, 'flyway-migrate'), /AIRTEK_FLYWAY_ALLOW_SHARED_ROLE:\s*"true"/u, 'Local Compose must make its shared development role exception explicit.')
 forbidMatch(serviceBlock(compose, 'flyway-migrate'), /DATABASE_URL/u, 'Flyway must use its JDBC deployment credentials, not the Rust DATABASE_URL.')
+requireMatch(serviceBlock(compose, 'platform-maintenance'), /entrypoint:\s*\["\/usr\/local\/bin\/airtek-maintenance"\]/u, 'Local maintenance must use the dedicated binary.')
+requireMatch(serviceBlock(compose, 'platform-maintenance'), /command:\s*\["prepare-runtime"\]/u, 'Local maintenance must prepare runtime data.')
+requireMatch(serviceBlock(compose, 'platform-maintenance'), /flyway-migrate:[\s\S]*condition:\s*service_completed_successfully/u, 'Local maintenance must wait for Flyway.')
+for (const service of ['platform-api', 'platform-worker']) {
+  requireMatch(serviceBlock(compose, service), /platform-maintenance:[\s\S]*condition:\s*service_completed_successfully/u, `${service} must wait for runtime preparation.`)
+}
 const migrationWaits = compose.match(/condition:\s*service_completed_successfully/gu)?.length ?? 0
 if (migrationWaits < 2) failures.push('Both API and Worker must wait for a successful migration service.')
 requireMatch(compose, /^\s{2}gateway:\s*$/mu, 'Compose must define the HTTP gateway service.')
@@ -264,8 +272,6 @@ for (const variable of ['POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'AI
   requireMatch(compose, new RegExp(`\\$\\{${variable}`, 'u'), `Base Compose must configure ${variable} through .env.`)
 }
 requireMatch(compose, /AIRTEK_TOTP_ENCRYPTION_KEY:\s*\$\{AIRTEK_TOTP_ENCRYPTION_KEY:-\}/u, 'Local API must receive the optional TOTP encryption key from .env.')
-requireMatch(serviceBlock(compose, 'platform-api'), /AIRTEK_PREVIEW_SIGNING_KEY:\s*\$\{AIRTEK_PREVIEW_SIGNING_KEY:-\}/u, 'Local API must receive the optional preview signing key from .env.')
-requireMatch(serviceBlock(compose, 'platform-worker'), /AIRTEK_PREVIEW_SIGNING_KEY:\s*\$\{AIRTEK_PREVIEW_SIGNING_KEY:-\}/u, 'Local Worker must receive the optional preview signing key from .env.')
 for (const variable of ['AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY', 'AIRTEK_ANALYTICS_TOKEN_HMAC_KEY', 'AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY', 'AIRTEK_GUEST_RAW_RETENTION_DAYS', 'AIRTEK_GUEST_AGGREGATE_RETENTION_MONTHS', 'AIRTEK_PRODUCT_IMPORT_MAPPING_VERSION', 'AIRTEK_APPROVED_PRODUCT_MASTER_SHA256', 'AIRTEK_APPROVED_PRODUCT_MASTER_MAPPING_VERSION', 'AIRTEK_APPROVED_PRODUCT_MASTER_VALID_ROWS', 'AIRTEK_APPROVED_PRODUCT_MASTER_ERROR_ROWS', 'AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES', 'AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS', 'AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS']) {
   requireMatch(serviceBlock(compose, 'platform-api'), new RegExp(`${variable}:\\s*\\$\\{${variable}`, 'u'), `Local API must receive ${variable} from .env.`)
   requireMatch(serviceBlock(compose, 'platform-worker'), new RegExp(`${variable}:\\s*\\$\\{${variable}`, 'u'), `Local Worker must receive ${variable} from .env.`)
@@ -293,7 +299,7 @@ for (const service of ['public-web', 'admin-web']) {
   requireMatch(block, /NPM_CONFIG_REGISTRY:\s*\$\{AIRTEK_NPM_REGISTRY:-https:\/\/registry\.npmjs\.org\}/u, `${service} must default to the official npm registry.`)
   requireMatch(block, /HTTP_PROXY:\s*\$\{AIRTEK_BUILD_PROXY:-\}/u, `${service} must expose the optional build proxy.`)
 }
-for (const service of ['platform-api', 'platform-worker']) {
+for (const service of ['platform-maintenance', 'platform-api', 'platform-worker']) {
   const block = serviceBlock(compose, service)
   requireMatch(block, /AIRTEK_PLATFORM_FEATURES:\s*\$\{AIRTEK_PLATFORM_FEATURES:-devtools\}/u, `${service} must default to the local devtools feature set.`)
   requireMatch(block, /CARGO_REGISTRY_MIRROR:\s*\$\{AIRTEK_CARGO_MIRROR:-\}/u, `${service} must expose the optional Cargo mirror.`)
@@ -340,7 +346,7 @@ for (const [service, port] of [['public-web', 3000], ['admin-web', 3100], ['plat
   forbidMatch(block, /^\s+ports:/mu, `Production ${service} must not publish its internal port.`)
 }
 forbidMatch(serviceBlock(productionCompose, 'platform-worker'), /^\s+(?:ports|expose):/mu, 'Production Worker must not expose or publish a listening port.')
-for (const service of ['flyway-migrate', 'platform-api', 'platform-worker', 'public-web', 'admin-web']) {
+for (const service of ['flyway-migrate', 'platform-maintenance', 'platform-api', 'platform-worker', 'public-web', 'admin-web']) {
   forbidMatch(serviceBlock(productionCompose, service), /^\s+ports:/mu, `Production ${service} must not publish an application port.`)
 }
 forbidMatch(serviceBlock(productionCompose, 'public-web'), /DATABASE_URL/u, 'Production Public SSR must not receive database credentials.')
@@ -349,8 +355,12 @@ requireMatch(serviceBlock(productionCompose, 'platform-api'), /AIRTEK_MEDIA_STOR
 forbidMatch(serviceBlock(productionCompose, 'platform-worker'), /AIRTEK_MEDIA_/u, 'Production Worker must not receive media storage or processing configuration.')
 requireMatch(serviceBlock(productionCompose, 'platform-worker'), /mem_limit:\s*768m/u, 'Production Worker must retain its memory boundary.')
 requireMatch(productionCompose, /AIRTEK_INGRESS_BIND_ADDRESS:-127\.0\.0\.1/u, 'Production gateway must bind its outer-ingress listener to loopback by default.')
-const productionMigrationWaits = productionCompose.match(/condition:\s*service_completed_successfully/gu)?.length ?? 0
-if (productionMigrationWaits < 2) failures.push('Production API and Worker must wait for a successful migration service.')
+requireMatch(serviceBlock(productionCompose, 'platform-maintenance'), /entrypoint:\s*\["\/usr\/local\/bin\/airtek-maintenance"\]/u, 'Production maintenance must use the dedicated binary.')
+requireMatch(serviceBlock(productionCompose, 'platform-maintenance'), /command:\s*\["prepare-runtime"\]/u, 'Production maintenance must prepare runtime data.')
+requireMatch(serviceBlock(productionCompose, 'platform-maintenance'), /flyway-migrate:[\s\S]*condition:\s*service_completed_successfully/u, 'Production maintenance must wait for Flyway.')
+for (const service of ['platform-api', 'platform-worker']) {
+  requireMatch(serviceBlock(productionCompose, service), /platform-maintenance:[\s\S]*condition:\s*service_completed_successfully/u, `Production ${service} must wait for runtime preparation.`)
+}
 
 const productionEnv = read('infra/deploy/production.env.example')
 forbidMatch(productionEnv, /e2e-test/u, 'Production environment configuration must never enable the isolated E2E feature.')
@@ -358,7 +368,7 @@ for (const origin of ['AIRTEK_PUBLIC_ORIGIN=https://', 'AIRTEK_ADMIN_ORIGIN=http
   requireMatch(productionEnv, new RegExp(`^${origin}`, 'mu'), `Production environment example must configure ${origin.split('=')[0]} as HTTPS.`)
 }
 requireMatch(productionEnv, /^AIRTEK_MEDIA_STORAGE=s3$/mu, 'Production media storage must use S3.')
-requireMatch(productionEnv, /^AIRTEK_FLYWAY_TARGET=16$/mu, 'Production must target schema V16.')
+requireMatch(productionEnv, /^AIRTEK_FLYWAY_TARGET=19$/mu, 'Production must target schema V19.')
 requireMatch(productionCompose, /AIRTEK_TOTP_ENCRYPTION_KEY:\s*\$\{AIRTEK_TOTP_ENCRYPTION_KEY:\?/u, 'Production must require a secret-manager TOTP encryption key.')
 requireMatch(productionEnv, /^AIRTEK_TOTP_ENCRYPTION_KEY=REPLACE_/mu, 'Production environment example must declare the TOTP key placeholder.')
 for (const variable of ['FLYWAY_URL', 'FLYWAY_USER', 'FLYWAY_PASSWORD', 'FLYWAY_PLACEHOLDERS_RUNTIME_ROLE']) {
@@ -367,10 +377,6 @@ for (const variable of ['FLYWAY_URL', 'FLYWAY_USER', 'FLYWAY_PASSWORD', 'FLYWAY_
 }
 forbidMatch(serviceBlock(productionCompose, 'flyway-migrate'), /DATABASE_URL/u, 'Production Flyway must use separate JDBC deployment credentials.')
 forbidMatch(serviceBlock(productionCompose, 'flyway-migrate'), /AIRTEK_FLYWAY_ALLOW_SHARED_ROLE/u, 'Production must never allow a shared Flyway/runtime role.')
-for (const service of ['platform-api', 'platform-worker']) {
-  requireMatch(serviceBlock(productionCompose, service), /AIRTEK_PREVIEW_SIGNING_KEY:\s*\$\{AIRTEK_PREVIEW_SIGNING_KEY:\?/u, `Production ${service} must require a secret-manager preview signing key.`)
-}
-requireMatch(productionEnv, /^AIRTEK_PREVIEW_SIGNING_KEY=REPLACE_/mu, 'Production environment example must declare the preview signing key placeholder.')
 for (const variable of ['AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY', 'AIRTEK_ANALYTICS_TOKEN_HMAC_KEY', 'AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY']) {
   requireMatch(productionCompose, new RegExp(`${variable}:\\s*\\$\\{${variable}:\\?`, 'u'), `Production must require ${variable} from the secret manager.`)
   requireMatch(productionEnv, new RegExp(`^${variable}=REPLACE_`, 'mu'), `Production environment example must declare ${variable}.`)
@@ -414,7 +420,6 @@ for (const variable of [
   'FLYWAY_PASSWORD',
   'FLYWAY_PLACEHOLDERS_RUNTIME_ROLE',
   'AIRTEK_TOTP_ENCRYPTION_KEY',
-  'AIRTEK_PREVIEW_SIGNING_KEY',
   'AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY',
   'AIRTEK_ANALYTICS_TOKEN_HMAC_KEY',
   'AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY',
@@ -461,7 +466,6 @@ requireMatch(gateway, /listen\s+8088\s+default_server/u, 'Gateway must reject un
 requireMatch(gateway, /location\s+\^~\s+\/api\/devtools\/\s*\{\s*return\s+404;/u, 'Gateway must reject the production DevTools namespace.')
 requireMatch(gateway, /location\s+\^~\s+\/internal\/\s*\{\s*return\s+404;/u, 'Gateway must reject internal metrics and diagnostics.')
 requireMatch(gateway, /location\s+\^~\s+\/admin\/\s*\{\s*return\s+404;/u, 'Public gateway must reject the Admin namespace.')
-requireMatch(gateway, /location\s+=\s+\/en\/preview\s*\{[\s\S]*?access_log\s+off;/u, 'Public gateway must not log signed preview query tokens.')
 requireMatch(gateway, /location\s+\^~\s+\/en\/\s*\{\s*return\s+404;/u, 'Admin gateway must reject public locale routes.')
 requireMatch(gateway, /site\\\.webmanifest/u, 'Gateway must block admin public manifests.')
 requireMatch(gateway, /return\s+200\s+"User-agent:\s*\*\\nDisallow:\s*\/\\n"/u, 'API gateway robots.txt must disallow all crawling.')

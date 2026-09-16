@@ -78,6 +78,7 @@ AdminUserRecord: {
             invitedAt: string | null;
             lastLoginAt: string | null;
             locale: string;
+            managerUserId: string | null;
             /** Format: int64 */
             revision: number;
             roles: string[];
@@ -215,9 +216,6 @@ AnalyticsOverviewRange: {
         };
 /** @enum {string} */
         AnalyticsPolicyVersion: "analytics-v1";
-ArchiveContentRequest: {
-            reason: string;
-        };
 AssetVersionReference: {
             /** Format: uuid */
             assetId: string;
@@ -231,6 +229,7 @@ AuditEvent: {
             actor: string;
             after: unknown | null;
             before: unknown | null;
+            currentVersion: number | null;
             entityId: string | null;
             entityType: string;
             /** Format: uuid */
@@ -353,8 +352,81 @@ CaseStudyTypeFields: {
         CmsBodyPolicy: "required" | "optional" | "forbidden";
 /** @enum {string} */
         CmsContentKind: "home" | "page" | "solution" | "technology" | "article" | "news" | "faq" | "caseStudy" | "download" | "company" | "legal" | "generalInformation" | "navigation" | "footer";
+CmsDraftPage: {
+            items: components["schemas"]["CmsPrivateDraft"][];
+            nextCursor: string | null;
+            total: number;
+        };
+CmsDraftSharesRequest: {
+            userIds: string[];
+        };
+/** @enum {string} */
+        CmsDraftState: "editing" | "pendingReview";
+CmsPrivateDraft: {
+            basePublicationVersion: number;
+            /** Format: uuid */
+            contentId: string;
+            /** Format: date-time */
+            createdAt: string;
+            document: components["schemas"]["ContentDraftV2"];
+            /** Format: uuid */
+            draftId: string;
+            /** Format: int64 */
+            draftVersion: number;
+            ownerUserId: string | null;
+            rejectionReason: string | null;
+            state: components["schemas"]["CmsDraftState"];
+            /** Format: date-time */
+            updatedAt: string;
+        };
 /** @enum {string} */
         CmsPublicationStatusV2: "draft" | "published" | "archived";
+CmsPublishedContent: {
+            /** Format: uuid */
+            contentId: string;
+            document: components["schemas"]["ContentDraftV2"];
+            /** Format: int64 */
+            publicationVersion: number;
+            /** Format: date-time */
+            publishedAt: string;
+            publishedBy: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+CmsPublishedPage: {
+            items: components["schemas"]["CmsPublishedContent"][];
+            nextCursor: string | null;
+            total: number;
+        };
+CmsPublishResult: {
+            /** Format: uuid */
+            contentId: string;
+            /** Format: int64 */
+            publicationVersion: number;
+            /** Format: date-time */
+            publishedAt: string;
+        };
+CmsRejectRequest: {
+            reason: string;
+        };
+CmsReviewItem: {
+            draft: components["schemas"]["CmsPrivateDraft"];
+            /** Format: date-time */
+            submittedAt: string;
+            /** Format: uuid */
+            submittedByUserId: string;
+        };
+CmsReviewPage: {
+            items: components["schemas"]["CmsReviewItem"][];
+            nextCursor: string | null;
+            total: number;
+        };
+CmsSubmitResult: {
+            draft: components["schemas"]["CmsPrivateDraft"] | null;
+            publication: components["schemas"]["CmsPublishResult"] | null;
+            /** @enum {string} */
+            status: "pendingReview" | "published";
+        };
 /** @enum {string} */
         CollectionPresentation: "cards" | "list" | "compact";
 ConsentedAnalyticsEvent: {
@@ -397,20 +469,6 @@ ContactInformationInput: {
 ContentBlock: components["schemas"]["HeroBlock"] | components["schemas"]["BodyBlock"] | components["schemas"]["MediaBlock"] | components["schemas"]["FeatureGridBlock"] | components["schemas"]["EvidenceBlock"] | components["schemas"]["CtaBlock"] | components["schemas"]["RelationCollectionBlock"] | components["schemas"]["FaqCollectionBlock"] | components["schemas"]["DownloadAssetBlock"] | components["schemas"]["ContactBlock"];
 /** @enum {string} */
         ContentBlockKind: "hero" | "body" | "media" | "featureGrid" | "evidence" | "cta" | "relationCollection" | "faqCollection" | "downloadAsset" | "contactBlock";
-ContentDiffChange: {
-            after: unknown | null;
-            before: unknown | null;
-            path: string;
-        };
-ContentDiffV2: {
-            /** Format: int64 */
-            baseRevision: number;
-            changes: components["schemas"]["ContentDiffChange"][];
-            /** Format: uuid */
-            contentId: string;
-            targetDraftVersion: number | null;
-            targetRevision: number | null;
-        };
 ContentDraftInput: {
             body: components["schemas"]["RichTextDocument"];
             /** @default false */
@@ -426,66 +484,4 @@ ContentDraftInput: {
             summary?: string | null;
             title: string;
         };
-ContentDraftV2: {
-            body?: components["schemas"]["TiptapDocument"] | null;
-            composition: components["schemas"]["PageComposition"];
-            /** Format: int64 */
-            draftVersion: number;
-            isPlaceholder: boolean;
-            kind: components["schemas"]["CmsContentKind"];
-            locale: string;
-            relations: components["schemas"]["ContentRelationReference"][];
-            /** @constant */
-            schemaVersion: 2;
-            seo: components["schemas"]["SeoInputV2"];
-            slug?: string | null;
-            summary?: string | null;
-            templateKey: components["schemas"]["ContentTemplateKey"];
-            title: string;
-            typeFields: components["schemas"]["ContentTypeFields"];
-        };
-ContentEntry: {
-            body: components["schemas"]["RichTextDocument"];
-            /** Format: int64 */
-            currentRevision: number;
-            /** Format: uuid */
-            id: string;
-            isPlaceholder: boolean;
-            kind: components["schemas"]["ContentKind"];
-            locale: string;
-            publishedRevision: number | null;
-            scheduledFor: string | null;
-            seo: components["schemas"]["SeoMetadata"];
-            slug: string;
-            status: components["schemas"]["PublicationStatus"];
-            summary: string | null;
-            title: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-/** @enum {string} */
-        ContentKind: "home" | "solution" | "technology" | "article" | "news" | "faq" | "caseStudy" | "download" | "company" | "legal" | "navigation" | "footer";
-ContentPage: {
-            items: components["schemas"]["ContentEntry"][];
-            nextCursor: string | null;
-        };
-ContentPreviewLink: {
-            /** Format: uuid */
-            contentId: string;
-            /** Format: date-time */
-            expiresAt: string;
-            /** Format: date-time */
-            issuedAt: string;
-            /** Format: int64 */
-            revision: number;
-            /** Format: uri */
-            readonly url: string;
-        };
-ContentPreviewResponse: {
-            content: components["schemas"]["PublicContentProjection"];
-            /** Format: date-time */
-            previewExpiresAt: string;
-        };
-/** @enum {string} */
-        ContentPublicationAction: "save" | "publish" | "unpublish";
 }

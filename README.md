@@ -42,7 +42,7 @@ credentials there. The main configuration groups are:
 | Browser and security origins | `PUBLIC_HOST`, `ADMIN_HOST`, `API_HOST`, `AIRTEK_*_ORIGIN`, `VITE_*_BASE_URL`, `PUBLIC_API_BROWSER_ORIGIN` |
 | Local persistence | `POSTGRES_*`, `AIRTEK_DATABASE_URL_INTERNAL`, host-side `DATABASE_URL`, `MINIO_ROOT_*` |
 | Schema migration | `AIRTEK_FLYWAY_BASE_IMAGE`, JDBC `FLYWAY_URL`, `FLYWAY_USER`/`FLYWAY_PASSWORD`, and `FLYWAY_PLACEHOLDERS_RUNTIME_ROLE` |
-| Authentication, private staging and network trust | setup-only `AIRTEK_ADMIN_BOOTSTRAP_TOKEN`, independent TOTP/preview/Product Staging/Analytics HMAC/invitation replay keys, gateway subnet/address, exact trusted-proxy CIDRs |
+| Authentication, private staging and network trust | setup-only `AIRTEK_ADMIN_BOOTSTRAP_TOKEN`, independent TOTP/Product Staging/Analytics HMAC/invitation replay keys, gateway subnet/address, exact trusted-proxy CIDRs |
 | Data lifecycle | `AIRTEK_GUEST_RAW_RETENTION_DAYS`, `AIRTEK_GUEST_AGGREGATE_RETENTION_MONTHS`, `AIRTEK_PRODUCT_IMPORT_MAPPING_VERSION` |
 | Analytics vocabulary | `AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES`, `AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS`, `AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS` register the only UTM identifiers the API may store; unknown free text is rejected |
 | Direct media | `AIRTEK_MEDIA_STORAGE`, the API's private `AIRTEK_MEDIA_S3_*` object-store identity, and the fixed 25 MiB upload limit |
@@ -68,26 +68,11 @@ it `CONNECT`, the required DML, and Worker `TEMPORARY` access after each
 successful migration while keeping schema history read-only.
 The production runtime role must not own the database, schema, tables, or
 functions and must not retain `CREATE` on `public`.
-Generate five independent random 32-byte Base64 keys for TOTP, preview
-signing, Product Master private staging, analytics-token HMAC, and encrypted
+Generate four independent random 32-byte Base64 keys for TOTP, Product Master
+private staging, analytics-token HMAC, and encrypted
 invitation idempotency replay before retaining real local data. Invitation
 tokens remain hashed in their source table; the short-lived replay response is
 stored only as an AES-256-GCM envelope so a retry can return the original token.
-
-Content preview links are short-lived bearer capabilities, limited to ten
-minutes and one immutable content revision. The authenticated Admin API binds
-each token to the issuing Admin user and session. Every preview read revalidates
-that the user is active, the session is unrevoked and unexpired, TOTP remains
-confirmed, and the user still has `content.read`; disabling the user, revoking
-the session, or removing the permission invalidates the URL immediately. Public
-SSR exchanges the query token for that exact revision through the internal API
-using an `Authorization: Bearer` header. This is intentional: the Admin/API
-host-only cookie is not sent to the Public origin.
-Preview responses are private, never cached or indexed, and never fall back to
-published content. The checked-in gateway disables access logging for the
-preview route so its bearer query token is not copied into container logs. Do
-not otherwise log, persist, or forward a preview URL; rotating
-`AIRTEK_PREVIEW_SIGNING_KEY` immediately invalidates all outstanding links.
 
 The complete local stack builds all three applications plus the independent,
 non-root migration image, applies migrations through the one-shot
@@ -179,6 +164,11 @@ pnpm db:info
 pnpm db:validate
 ```
 
+Compose runs `airtek-maintenance prepare-runtime` once after Flyway and before
+the API/Worker. For a non-Compose deployment, run the same command from the
+Platform image after `flyway migrate`; API and Worker startup fails closed when
+its versioned preparation marker is absent.
+
 The checked-in local Compose stack explicitly permits its historical single
 `airtek` owner role for development-volume compatibility. That shared-role
 override is not present in `compose.production.yaml`; production rejects using
@@ -192,9 +182,8 @@ fallback when media storage is unconfigured.
 ### One-time adoption of an existing SQLx v1-10 database
 
 Do not run a normal migration first against a database already managed through
-SQLx versions 1 through 10. Back up that database, verify the restore path, and
-confirm the exact environment, database identity, credentials, and maintenance
-window. Then run this controlled adoption sequence:
+SQLx versions 1 through 10. Confirm the exact environment, database identity,
+credentials, and maintenance window, then run this controlled adoption sequence:
 
 ```sh
 docker compose run --rm flyway-migrate baseline
@@ -246,6 +235,8 @@ docker compose --env-file infra/deploy/production.env.example -f compose.product
 ## Verification
 
 ```sh
+pnpm test:source-lines
+pnpm check:source-lines
 pnpm lint
 pnpm typecheck
 pnpm test
@@ -260,6 +251,16 @@ cargo fmt --manifest-path services/platform/Cargo.toml --all -- --check
 cargo clippy --manifest-path services/platform/Cargo.toml --all-targets -- -D warnings
 cargo test --manifest-path services/platform/Cargo.toml
 ```
+
+`check:source-lines` audits application code, tests, executable scripts, SQL,
+and generated source across the repository. Ordinary source files may contain
+at most 500 logical lines. Documentation, lock files, data files, binary assets,
+and generated build/test output are excluded. The already-applied V1 and V5
+Flyway migrations are the only historical exceptions: their expected line
+counts and SHA-256 checksums are pinned, so editing, extending, or removing
+either migration fails the check. `test:source-lines` exercises the auditor,
+and CI runs both commands before the build. `check:production` also invokes the
+source-line audit before building production artifacts.
 
 The Playwright suite is a production-shape browser contract. The self-contained
 runner creates a disposable PostgreSQL volume, starts the complete Compose
@@ -307,11 +308,46 @@ The generated package exports path/operation types and named request/response
 types; its small fetch helper remains available for application transport.
 
 The production isolation check rejects an admin bundle containing DevTools,
-public manifests, webmaster verification files, or sitemaps. Deployment checks
-also assert the Flyway migration dependency, independent non-root migration
-image, gateway Host boundary, and production DevTools route exclusion.
-Production Rust builds use the `production` feature without `devtools`; the
-mutually enabled combination must fail to compile.
+public manifests, webmaster verification files, or sitemaps. The independent
+Admin UI boundary checks the editor entry and lazy JavaScript chunks against
+their gzip budgets; repository source length is enforced by
+`check:source-lines`, not by the bundle checker. Deployment checks also assert
+the Flyway migration dependency, independent non-root migration image, gateway
+Host boundary, and production DevTools route exclusion. Production Rust builds
+use the `production` feature without `devtools`; the mutually enabled
+combination must fail to compile.
+
+## Brand asset evidence workflow
+
+The legacy public website may be searched for missing company-brand asset
+candidates, but it is a mutable discovery source and does not approve an asset
+for production. The capture script scans its fixed company/brand page scope,
+downloads eligible AIRTEKPOWER/LDY CDN files into an isolated Git-ignored
+staging directory, records source-page context, and deduplicates files by
+SHA-256:
+
+```sh
+node scripts/scrape_airtek_brand_assets.mjs [staging-directory]
+```
+
+After every unique candidate has been visually reviewed, record a decision for
+each checksum ID in `scripts/airtek-brand-asset-decisions.json`, then finalize
+the same staging directory:
+
+```sh
+node scripts/finalize_airtek_brand_assets.mjs [staging-directory]
+```
+
+Finalization fails when decision coverage is incomplete or a downloaded file no
+longer matches its recorded hash. It writes `brand-manifest.json`, a review CSV,
+and a staging README, and copies only retained candidates into
+`review-required/` or `hold/`; excluded source candidates are not promoted into
+those retained sets. Image dimensions use ImageMagick `identify` when it is
+available and otherwise remain unknown. No generated review package, legacy
+logo crop, favicon, facility image, video, or certificate is approved for CMS
+upload merely because the workflow completed. Follow the owner, rights,
+currency, identity, integrity, and media-safety gates in
+[brand asset governance](./.agents/skills/airtek-brand/references/brand-assets.md).
 
 ## Database-driven content and Product Master
 
@@ -337,47 +373,34 @@ projection until its measurement setup is supplied.
 ### CMS V2 public contract
 
 The published public CMS boundary is a hard V2 cutover. Public content is
-decoded from `content_revisions.document` at the exact revision named by
-`content_entries.cms_published_revision`; `public_routes` owns routable lookup
-and discovery. Responses carry `PublicContentProjection.schemaVersion = 2`,
-including typed `typeFields`, `body`, `composition`, SEO, the published revision,
-and server-resolved relations, content links, and exact-version `resolvedMedia`.
+decoded from the single current row in `cms_published_content`; `public_routes`
+owns routable lookup and discovery. Responses carry `PublicContentProjection.schemaVersion = 2`,
+including typed `typeFields`, `body`, `composition`, SEO, the publication version,
+and server-resolved relations, content links, and current `resolvedMedia`.
 Route resolution, site
 bootstrap, News, generic content and discovery do not fall back to legacy
 `payload` columns or the `published_news` / `published_general_information`
-views. Those columns and views remain in the schema only for migration evidence
-and operational rollback.
+views.
 
-`GET /api/admin/v1/content/templates` exposes each template's `routePattern`.
-The Rust template registry is the shared source for Admin canonical previews and
-publication. A retry-bounded `SERIALIZABLE` publish transaction locks and
-validates relations and exact media dependencies before it writes the immutable
-revision, dependency snapshot, published pointer, route, audit, idempotency
-result, and outbox event. A path already owned by another entity returns 409;
-an unpublished target or failed media gate returns 422 without leaving a new
-revision or route. Non-routable navigation, footer and General Information
-documents do not receive routes. A route is indexable only when the document's
-SEO allows it and it is neither a placeholder nor non-routable.
-
-Unpublication is a separate mutation: `POST /api/admin/v1/content/{id}/unpublish`
-requires `content.publish`, `If-Match`, `Idempotency-Key`, the expected published
-revision, and a non-empty reason. It refuses active published dependants with
-409 rather than cascading, then atomically clears the published pointer and
-route while retaining drafts, immutable revisions, and dependency history.
-Archiving is not an alias for this operation; content must be unpublished
-before any later archive workflow.
+`GET /api/admin/v1/content-drafts/templates` exposes each template's
+`routePattern`. Editor undo, redo, dirty state, and preview live only in browser
+memory. An explicit save writes one current private draft. Approval locks that
+draft and the current publication, validates canonical routes and dependencies,
+overwrites the publication row, replaces current dependencies, emits route and
+outbox metadata, and deletes the private draft in one PostgreSQL transaction.
+Stale base publication versions return 409 and put the draft back into editing.
 
 The main CMS and media endpoints are:
 
 | Boundary | Routes |
 | --- | --- |
-| Admin CMS (`/api/admin/v1`) | `GET/POST /content`; `GET /content/templates`; `GET/PATCH /content/{id}/draft`; `POST /content/{id}/snapshots`; `POST /content/{id}/unpublish`; `GET /content/{id}/revisions`; `GET /content/{id}/diff`; `POST /content/{id}/revisions/{revision}/restore` |
+| Admin CMS (`/api/admin/v1`) | `/content-drafts`; `/content-reviews`; `/published-content`; explicit draft save, submit, withdraw, approve, reject, sharing, and copy-to-private-draft operations |
 | Public CMS (`/api/public/v1`) | `GET /content/{kind}/{slug}`; `/routes/resolve`; `/site-bootstrap`; `/news`; `/news/{slug}`; `/discovery` |
 | Admin media (`/api/admin/v1`) | `GET/POST /media/assets`; `GET /media/assets/{id}`; `GET /media/assets/{id}/references` |
 | Public media | `GET /api/public/v1/media/{assetId}` and `/download`, mirrored below the public Host `/media/*` |
 
 The former dedicated Admin News and General Information mutation APIs are
-removed; all supported kinds use the unified `/content` lifecycle. The Web
+removed; all supported kinds use the private-draft lifecycle. The Web
 application consumes the same V2 contract and renders the ten registered block
 kinds through `PublicBlockRenderer`, including FAQ, Contact, relations, media
 and downloads.
@@ -444,13 +467,13 @@ compatibility columns and are not part of runtime models, OpenAPI, or Admin UI.
   import/presentation, direct media upload, guest-source analytics and
   identity-management workflows. News and General Information now use the
   unified CMS V2 editor rather than dedicated legacy APIs.
-- Durable publication revisions and outbox hand-off exist. Runtime sitemaps read
+- One current publication row and durable outbox hand-off exist. Runtime sitemaps read
   the published projection directly, while CDN invalidation and external search
   indexing adapters are not wired; no external provider refresh should be
   inferred from a completed internal hook.
 - The API owns the direct S3-compatible upload/read/delete-compensation path.
   Production still requires a reviewed private HTTPS object-store endpoint,
-  least-privilege API credentials, monitoring, backups, and an end-to-end smoke
+  least-privilege API credentials, monitoring, and an end-to-end smoke
   test; none is implied by checked-in configuration.
 - Feishu and GA4 values are still reserved configuration only; no live Feishu
   synchronization or GA4 loading is implied.
