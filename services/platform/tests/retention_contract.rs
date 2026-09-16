@@ -74,5 +74,7 @@ async fn analytics_overview(
     serde_json::from_slice(&body).expect("analytics overview contract")
 }
 
-include!("retention_contract/materialization_and_deletion.rs");
-include!("retention_contract/engagement_cutoff.rs");
+#[path = "retention_contract/engagement_cutoff.rs"]
+mod engagement_cutoff;
+#[path = "retention_contract/materialization_and_deletion.rs"]
+mod materialization_and_deletion;

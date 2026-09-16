@@ -9,8 +9,10 @@ import {
 
 const routes = [
   '/',
-  '/content',
-  '/content/new',
+  '/content/drafts',
+  '/content/drafts/new',
+  '/content/reviews',
+  '/content/published',
   '/site/general-information',
   '/site/navigation',
   '/site/footer',
@@ -111,7 +113,7 @@ test.describe('stage two Admin workspace acceptance', () => {
     await expect(filter).toBeFocused()
     await filter.fill('新建')
     const quickNavigation = page.getByRole('dialog', { name: '快速导航' })
-    await expect(quickNavigation.getByRole('link', { name: /新建内容/u })).toBeVisible()
+    await expect(quickNavigation.getByRole('link', { name: /新建私人草稿/u })).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(trigger).toBeFocused()
   })

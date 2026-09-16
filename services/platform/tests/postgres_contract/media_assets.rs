@@ -1,10 +1,8 @@
 #[cfg(feature = "devtools")]
-async fn insert_direct_media_asset(
-    pool: &sqlx::PgPool,
-    id: Uuid,
-    name: &str,
-    deleted: bool,
-) {
+use super::*;
+
+#[cfg(feature = "devtools")]
+async fn insert_direct_media_asset(pool: &sqlx::PgPool, id: Uuid, name: &str, deleted: bool) {
     sqlx::query(
         r#"INSERT INTO media_assets
            (id,storage_key,original_name,media_type,byte_size,checksum,metadata,
@@ -29,13 +27,13 @@ async fn insert_direct_media_asset(
 async fn direct_media_listing_is_server_filtered_paginated_and_excludes_deleted() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    let sandbox = support::DatabaseClone::create(&database_url).await;
     sandbox.apply_current().await;
     let state = postgres_state(sandbox.connection_url());
     let app = airtek_platform::routes::admin::router()
         .layer(Extension(cms_principal()))
         .with_state(state.clone());
-    let pool = state.pool.clone().expect("PostgreSQL pool");
+    let pool = state.pool.clone();
 
     let first_id = Uuid::new_v4();
     let second_id = Uuid::new_v4();
@@ -52,8 +50,17 @@ async fn direct_media_listing_is_server_filtered_paginated_and_excludes_deleted(
     assert!(ids.contains(&second_id.to_string()));
     assert!(!ids.contains(&deleted_id.to_string()));
     for item in page["items"].as_array().expect("items") {
-        assert_eq!(item["publicUrl"], format!("/api/public/v1/media/{}", item["id"].as_str().unwrap()));
-        assert_eq!(item["downloadUrl"], format!("/api/public/v1/media/{}/download", item["id"].as_str().unwrap()));
+        assert_eq!(
+            item["publicUrl"],
+            format!("/api/public/v1/media/{}", item["id"].as_str().unwrap())
+        );
+        assert_eq!(
+            item["downloadUrl"],
+            format!(
+                "/api/public/v1/media/{}/download",
+                item["id"].as_str().unwrap()
+            )
+        );
         assert_eq!(item["sha256"], "a".repeat(64));
         assert!(item.get("scanStatus").is_none());
         assert!(item.get("versionId").is_none());
@@ -106,12 +113,7 @@ fn media_multipart(boundary: &str, file_name: &str, bytes: &[u8]) -> Vec<u8> {
 }
 
 #[cfg(feature = "devtools")]
-async fn upload_direct_media(
-    app: &Router,
-    key: &str,
-    file_name: &str,
-    bytes: &[u8],
-) -> Response {
+async fn upload_direct_media(app: &Router, key: &str, file_name: &str, bytes: &[u8]) -> Response {
     let boundary = format!("airtek-{}", Uuid::new_v4().simple());
     app.clone()
         .oneshot(
@@ -151,12 +153,14 @@ fn stored_files(root: &std::path::Path) -> usize {
 async fn direct_upload_is_public_immediately_and_idempotent_per_actor() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    let sandbox = support::DatabaseClone::create(&database_url).await;
     sandbox.apply_current().await;
     let root = std::env::temp_dir().join(format!("airtek-media-{}", Uuid::new_v4()));
     let state = direct_media_state(sandbox.connection_url(), root.clone());
+    let principal = cms_principal();
+    let principal_email = principal.email.clone();
     let admin = airtek_platform::routes::admin::router()
-        .layer(Extension(cms_principal()))
+        .layer(Extension(principal))
         .with_state(state.clone());
     let bytes = b"\x89PNG\r\n\x1a\n";
     let key = format!("media-upload-{}", Uuid::new_v4());
@@ -167,7 +171,7 @@ async fn direct_upload_is_public_immediately_and_idempotent_per_actor() {
     assert_eq!(asset["originalName"], "hero.png");
     assert_eq!(asset["mediaType"], "image/png");
     assert_eq!(asset["byteSize"], bytes.len());
-    assert_eq!(asset["uploadedBy"], "postgres-cms@example.com");
+    assert_eq!(asset["uploadedBy"], principal_email);
     assert_eq!(asset.as_object().unwrap().len(), 9);
     assert_eq!(stored_files(&root), 1);
 
@@ -179,9 +183,14 @@ async fn direct_upload_is_public_immediately_and_idempotent_per_actor() {
     let public = airtek_platform::routes::public::router().with_state(state);
     let delivered = public
         .oneshot(
-            Request::get(asset["publicUrl"].as_str().unwrap().replace("/api/public/v1", ""))
-                .body(Body::empty())
-                .unwrap(),
+            Request::get(
+                asset["publicUrl"]
+                    .as_str()
+                    .unwrap()
+                    .replace("/api/public/v1", ""),
+            )
+            .body(Body::empty())
+            .unwrap(),
         )
         .await
         .unwrap();
@@ -201,7 +210,7 @@ async fn direct_upload_is_public_immediately_and_idempotent_per_actor() {
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
 async fn direct_upload_rejects_key_reuse_for_different_files() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL").unwrap();
-    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    let sandbox = support::DatabaseClone::create(&database_url).await;
     sandbox.apply_current().await;
     let root = std::env::temp_dir().join(format!("airtek-media-{}", Uuid::new_v4()));
     let state = direct_media_state(sandbox.connection_url(), root.clone());
@@ -234,7 +243,7 @@ async fn direct_upload_rejects_key_reuse_for_different_files() {
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
 async fn failed_catalogue_write_compensates_the_uploaded_object() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL").unwrap();
-    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    let sandbox = support::DatabaseClone::create(&database_url).await;
     sandbox.apply_current().await;
     sqlx::query(
         "ALTER TABLE audit_log ADD CONSTRAINT reject_media_upload_audit CHECK (action <> 'media.upload') NOT VALID",
@@ -275,7 +284,7 @@ async fn failed_catalogue_write_compensates_the_uploaded_object() {
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
 async fn unavailable_storage_fails_without_catalogue_rows() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL").unwrap();
-    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    let sandbox = support::DatabaseClone::create(&database_url).await;
     sandbox.apply_current().await;
     let root = std::env::temp_dir().join(format!("airtek-media-file-{}", Uuid::new_v4()));
     std::fs::write(&root, b"not a directory").unwrap();

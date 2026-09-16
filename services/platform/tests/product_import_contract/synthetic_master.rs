@@ -1,3 +1,5 @@
+use super::*;
+
 #[tokio::test]
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
 async fn synthetic_product_master_scale_is_private_promoted_draft_and_idempotent() {

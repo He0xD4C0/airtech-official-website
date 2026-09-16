@@ -1,3 +1,5 @@
+use super::*;
+
 #[tokio::test]
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
 async fn engagement_crossing_event_cutoffs_is_materialized_once() {

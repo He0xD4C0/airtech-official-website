@@ -84,6 +84,9 @@ fn synthetic_product_master(prefix: &str) -> SyntheticProductMaster {
     }
 }
 
-include!("product_import_contract/synthetic_master.rs");
-include!("product_import_contract/verified_master.rs");
-include!("product_import_contract/feishu_takeover_and_expiry.rs");
+#[path = "product_import_contract/feishu_takeover_and_expiry.rs"]
+mod feishu_takeover_and_expiry;
+#[path = "product_import_contract/synthetic_master.rs"]
+mod synthetic_master;
+#[path = "product_import_contract/verified_master.rs"]
+mod verified_master;

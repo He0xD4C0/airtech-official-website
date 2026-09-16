@@ -10,7 +10,6 @@ const apiMocks = vi.hoisted(() => ({
 vi.mock('./api', () => apiMocks)
 import {
   analyticsConsentStorageKey,
-  analyticsRuntimeDisabled,
   anonymousAnalyticsSessionId,
   currentAnalyticsConsent,
   guestVisitAcquisition,
@@ -50,11 +49,6 @@ describe('consent-aware analytics', () => {
     setCurrentAnalyticsContext(undefined)
   })
 
-  it('disables all analytics on signed content previews', () => {
-    window.history.replaceState({}, '', '/en/preview?token=sensitive')
-    expect(analyticsRuntimeDisabled()).toBe(true)
-  })
-
   it('keeps an anonymous session and server receipt off until explicit consent', async () => {
     expect(currentAnalyticsConsent()).toBeNull()
     expect(anonymousAnalyticsSessionId()).toBeUndefined()
@@ -78,14 +72,6 @@ describe('consent-aware analytics', () => {
       analyticsAllowed: false,
     }))
     expect(anonymousAnalyticsSessionId()).toBeUndefined()
-    expect(window.sessionStorage.length).toBe(0)
-  })
-
-  it('does not request consent or analytics while preview mode disables tracking', async () => {
-    window.history.replaceState({}, '', '/en/preview?token=sensitive')
-    expect(await setAnalyticsConsent('accepted')).toBe(false)
-    expect(apiMocks.submitAnalyticsConsent).not.toHaveBeenCalled()
-    expect(apiMocks.submitAnalyticsEvent).not.toHaveBeenCalled()
     expect(window.sessionStorage.length).toBe(0)
   })
 

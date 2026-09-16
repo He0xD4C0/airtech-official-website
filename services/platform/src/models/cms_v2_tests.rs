@@ -1,11 +1,12 @@
 use super::*;
-use serde_json::json;
 
-fn id(value: u128) -> Uuid {
+pub(super) use serde_json::json;
+
+pub(super) fn id(value: u128) -> Uuid {
     Uuid::from_u128(value)
 }
 
-fn sample_draft() -> ContentDraftV2 {
+pub(super) fn sample_draft() -> ContentDraftV2 {
     let product_relation_id = id(4);
     ContentDraftV2 {
         schema_version: CMS_V2_SCHEMA_VERSION,
@@ -69,7 +70,7 @@ fn sample_draft() -> ContentDraftV2 {
 }
 
 #[test]
-fn content_draft_v2_round_trips_with_camel_case_discriminators() {
+pub(super) fn content_draft_v2_round_trips_with_camel_case_discriminators() {
     let draft = sample_draft();
     let encoded = serde_json::to_value(&draft).expect("serialize V2 draft");
 
@@ -85,7 +86,7 @@ fn content_draft_v2_round_trips_with_camel_case_discriminators() {
 }
 
 #[test]
-fn strict_contract_rejects_unknown_fields_and_legacy_page_slots() {
+pub(super) fn strict_contract_rejects_unknown_fields_and_legacy_page_slots() {
     let mut top_level = serde_json::to_value(sample_draft()).expect("serialize fixture");
     top_level["legacyField"] = json!(true);
     assert!(serde_json::from_value::<ContentDraftV2>(top_level).is_err());
@@ -100,7 +101,7 @@ fn strict_contract_rejects_unknown_fields_and_legacy_page_slots() {
 }
 
 #[test]
-fn product_relations_store_only_the_stable_product_uuid() {
+pub(super) fn product_relations_store_only_the_stable_product_uuid() {
     let product_id = id(9);
     let target = RelationTargetReference::Product { product_id };
     let encoded = serde_json::to_value(&target).expect("serialize product relation");
@@ -121,7 +122,7 @@ fn product_relations_store_only_the_stable_product_uuid() {
 }
 
 #[test]
-fn v2_publication_status_does_not_retain_scheduling() {
+pub(super) fn v2_publication_status_does_not_retain_scheduling() {
     assert_eq!(
         serde_json::to_value(CmsPublicationStatusV2::Published).unwrap(),
         json!("published")

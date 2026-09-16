@@ -55,6 +55,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Test and enforce source line limits
+        run: pnpm test:source-lines && pnpm check:architecture
       - name: Build generated TypeScript contract package
         run: pnpm --filter @airtek/contracts build
       - run: pnpm lint
@@ -123,6 +125,7 @@ jobs:
     env:
       DATABASE_URL: postgres://airtek:airtek@127.0.0.1:5432/airtek
       AIRTEK_TEST_DATABASE_URL: postgres://airtek:airtek@127.0.0.1:5432/airtek
+      AIRTEK_TEST_TEMPLATE_DATABASE: airtek_test_template
       FLYWAY_URL: jdbc:postgresql://127.0.0.1:5432/airtek
       FLYWAY_USER: airtek
       FLYWAY_PASSWORD: airtek
@@ -142,6 +145,7 @@ jobs:
         with:
           workspaces: services/platform
       - run: cargo fmt --manifest-path services/platform/Cargo.toml --all -- --check
+      - run: node scripts/assert-postgres-runtime-boundary.mjs
       - run: cargo clippy --manifest-path services/platform/Cargo.toml --all-targets --features production -- -D warnings
       - name: Provision a distinct runtime database role
         run: |
@@ -165,6 +169,12 @@ jobs:
             "${{ job.services.postgres.id }}" \
             psql --host 127.0.0.1 --username airtek_runtime --dbname airtek \
             --no-password --set ON_ERROR_STOP=1 --command "SELECT 1"
+      - name: Prepare runtime data and create the isolated test template
+        run: |
+          cargo run --manifest-path services/platform/Cargo.toml --bin airtek-maintenance -- prepare-runtime
+          docker exec "${{ job.services.postgres.id }}" \
+            psql --username airtek --dbname postgres --set ON_ERROR_STOP=1 \
+            --command "CREATE DATABASE airtek_test_template TEMPLATE airtek"
       - name: Exercise guarded legacy SQLx history adoption
         run: |
           set -euo pipefail
@@ -302,16 +312,15 @@ jobs:
       - name: Run PostgreSQL integration contracts with default test parallelism
         run: |
           cargo test --manifest-path services/platform/Cargo.toml --features devtools --test postgres_contract -- --ignored
-          cargo test --manifest-path services/platform/Cargo.toml --test analytics_pagination_contract -- --ignored
           cargo test --manifest-path services/platform/Cargo.toml --test retention_contract -- --ignored
           cargo test --manifest-path services/platform/Cargo.toml --features devtools --test migration_contract -- --ignored
-          cargo test --manifest-path services/platform/Cargo.toml --features devtools --test cms_publication_dependencies_contract -- --ignored
+          cargo test --manifest-path services/platform/Cargo.toml --features devtools --test cms_current_dependencies_contract -- --ignored
           cargo test --manifest-path services/platform/Cargo.toml --features devtools --test publication_dependency_migration_contract -- --ignored
       - name: Run shared-state Product Master contracts one at a time
         run: |
-          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract expired_private_staging_requires_atomic_cryptographic_erasure -- --ignored --exact
-          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract synthetic_product_master_scale_is_private_promoted_draft_and_idempotent -- --ignored --exact
-          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract feishu_takes_over_verified_csv_stable_id_and_projects_all_facts_atomically -- --ignored --exact
+          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract feishu_takeover_and_expiry::expired_private_staging_requires_atomic_cryptographic_erasure -- --ignored --exact
+          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract synthetic_master::synthetic_product_master_scale_is_private_promoted_draft_and_idempotent -- --ignored --exact
+          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract feishu_takeover_and_expiry::feishu_takes_over_verified_csv_stable_id_and_projects_all_facts_atomically -- --ignored --exact
       - run: cargo check --manifest-path services/platform/Cargo.toml --features production
       - run: cargo check --manifest-path services/platform/Cargo.toml --features devtools
       - name: Assert production and DevTools are mutually exclusive

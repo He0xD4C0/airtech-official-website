@@ -1,3 +1,5 @@
+use super::*;
+
 #[tokio::test]
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to empty disposable PostgreSQL and AIRTEK_PRODUCT_MASTER_TEST_CSV"]
 async fn verified_master_is_staged_queued_promoted_and_replayed_without_plaintext_jobs() {

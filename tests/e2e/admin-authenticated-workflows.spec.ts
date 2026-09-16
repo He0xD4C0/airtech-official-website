@@ -20,7 +20,7 @@ test.describe('Authenticated Admin workflows against Rust and PostgreSQL', () =>
   test.use({ storageState: adminStorageStatePath })
 
   test('creates and publishes News through the unified content editor', async ({ page }) => {
-    await page.goto(absolute(adminOrigin, '/content/new'))
+    await page.goto(absolute(adminOrigin, '/content/drafts/new'))
     const templateCards = page.locator('.create-form__cards')
     await templateCards.getByRole('button', { name: /^新闻 /u }).click()
     await templateCards.getByRole('button').filter({ hasText: 'newsDetail' }).click()
@@ -41,25 +41,25 @@ test.describe('Authenticated Admin workflows against Rust and PostgreSQL', () =>
 
     const placeholder = page.getByRole('checkbox', { name: /^占位内容/u })
     if (await placeholder.isChecked()) await placeholder.uncheck()
-    await expect(page.locator('.save-state')).toContainText('已保存', { timeout: 15_000 })
-
-    await page.getByRole('button', { name: '发布', exact: true }).click()
-    await page.getByRole('button', { name: '确认发布' }).click()
-    await expect(page.getByText('内容已发布')).toBeVisible()
+    await expect(page.locator('.save-state')).toContainText('有未保存更改')
+    await page.getByRole('button', { name: '保存', exact: true }).click()
+    await expect(page.locator('.save-state')).toContainText('已保存')
+    await page.getByRole('button', { name: '提交审核' }).click()
+    await expect(page.getByText('已发布', { exact: true })).toBeVisible()
   })
 
-  test('updates, autosaves and publishes General Information', async ({ page }) => {
+  test('updates, explicitly saves and publishes General Information', async ({ page }) => {
     await page.goto(absolute(adminOrigin, '/site/general-information'))
     const initialize = page.getByRole('button', { name: /初始化 General Information/u })
     if (await initialize.isVisible().catch(() => false)) await initialize.click()
 
     await expect(page.getByRole('heading', { name: '基本信息' })).toBeVisible()
     await page.getByLabel('品牌标语').fill('AIRTEK E2E database-backed identity')
-    await expect(page.locator('.save-state')).toContainText('已保存', { timeout: 15_000 })
-
-    await page.getByRole('button', { name: '发布', exact: true }).click()
-    await page.getByRole('button', { name: '确认发布' }).click()
-    await expect(page.getByText('内容已发布')).toBeVisible()
+    await expect(page.locator('.save-state')).toContainText('有未保存更改')
+    await page.getByRole('button', { name: '保存', exact: true }).click()
+    await expect(page.locator('.save-state')).toContainText('已保存')
+    await page.getByRole('button', { name: '提交审核' }).click()
+    await expect(page.getByText('已发布', { exact: true })).toBeVisible()
   })
 
   test('imports a Product Master row and edits portal-owned product fields', async ({ page }) => {

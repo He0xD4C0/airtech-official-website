@@ -5,6 +5,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
     str::FromStr,
+    sync::{Arc, OnceLock},
 };
 
 use sqlx::{
@@ -12,6 +13,102 @@ use sqlx::{
     PgPool,
 };
 use uuid::Uuid;
+
+static DATABASE_CLONE_SLOTS: OnceLock<Arc<tokio::sync::Semaphore>> = OnceLock::new();
+static MIGRATION_SANDBOX_CREATE_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+pub struct DatabaseClone {
+    admin_pool: PgPool,
+    pool: PgPool,
+    database: String,
+    connection_url: String,
+    _slot: tokio::sync::OwnedSemaphorePermit,
+}
+
+impl DatabaseClone {
+    pub async fn create(source_url: &str) -> Self {
+        let slot = DATABASE_CLONE_SLOTS
+            .get_or_init(|| Arc::new(tokio::sync::Semaphore::new(8)))
+            .clone()
+            .acquire_owned()
+            .await
+            .expect("database clone semaphore");
+        let template = std::env::var("AIRTEK_TEST_TEMPLATE_DATABASE")
+            .unwrap_or_else(|_| "airtek_test_template".into());
+        assert_identifier(&template);
+        let database = format!("airtek_test_{}", Uuid::new_v4().simple());
+        let admin_url = replace_database(source_url, "postgres");
+        let admin_pool = PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&admin_url)
+            .await
+            .expect("PostgreSQL administrative connection");
+        sqlx::query(&format!("CREATE DATABASE {database} TEMPLATE {template}"))
+            .execute(&admin_pool)
+            .await
+            .unwrap_or_else(|error| panic!("failed to clone {template}: {error}"));
+        let connection_url = replace_database(source_url, &database);
+        let pool = PgPoolOptions::new()
+            .max_connections(10)
+            .connect(&connection_url)
+            .await
+            .expect("cloned PostgreSQL connection");
+        Self {
+            admin_pool,
+            pool,
+            database,
+            connection_url,
+            _slot: slot,
+        }
+    }
+
+    pub fn pool(&self) -> &PgPool {
+        &self.pool
+    }
+
+    pub fn connection_url(&self) -> &str {
+        &self.connection_url
+    }
+
+    pub async fn apply_current(&self) {
+        assert_flyway_schema_current(&self.pool).await;
+    }
+
+    pub async fn cleanup(self) {
+        self.pool.close().await;
+        sqlx::query(
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()",
+        )
+        .bind(&self.database)
+        .execute(&self.admin_pool)
+        .await
+        .expect("database clone connection cleanup");
+        sqlx::query(&format!("DROP DATABASE {}", self.database))
+            .execute(&self.admin_pool)
+            .await
+            .expect("database clone cleanup");
+        self.admin_pool.close().await;
+    }
+}
+
+fn assert_identifier(value: &str) {
+    assert!(
+        !value.is_empty()
+            && value.len() <= 63
+            && value
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_'),
+        "database identifier is invalid"
+    );
+}
+
+fn replace_database(url: &str, database: &str) -> String {
+    assert_identifier(database);
+    let scheme = url.find("://").expect("PostgreSQL URL scheme") + 3;
+    let path = url[scheme..].find('/').expect("PostgreSQL URL database") + scheme;
+    let query = url[path..].find('?').map(|offset| &url[path + offset..]);
+    format!("{}/{database}{}", &url[..path], query.unwrap_or(""))
+}
 
 static MIGRATION_SANDBOX_CLEANUP_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
@@ -37,6 +134,7 @@ pub struct MigrationSandbox {
 
 impl MigrationSandbox {
     pub async fn create(database_url: &str) -> Self {
+        let _create_guard = MIGRATION_SANDBOX_CREATE_LOCK.lock().await;
         let admin_pool = PgPoolOptions::new()
             .max_connections(1)
             .connect(database_url)

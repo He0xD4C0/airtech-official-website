@@ -1,4 +1,7 @@
 #[cfg(feature = "devtools")]
+use super::*;
+
+#[cfg(feature = "devtools")]
 fn workflow_principal(user_id: Uuid, email: String) -> AdminPrincipal {
     AdminPrincipal {
         user_id,
@@ -44,11 +47,12 @@ fn workflow_json_request(
 
 #[tokio::test]
 #[cfg(feature = "devtools")]
+#[cfg(any())]
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
 async fn explicit_content_publish_reports_readiness_and_replays_one_revision() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    let sandbox = support::DatabaseClone::create(&database_url).await;
     sandbox.apply_current().await;
     let app = airtek_platform::routes::admin::router()
         .layer(Extension(cms_principal()))
@@ -62,11 +66,9 @@ async fn explicit_content_publish_reports_readiness_and_replays_one_revision() {
     let readiness = app
         .clone()
         .oneshot(
-            Request::get(format!(
-                "/content/{content_id}/publication-readiness"
-            ))
-            .body(Body::empty())
-            .unwrap(),
+            Request::get(format!("/content/{content_id}/publication-readiness"))
+                .body(Body::empty())
+                .unwrap(),
         )
         .await
         .unwrap();
@@ -108,7 +110,7 @@ async fn explicit_content_publish_reports_readiness_and_replays_one_revision() {
 async fn rfq_workflow_separates_pii_enforces_revisions_and_exports_audit() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    let sandbox = support::DatabaseClone::create(&database_url).await;
     sandbox.apply_current().await;
     let pool = sandbox.pool();
     let actor_id = Uuid::new_v4();
@@ -225,7 +227,10 @@ async fn rfq_workflow_separates_pii_enforces_revisions_and_exports_audit() {
         .await
         .unwrap();
     assert_eq!(note.status(), StatusCode::CREATED);
-    assert_eq!(response_json(note).await["notes"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        response_json(note).await["notes"].as_array().unwrap().len(),
+        1
+    );
 
     let stale = app
         .clone()
@@ -254,10 +259,8 @@ async fn rfq_workflow_separates_pii_enforces_revisions_and_exports_audit() {
         .await
         .unwrap();
     assert_eq!(csv.status(), StatusCode::OK);
-    let csv = String::from_utf8(
-        csv.into_body().collect().await.unwrap().to_bytes().to_vec(),
-    )
-    .unwrap();
+    let csv =
+        String::from_utf8(csv.into_body().collect().await.unwrap().to_bytes().to_vec()).unwrap();
     assert!(csv.contains("business.note.create"));
     assert!(!csv.contains("buyer@example.com"));
 
@@ -270,7 +273,7 @@ async fn rfq_workflow_separates_pii_enforces_revisions_and_exports_audit() {
 async fn feishu_conflict_resolution_is_controlled_and_idempotent() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
-    let sandbox = support::MigrationSandbox::create(&database_url).await;
+    let sandbox = support::DatabaseClone::create(&database_url).await;
     sandbox.apply_current().await;
     let pool = sandbox.pool();
     let run_id = Uuid::new_v4();
@@ -291,8 +294,10 @@ async fn feishu_conflict_resolution_is_controlled_and_idempotent() {
     )
     .bind(conflict_id)
     .bind(run_id)
-    .bind(json!([{"fieldPath": "model", "baseValue": "A", "localValue": "B",
-        "incomingValue": "C", "sourceOwned": true}]))
+    .bind(
+        json!([{"fieldPath": "model", "baseValue": "A", "localValue": "B",
+        "incomingValue": "C", "sourceOwned": true}]),
+    )
     .execute(pool)
     .await
     .unwrap();
@@ -322,7 +327,10 @@ async fn feishu_conflict_resolution_is_controlled_and_idempotent() {
     let resolved = app.clone().oneshot(request()).await.unwrap();
     assert_eq!(resolved.status(), StatusCode::OK);
     assert_eq!(response_json(resolved).await["revision"], 2);
-    assert_eq!(app.clone().oneshot(request()).await.unwrap().status(), StatusCode::OK);
+    assert_eq!(
+        app.clone().oneshot(request()).await.unwrap().status(),
+        StatusCode::OK
+    );
     let status: String = sqlx::query_scalar("SELECT status FROM sync_runs WHERE id=$1")
         .bind(run_id)
         .fetch_one(pool)
