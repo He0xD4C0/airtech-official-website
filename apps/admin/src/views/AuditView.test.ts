@@ -50,6 +50,34 @@ beforeEach(() => {
 })
 
 describe('AuditView', () => {
+  it('names the full-text search and can clear active filters', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const app = createApp(AuditView)
+    app.mount(host)
+    await nextTick()
+
+    const search = host.querySelector<HTMLInputElement>('input[aria-label="全文搜索"]')
+    const clear = [...host.querySelectorAll<HTMLButtonElement>('button')]
+      .find((button) => button.textContent?.includes('清空筛选'))
+    expect(search).not.toBeNull()
+    expect(clear?.disabled).toBe(true)
+
+    if (search) {
+      search.value = 'auth.login'
+      search.dispatchEvent(new Event('input'))
+    }
+    await nextTick()
+    expect(clear?.disabled).toBe(false)
+    clear?.click()
+    await nextTick()
+    expect(search?.value).toBe('')
+    expect(clear?.disabled).toBe(true)
+
+    app.unmount()
+    host.remove()
+  })
+
   it('reveals the before and after payload for an audit event', async () => {
     const host = document.createElement('div')
     document.body.append(host)

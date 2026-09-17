@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Download, History, Search, ShieldCheck } from 'lucide-vue-next'
+import { Download, History, Search, ShieldCheck, X } from 'lucide-vue-next'
 import CursorPaginationControls from '@/components/CursorPaginationControls.vue'
 import DataStatePanel from '@/components/DataStatePanel.vue'
 import PageHeader from '@/components/PageHeader.vue'
@@ -45,6 +45,9 @@ const auditPager = useCursorPagination(async (pagination) => {
   onError: (message) => ui.toast('审计日志读取失败', message, 'danger'),
 })
 const events = computed(() => auditPager.items.value)
+const hasFilters = computed(() => Boolean(
+  q.value || actor.value || action.value || resourceType.value || from.value || to.value,
+))
 const state = computed<'loading' | 'ready' | 'empty' | 'error' | 'forbidden'>(() => {
   if (auditPager.loading.value && !events.value.length) return 'loading'
   if (auditPager.errorStatus.value === 403) return 'forbidden'
@@ -65,6 +68,15 @@ function scheduleFilter(): void {
     } })
     void auditPager.first()
   }, 250)
+}
+
+function clearFilters(): void {
+  q.value = ''
+  actor.value = ''
+  action.value = ''
+  resourceType.value = ''
+  from.value = ''
+  to.value = ''
 }
 
 async function exportCsv(): Promise<void> {
@@ -106,12 +118,13 @@ watch([q, actor, action, resourceType, from, to], scheduleFilter)
     <section class="audit-summary"><div><ShieldCheck :size="20" /><span><strong>审计记录只追加</strong><small>当前服务端筛选命中 {{ total }} 条</small></span></div><StatusBadge label="Append only" tone="success" /></section>
 
     <section class="panel audit-filters" aria-label="审计筛选">
-      <label class="search-field"><Search :size="17" /><input v-model="q" placeholder="全文搜索操作者、动作、资源、Request ID、原因" /></label>
+      <label class="search-field"><Search :size="17" /><input v-model="q" aria-label="全文搜索" placeholder="全文搜索操作者、动作、资源、Request ID、原因" /></label>
       <label class="field"><span>操作者</span><input v-model="actor" /></label>
       <label class="field"><span>动作</span><input v-model="action" /></label>
       <label class="field"><span>资源类型</span><input v-model="resourceType" /></label>
       <label class="field"><span>开始时间</span><input v-model="from" type="datetime-local" /></label>
       <label class="field"><span>结束时间（不含）</span><input v-model="to" type="datetime-local" /></label>
+      <button class="button button--quiet audit-filters__clear" type="button" :disabled="!hasFilters" @click="clearFilters"><X :size="15" />清空筛选</button>
     </section>
 
     <DataStatePanel v-if="state !== 'ready'" :state="state" :title="state === 'empty' ? '暂无符合条件的审计记录' : state === 'error' ? auditPager.error.value || '' : ''" @retry="auditPager.refresh" />
@@ -126,6 +139,7 @@ watch([q, actor, action, resourceType, from, to], scheduleFilter)
 <style scoped>
 .audit-filters { display: grid; grid-template-columns: minmax(260px, 2fr) repeat(3, minmax(140px, 1fr)); gap: .75rem; align-items: end; }
 .audit-filters .search-field { grid-column: span 2; }
+.audit-filters__clear { min-height: 39px; justify-self: start; }
 .audit-detail-row > td { padding: 0; background: color-mix(in srgb, var(--admin-surface, #fff) 92%, var(--airtek-green, #5db37a)); }
 .audit-detail { display: grid; gap: .75rem; padding: 1rem; }
 .audit-detail > header { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
