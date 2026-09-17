@@ -1,0 +1,38 @@
+@layer layout {
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--stack-space, var(--space-4));
+  }
+
+  .cluster {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cluster-space, var(--space-3));
+  }
+
+  .sidebar-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sidebar-space, var(--space-5));
+  }
+
+  .auto-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--grid-min, 16rem)), 1fr));
+    gap: var(--grid-space, var(--space-4));
+  }
+
+  .scroll-region {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+
+  @media (min-width: 64rem) {
+    .sidebar-layout {
+      grid-template-columns: minmax(12rem, var(--sidebar-width, 18rem)) minmax(0, 1fr);
+    }
+  }
+}

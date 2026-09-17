@@ -48,11 +48,13 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.admin-dialog { width: min(34rem, calc(100% - 2rem)); padding: 0; border: 0; border-radius: 14px; color: var(--admin-text); box-shadow: 0 24px 60px rgb(11 38 48 / 28%); }
+@layer components {
+.admin-dialog { width: min(34rem, calc(100% - 2rem)); padding: 0; border: 0; border-radius: 14px; color: var(--text-primary); box-shadow: 0 24px 60px rgb(11 38 48 / 28%); }
 .admin-dialog::backdrop { background: rgb(11 38 48 / 48%); backdrop-filter: blur(2px); }
 .admin-dialog__card { display: flex; flex-direction: column; gap: .8rem; padding: 1.1rem; }
 .admin-dialog header, .admin-dialog footer { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
 .admin-dialog h2, .admin-dialog p { margin: 0; }
 .admin-dialog__body { display: flex; flex-direction: column; gap: .75rem; }
-.admin-dialog footer { justify-content: flex-end; border-top: 1px solid var(--admin-line); padding-top: .75rem; }
+.admin-dialog footer { justify-content: flex-end; border-top: 1px solid var(--border-default); padding-top: .75rem; }
+}
 </style>

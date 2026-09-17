@@ -137,17 +137,17 @@ watch([q, actor, action, resourceType, from, to], scheduleFilter)
 </template>
 
 <style scoped>
+@layer components {
 .audit-filters { display: grid; grid-template-columns: minmax(260px, 2fr) repeat(3, minmax(140px, 1fr)); gap: .75rem; align-items: end; }
 .audit-filters .search-field { grid-column: span 2; }
-.audit-filters__clear { min-height: 39px; justify-self: start; }
-.audit-detail-row > td { padding: 0; background: color-mix(in srgb, var(--admin-surface, #fff) 92%, var(--airtek-green, #5db37a)); }
+.audit-filters__clear { min-height: 2.75rem; justify-self: start; }
+.audit-detail-row > td { padding: 0; background: color-mix(in srgb, var(--surface-panel, #fff) 92%, var(--airtek-green)); }
 .audit-detail { display: grid; gap: .75rem; padding: 1rem; }
 .audit-detail > header { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
-.audit-detail > header span { color: var(--admin-muted, #556663); font-size: .78rem; }
+.audit-detail > header span { color: var(--text-secondary, #556663); font-size: .78rem; }
 .audit-detail > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
 .audit-detail article { min-width: 0; }
-.audit-detail h3 { margin: 0 0 .35rem; font-size: .75rem; color: var(--admin-muted, #556663); }
-.audit-detail pre { max-height: 280px; margin: 0; overflow: auto; padding: .75rem; border: 1px solid var(--admin-line); border-radius: 8px; background: white; font-size: .72rem; white-space: pre-wrap; overflow-wrap: anywhere; }
-@media (max-width: 900px) { .audit-detail > div { grid-template-columns: 1fr; } }
-@media (max-width: 768px) { .audit-filters, .audit-filters .search-field { grid-template-columns: 1fr; grid-column: auto; } }
+.audit-detail h3 { margin: 0 0 .35rem; font-size: .75rem; color: var(--text-secondary, #556663); }
+.audit-detail pre { max-height: 280px; margin: 0; overflow: auto; padding: .75rem; border: 1px solid var(--border-default); border-radius: 8px; background: white; font-size: 0.75rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+}
 </style>

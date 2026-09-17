@@ -19,7 +19,11 @@ function onKeydown(event: KeyboardEvent, index: number): void {
   event.preventDefault()
   const offset = event.key === 'ArrowDown' ? 1 : -1
   const next = props.sections[index + offset]
-  if (next) emit('select', next.id)
+  if (!next) return
+  const list = (event.currentTarget as HTMLElement).closest('ol')
+  const buttons = list ? [...list.querySelectorAll<HTMLButtonElement>('button')] : []
+  buttons[index + offset]?.focus()
+  emit('select', next.id)
 }
 </script>
 
@@ -46,14 +50,25 @@ function onKeydown(event: KeyboardEvent, index: number): void {
 </template>
 
 <style scoped>
-.content-outline { position: sticky; top: 0.75rem; display: flex; flex-direction: column; gap: 0.35rem; align-self: start; min-width: 11rem; }
-.content-outline__title { margin: 0 0 0.15rem; color: var(--admin-muted); font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; }
-.content-outline__list { display: flex; flex-direction: column; gap: 0.2rem; margin: 0; padding: 0; list-style: none; }
-.content-outline__item { display: flex; align-items: center; gap: 0.3rem; width: 100%; padding: 0.4rem 0.5rem; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--admin-ink); font-size: 0.66rem; text-align: left; }
-.content-outline__item svg { color: var(--admin-muted); }
-.content-outline__item.is-nested { padding-left: 1.05rem; color: var(--admin-muted); font-size: 0.63rem; }
-.content-outline__item:hover { background: var(--admin-soft-blue); }
-.content-outline__item.is-active { border-color: var(--airtek-blue); background: var(--admin-soft-blue); color: var(--airtek-blue-dark); font-weight: 600; }
-.content-outline__item:focus-visible { outline: 2px solid var(--airtek-blue); outline-offset: 1px; }
-.content-outline__hint { margin: 0.35rem 0 0; color: var(--admin-muted); font-size: 0.55rem; line-height: 1.45; }
+@layer components {
+  .content-outline { display: flex; min-width: 0; flex-direction: column; gap: var(--space-2); align-self: start; }
+  .content-outline__title { margin: 0; color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  .content-outline__list { display: flex; flex-direction: column; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+  .content-outline__item { display: flex; align-items: center; gap: var(--space-1); width: 100%; min-height: 2.75rem; padding: var(--space-2); border: 1px solid transparent; border-radius: 0.5rem; background: transparent; color: var(--text-primary); font-size: 0.75rem; text-align: start; }
+  .content-outline__item svg { color: var(--text-secondary); }
+  .content-outline__item.is-nested { padding-inline-start: var(--space-4); color: var(--text-secondary); }
+  .content-outline__item:hover { background: var(--surface-info); }
+  .content-outline__item[aria-current='true'] { border-color: var(--airtek-blue); background: var(--surface-info); color: var(--airtek-blue-dark); font-weight: 600; }
+  .content-outline__hint { margin: 0; color: var(--text-secondary); font-size: 0.75rem; line-height: 1.45; }
+
+  @container content-editor (min-width: 52rem) and (max-width: 71.999rem) {
+    .content-outline__list { flex-flow: row wrap; }
+    .content-outline__item { width: auto; }
+    .content-outline__item.is-nested { padding-inline-start: var(--space-2); }
+  }
+
+  @container content-editor (min-width: 72rem) {
+    .content-outline { position: sticky; top: var(--space-3); min-width: 11rem; }
+  }
+}
 </style>

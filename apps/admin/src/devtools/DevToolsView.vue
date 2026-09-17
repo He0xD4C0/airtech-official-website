@@ -204,6 +204,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+@layer components {
 .developer-page {
   min-height: calc(100vh - 7rem);
 }
@@ -216,8 +217,8 @@ onBeforeUnmount(() => {
   border: 1px solid #e6d8a6;
   border-radius: 10px;
   background: #fff9e7;
-  color: var(--admin-muted);
-  font-size: 0.72rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
 }
 
 .dev-warning > svg {
@@ -230,13 +231,13 @@ onBeforeUnmount(() => {
 
 .dev-warning strong {
   display: block;
-  color: var(--admin-text);
-  font-size: 0.72rem;
+  color: var(--text-primary);
+  font-size: 0.75rem;
 }
 
 .dev-warning p {
   margin: 0.1rem 0 0;
-  font-size: 0.64rem;
+  font-size: 0.75rem;
 }
 
 .terminal-shell {
@@ -266,7 +267,7 @@ onBeforeUnmount(() => {
 
 .terminal-shell header strong {
   font-family: monospace;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
 }
 
 .terminal-shell header span {
@@ -274,7 +275,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.25rem;
   color: #65cb90;
-  font-size: 0.57rem;
+  font-size: 0.75rem;
 }
 
 .terminal-shell header button {
@@ -317,8 +318,8 @@ onBeforeUnmount(() => {
 }
 
 .dev-command-grid p {
-  color: var(--admin-muted);
-  font-size: 0.64rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
 }
 
 .dev-command-grid code {
@@ -327,12 +328,8 @@ onBeforeUnmount(() => {
   border-radius: 6px;
   background: #edf2f2;
   color: #355351;
-  font-size: 0.63rem;
+  font-size: 0.75rem;
 }
 
-@media (max-width: 760px) {
-  .dev-command-grid {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

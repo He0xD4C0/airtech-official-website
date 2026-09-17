@@ -87,12 +87,14 @@ function add(): void {
 </template>
 
 <style scoped>
+@layer components {
 .faq-items { display: flex; flex-direction: column; gap: 0.5rem; }
 .faq-items header { display: flex; align-items: center; justify-content: space-between; }
-.faq-items header strong { font-size: 0.64rem; }
+.faq-items header strong { font-size: 0.75rem; }
 .faq-items__list { display: flex; flex-direction: column; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
-.faq-items__list > li { display: flex; flex-direction: column; gap: 0.45rem; padding: 0.6rem; border: 1px solid var(--admin-line); border-radius: 9px; background: white; }
+.faq-items__list > li { display: flex; flex-direction: column; gap: 0.45rem; padding: 0.6rem; border: 1px solid var(--border-default); border-radius: 9px; background: white; }
 .faq-items__head { display: flex; align-items: center; justify-content: space-between; }
-.faq-items__head strong { color: var(--admin-muted); font-size: 0.58rem; letter-spacing: 0.05em; text-transform: uppercase; }
+.faq-items__head strong { color: var(--text-secondary); font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; }
 .faq-items__head > div { display: flex; gap: 0.15rem; }
+}
 </style>

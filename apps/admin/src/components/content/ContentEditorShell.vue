@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft, Eye, Redo2, Save, Send, Settings2, Undo2 } from 'lucide-vue-next'
+import DraftVisualCanvas from '@airtek/content-renderer/DraftVisualCanvas.vue'
 import type {
   AssetVersionReference,
   ContentBlock,
@@ -161,10 +162,9 @@ async function submit(): Promise<void> {
     <p v-if="!editable" class="pending-banner">该草稿处于待审核状态，当前只读；所有者可在草稿列表撤回。</p>
     <p v-if="store.saveError" class="save-error">{{ store.saveError }} <button class="button button--quiet" @click="store.reloadServerVersion">重新载入</button></p>
 
-    <section v-if="previewOpen" id="draft-local-preview" class="panel local-preview" aria-label="编辑器内存预览">
-      <small>LOCAL MEMORY PREVIEW · 不创建 URL 或数据库记录</small>
-      <h1>{{ draft.title }}</h1><p>{{ draft.summary }}</p>
-      <ol><li v-for="block in draft.composition.blocks" :key="block.id">{{ block.type }}</li></ol>
+    <section v-if="previewOpen" id="draft-local-preview" class="local-preview" aria-label="编辑器内存预览">
+      <p class="local-preview__notice">LOCAL MEMORY PREVIEW · 不创建 URL 或数据库记录</p>
+      <DraftVisualCanvas :document="draft" />
     </section>
 
     <div class="content-editor__layout" :inert="!editable">
@@ -199,5 +199,74 @@ async function submit(): Promise<void> {
 </template>
 
 <style scoped>
-.content-editor { display:flex; flex-direction:column; gap:1rem }.content-editor__topbar,.content-editor__actions,.content-editor__identity { display:flex; align-items:center; gap:.55rem }.content-editor__topbar { justify-content:space-between; flex-wrap:wrap }.content-editor__identity span { display:block; color:var(--admin-muted); font-size:.75rem }.content-editor__layout { display:grid; grid-template-columns:180px minmax(0,1fr) 320px; gap:1rem; align-items:start }.content-editor__workspace,.content-editor__inspector,.editor-section { display:flex; flex-direction:column; gap:.75rem }.save-state { color:var(--admin-muted); font-size:.8rem }.pending-banner,.save-error { padding:.65rem; border-radius:.45rem; background:#fff8e6 }.local-preview { border:2px solid var(--airtek-blue); }.local-preview small { color:var(--admin-muted) }.inspector-tabs { display:flex; gap:.25rem }.inspector-tabs button { padding:.5rem; border:1px solid transparent; background:white }.inspector-tabs .is-active { border-color:var(--admin-line) }.inspector-empty p { margin:0; color:var(--admin-muted) }[inert] { opacity:.72 }@media(max-width:1280px){.content-editor__layout{grid-template-columns:1fr}}
+@layer components {
+  .content-editor {
+    container: content-editor / inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+  }
+
+  .content-editor__topbar,
+  .content-editor__actions,
+  .content-editor__identity {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .content-editor__topbar {
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .content-editor__identity span {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+  }
+
+  .content-editor__layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: start;
+  }
+
+  .content-editor__workspace,
+  .content-editor__inspector,
+  .editor-section {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .editor-section { padding: var(--space-4); }
+  .save-state { color: var(--text-secondary); font-size: 0.8rem; }
+  .pending-banner, .save-error { padding: var(--space-3); border-radius: var(--airtek-radius-sm); background: var(--surface-warning); }
+  .local-preview { display: grid; gap: var(--space-2); }
+  .local-preview__notice { margin: 0; color: var(--text-secondary); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; }
+  .inspector-tabs { display: flex; gap: var(--space-1); }
+  .inspector-tabs button { min-width: 2.75rem; min-height: 2.75rem; padding: var(--space-2); border: 1px solid transparent; background: var(--surface-panel); }
+  .inspector-tabs button[aria-selected='true'] { border-color: var(--border-default); color: var(--airtek-blue-dark); }
+  .inspector-empty { padding: var(--space-4); }
+  .inspector-empty p { margin: 0; color: var(--text-secondary); }
+  [inert] { opacity: 0.72; }
+
+  @container content-editor (min-width: 52rem) {
+    .content-editor__layout { grid-template-columns: minmax(0, 1fr) minmax(18rem, 20rem); }
+    .content-editor__layout > :first-child { grid-column: 1 / -1; }
+    .content-editor__workspace { grid-column: 1; }
+    .content-editor__inspector { grid-column: 2; }
+  }
+
+  @container content-editor (min-width: 72rem) {
+    .content-editor__layout { grid-template-columns: 11.25rem minmax(0, 1fr) minmax(18rem, 20rem); }
+    .content-editor__layout > :first-child { grid-column: 1; }
+    .content-editor__workspace { grid-column: 2; }
+    .content-editor__inspector { grid-column: 3; }
+  }
+}
 </style>

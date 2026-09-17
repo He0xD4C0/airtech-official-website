@@ -41,7 +41,9 @@ function onUpdate(value: unknown): void {
 </template>
 
 <style scoped>
+@layer components {
 .structured-body { display: flex; flex-direction: column; gap: 0.4rem; }
-.structured-body__policy { margin: 0; color: var(--admin-muted); font-size: 0.58rem; }
-.structured-body__blocked { margin: 0; padding: 0.65rem; border: 1px dashed var(--admin-line); border-radius: 9px; color: var(--admin-muted); font-size: 0.6rem; }
+.structured-body__policy { margin: 0; color: var(--text-secondary); font-size: 0.75rem; }
+.structured-body__blocked { margin: 0; padding: 0.65rem; border: 1px dashed var(--border-default); border-radius: 9px; color: var(--text-secondary); font-size: 0.75rem; }
+}
 </style>

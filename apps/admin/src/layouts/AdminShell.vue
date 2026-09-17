@@ -120,7 +120,7 @@ watch(() => ui.commandOpen, async (open) => {
 
     <aside class="sidebar" :class="{ 'sidebar--open': ui.sidebarOpen }">
       <div class="sidebar__brand">
-        <BrandMark inverse />
+        <BrandMark compact />
         <button class="icon-button sidebar__mobile-close" type="button" aria-label="关闭导航" @click="ui.closeSidebar">
           <X :size="18" />
         </button>

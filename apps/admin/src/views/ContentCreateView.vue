@@ -157,23 +157,25 @@ onMounted(loadTemplates)
 </template>
 
 <style scoped>
+@layer components {
 .create-form { display: flex; flex-direction: column; gap: 1rem; }
 .create-form__templates { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .8rem; }
 .create-form__templates legend { font-weight: 600; margin-bottom: .4rem; }
-.create-form__hint { margin: 0; color: var(--admin-muted, #556663); font-size: .78rem; }
+.create-form__hint { margin: 0; color: var(--text-secondary, #556663); font-size: .78rem; }
 .create-form__cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .5rem; }
-.template-card { display: flex; gap: .5rem; align-items: center; justify-content: space-between; border: 1px solid var(--color-border, #d1d5db); border-radius: .5rem; padding: .7rem; background: white; text-align: left; cursor: pointer; }
+.template-card { display: flex; gap: .5rem; align-items: center; justify-content: space-between; border: 1px solid var(--border-default, #d1d5db); border-radius: .5rem; padding: .7rem; background: white; text-align: left; cursor: pointer; }
 .template-card:hover, .template-card:focus-visible { border-color: var(--airtek-blue, #0c7497); }
 .template-card strong { display: block; }
-.template-card span { font-size: .76rem; color: var(--admin-muted, #556663); }
-.template-card code { display: block; margin-top: .25rem; color: var(--admin-muted, #556663); font-size: .65rem; }
+.template-card span { font-size: .76rem; color: var(--text-secondary, #556663); }
+.template-card code { display: block; margin-top: .25rem; color: var(--text-secondary, #556663); font-size: 0.75rem; }
 .create-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin: 0; padding: 0; list-style: none; }
-.create-steps li { display: flex; align-items: center; gap: .4rem; color: var(--admin-muted, #556663); font-size: .75rem; }
-.create-steps span { display: grid; place-items: center; width: 1.55rem; height: 1.55rem; border-radius: 50%; background: #edf2f2; font-size: .68rem; }
-.create-steps .is-active { color: var(--admin-text); font-weight: 700; }.create-steps .is-active span, .create-steps .is-complete span { background: var(--airtek-blue, #0c7497); color: white; }
+.create-steps li { display: flex; align-items: center; gap: .4rem; color: var(--text-secondary, #556663); font-size: .75rem; }
+.create-steps span { display: grid; place-items: center; width: 1.55rem; height: 1.55rem; border-radius: 50%; background: #edf2f2; font-size: 0.75rem; }
+.create-steps .is-active { color: var(--text-primary); font-weight: 700; }.create-steps .is-active span, .create-steps .is-complete span { background: var(--airtek-blue, #0c7497); color: white; }
 .create-form__fields { display: flex; flex-direction: column; gap: .65rem; }
-.create-form__selection { display: flex; align-items: center; gap: .5rem; padding: .6rem; border-radius: .5rem; background: #f5f8f8; }.create-form__selection span, .create-form__selection code { color: var(--admin-muted, #556663); font-size: .72rem; }.create-form__selection code { margin-left: auto; }
-.create-form__lock { display: inline-flex; align-items: center; gap: .35rem; font-size: .8rem; color: var(--admin-muted, #556663); margin: 0; }
+.create-form__selection { display: flex; align-items: center; gap: .5rem; padding: .6rem; border-radius: .5rem; background: #f5f8f8; }.create-form__selection span, .create-form__selection code { color: var(--text-secondary, #556663); font-size: 0.75rem; }.create-form__selection code { margin-left: auto; }
+.create-form__lock { display: inline-flex; align-items: center; gap: .35rem; font-size: .8rem; color: var(--text-secondary, #556663); margin: 0; }
 .create-form__error { color: #b91c1c; font-size: .85rem; margin: 0; }
 .create-form__actions { display: flex; justify-content: flex-end; gap: .5rem; }
+}
 </style>

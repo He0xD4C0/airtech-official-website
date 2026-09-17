@@ -2,6 +2,7 @@
 docs/Plan & Solution/~$*.xlsx
 tmp/
 node_modules/
+*.tsbuildinfo
 .pnpm-store/
 .prebuilt/
 dist/

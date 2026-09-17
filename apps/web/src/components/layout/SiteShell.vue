@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { usePageContext } from 'vike-vue/usePageContext'
+import horizontalLogo from '@airtek/ui/assets/brand/airtek-standard-lockup-horizontal.webp'
 import CookieBanner from './CookieBanner.vue'
 import CompareTray from '@/components/product/CompareTray.vue'
 import type { PublicPageModel, PublicSiteBootstrap } from '@/types/content'
@@ -32,7 +33,9 @@ function active(href: string) {
     <div v-if="site.brandLine" class="brand-line">{{ site.brandLine }}</div>
     <header class="site-header">
       <div class="shell header-inner">
-        <a class="wordmark" :href="site.homePath" :aria-label="`${site.brandName} home`">{{ site.brandName }}</a>
+        <a class="wordmark" :href="site.homePath" :aria-label="`${site.brandName} home`">
+          <img :src="horizontalLogo" :alt="site.brandName" />
+        </a>
         <button
           class="menu-toggle"
           type="button"
@@ -67,7 +70,7 @@ function active(href: string) {
   <footer v-if="site" class="site-footer">
     <div class="shell footer-grid">
       <div>
-        <p class="wordmark footer-wordmark">{{ site.brandName }}</p>
+        <img class="footer-wordmark" :src="horizontalLogo" :alt="site.brandName" />
         <p v-if="site.footerStatement" class="footer-statement">{{ site.footerStatement }}</p>
       </div>
       <div v-for="column in site.footerColumns" :key="column.title">

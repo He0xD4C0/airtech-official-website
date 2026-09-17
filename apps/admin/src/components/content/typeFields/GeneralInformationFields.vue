@@ -213,10 +213,12 @@ function updateNavigationCta(action: EditorialAction | null): void {
 </template>
 
 <style scoped>
+@layer components {
 .site-fields { display: flex; flex-direction: column; gap: 1rem; }
-.site-fields__group { display: flex; flex-direction: column; gap: 0.7rem; padding-top: 0.8rem; border-top: 1px solid var(--admin-line-soft); }
-.site-fields__group h3 { margin: 0; color: var(--airtek-blue-dark); font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; }
-.site-fields__card { display: flex; flex-direction: column; gap: 0.45rem; padding: 0.6rem; border: 1px solid var(--admin-line); border-radius: 9px; background: white; }
+.site-fields__group { display: flex; flex-direction: column; gap: 0.7rem; padding-top: 0.8rem; border-top: 1px solid var(--border-subtle); }
+.site-fields__group h3 { margin: 0; color: var(--airtek-blue-dark); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.site-fields__card { display: flex; flex-direction: column; gap: 0.45rem; padding: 0.6rem; border: 1px solid var(--border-default); border-radius: 9px; background: white; }
 .site-fields__repeat { display: flex; align-items: center; gap: 0.3rem; margin-bottom: 0.3rem; }
 .site-fields__repeat input { flex: 1; }
+}
 </style>

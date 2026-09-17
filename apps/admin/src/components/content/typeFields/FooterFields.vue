@@ -153,13 +153,15 @@ function addLegalLink(): void {
 </template>
 
 <style scoped>
+@layer components {
 .footer-fields { display: flex; flex-direction: column; gap: 1rem; }
 .footer-fields__group { display: flex; flex-direction: column; gap: 0.6rem; }
 .footer-fields__group header { display: flex; align-items: center; justify-content: space-between; }
-.footer-fields__group h3 { margin: 0; color: var(--airtek-blue-dark); font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; }
-.footer-fields__card { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.6rem; border: 1px solid var(--admin-line); border-radius: 9px; background: white; }
+.footer-fields__group h3 { margin: 0; color: var(--airtek-blue-dark); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.footer-fields__card { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.6rem; border: 1px solid var(--border-default); border-radius: 9px; background: white; }
 .footer-fields__head { display: flex; align-items: flex-end; gap: 0.4rem; }
 .footer-fields__head .field { flex: 1; }
 .footer-fields__controls { display: flex; align-items: center; gap: 0.15rem; }
 .footer-fields__links { display: flex; flex-direction: column; gap: 0.2rem; margin: 0; padding: 0; }
+}
 </style>

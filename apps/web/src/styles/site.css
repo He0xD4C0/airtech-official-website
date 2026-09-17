@@ -29,7 +29,8 @@ p { color: var(--airtek-muted); }
 .brand-line { padding: .5rem 1rem; background: var(--site-deep); color: #dcebed; text-align: center; font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .site-header { position: sticky; top: 0; z-index: 40; border-bottom: 1px solid rgb(216 226 225 / 75%); background: rgb(255 255 255 / 94%); backdrop-filter: blur(16px); }
 .header-inner { display: flex; min-height: 5rem; align-items: center; justify-content: space-between; gap: 2rem; }
-.wordmark { color: var(--airtek-blue); font-size: 1.28rem; font-weight: 900; letter-spacing: .08em; text-decoration: none; }
+.wordmark { display: block; width: min(13rem, 32vw); text-decoration: none; }
+.wordmark img { display: block; width: 100%; height: auto; }
 .primary-nav { display: flex; align-items: center; gap: clamp(.7rem, 2vw, 1.8rem); }
 .primary-nav a { position: relative; color: var(--airtek-dark-gray); font-size: .88rem; font-weight: 700; text-decoration: none; }
 .primary-nav a:not(.nav-rfq)::after { position: absolute; right: 0; bottom: -.6rem; left: 0; height: 2px; background: var(--airtek-green); content: ''; transform: scaleX(0); transition: transform .2s; }
@@ -44,7 +45,7 @@ p { color: var(--airtek-muted); }
 .footer-grid h2 { margin-bottom: .4rem; color: #fff; font-size: .83rem; letter-spacing: .12em; text-transform: uppercase; }
 .footer-grid a { font-size: .9rem; text-decoration: none; }
 .footer-grid a:hover { color: #fff; }
-.footer-wordmark { color: #fff !important; }
+.footer-wordmark { display: block; width: min(15rem, 100%); height: auto; border-radius: .25rem; }
 .footer-statement { max-width: 25rem; line-height: 1.8; }
 .footer-bottom { display: flex; align-items: center; justify-content: space-between; gap: 2rem; margin-top: 4rem; padding-block: 1.4rem; border-top: 1px solid rgb(255 255 255 / 13%); font-size: .8rem; }
 .footer-bottom p { margin: 0; }

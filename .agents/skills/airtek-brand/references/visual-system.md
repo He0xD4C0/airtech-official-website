@@ -31,7 +31,7 @@ The manual states that the identity combines a graphic mark with a wordmark, fix
 
 Use an approved vector or high-resolution source asset when one becomes available. Do not trace or crop a PDF screenshot, redraw the symbol or lettering, alter proportions, recolor outside approved variants, add effects, separate the mark, or substitute a legacy wordmark.
 
-No approved standalone logo asset or clear-space/minimum-size production file is present in the repository. Three 72/73 px graphic-only PNGs recovered from the legacy public site are `DEPRECATED` for logo use because they omit the wordmark and contradict the controlled construction rule. The 32 px legacy favicon remains `PROVISIONAL`; the manual does not define a small-format exception. See [brand-assets.md](brand-assets.md) for the decision register and release workflow.
+The exact horizontal and vertical combination marks embedded in the controlled manual PDF p. 8, A.3.2 were extracted and explicitly approved by the repository owner on 2026-09-17 for the public website and CMS. Their original extracts, Web derivatives, checksums, and scope are recorded in [brand-assets.md](brand-assets.md). Three 72/73 px graphic-only PNGs recovered from the legacy public site remain `DEPRECATED` and `BLOCKED`; the 32 px legacy favicon remains `PROVISIONAL` because the manual does not define a small-format exception.
 
 ## UI application
 

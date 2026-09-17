@@ -1,6 +1,6 @@
 # Brand asset governance and register
 
-Last reviewed: 2026-09-14
+Last reviewed: 2026-09-17
 
 Use this reference for logos, favicons, company or facility photography, corporate video, certificate imagery, and any asset recovered from a public or legacy website. It does not govern product media.
 
@@ -21,7 +21,9 @@ Use these release states in addition to the governance status vocabulary:
 | `REVIEW_REQUIRED` | Potentially relevant, but one or more release checks are missing | Keep in isolated staging; do not upload to the CMS or ship publicly |
 | `BLOCKED` | Known noncompliance, expiry, wrong scope, or superseded identity | Evidence only; do not publish or use as a design source |
 
-No reviewed asset currently has `APPROVED_FOR_PRODUCTION` status.
+The two exact combination marks extracted from the controlled manual A.3.2 are
+`APPROVED_FOR_PRODUCTION` for the public website and CMS. All legacy-site logo
+crops retain their earlier blocked or review-required decisions.
 
 ## Logo construction
 
@@ -30,10 +32,23 @@ The brand manual PDF pp. 7–8 defines the logo as a fixed relationship between 
 Therefore:
 
 - Do not treat a graphic-only crop as the AIRTEKPOWER logo.
-- Do not crop a logo out of a PDF, trace it, rebuild the lettering, or infer clear space and minimum size.
+- Do not trace a logo, rebuild the lettering, or infer clear space and minimum size. The only PDF extraction approved for production is the exact embedded A.3.2 artwork recorded below; no page screenshot or reconstructed crop is approved.
 - Do not separate, re-space, recolor, stretch, outline, shadow, or otherwise reconstruct the mark.
 - A favicon may use a distinct small-format treatment only after the owner supplies or explicitly approves that treatment; the manual does not establish a favicon exception.
 - The Chinese display text `艾特克（中国）` and the subline `Green-Energy Saving Ventilation Fans` shown in some compositions are not approved as standalone name or slogan assets. Preserve them only when they are inseparable parts of an owner-approved master file.
+
+## Approved controlled-manual marks
+
+| ID | Asset | Source | Governance | Release | Approved scope |
+|---|---|---|---|---|---|
+| `aa9d875400fc` | 981×394 horizontal combination mark | Brand manual PDF p. 8, A.3.2 | `VERIFIED` | `APPROVED_FOR_PRODUCTION` | Public website and CMS |
+| `a5d6a134d25a` | 1000×1000 vertical combination mark | Brand manual PDF p. 8, A.3.2 | `VERIFIED` | `APPROVED_FOR_PRODUCTION` | Public website and CMS |
+
+Approval was explicitly granted by the repository owner on 2026-09-17 for the
+exact extracted files and their recorded WebP derivatives. The byte-preserved
+JPEG extracts, derivative checksums, paths, and conversion details are recorded
+in [brand-asset-register.json](brand-asset-register.json). These static identity
+assets do not enter the CMS media pipeline.
 
 ## Legacy-site capture decision register
 

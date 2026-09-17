@@ -1,10 +1,56 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-09-14",
-  "source": "https://www.airtekpower.com",
-  "authority": "Legacy public website; discovery evidence only",
-  "publicationStatus": "NOT_APPROVED",
+  "reviewedAt": "2026-09-17",
+  "source": "Controlled brand manual plus legacy public-site review",
+  "authority": "Per-record authority and release scope apply",
+  "publicationStatus": "MIXED",
   "records": [
+    {
+      "id": "aa9d875400fc",
+      "sha256": "aa9d875400fcd9a6ec8bd0d711b942fb6f3a39e83eb8357703e8a78d0bc77951",
+      "kind": "standard-combination-logo-horizontal",
+      "dimensions": "981x394",
+      "sourcePath": "docs/Internal-docs/品牌视觉系统管理.pdf",
+      "sourcePage": 8,
+      "sourceSection": "A.3.2 标准标志 Standard logo",
+      "extractedPath": "packages/ui/assets/brand/source/airtek-standard-lockup-horizontal.pdf-page-8.jpg",
+      "extractedAt": "2026-09-17",
+      "governanceStatus": "VERIFIED",
+      "releaseState": "APPROVED_FOR_PRODUCTION",
+      "approvedAt": "2026-09-17",
+      "approvedBy": "repository owner via explicit instruction",
+      "approvedScope": ["public website", "CMS"],
+      "decision": "Exact embedded horizontal combination mark approved for site-wide and CMS use; do not redraw, re-space, crop, or recolor.",
+      "webDerivative": {
+        "path": "packages/ui/src/assets/brand/airtek-standard-lockup-horizontal.webp",
+        "sha256": "61a65ca64d33f14615b7f1bc1b3b831d012a2d584e016aa7c7d045751d587a3f",
+        "format": "WebP",
+        "conversion": "cwebp quality 90, metadata removed"
+      }
+    },
+    {
+      "id": "a5d6a134d25a",
+      "sha256": "a5d6a134d25af3675420e99a7aebe638e3d606085ad34a5c96154413f2f9603e",
+      "kind": "standard-combination-logo-vertical",
+      "dimensions": "1000x1000",
+      "sourcePath": "docs/Internal-docs/品牌视觉系统管理.pdf",
+      "sourcePage": 8,
+      "sourceSection": "A.3.2 标准标志 Standard logo",
+      "extractedPath": "packages/ui/assets/brand/source/airtek-standard-lockup-vertical.pdf-page-8.jpg",
+      "extractedAt": "2026-09-17",
+      "governanceStatus": "VERIFIED",
+      "releaseState": "APPROVED_FOR_PRODUCTION",
+      "approvedAt": "2026-09-17",
+      "approvedBy": "repository owner via explicit instruction",
+      "approvedScope": ["public website", "CMS"],
+      "decision": "Exact embedded vertical combination mark approved for site-wide and CMS use; do not redraw, re-space, crop, or recolor.",
+      "webDerivative": {
+        "path": "packages/ui/src/assets/brand/airtek-standard-lockup-vertical.webp",
+        "sha256": "a5b1d20743eeaf09c3556d0951fde89b1e639ce743612e6b940eb21039a2e8d5",
+        "format": "WebP",
+        "conversion": "cwebp quality 90, metadata removed"
+      }
+    },
     {
       "id": "3fd9c775dd54",
       "sha256": "3fd9c775dd5470436f3a483c71cb1ef2e9d7183af8cf4b6d557b5a0b4f605dce",

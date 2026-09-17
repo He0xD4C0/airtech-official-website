@@ -1,0 +1,22 @@
+{
+  "name": "@airtek/content-renderer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./DraftVisualCanvas.vue": "./src/DraftVisualCanvas.vue"
+  },
+  "scripts": {
+    "build": "vue-tsc --noEmit",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@airtek/contracts": "workspace:*",
+    "@airtek/ui": "workspace:*",
+    "vue": "^3.5.22"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vue-tsc": "^3.0.8"
+  }
+}

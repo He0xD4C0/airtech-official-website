@@ -56,9 +56,11 @@ function clear(): void {
 </template>
 
 <style scoped>
+@layer components {
 .action-field { display: flex; flex-direction: column; gap: 0.5rem; }
-.action-field__empty { display: flex; align-items: center; gap: 0.45rem; padding: 0.55rem; border: 1px dashed var(--admin-line); border-radius: 8px; color: var(--admin-muted); font-size: 0.62rem; }
+.action-field__empty { display: flex; align-items: center; gap: 0.45rem; padding: 0.55rem; border: 1px dashed var(--border-default); border-radius: 8px; color: var(--text-secondary); font-size: 0.75rem; }
 .action-field__empty span { flex: 1; }
 .action-field__header { display: flex; align-items: center; justify-content: space-between; }
-.action-field__header strong { font-size: 0.64rem; }
+.action-field__header strong { font-size: 0.75rem; }
+}
 </style>

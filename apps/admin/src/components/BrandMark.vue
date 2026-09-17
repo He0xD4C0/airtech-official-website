@@ -1,31 +1,32 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ compact?: boolean; inverse?: boolean }>(), {
+import horizontalLogo from '@airtek/ui/assets/brand/airtek-standard-lockup-horizontal.webp'
+import verticalLogo from '@airtek/ui/assets/brand/airtek-standard-lockup-vertical.webp'
+
+withDefaults(defineProps<{ compact?: boolean; vertical?: boolean }>(), {
   compact: false,
-  inverse: false,
+  vertical: false,
 })
 </script>
 
 <template>
-  <div class="brand-mark" :class="{ 'brand-mark--compact': compact, 'brand-mark--inverse': inverse }" aria-label="AIRTEKPOWER">
-    <span class="brand-mark__name">AIRTEK<span>POWER</span></span>
-  </div>
+  <img
+    class="brand-mark"
+    :class="{ 'brand-mark--compact': compact, 'brand-mark--vertical': vertical }"
+    :src="vertical ? verticalLogo : horizontalLogo"
+    alt="AIRTEKPOWER"
+  />
 </template>
 
 <style scoped>
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  color: var(--airtek-ink);
-}
+@layer components {
+  .brand-mark {
+    display: block;
+    width: min(13rem, 100%);
+    height: auto;
+    border-radius: 0.25rem;
+  }
 
-.brand-mark__name {
-  font-size: 0.98rem;
-  font-weight: 800;
-  letter-spacing: 0.055em;
+  .brand-mark--compact { width: min(10rem, 100%); }
+  .brand-mark--vertical { width: min(15rem, 70vw); }
 }
-
-.brand-mark__name span { color: var(--airtek-blue); }
-.brand-mark--inverse { color: white; }
-.brand-mark--inverse .brand-mark__name span { color: #6cd59a; }
-.brand-mark--compact .brand-mark__name { font-size: 0.85rem; }
 </style>

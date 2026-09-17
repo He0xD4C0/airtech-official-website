@@ -215,7 +215,8 @@ watch(() => props.kind, () => { selectedId.value = ''; detail.value = null; pii.
 </template>
 
 <style scoped>
+@layer components {
 .inbox-filters { display: grid; grid-template-columns: minmax(260px, 1fr) 180px auto; gap: .75rem; align-items: end; }
 .inbox-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
-@media (max-width: 768px) { .inbox-filters { grid-template-columns: 1fr; } }
+}
 </style>

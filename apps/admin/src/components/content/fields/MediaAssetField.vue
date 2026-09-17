@@ -247,29 +247,31 @@ defineExpose({ loadOptions })
 </template>
 
 <style scoped>
+@layer components {
 .dialog-backdrop { position: fixed; z-index: 60; display: grid; place-items: center; inset: 0; padding: 1.5rem; background: rgba(11, 38, 48, 0.45); }
 .dialog-panel { display: flex; flex-direction: column; gap: 0.5rem; max-height: 88vh; padding: 1.1rem; border-radius: 14px; background: white; box-shadow: 0 24px 60px rgba(11, 38, 48, 0.28); }
 .dialog-panel h2 { margin: 0; font-size: 0.95rem; }
-.dialog-note { margin: 0; color: var(--admin-muted); font-size: 0.62rem; line-height: 1.5; }
-.dialog-actions { display: flex; justify-content: flex-end; gap: 0.4rem; padding-top: 0.5rem; border-top: 1px solid var(--admin-line-soft); }
+.dialog-note { margin: 0; color: var(--text-secondary); font-size: 0.75rem; line-height: 1.5; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 0.4rem; padding-top: 0.5rem; border-top: 1px solid var(--border-subtle); }
 .media-field { display: flex; flex-direction: column; gap: 0.55rem; }
-.media-field__row { display: flex; align-items: center; gap: 0.55rem; padding: 0.6rem; border: 1px solid var(--admin-line); border-radius: 8px; background: white; }
-.media-field__icon { display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: 7px; background: var(--admin-soft-blue); color: var(--airtek-blue); }
+.media-field__row { display: flex; align-items: center; gap: 0.55rem; padding: 0.6rem; border: 1px solid var(--border-default); border-radius: 8px; background: white; }
+.media-field__icon { display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: 7px; background: var(--surface-info); color: var(--airtek-blue); }
 .media-field__summary { display: flex; flex: 1; min-width: 0; flex-direction: column; }
-.media-field__summary strong { overflow: hidden; font-size: 0.66rem; text-overflow: ellipsis; white-space: nowrap; }
-.media-field__summary small { color: var(--admin-muted); font-size: 0.57rem; }
+.media-field__summary strong { overflow: hidden; font-size: 0.75rem; text-overflow: ellipsis; white-space: nowrap; }
+.media-field__summary small { color: var(--text-secondary); font-size: 0.75rem; }
 .media-field__actions { display: flex; align-items: center; gap: 0.25rem; }
 .media-field__alt { margin-top: 0; }
 .media-dialog { width: min(38rem, 92vw); }
 .media-dialog__search { margin: 0.6rem 0; }
 .media-dialog__body { max-height: 18rem; overflow-y: auto; }
-.media-dialog__state { display: flex; align-items: center; gap: 0.4rem; padding: 1.1rem 0; color: var(--admin-muted); font-size: 0.66rem; text-align: center; }
+.media-dialog__state { display: flex; align-items: center; gap: 0.4rem; padding: 1.1rem 0; color: var(--text-secondary); font-size: 0.75rem; text-align: center; }
 .media-dialog__state--error { color: #b42318; }
 .media-dialog__list { display: flex; flex-direction: column; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
-.media-dialog__option { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; width: 100%; padding: 0.55rem 0.65rem; border: 1px solid var(--admin-line); border-radius: 8px; background: white; text-align: left; }
-.media-dialog__option:hover:not(:disabled) { border-color: var(--airtek-blue); background: var(--admin-soft-blue); }
+.media-dialog__option { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; width: 100%; padding: 0.55rem 0.65rem; border: 1px solid var(--border-default); border-radius: 8px; background: white; text-align: left; }
+.media-dialog__option:hover:not(:disabled) { border-color: var(--airtek-blue); background: var(--surface-info); }
 .media-dialog__option:disabled { cursor: not-allowed; opacity: 0.6; }
-.media-dialog__option strong { display: block; font-size: 0.66rem; }
-.media-dialog__option small { color: var(--admin-muted); font-size: 0.56rem; }
-.media-dialog__option em { color: var(--admin-muted); font-size: 0.55rem; font-style: normal; text-transform: uppercase; }
+.media-dialog__option strong { display: block; font-size: 0.75rem; }
+.media-dialog__option small { color: var(--text-secondary); font-size: 0.75rem; }
+.media-dialog__option em { color: var(--text-secondary); font-size: 0.75rem; font-style: normal; text-transform: uppercase; }
+}
 </style>

@@ -136,10 +136,12 @@ onMounted(pager.first)
 </template>
 
 <style scoped>
+@layer components {
 .review-list { display: flex; flex-direction: column; gap: .4rem; }
-.review-row { display: flex; align-items: center; gap: .5rem; padding: .7rem; border-bottom: 1px solid var(--admin-line); }
+.review-row { display: flex; align-items: center; gap: .5rem; padding: .7rem; border-bottom: 1px solid var(--border-default); }
 .review-row div { flex: 1; }
 .review-row strong, .review-row span { display: block; }
-.review-row span { color: var(--admin-muted); font-size: .76rem; }
+.review-row span { color: var(--text-secondary); font-size: .76rem; }
 .button--danger { border-color: #a72f24; background: #a72f24; color: white; }
+}
 </style>

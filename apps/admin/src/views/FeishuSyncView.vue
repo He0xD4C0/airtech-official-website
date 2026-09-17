@@ -203,5 +203,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+@layer components {
 .conflict-resolution-actions { display: grid; gap: .65rem; margin-top: .75rem; }
+}
 </style>

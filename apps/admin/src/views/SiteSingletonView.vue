@@ -137,7 +137,9 @@ onMounted(load)
 </template>
 
 <style scoped>
+@layer components {
 .site-empty { display: flex; flex-direction: column; align-items: flex-start; gap: .6rem; }
 .site-empty h2 { margin: 0; font-size: 1rem; }
-.site-empty p { margin: 0; color: var(--admin-muted); font-size: .88rem; }
+.site-empty p { margin: 0; color: var(--text-secondary); font-size: .88rem; }
+}
 </style>

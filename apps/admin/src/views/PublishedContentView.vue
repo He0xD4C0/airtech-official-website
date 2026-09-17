@@ -72,8 +72,10 @@ onMounted(pager.first)
 </template>
 
 <style scoped>
+@layer components {
 .published-list { display: flex; flex-direction: column; }
-.published-list a { padding: .75rem; border-bottom: 1px solid var(--admin-line); color: inherit; text-decoration: none; }
+.published-list a { padding: .75rem; border-bottom: 1px solid var(--border-default); color: inherit; text-decoration: none; }
 .published-list strong, .published-list span { display: block; }
-.published-list span { color: var(--admin-muted); font-size: .76rem; }
+.published-list span { color: var(--text-secondary); font-size: .76rem; }
+}
 </style>

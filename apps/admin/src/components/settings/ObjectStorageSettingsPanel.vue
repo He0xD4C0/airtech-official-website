@@ -183,10 +183,12 @@ onMounted(() => void load())
 </template>
 
 <style scoped>
+@layer components {
 .object-storage-settings { display: grid; gap: 1rem; }
-.storage-status { display: flex; align-items: center; gap: .65rem; padding: .75rem; border: 1px solid var(--admin-line); border-radius: .6rem; background: var(--admin-surface-subtle); }
-.storage-status span { display: grid; gap: .15rem; }.storage-status small { color: var(--admin-muted); font-size: .65rem; }
+.storage-status { display: flex; align-items: center; gap: .65rem; padding: .75rem; border: 1px solid var(--border-default); border-radius: .6rem; background: var(--surface-subtle); }
+.storage-status span { display: grid; gap: .15rem; }.storage-status small { color: var(--text-secondary); font-size: 0.75rem; }
 .storage-actions { display: flex; flex-wrap: wrap; gap: .6rem; }.storage-actions button { display: inline-flex; align-items: center; gap: .35rem; }
 .storage-tested { display: flex; align-items: flex-start; gap: .4rem; color: #166534; }.storage-tested code { overflow-wrap: anywhere; }
-.storage-adoption { border-color: #d97706; }.storage-error { display: flex; align-items: center; justify-content: space-between; gap: 1rem; color: var(--danger-text, #b91c1c); }
+.storage-adoption { border-color: #d97706; }.storage-error { display: flex; align-items: center; justify-content: space-between; gap: 1rem; color: var(--text-danger, #b91c1c); }
+}
 </style>

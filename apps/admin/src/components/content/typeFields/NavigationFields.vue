@@ -59,7 +59,9 @@ function addItem(): void {
 </template>
 
 <style scoped>
+@layer components {
 .navigation-fields { display: flex; flex-direction: column; gap: 0.6rem; }
 .navigation-fields__list { display: flex; flex-direction: column; gap: 0.2rem; margin: 0; padding: 0; }
-.navigation-fields__legend { display: flex; align-items: center; gap: 0.25rem; margin: 0; color: var(--admin-muted); font-size: 0.56rem; }
+.navigation-fields__legend { display: flex; align-items: center; gap: 0.25rem; margin: 0; color: var(--text-secondary); font-size: 0.75rem; }
+}
 </style>

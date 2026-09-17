@@ -103,19 +103,21 @@ const bodyParagraphs = computed(() => bodyText(props.document.body).filter((entr
 </template>
 
 <style scoped>
+@layer components {
 .published-document { display: grid; gap: 1rem; }
 .published-document__section { display: flex; flex-direction: column; gap: .75rem; }
 .published-document h2 { margin: 0; font-size: 1rem; }
 .published-document__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: .65rem; margin: 0; }
-.published-document__grid div, .published-document__rows div { padding: .65rem; border: 1px solid var(--admin-line); border-radius: 8px; }
-.published-document dt { color: var(--admin-muted); font-size: .75rem; }
+.published-document__grid div, .published-document__rows div { padding: .65rem; border: 1px solid var(--border-default); border-radius: 8px; }
+.published-document dt { color: var(--text-secondary); font-size: .75rem; }
 .published-document dd { margin: .2rem 0 0; overflow-wrap: anywhere; }
 .published-document__summary, .published-document__body p, .published-document__empty { margin: 0; line-height: 1.65; }
 .published-document__blocks { display: flex; flex-direction: column; gap: .45rem; margin: 0; padding-left: 1.3rem; }
 .published-document__blocks li { padding: .5rem; }
 .published-document__blocks strong, .published-document__blocks span { display: block; }
-.published-document__blocks span { color: var(--admin-muted); font-size: .75rem; }
+.published-document__blocks span { color: var(--text-secondary); font-size: .75rem; }
 .published-document__rows { display: grid; gap: .45rem; margin: 0; }
 .published-document__diagnostics summary { cursor: pointer; font-weight: 700; }
 .published-document__diagnostics pre { max-height: 50vh; overflow: auto; white-space: pre-wrap; }
+}
 </style>
