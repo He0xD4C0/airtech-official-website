@@ -1,6 +1,6 @@
 # Cases and claims
 
-Updated: 2026-09-01
+Last reviewed: 2026-09-14
 
 The supplied decks describe real-world solution themes, but no separate approved claim register, raw test report, customer permission record, or current delivery policy is present. Treat all numeric outcomes below as `PROVISIONAL` unless marked `CONFLICTED`.
 
@@ -16,7 +16,7 @@ The supplied decks describe real-world solution themes, but no separate approved
 - Recreational-vehicle air conditioning.
 - In-row cooling using a DC225 product.
 
-Evidence locator: supplied company deck PDF pp. 19–28 and `docs/Successful Projects Showcase.pdf`. These themes may be used to plan case-study categories or request missing evidence. Do not infer client identity, model, location, scale, certification, or current availability.
+Evidence locator: supplied company deck PDF pp. 19–28 and `docs/Internal-docs/Successful Projects Showcase.pdf`. These internal PDFs are intentionally excluded from Git. If they are unavailable, report `internal evidence unavailable`; do not substitute another source or infer client identity, model, location, scale, certification, or current availability.
 
 Source-structure warning: the company deck's C.4/C.5 “Energy Storage” headings mix energy-storage and data-center/communications cooling content, and a heat-pump case listed in the contents is not clearly present as a corresponding body section. Status: `CONFLICTED`; classify future cases from approved case records, not the slide heading alone.
 

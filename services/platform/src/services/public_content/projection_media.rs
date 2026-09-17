@@ -20,7 +20,7 @@ pub(crate) async fn resolve_published_media(
         return Err(resolution_failed(content_id, revision));
     }
     let rows = sqlx::query(
-        r#"SELECT DISTINCT asset.id,asset.media_type,asset.byte_size,asset.original_name
+        r#"SELECT DISTINCT asset.id,asset.public_url,asset.media_type,asset.byte_size,asset.original_name
            FROM cms_current_publication_dependencies dependency
            JOIN media_assets asset
              ON asset.id=dependency.target_media_asset_id
@@ -35,17 +35,21 @@ pub(crate) async fn resolve_published_media(
     rows.iter()
         .map(|row| {
             let asset_id: Uuid = row.try_get("id")?;
+            let public_url: Option<String> = row.try_get("public_url")?;
             Ok(ResolvedMedia {
                 asset_id,
-                public_url: format!("/api/public/v1/media/{asset_id}"),
+                public_url: public_url.ok_or_else(|| {
+                    ApiError::service_unavailable(
+                        "Published media includes a legacy URL that has not been adopted.",
+                    )
+                })?,
                 download_url: format!("/api/public/v1/media/{asset_id}/download"),
                 media_type: row.try_get("media_type")?,
                 byte_size: row.try_get("byte_size")?,
                 original_name: row.try_get("original_name")?,
             })
         })
-        .collect::<Result<Vec<_>, sqlx::Error>>()
-        .map_err(ApiError::from)
+        .collect::<Result<Vec<_>, ApiError>>()
 }
 
 pub(crate) fn resolution_failed(content_id: Uuid, revision: i64) -> ApiError {

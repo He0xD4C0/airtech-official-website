@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Check, Cookie, Copy, Globe2, KeyRound, LockKeyhole, LogOut, Save, Server, Settings, ShieldCheck, TimerReset } from 'lucide-vue-next'
+import { Check, Cookie, Copy, Database, Globe2, KeyRound, LockKeyhole, LogOut, Save, Server, Settings, ShieldCheck, TimerReset } from 'lucide-vue-next'
 import DataStatePanel from '@/components/DataStatePanel.vue'
 import PageHeader from '@/components/PageHeader.vue'
+import ObjectStorageSettingsPanel from '@/components/settings/ObjectStorageSettingsPanel.vue'
 import { adminApi, type AdminSession, type PlatformSettings, type TotpEnrollment, type UpdatePlatformSettings } from '@/services/adminApi'
 import { apiErrorMessage, apiProblemStatus } from '@/services/cursorPagination'
 import { useAuthStore } from '@/stores/auth'
@@ -39,6 +40,7 @@ const tabs = [
   { id: 'security', label: '安全与会话', icon: LockKeyhole },
   { id: 'consent', label: 'Consent 与 Analytics', icon: Cookie },
   { id: 'retention', label: '数据保留', icon: TimerReset },
+  { id: 'object-storage', label: '对象存储', icon: Database },
   { id: 'domains', label: '域名与 Origin', icon: Globe2 },
 ]
 const visibleTabs = computed(() => accountSecurityOnly ? tabs.filter((tab) => tab.id === 'security') : tabs)
@@ -219,7 +221,7 @@ void loadSettings()
 
 <template>
   <div class="page-stack">
-    <PageHeader eyebrow="PLATFORM CONFIGURATION" :title="accountSecurityOnly ? '账号安全' : '系统设置'" :description="accountSecurityOnly ? '管理本账号的 TOTP、恢复码与活动会话。' : '管理平台级配置；敏感凭据只由后端 Secret Provider 引用，不回显原值。'">
+    <PageHeader eyebrow="PLATFORM CONFIGURATION" :title="accountSecurityOnly ? '账号安全' : '系统设置'" :description="accountSecurityOnly ? '管理本账号的 TOTP、恢复码与活动会话。' : '管理平台级配置；对象存储凭据写入数据库但绝不由 API 回显。'">
       <template #actions><button v-if="active === 'retention' && settingsState === 'ready'" class="button button--primary" type="button" :disabled="settingsLoading || settingsSaving || !loadedSettings" @click="save"><Save :size="16" />{{ settingsSaving ? '保存中…' : '保存业务设置' }}</button></template>
     </PageHeader>
 
@@ -290,6 +292,10 @@ void loadSettings()
           <div class="settings-section"><h3>产品临时覆盖</h3><p>新建 Feishu-owned 字段临时覆盖时使用的默认期限；已有覆盖不会被静默改期。</p><label class="field field--compact"><span>默认覆盖天数</span><input v-model.number="overrideDefaultDays" type="number" min="1" max="365" step="1" /><small>允许 1–365 天</small></label></div>
           <div class="settings-section"><h3>变更审计</h3><p>保存必须提供至少 12 个字符的业务原因；服务端记录 actor、before/after、reason 与 request ID。</p><label class="field"><span>变更原因</span><textarea v-model="changeReason" rows="3" minlength="12" placeholder="说明本次策略调整的依据与影响" /></label></div>
           <div class="settings-section"><h3>其他保留策略</h3><p>审计与安全日志等未列入 allowlist 的策略当前只读，不能通过该 API 写入。</p></div>
+        </template>
+
+        <template v-else-if="active === 'object-storage'">
+          <ObjectStorageSettingsPanel />
         </template>
 
         <template v-else>

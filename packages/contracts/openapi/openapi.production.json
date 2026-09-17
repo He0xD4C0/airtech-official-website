@@ -4961,7 +4961,8 @@
             "type": "string"
           },
           "publicUrl": {
-            "pattern": "^/api/public/v1/media/[0-9a-f-]+$",
+            "format": "uri",
+            "pattern": "^https?://",
             "type": "string"
           },
           "sha256": {
@@ -5402,6 +5403,206 @@
         "required": [
           "items",
           "nextCursor"
+        ],
+        "type": "object"
+      },
+      "ObjectStorageSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "accessKeyId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bucket": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "configured": {
+            "type": "boolean"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keyPrefix": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "legacyAssetCount": {
+            "minimum": 0,
+            "readOnly": true,
+            "type": "integer"
+          },
+          "pathStyle": {
+            "type": "boolean"
+          },
+          "provider": {
+            "const": "s3",
+            "type": "string"
+          },
+          "publicBaseUrl": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "minimum": 0,
+            "readOnly": true,
+            "type": "integer"
+          },
+          "secretConfigured": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "configured",
+          "provider",
+          "endpoint",
+          "region",
+          "bucket",
+          "accessKeyId",
+          "secretConfigured",
+          "keyPrefix",
+          "pathStyle",
+          "publicBaseUrl",
+          "legacyAssetCount",
+          "revision",
+          "updatedAt",
+          "updatedBy"
+        ],
+        "type": "object"
+      },
+      "ObjectStorageSettingsInput": {
+        "additionalProperties": false,
+        "properties": {
+          "accessKeyId": {
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          },
+          "bucket": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "endpoint": {
+            "format": "uri",
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "keyPrefix": {
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          },
+          "pathStyle": {
+            "type": "boolean"
+          },
+          "publicBaseUrl": {
+            "format": "uri",
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "region": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "secretAccessKey": {
+            "maxLength": 2048,
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "endpoint",
+          "region",
+          "bucket",
+          "accessKeyId",
+          "keyPrefix",
+          "pathStyle",
+          "publicBaseUrl"
+        ],
+        "type": "object"
+      },
+      "ObjectStorageTestResult": {
+        "additionalProperties": false,
+        "properties": {
+          "ok": {
+            "const": true,
+            "type": "boolean"
+          },
+          "publicUrl": {
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "publicUrl"
         ],
         "type": "object"
       },
@@ -7025,7 +7226,8 @@
             "type": "string"
           },
           "publicUrl": {
-            "pattern": "^/api/public/v1/media/",
+            "format": "uri",
+            "pattern": "^https?://",
             "type": "string"
           }
         },
@@ -9012,6 +9214,31 @@
           "reason"
         ],
         "type": "object"
+      },
+      "UpdateObjectStorageSettings": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ObjectStorageSettingsInput"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "adoptLegacyAssets": {
+                "type": "boolean"
+              },
+              "reason": {
+                "maxLength": 1000,
+                "minLength": 12,
+                "type": "string"
+              }
+            },
+            "required": [
+              "adoptLegacyAssets",
+              "reason"
+            ],
+            "type": "object"
+          }
+        ]
       },
       "UpdatePlatformSettings": {
         "additionalProperties": false,
@@ -20204,6 +20431,444 @@
         ]
       }
     },
+    "/api/admin/v1/settings/object-storage": {
+      "get": {
+        "operationId": "getObjectStorageSettings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectStorageSettings"
+                }
+              }
+            },
+            "description": "Object storage settings",
+            "headers": {
+              "Cache-Control": {
+                "description": "private, no-store, max-age=0",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "Current object storage settings revision",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "Get database-owned S3 settings without returning the secret access key",
+        "tags": [
+          "adminSettings"
+        ]
+      },
+      "put": {
+        "operationId": "updateObjectStorageSettings",
+        "parameters": [
+          {
+            "description": "Current entity ETag, formatted as revision-N.",
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "pattern": "^\\\"revision-[0-9]+\\\"$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateObjectStorageSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectStorageSettings"
+                }
+              }
+            },
+            "description": "Object storage settings updated",
+            "headers": {
+              "Cache-Control": {
+                "description": "private, no-store, max-age=0",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "ETag": {
+                "description": "New object storage settings revision",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Test and atomically save database-owned S3 settings",
+        "tags": [
+          "adminSettings"
+        ]
+      }
+    },
+    "/api/admin/v1/settings/object-storage/test": {
+      "post": {
+        "operationId": "testObjectStorageSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ObjectStorageSettingsInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectStorageTestResult"
+                }
+              }
+            },
+            "description": "Object storage test result"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Test S3 write, anonymous public read, and cleanup without saving",
+        "tags": [
+          "adminSettings"
+        ]
+      }
+    },
     "/api/admin/v1/user-invitations": {
       "get": {
         "operationId": "listUserInvitations",
@@ -22175,16 +22840,16 @@
           }
         ],
         "responses": {
-          "200": {
-            "content": {
-              "application/octet-stream": {
+          "308": {
+            "description": "Redirect to the immutable external media URL",
+            "headers": {
+              "Location": {
+                "description": "Stored external media URL",
                 "schema": {
-                  "format": "binary",
                   "type": "string"
                 }
               }
-            },
-            "description": "Media bytes"
+            }
           },
           "400": {
             "content": {
@@ -22287,7 +22952,7 @@
             "description": "Required service is unavailable"
           }
         },
-        "summary": "Serve a live media asset without authentication",
+        "summary": "Redirect to a live media asset without authentication",
         "tags": [
           "public"
         ]
@@ -22308,16 +22973,16 @@
           }
         ],
         "responses": {
-          "200": {
-            "content": {
-              "application/octet-stream": {
+          "308": {
+            "description": "Redirect to the immutable external media URL",
+            "headers": {
+              "Location": {
+                "description": "Stored external media URL",
                 "schema": {
-                  "format": "binary",
                   "type": "string"
                 }
               }
-            },
-            "description": "Media bytes"
+            }
           },
           "400": {
             "content": {
@@ -22420,7 +23085,7 @@
             "description": "Required service is unavailable"
           }
         },
-        "summary": "Download a live media asset without authentication",
+        "summary": "Redirect to a live media asset without authentication",
         "tags": [
           "public"
         ]

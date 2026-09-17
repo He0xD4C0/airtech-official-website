@@ -6,6 +6,38 @@
 import type { components } from '../components'
 
 export interface SchemasPart04 {
+ReplacementRfqContext: {
+            additionalMessage?: string;
+            application: string;
+            dutyPoint: components["schemas"]["RfqDutyPoint"];
+            electrical?: components["schemas"]["RfqElectricalContext"];
+            environment?: string;
+            existingModel: string;
+            installationConstraints?: string;
+            /** @enum {string} */
+            priority?: "efficiency" | "noise" | "size" | "headroom";
+            quantity?: components["schemas"]["RfqQuantity"];
+            replacementGoal?: string;
+        };
+ReplacementRfqRequest: {
+            /** @enum {boolean} */
+            consent: true;
+            contact: components["schemas"]["BusinessContact"];
+            context: components["schemas"]["ReplacementRfqContext"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            journey: "replacement";
+            /** @enum {string} */
+            locale: "en";
+            sourcePath: string;
+        };
+ResolvedLinkTarget: {
+            /** Format: uuid */
+            contentId: string;
+            href: string;
+        };
 ResolvedMedia: {
             /** Format: uuid */
             assetId: string;
@@ -14,6 +46,7 @@ ResolvedMedia: {
             /** @enum {string} */
             mediaType: "image/png" | "image/jpeg" | "image/webp";
             originalName: string;
+            /** Format: uri */
             publicUrl: string;
         };
 ResolvedRelationCard: {
@@ -422,6 +455,10 @@ UpdateBusinessStatusRequest: {
             reason: string;
             status: components["schemas"]["BusinessInboxStatus"];
         };
+UpdateObjectStorageSettings: components["schemas"]["ObjectStorageSettingsInput"] & {
+            adoptLegacyAssets: boolean;
+            reason: string;
+        };
 UpdatePlatformSettings: {
             reason: string;
             retentionDeletionGraceDays?: number;
@@ -457,14 +494,5 @@ UserInvitation: {
             roleKeys: string[];
             /** @enum {string} */
             status: "pending" | "accepted" | "revoked" | "expired";
-        };
-UserInvitationPage: {
-            items: components["schemas"]["UserInvitation"][];
-            nextCursor: string | null;
-        };
-ValidationIssue: {
-            code: string;
-            detail: string;
-            fieldPath: string;
         };
 }

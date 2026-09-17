@@ -24,6 +24,7 @@ fn settings(path_style: bool) -> MediaStorageSettings {
         secret_access_key: "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY".to_owned(),
         key_prefix: "media".to_owned(),
         path_style,
+        public_base_url: "http://media.test/airtek-media".to_owned(),
     }
 }
 

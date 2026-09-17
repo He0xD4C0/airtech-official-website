@@ -31,6 +31,86 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
             false,
         ),
     );
+
+    add(
+        paths,
+        "/api/admin/v1/settings/object-storage",
+        "get",
+        admin(
+            op(
+                "getObjectStorageSettings",
+                "Get database-owned S3 settings without returning the secret access key",
+                "adminSettings",
+                [(
+                    "200",
+                    response_header(
+                        response_header(
+                            json_response("Object storage settings", r("ObjectStorageSettings")),
+                            "ETag",
+                            "Current object storage settings revision",
+                        ),
+                        "Cache-Control",
+                        "private, no-store, max-age=0",
+                    ),
+                )],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/settings/object-storage",
+        "put",
+        admin(
+            params(
+                body(
+                    op(
+                        "updateObjectStorageSettings",
+                        "Test and atomically save database-owned S3 settings",
+                        "adminSettings",
+                        [(
+                            "200",
+                            response_header(
+                                response_header(
+                                    json_response(
+                                        "Object storage settings updated",
+                                        r("ObjectStorageSettings"),
+                                    ),
+                                    "ETag",
+                                    "New object storage settings revision",
+                                ),
+                                "Cache-Control",
+                                "private, no-store, max-age=0",
+                            ),
+                        )],
+                    ),
+                    r("UpdateObjectStorageSettings"),
+                ),
+                vec![if_match_param()],
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/settings/object-storage/test",
+        "post",
+        admin(
+            body(
+                op(
+                    "testObjectStorageSettings",
+                    "Test S3 write, anonymous public read, and cleanup without saving",
+                    "adminSettings",
+                    [(
+                        "200",
+                        json_response("Object storage test result", r("ObjectStorageTestResult")),
+                    )],
+                ),
+                r("ObjectStorageSettingsInput"),
+            ),
+            true,
+        ),
+    );
     add(
         paths,
         "/api/admin/v1/settings",

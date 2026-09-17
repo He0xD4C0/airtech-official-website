@@ -1,3 +1,5 @@
+#[cfg(feature = "devtools")]
+use airtek_platform::services::development_admin::{self, DevelopmentAdminInput};
 use airtek_platform::services::runtime_preparation;
 use sqlx::postgres::PgPoolOptions;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -13,18 +15,99 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    match std::env::args().nth(1).as_deref() {
-        Some("prepare-runtime") => {}
-        _ => return Err("usage: airtek-maintenance prepare-runtime".into()),
-    }
+    let command = std::env::args().nth(1);
+    validate_command(command.as_deref())?;
     let database_url = std::env::var("DATABASE_URL")
         .map_err(|_| "DATABASE_URL is required for runtime preparation")?;
     let pool = PgPoolOptions::new()
         .max_connections(10)
         .connect(&database_url)
         .await?;
-    let report = runtime_preparation::prepare(&pool).await?;
-    println!("{}", serde_json::to_string(&report)?);
+    let output = match command.as_deref() {
+        Some("prepare-runtime") => {
+            serde_json::to_value(runtime_preparation::prepare(&pool).await?)?
+        }
+        #[cfg(feature = "devtools")]
+        Some("prepare-development-runtime") => {
+            let runtime = runtime_preparation::prepare(&pool).await?;
+            let development_admin = if development_seed_enabled()? {
+                Some(development_admin::ensure(&pool, &development_admin_input()?).await?)
+            } else {
+                None
+            };
+            serde_json::json!({
+                "runtime": runtime,
+                "developmentAdmin": development_admin,
+            })
+        }
+        #[cfg(feature = "devtools")]
+        Some("reset-development-admin") => {
+            require_reset_confirmation()?;
+            serde_json::to_value(
+                development_admin::reset(&pool, &development_admin_input()?).await?,
+            )?
+        }
+        _ => unreachable!("command was validated before connecting"),
+    };
+    println!("{}", serde_json::to_string(&output)?);
     pool.close().await;
     Ok(())
+}
+
+fn validate_command(command: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+    match command {
+        Some("prepare-runtime") => Ok(()),
+        #[cfg(feature = "devtools")]
+        Some("prepare-development-runtime" | "reset-development-admin") => Ok(()),
+        _ => Err(usage().into()),
+    }
+}
+
+fn usage() -> &'static str {
+    #[cfg(feature = "devtools")]
+    {
+        "usage: airtek-maintenance prepare-runtime|prepare-development-runtime|reset-development-admin"
+    }
+    #[cfg(not(feature = "devtools"))]
+    {
+        "usage: airtek-maintenance prepare-runtime"
+    }
+}
+
+#[cfg(feature = "devtools")]
+fn development_seed_enabled() -> Result<bool, Box<dyn std::error::Error>> {
+    match std::env::var("AIRTEK_DEV_ADMIN_SEED")
+        .unwrap_or_else(|_| "false".into())
+        .as_str()
+    {
+        "true" => Ok(true),
+        "false" => Ok(false),
+        _ => Err("AIRTEK_DEV_ADMIN_SEED must be true or false".into()),
+    }
+}
+
+#[cfg(feature = "devtools")]
+fn development_admin_input() -> Result<DevelopmentAdminInput, Box<dyn std::error::Error>> {
+    Ok(DevelopmentAdminInput {
+        display_name: required_env("AIRTEK_DEV_ADMIN_DISPLAY_NAME")?,
+        email: required_env("AIRTEK_DEV_ADMIN_EMAIL")?,
+        password: required_env("AIRTEK_DEV_ADMIN_PASSWORD")?,
+    })
+}
+
+#[cfg(feature = "devtools")]
+fn require_reset_confirmation() -> Result<(), Box<dyn std::error::Error>> {
+    if std::env::var("AIRTEK_ALLOW_DEV_ADMIN_RESET").as_deref() == Ok("true") {
+        Ok(())
+    } else {
+        Err("AIRTEK_ALLOW_DEV_ADMIN_RESET=true is required for an explicit reset".into())
+    }
+}
+
+#[cfg(feature = "devtools")]
+fn required_env(name: &str) -> Result<String, Box<dyn std::error::Error>> {
+    std::env::var(name)
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| format!("{name} is required").into())
 }

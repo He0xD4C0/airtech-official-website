@@ -11,9 +11,37 @@ use super::config::{MediaStorageKind, MediaStorageSettings};
 use super::s3;
 use super::{validate_storage_key, MAX_MEDIA_UPLOAD_BYTES};
 
+#[allow(dead_code)]
 pub struct MediaObject {
     pub body: Body,
     pub content_length: u64,
+}
+
+pub(crate) async fn probe_storage(
+    settings: &MediaStorageSettings,
+    key: &str,
+    public_url: &str,
+) -> Result<(), ApiError> {
+    let payload = b"airtek-object-storage-probe".to_vec();
+    put_object(settings, key, "text/plain", payload).await?;
+    let settings_for_probe = settings.clone();
+    let public_url = public_url.to_owned();
+    let probe = tokio::task::spawn_blocking(move || {
+        if settings_for_probe.kind != MediaStorageKind::S3 {
+            return Err(ApiError::bad_request(
+                "Only S3-compatible storage can be tested.",
+            ));
+        }
+        s3::probe_public_url(&public_url)
+    })
+    .await
+    .map_err(|_| ApiError::service_unavailable("Media storage probe task failed."))?;
+    let cleanup = delete_object(settings, key).await;
+    match (probe, cleanup) {
+        (Err(error), _) => Err(error),
+        (Ok(()), Err(error)) => Err(error),
+        (Ok(()), Ok(())) => Ok(()),
+    }
 }
 
 /// Writes one immutable object. Catalogue persistence happens afterward, so
@@ -49,6 +77,7 @@ pub async fn delete_object(settings: &MediaStorageSettings, key: &str) -> Result
         .map_err(|_| ApiError::service_unavailable("Media storage task failed."))?
 }
 
+#[allow(dead_code)]
 pub async fn get_object(
     settings: &MediaStorageSettings,
     key: &str,
@@ -110,6 +139,7 @@ fn write_local(settings: &MediaStorageSettings, key: &str, bytes: &[u8]) -> Resu
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn read_local(
     settings: &MediaStorageSettings,
     key: &str,

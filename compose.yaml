@@ -17,14 +17,15 @@ services:
     restart: unless-stopped
 
   minio:
-    image: ${AIRTEK_MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e}
+    profiles: ["minio"]
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
     command: server /data --console-address :9001
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-airtek}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-local-development-only}
-    expose:
-      - "9000"
-      - "9001"
+      MINIO_ROOT_USER: airtek
+      MINIO_ROOT_PASSWORD: local-development-only
+    ports:
+      - "127.0.0.1:19000:9000"
+      - "127.0.0.1:19001:9001"
     volumes:
       - object-data:/data
     healthcheck:
@@ -36,14 +37,15 @@ services:
     restart: unless-stopped
 
   minio-create-bucket:
-    image: ${AIRTEK_MINIO_MC_IMAGE:-quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727}
+    profiles: ["minio"]
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         set -eu
         until mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"; do sleep 1; done
         mc mb --ignore-existing "local/$${AIRTEK_MEDIA_S3_BUCKET}"
-        mc anonymous set none "local/$${AIRTEK_MEDIA_S3_BUCKET}"
+        mc anonymous set download "local/$${AIRTEK_MEDIA_S3_BUCKET}"
         render_policy() {
           source="$$1"
           target="$$2"
@@ -64,11 +66,11 @@ services:
           mc admin user enable local "$${AIRTEK_MEDIA_API_S3_ACCESS_KEY_ID}"
         mc admin policy attach local airtek-media-api --user "$${AIRTEK_MEDIA_API_S3_ACCESS_KEY_ID}"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-airtek}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-local-development-only}
-      AIRTEK_MEDIA_S3_BUCKET: ${AIRTEK_MEDIA_S3_BUCKET:-airtek-media}
-      AIRTEK_MEDIA_API_S3_ACCESS_KEY_ID: ${AIRTEK_MEDIA_API_S3_ACCESS_KEY_ID:-airtek-media-api}
-      AIRTEK_MEDIA_API_S3_SECRET_ACCESS_KEY: ${AIRTEK_MEDIA_API_S3_SECRET_ACCESS_KEY:-local-api-media-only}
+      MINIO_ROOT_USER: airtek
+      MINIO_ROOT_PASSWORD: local-development-only
+      AIRTEK_MEDIA_S3_BUCKET: airtek-media
+      AIRTEK_MEDIA_API_S3_ACCESS_KEY_ID: airtek-media-api
+      AIRTEK_MEDIA_API_S3_SECRET_ACCESS_KEY: local-api-media-only
     volumes:
       - ./infra/object-storage/media-api-policy.json:/policies/media-api.json:ro
     depends_on:
@@ -88,7 +90,7 @@ services:
       FLYWAY_USER: ${FLYWAY_USER:-airtek}
       FLYWAY_PASSWORD: ${FLYWAY_PASSWORD:-airtek}
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: ${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:-airtek}
-      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:-19}
+      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:-20}
       # Local compatibility for the existing single-role development volume.
       # The production boundary cannot pass this override.
       AIRTEK_FLYWAY_ALLOW_SHARED_ROLE: "true"
@@ -108,9 +110,13 @@ services:
         HTTPS_PROXY: ${AIRTEK_BUILD_PROXY:-}
         NO_PROXY: ${NO_PROXY:-}
     entrypoint: ["/usr/local/bin/airtek-maintenance"]
-    command: ["prepare-runtime"]
+    command: ["${AIRTEK_MAINTENANCE_COMMAND:-prepare-development-runtime}"]
     environment:
       DATABASE_URL: ${AIRTEK_DATABASE_URL_INTERNAL:-postgres://airtek:airtek@postgres:5432/airtek}
+      AIRTEK_DEV_ADMIN_SEED: ${AIRTEK_DEV_ADMIN_SEED:-true}
+      AIRTEK_DEV_ADMIN_DISPLAY_NAME: AIRTEK Local Administrator
+      AIRTEK_DEV_ADMIN_EMAIL: local-admin@airtek.invalid
+      AIRTEK_DEV_ADMIN_PASSWORD: Airtek-Local-Admin-20260917!
       RUST_LOG: ${RUST_LOG:-airtek_platform=info}
     depends_on:
       flyway-migrate:
@@ -147,23 +153,15 @@ services:
       AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES: ${AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES:-}
       AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS: ${AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS:-}
       AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS: ${AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS:-}
-      AIRTEK_MEDIA_STORAGE: ${AIRTEK_MEDIA_STORAGE:-s3}
-      AIRTEK_MEDIA_S3_ENDPOINT: ${AIRTEK_MEDIA_S3_ENDPOINT:-http://minio:9000}
-      AIRTEK_MEDIA_S3_REGION: ${AIRTEK_MEDIA_S3_REGION:-us-east-1}
-      AIRTEK_MEDIA_S3_BUCKET: ${AIRTEK_MEDIA_S3_BUCKET:-airtek-media}
-      AIRTEK_MEDIA_S3_ACCESS_KEY_ID: ${AIRTEK_MEDIA_API_S3_ACCESS_KEY_ID:-airtek-media-api}
-      AIRTEK_MEDIA_S3_SECRET_ACCESS_KEY: ${AIRTEK_MEDIA_API_S3_SECRET_ACCESS_KEY:-local-api-media-only}
-      AIRTEK_MEDIA_S3_KEY_PREFIX: ${AIRTEK_MEDIA_S3_KEY_PREFIX:-media}
-      AIRTEK_MEDIA_S3_PATH_STYLE: ${AIRTEK_MEDIA_S3_PATH_STYLE:-true}
       # Only this fixed gateway address may supply X-Forwarded-For to the API.
       AIRTEK_TRUSTED_PROXY_CIDRS: ${AIRTEK_TRUSTED_PROXY_CIDRS:-172.28.0.10/32}
       RUST_LOG: ${RUST_LOG:-airtek_platform=info,tower_http=info}
     ports:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_API_HOST_PORT:-8080}:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       platform-maintenance:
-        condition: service_completed_successfully
-      minio-create-bucket:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/readyz"]

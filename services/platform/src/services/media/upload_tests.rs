@@ -121,6 +121,7 @@ async fn database_failure_after_put_deletes_the_local_object_and_preserves_the_e
         secret_access_key: String::new(),
         key_prefix: "media".to_owned(),
         path_style: true,
+        public_base_url: "http://localhost/media".to_owned(),
     });
     let state = AppState::new(config).expect("test state");
     let mut request =

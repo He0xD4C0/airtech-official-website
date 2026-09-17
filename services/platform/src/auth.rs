@@ -33,6 +33,14 @@ use rate_limits::*;
 mod permissions;
 use permissions::*;
 pub use permissions::*;
+#[cfg(feature = "devtools")]
+pub fn development_hash_password(password: &str) -> Result<String, ApiError> {
+    hash_password(password)
+}
+#[cfg(feature = "devtools")]
+pub fn development_validate_password(password: &str) -> Result<(), ApiError> {
+    validate_strong_password(password)
+}
 #[cfg(test)]
 #[path = "auth/tests.rs"]
 mod tests;

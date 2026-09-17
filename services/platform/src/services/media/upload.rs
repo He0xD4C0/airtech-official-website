@@ -39,11 +39,7 @@ pub async fn upload_media_asset(
         IdempotencyOutcome::Fresh(context) => context,
     };
 
-    let settings = state.config.media.storage.as_ref().ok_or_else(|| {
-        ApiError::service_unavailable(
-            "Object storage is not configured; media uploads are disabled.",
-        )
-    })?;
+    let settings = crate::services::object_storage_settings::active_storage(state).await?;
     let asset_id = Uuid::new_v4();
     let storage_key = format!(
         "{}/{}/{}.{}",
@@ -57,7 +53,8 @@ pub async fn upload_media_asset(
         tracing::error!(%error, "staged media upload could not be read");
         ApiError::service_unavailable("Media upload staging is unavailable.")
     })?;
-    storage::put_object(settings, &storage_key, staged.media_type.mime, bytes).await?;
+    storage::put_object(&settings, &storage_key, staged.media_type.mime, bytes).await?;
+    let public_url = crate::services::object_storage_settings::public_url(&settings, &storage_key);
 
     let persistence = persist_asset(
         state,
@@ -66,13 +63,15 @@ pub async fn upload_media_asset(
         request_id,
         asset_id,
         &storage_key,
+        &public_url,
+        settings.kind.label(),
         &staged,
     )
     .await;
     match persistence {
         Ok(asset) => Ok(asset),
         Err(error) => {
-            if let Err(cleanup_error) = storage::delete_object(settings, &storage_key).await {
+            if let Err(cleanup_error) = storage::delete_object(&settings, &storage_key).await {
                 tracing::error!(
                     %asset_id,
                     %storage_key,
@@ -94,34 +93,28 @@ async fn persist_asset(
     request_id: Uuid,
     asset_id: Uuid,
     storage_key: &str,
+    public_url: &str,
+    storage_backend: &str,
     staged: &super::upload_input::StagedUpload,
 ) -> Result<MediaAsset, ApiError> {
     let pool = require_postgres(state)?;
     let mut transaction = pool.begin().await?;
     let row = sqlx::query(
         r#"INSERT INTO media_assets
-           (id,storage_key,original_name,media_type,byte_size,checksum,
+           (id,storage_key,public_url,original_name,media_type,byte_size,checksum,
             metadata,created_at,storage_backend,
             content_type,uploaded_by)
-           VALUES ($1,$2,$3,$4,$5,$6,'{}'::jsonb,now(),$7,$4,$8)
-           RETURNING id,original_name,media_type,byte_size,checksum,uploaded_by,created_at"#,
+           VALUES ($1,$2,$3,$4,$5,$6,$7,'{}'::jsonb,now(),$8,$5,$9)
+           RETURNING id,public_url,original_name,media_type,byte_size,checksum,uploaded_by,created_at"#,
     )
     .bind(asset_id)
     .bind(storage_key)
+    .bind(public_url)
     .bind(&staged.file_name)
     .bind(staged.media_type.mime)
     .bind(staged.byte_size as i64)
     .bind(&staged.sha256)
-    .bind(
-        state
-            .config
-            .media
-            .storage
-            .as_ref()
-            .expect("storage checked before persistence")
-            .kind
-            .label(),
-    )
+    .bind(storage_backend)
     .bind(actor)
     .fetch_one(&mut *transaction)
     .await?;

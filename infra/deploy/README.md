@@ -61,7 +61,13 @@ Before deployment:
    policy. These provider resources are intentionally
    absent from this repository.
 10. Verify Search Console and webmaster files only on the Public origin. Admin
-   and API must keep their crawl-denial and sitemap `404` behavior.
+    and API must keep their crawl-denial and sitemap `404` behavior.
+
+The fixed local-development administrator is not a deployment mechanism.
+Production images compile only the `production` feature, support only
+`airtek-maintenance prepare-runtime`, and receive no `AIRTEK_DEV_ADMIN_*`
+configuration. A fresh production database therefore remains without users
+until the one-time setup flow is completed.
 
 ## Direct media object identity
 
@@ -72,12 +78,13 @@ the configured `media/*` prefix. DeleteObject is used solely to compensate an
 object whose catalogue transaction failed. The identity cannot list the bucket,
 alter bucket policy, or make the bucket public.
 
-The browser never receives object-store credentials or provider URLs. Successful
-PNG, JPEG, and WebP uploads are immediately served without authentication by
-the platform's public media route. Production must provide a private HTTPS
-endpoint, scoped credentials, monitoring, and a smoke test that covers
-upload, immediate GET, idempotent replay, conflict, and database-failure
-compensation.
+The browser never receives object-store credentials. Administrators configure
+the S3-compatible endpoint, bucket, scoped credentials, and public delivery
+base URL in Admin; the API stores them in PostgreSQL. Successful PNG, JPEG, and
+WebP uploads persist an immutable external public URL. Production must provide
+a private HTTPS API endpoint, a public CDN or bucket URL, monitoring, and a
+smoke test covering upload, anonymous GET, idempotent replay, conflict, and
+database-failure compensation.
 
 Run configuration and repository assertions before promotion:
 
@@ -90,12 +97,14 @@ pnpm check:contracts
 
 ## Deployment order
 
-The current schema target is V19. Deploy the migration artifact first, then the
+The current schema target is V20. Deploy the migration artifact first, then the
 API and ordinary Worker, and finally Admin and Public Web. V17 introduces
 private drafts and review, V18 removes persisted content history, and V19 adds
-current-state query indexes. These migrations are forward-only.
+current-state query indexes. V20 moves application-side object-storage settings
+into PostgreSQL and adds immutable public media URLs. These migrations are
+forward-only.
 
-Before promotion, verify a fresh database migrates directly to V19 and a
+Before promotion, verify a fresh database migrates directly to V20 and a
 controlled legacy SQLx v1-v10 database passes
 `baseline -> migrate -> validate`.
 

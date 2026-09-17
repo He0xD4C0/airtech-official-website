@@ -9,10 +9,13 @@ pub mod cms_content;
 pub mod cms_publication_dependencies;
 pub mod cms_templates;
 pub mod cms_workflow;
+#[cfg(feature = "devtools")]
+pub mod development_admin;
 pub mod feishu;
 pub mod identity;
 pub mod media;
 pub mod media_assets;
+pub mod object_storage_settings;
 pub mod product_facts;
 pub mod product_import;
 pub mod product_publication;

@@ -25,7 +25,7 @@ Prerequisites:
 - Node.js 22+
 - pnpm 11+
 - Rust 1.98 toolchain (pinned by `rust-toolchain.toml`)
-- Docker with Compose for PostgreSQL, private MinIO object storage, and the
+- Docker with Compose for PostgreSQL, optional local MinIO object storage, and the
   pinned Flyway `13.4.0` migration image
 
 The repository development toolchain remains Rust 1.98. The Platform crate's
@@ -37,15 +37,15 @@ credentials there. The main configuration groups are:
 
 | Group | Variables |
 | --- | --- |
-| Host mappings | `AIRTEK_PUBLIC_HOST_PORT`, `AIRTEK_ADMIN_HOST_PORT`, `AIRTEK_API_HOST_PORT`, `AIRTEK_GATEWAY_HOST_PORT`, debug PostgreSQL/MinIO ports |
+| Host mappings | `AIRTEK_PUBLIC_HOST_PORT`, `AIRTEK_ADMIN_HOST_PORT`, `AIRTEK_API_HOST_PORT`, `AIRTEK_GATEWAY_HOST_PORT`, debug PostgreSQL port |
 | Build network | `AIRTEK_NPM_REGISTRY`, `AIRTEK_CARGO_MIRROR`, `AIRTEK_BUILD_PROXY`; host `NO_PROXY` is forwarded to application image builds |
 | Browser and security origins | `PUBLIC_HOST`, `ADMIN_HOST`, `API_HOST`, `AIRTEK_*_ORIGIN`, `VITE_*_BASE_URL`, `PUBLIC_API_BROWSER_ORIGIN` |
-| Local persistence | `POSTGRES_*`, `AIRTEK_DATABASE_URL_INTERNAL`, host-side `DATABASE_URL`, `MINIO_ROOT_*` |
+| Local persistence | `POSTGRES_*`, `AIRTEK_DATABASE_URL_INTERNAL`, host-side `DATABASE_URL`; `COMPOSE_PROFILES=minio` enables bundled MinIO |
 | Schema migration | `AIRTEK_FLYWAY_BASE_IMAGE`, JDBC `FLYWAY_URL`, `FLYWAY_USER`/`FLYWAY_PASSWORD`, and `FLYWAY_PLACEHOLDERS_RUNTIME_ROLE` |
 | Authentication, private staging and network trust | setup-only `AIRTEK_ADMIN_BOOTSTRAP_TOKEN`, independent TOTP/Product Staging/Analytics HMAC/invitation replay keys, gateway subnet/address, exact trusted-proxy CIDRs |
 | Data lifecycle | `AIRTEK_GUEST_RAW_RETENTION_DAYS`, `AIRTEK_GUEST_AGGREGATE_RETENTION_MONTHS`, `AIRTEK_PRODUCT_IMPORT_MAPPING_VERSION` |
 | Analytics vocabulary | `AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES`, `AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS`, `AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS` register the only UTM identifiers the API may store; unknown free text is rejected |
-| Direct media | `AIRTEK_MEDIA_STORAGE`, the API's private `AIRTEK_MEDIA_S3_*` object-store identity, and the fixed 25 MiB upload limit |
+| Direct media | Endpoint, bucket, credentials, key prefix and public base URL are database settings managed through Admin; uploads retain the fixed 25 MiB limit |
 | Development behavior | `VITE_ENABLE_DEVTOOLS`, cookie-banner test switch, `RUST_LOG` |
 | Reserved external adapters | Feishu and GA4 placeholders; blank values do not enable an adapter |
 
@@ -77,7 +77,17 @@ stored only as an AES-256-GCM envelope so a retry can return the original token.
 The complete local stack builds all three applications plus the independent,
 non-root migration image, applies migrations through the one-shot
 `flyway-migrate` container, then starts the API and Worker only after that
-container exits successfully:
+container exits successfully. On an empty local database, the development-only
+maintenance command also creates this fixed Super Admin before the API starts:
+
+- Email: `local-admin@airtek.invalid`
+- Password: `Airtek-Local-Admin-20260917!`
+
+If any user already exists, startup preserves every account and skips the
+development seed. To explicitly create or restore only the fixed local account,
+including clearing its TOTP and revoking its sessions, run
+`pnpm dev:admin:reset`. The credentials live only in local Compose; production
+artifacts and deployment configuration reject them.
 
 ```sh
 docker compose up --build
@@ -96,8 +106,8 @@ machine and are not substitutes for the Host boundary. Set
 TLS and external port `443` belong to the hosting provider or an outer ingress.
 
 PostgreSQL is network-internal in the base stack, so it cannot collide with or
-be reached from a host PostgreSQL instance. MinIO remains private and is part
-of the default development stack; public media bytes are served only by the API.
+be reached from a host PostgreSQL instance. Bundled MinIO starts only when
+`COMPOSE_PROFILES=minio`; its fixed development ports bind to loopback.
 For native source development, opt in to the loopback-only database mapping,
 install dependencies, and start PostgreSQL first. The
 Rust binaries load the root `.env` through `dotenvy` when they are launched
@@ -115,8 +125,8 @@ pnpm dev
 
 The debug mapping defaults to host port `54320`, so the root `.env.example`
 uses `postgres://airtek:airtek@localhost:54320/airtek`. Override
-`AIRTEK_POSTGRES_DEBUG_PORT` if that port is occupied. MinIO diagnostics use
-`19000` and `19001` by default and are configurable independently.
+`AIRTEK_POSTGRES_DEBUG_PORT` if that port is occupied. Profiled MinIO uses fixed
+loopback ports `19000` and `19001`; those values are intentionally not `.env` settings.
 
 Use the individual frontend commands when working on one application:
 
@@ -125,20 +135,21 @@ pnpm dev:web
 pnpm dev:admin
 ```
 
-To expose PostgreSQL and MinIO on loopback for native development, add the
-debug Compose overlay:
+To expose PostgreSQL on loopback for native development, add the debug Compose
+overlay. MinIO exposure is controlled independently by its profile:
 
 ```sh
 docker compose -f compose.yaml -f compose.debug.yaml up --build
 ```
 
-Leaving `AIRTEK_MEDIA_STORAGE` empty keeps uploads and delivery disabled while
-the Admin catalogue remains readable. Selecting `s3` requires a complete
-endpoint, bucket and credential set; when any required value is absent or
-blank, media storage remains disabled and the application continues without a
-fallback backend. Explicit malformed endpoints, prefixes and boolean values
-still fail configuration. A successful PNG, JPEG, or WebP upload is immediately
-public through the unauthenticated API media URL; MinIO itself remains private.
+Object storage starts unconfigured in PostgreSQL, so the platform remains
+available while uploads fail closed. A `settings.manage` administrator enters
+and tests every S3-compatible value under System Settings → Object Storage;
+the Secret is stored in the database by explicit owner decision but never
+returned by the API or copied into audit JSON. Each successful PNG, JPEG, or
+WebP upload stores its complete external public URL, and later setting changes
+affect only new uploads. The compatibility API media route redirects to that
+immutable URL.
 
 The Admin SPA always uses the Rust API. Runtime mock records and local mock
 authentication are not supported; deterministic UI fixtures live only inside
@@ -175,9 +186,9 @@ override is not present in `compose.production.yaml`; production rejects using
 the Flyway DDL identity as the application runtime identity.
 
 Application-owned migration and operations CLIs have been removed. In-memory repositories exist only behind isolated test
-construction and are not a supported server mode. The local/S3-compatible media
-storage implementations are selected explicitly; there is no implicit local
-fallback when media storage is unconfigured.
+construction and are not a supported server mode. Runtime media storage is
+selected only by the database-owned object-storage setting; there is no
+environment or implicit local fallback when it is unconfigured.
 
 ### One-time adoption of an existing SQLx v1-10 database
 
@@ -419,16 +430,16 @@ Success returns `201 MediaAsset`. Replaying the same user, key, and bytes
 returns the original response without another object; reusing that key for
 different bytes returns stable `409 media_idempotency_conflict`.
 
-Every non-deleted asset is immediately readable without authentication at
-`/api/public/v1/media/{assetId}` and its `/download` variant. Responses use
-the SHA-256 value as a strong ETag, immutable public caching, `nosniff`, and a
-sanitized content disposition. Content and product publication only determines
+Every non-deleted asset has an immutable external `publicUrl` captured at
+upload. `/api/public/v1/media/{assetId}` and its `/download` variant remain as
+compatibility redirects. Content and product publication only determines
 whether a website projection contains the link. Soft-deleted historical assets
 return 404, and this release exposes no new delete operation.
 
-MinIO/S3 stays private. Only the API identity can get, put, or compensate-delete
-objects under the configured media prefix. The ordinary Worker continues
-non-media jobs and has no media credentials, heartbeat, or media job types.
+The API identity can put and compensate-delete objects under the configured
+media prefix; the configured public base URL must provide anonymous reads.
+The ordinary Worker continues non-media jobs and has no media credentials,
+heartbeat, or media job types.
 Historical review-related database columns from early migrations are inert
 compatibility columns and are not part of runtime models, OpenAPI, or Admin UI.
 
@@ -471,9 +482,10 @@ compatibility columns and are not part of runtime models, OpenAPI, or Admin UI.
   the published projection directly, while CDN invalidation and external search
   indexing adapters are not wired; no external provider refresh should be
   inferred from a completed internal hook.
-- The API owns the direct S3-compatible upload/read/delete-compensation path.
-  Production still requires a reviewed private HTTPS object-store endpoint,
-  least-privilege API credentials, monitoring, and an end-to-end smoke
+- The API owns the direct S3-compatible upload and delete-compensation path,
+  while browsers read the immutable external URL. Production still requires a
+  reviewed HTTPS object-store endpoint and public origin, least-privilege API
+  credentials, monitoring, and an end-to-end smoke
   test; none is implied by checked-in configuration.
 - Feishu and GA4 values are still reserved configuration only; no live Feishu
   synchronization or GA4 loading is implied.

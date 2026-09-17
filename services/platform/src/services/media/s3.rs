@@ -21,6 +21,7 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const IO_TIMEOUT: Duration = Duration::from_secs(60);
 const HEADER_LIMIT: usize = 64 * 1024;
 
+#[allow(dead_code)]
 #[path = "s3_stream.rs"]
 mod get_stream;
 
@@ -44,6 +45,7 @@ pub(super) fn put(
     }
 }
 
+#[allow(dead_code)]
 pub(super) async fn get(
     settings: &MediaStorageSettings,
     key: &str,
@@ -55,6 +57,27 @@ pub(super) async fn get(
 pub(super) fn delete(settings: &MediaStorageSettings, key: &str) -> Result<(), ApiError> {
     let response = exchange(settings, "DELETE", key, Vec::new(), &[], HEADER_LIMIT)?;
     accept_delete_status(response.status)
+}
+
+pub(super) fn probe_public_url(url: &str) -> Result<(), ApiError> {
+    let endpoint = parse_endpoint(url)?;
+    let headers = vec![("host".to_owned(), endpoint.host_header())];
+    let response = send(
+        &endpoint,
+        "GET",
+        &endpoint.base_path,
+        &headers,
+        &[],
+        HEADER_LIMIT + 1024,
+    )?;
+    if response.status == 200 {
+        Ok(())
+    } else {
+        Err(storage_failure(
+            "The generated public media URL is not anonymously readable.",
+            response.status,
+        ))
+    }
 }
 
 fn accept_delete_status(status: u16) -> Result<(), ApiError> {

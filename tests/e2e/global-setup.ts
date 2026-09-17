@@ -412,6 +412,27 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     }
     productionCookies = mergeCookies(productionCookies, secureHostOnlyCookies(refreshed, cookieHostname))
     const refreshedCsrf = refreshed.headers()['x-csrf-token'] ?? csrf
+    const objectStorage = await api.put('/api/admin/v1/settings/object-storage', {
+      headers: {
+        'X-CSRF-Token': refreshedCsrf,
+        'If-Match': '"revision-0"',
+      },
+      data: {
+        endpoint: 'http://minio:9000',
+        region: 'us-east-1',
+        bucket: 'airtek-media',
+        accessKeyId: 'airtek-media-api',
+        secretAccessKey: 'local-api-media-only',
+        keyPrefix: 'media',
+        pathStyle: true,
+        publicBaseUrl: 'http://host.docker.internal:19000/airtek-media',
+        adoptLegacyAssets: true,
+        reason: 'Configure isolated E2E object storage through the Admin API.',
+      },
+    })
+    if (!objectStorage.ok()) {
+      throw new Error(`Unable to configure E2E object storage (${objectStorage.status()}): ${await objectStorage.text()}`)
+    }
     await seedPublicProjection(api, refreshedCsrf)
     // The production image must keep Secure cookies. The disposable gateway is
     // intentionally plain HTTP, so only the browser fixture copy relaxes the

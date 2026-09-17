@@ -140,7 +140,7 @@ pub fn required_permission(path: &str, method: &axum::http::Method) -> Option<&'
         || path.contains("/user-invitations")
     {
         Some("identity.manage")
-    } else if path.ends_with("/settings") {
+    } else if path.ends_with("/settings") || path.contains("/settings/") {
         Some("settings.manage")
     } else if path.contains("/operations/") {
         Some("product.write")

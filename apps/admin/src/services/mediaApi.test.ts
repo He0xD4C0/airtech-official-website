@@ -11,7 +11,7 @@ const asset: MediaAsset = {
   mediaType: 'image/png',
   byteSize: 8,
   sha256: 'a'.repeat(64),
-  publicUrl: '/api/public/v1/media/98000000-0000-4000-8000-000000000001',
+  publicUrl: 'https://media.example.test/media/98000000-0000-4000-8000-000000000001',
   downloadUrl: '/api/public/v1/media/98000000-0000-4000-8000-000000000001/download',
   uploadedBy: 'admin@example.test',
   createdAt: '2026-09-13T00:00:00Z',

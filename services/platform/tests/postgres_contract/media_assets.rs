@@ -5,14 +5,15 @@ use super::*;
 async fn insert_direct_media_asset(pool: &sqlx::PgPool, id: Uuid, name: &str, deleted: bool) {
     sqlx::query(
         r#"INSERT INTO media_assets
-           (id,storage_key,original_name,media_type,byte_size,checksum,metadata,
+           (id,storage_key,public_url,original_name,media_type,byte_size,checksum,metadata,
             created_at,deleted_at,storage_backend,content_type,uploaded_by)
-           VALUES ($1,$2,$3,'image/png',1024,$4,'{}'::jsonb,now(),
-                   CASE WHEN $5 THEN now() ELSE NULL END,'local','image/png',
+           VALUES ($1,$2,$3,$4,'image/png',1024,$5,'{}'::jsonb,now(),
+                   CASE WHEN $6 THEN now() ELSE NULL END,'local','image/png',
                    'uploader@example.test')"#,
     )
     .bind(id)
     .bind(format!("media/{id}/asset.png"))
+    .bind(format!("https://media.example.test/media/{id}/asset.png"))
     .bind(name)
     .bind("a".repeat(64))
     .bind(deleted)
@@ -52,7 +53,10 @@ async fn direct_media_listing_is_server_filtered_paginated_and_excludes_deleted(
     for item in page["items"].as_array().expect("items") {
         assert_eq!(
             item["publicUrl"],
-            format!("/api/public/v1/media/{}", item["id"].as_str().unwrap())
+            format!(
+                "https://media.example.test/media/{}/asset.png",
+                item["id"].as_str().unwrap()
+            )
         );
         assert_eq!(
             item["downloadUrl"],
@@ -97,6 +101,7 @@ fn direct_media_state(database_url: &str, root: PathBuf) -> AppState {
         secret_access_key: String::new(),
         key_prefix: "media".into(),
         path_style: true,
+        public_base_url: "http://localhost/media".into(),
     });
     AppState::new(config).expect("direct media state")
 }
@@ -183,21 +188,16 @@ async fn direct_upload_is_public_immediately_and_idempotent_per_actor() {
     let public = airtek_platform::routes::public::router().with_state(state);
     let delivered = public
         .oneshot(
-            Request::get(
-                asset["publicUrl"]
-                    .as_str()
-                    .unwrap()
-                    .replace("/api/public/v1", ""),
-            )
-            .body(Body::empty())
-            .unwrap(),
+            Request::get(format!("/media/{}", asset["id"].as_str().unwrap()))
+                .body(Body::empty())
+                .unwrap(),
         )
         .await
         .unwrap();
-    assert_eq!(delivered.status(), StatusCode::OK);
+    assert_eq!(delivered.status(), StatusCode::PERMANENT_REDIRECT);
     assert_eq!(
-        delivered.into_body().collect().await.unwrap().to_bytes(),
-        bytes.as_slice()
+        delivered.headers().get(header::LOCATION).unwrap(),
+        asset["publicUrl"].as_str().unwrap()
     );
 
     drop(admin);
@@ -310,4 +310,34 @@ async fn unavailable_storage_fails_without_catalogue_rows() {
     drop(admin);
     sandbox.cleanup().await;
     std::fs::remove_file(root).unwrap();
+}
+
+#[tokio::test]
+#[cfg(feature = "devtools")]
+#[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
+async fn upload_without_database_object_storage_settings_returns_503() {
+    let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL").unwrap();
+    let sandbox = support::DatabaseClone::create(&database_url).await;
+    sandbox.apply_current().await;
+    let state = postgres_state(sandbox.connection_url());
+    let admin = airtek_platform::routes::admin::router()
+        .layer(Extension(cms_principal()))
+        .with_state(state);
+
+    let response = upload_direct_media(
+        &admin,
+        &format!("media-unconfigured-{}", Uuid::new_v4()),
+        "unconfigured.png",
+        b"\x89PNG\r\n\x1a\n",
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let assets: i64 = sqlx::query_scalar("SELECT count(*) FROM media_assets")
+        .fetch_one(sandbox.pool())
+        .await
+        .unwrap();
+    assert_eq!(assets, 0);
+
+    drop(admin);
+    sandbox.cleanup().await;
 }

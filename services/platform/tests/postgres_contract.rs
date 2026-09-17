@@ -69,6 +69,7 @@ fn postgres_direct_media_state(database_url: &str) -> AppState {
         secret_access_key: "test-secret".into(),
         key_prefix: "media".into(),
         path_style: true,
+        public_base_url: "https://media.example.test".into(),
     });
     AppState::new(config).expect("PostgreSQL direct-media test state")
 }
@@ -129,10 +130,15 @@ mod admin_product_listing;
 mod admin_workflows;
 #[path = "postgres_contract/cms_private_workflow.rs"]
 mod cms_private_workflow;
+#[cfg(feature = "devtools")]
+#[path = "postgres_contract/development_admin.rs"]
+mod development_admin;
 #[path = "postgres_contract/identity_mutation_atomicity.rs"]
 mod identity_mutation_atomicity;
 #[path = "postgres_contract/media_assets.rs"]
 mod media_assets;
+#[path = "postgres_contract/object_storage_settings.rs"]
+mod object_storage_settings;
 #[path = "postgres_contract/rate_limit_and_admin_idempotency.rs"]
 mod rate_limit_and_admin_idempotency;
 #[path = "postgres_contract/settings_and_product_publish.rs"]

@@ -4,10 +4,11 @@ description: >-
   Reconcile and maintain AIRTEKPOWER project knowledge across documents, spreadsheets,
   demos, code, and project Skills. Use when importing sources into canonical knowledge,
   evaluating source authority, resolving contradictions, recording fact status, correcting
-  stale knowledge, or updating `.agents/skills`. Do not use for ordinary document reading,
+  stale knowledge, preventing superseded conflicts from being revived, or updating
+  `.agents/skills`. Do not use for ordinary document reading,
   implementation, copywriting, or generic Skill creation outside this repository.
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # AIRTEKPOWER Knowledge Governance
@@ -33,6 +34,7 @@ When changing Skill names, descriptions, routing, or boundaries, also read and u
 
 - A current, explicit user decision overrides stored project knowledge. Record it with scope and date before making it durable.
 - Never resolve a conflict by majority vote, convenience, or inference from a demo.
+- Do not revive a conflict that the conflict register records as superseded or `DEPRECATED`; apply the linked canonical resolution and its availability fallback.
 - Do not silently upgrade marketing copy, plans, costs, certifications, delivery times, or case metrics to verified facts.
 - Preserve meaningful units, conditions, markets, model identifiers, and effective dates. A number without these qualifiers is incomplete.
 - Keep implementation proposals separate from confirmed company or product facts.

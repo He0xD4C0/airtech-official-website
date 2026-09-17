@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-09-14",
+  "source": "https://www.airtekpower.com",
+  "authority": "Legacy public website; discovery evidence only",
+  "publicationStatus": "NOT_APPROVED",
+  "records": [
+    {
+      "id": "3fd9c775dd54",
+      "sha256": "3fd9c775dd5470436f3a483c71cb1ef2e9d7183af8cf4b6d557b5a0b4f605dce",
+      "kind": "graphic-only-logo-crop",
+      "dimensions": "72x72",
+      "sourceUrls": [
+        "https://ijrorwxhjpmpll5m.ldycdn.com/cloud/loBprKoolmSRkloommrjkp/crop_1756951930667.png"
+      ],
+      "governanceStatus": "DEPRECATED",
+      "releaseState": "BLOCKED",
+      "decision": "Graphic mark only; conflicts with the controlled combined-logo construction."
+    },
+    {
+      "id": "62480adeeb26",
+      "sha256": "62480adeeb26d8b2f6213aa1fb33aefee64054dab83071c36ef301c8fe13fc7b",
+      "kind": "graphic-only-logo-crop",
+      "dimensions": "73x73",
+      "sourceUrls": [
+        "https://ijrorwxhjpmpll5m.ldycdn.com/cloud/lqBprKoolmSRklqorrolkq/crop_1756952253905.png"
+      ],
+      "governanceStatus": "DEPRECATED",
+      "releaseState": "BLOCKED",
+      "decision": "Graphic mark only; conflicts with the controlled combined-logo construction."
+    },
+    {
+      "id": "89598065eb49",
+      "sha256": "89598065eb4943cb36dec669c4a8312b5849e0f2941b1002b4d11162502b7f6e",
+      "kind": "graphic-only-logo-crop",
+      "dimensions": "72x72",
+      "sourceUrls": [
+        "https://ijrorwxhjpmpll5m.ldycdn.com/cloud/lrBprKoolmSRklqorrpnkp/crop_1756952344049.png"
+      ],
+      "governanceStatus": "DEPRECATED",
+      "releaseState": "BLOCKED",
+      "decision": "Graphic mark only; conflicts with the controlled combined-logo construction."
+    },
+    {
+      "id": "93694fd4a67c",
+      "sha256": "93694fd4a67c50ed4979abc48325d0c5d9505d0c6dff97f13f0f9ce6b8a20606",
+      "kind": "favicon",
+      "dimensions": "32x32",
+      "sourceUrls": [
+        "https://ijrorwxhjpmpll5m.ldycdn.com/cloud/lkBprKoolmSRpkjmlkqrkp/favicon.ico"
+      ],
+      "governanceStatus": "PROVISIONAL",
+      "releaseState": "REVIEW_REQUIRED",
+      "decision": "No owner approval or documented small-format logo rule."
+    },
+    {
+      "id": "147bf238e1f6",
+      "sha256": "147bf238e1f6d88c38c60a7078aa7dce4ba7090ff5bd69a6d8604812e6d48510",
+      "kind": "facility-photo",
+      "dimensions": "800x500",
+      "sourceUrls": [
+        "https://ijrorwxhjpmpll5m.ldycdn.com/cloud/lqBprKoolmSRilnioiiiko/cm.jpg"
+      ],
+      "governanceStatus": "PROVISIONAL",
+      "releaseState": "REVIEW_REQUIRED",
+      "decision": "Visible sign uses AIRTEK POWER; current facility identity, date, ownership, and usage rights are unconfirmed."
+    },
+    {
+      "id": "f59781891cb0",
+      "sha256": "f59781891cb04d106d18313ebe05fe8fa0712c77cf17f2b9bb0267dffe47c662",
+      "kind": "facility-photo",
+      "dimensions": "850x400",
+      "sourceUrls": [
+        "https://ijrorwxhjpmpll5m.ldycdn.com/cloud/lkBprKoolmSRilrkpkpmkp/c.jpg",
+        "https://ijrorwxhjpmpll5m.ldycdn.com/cloud/lmBprKoolmSRilrkmkiiko/c.jpg"
+      ],
+      "governanceStatus": "PROVISIONAL",
+      "releaseState": "REVIEW_REQUIRED",
+      "decision": "Location, ownership, capture date, and usage rights are unconfirmed."
+    },
+    {
+      "id": "4bb27c9c94df",
+      "sha256": "4bb27c9c94df7cf25a3a6b4e56e28c3d813c6ecf496b81153711da21cf5ae931",
+      "kind": "expired-enterprise-certificate-image",
+      "dimensions": "453x640",
+      "sourceUrls": [
+        "https://ijrorwxhjpmpll5m.ldycdn.com/cloud/liBprKoolmSRillkkonpkp/2-640-640.jpg"
+      ],
+      "governanceStatus": "DEPRECATED",
+      "releaseState": "BLOCKED",
+      "decision": "Displayed validity ended 2026-03-30; historical evidence only."
+    }
+  ]
+}

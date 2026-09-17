@@ -16,6 +16,7 @@ fn local_settings(root: PathBuf) -> MediaStorageSettings {
         secret_access_key: String::new(),
         key_prefix: "media".to_owned(),
         path_style: true,
+        public_base_url: "http://localhost/media".to_owned(),
     }
 }
 

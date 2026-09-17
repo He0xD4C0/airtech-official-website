@@ -92,7 +92,7 @@ pub async fn list_media_assets(
     .fetch_one(pool)
     .await?;
     let rows = sqlx::query(
-        r#"SELECT id,original_name,media_type,byte_size,checksum,
+        r#"SELECT id,public_url,original_name,media_type,byte_size,checksum,
                   COALESCE(uploaded_by,'legacy') AS uploaded_by,created_at
            FROM media_assets
            WHERE deleted_at IS NULL
@@ -140,7 +140,7 @@ pub async fn list_media_assets(
 
 pub async fn load_media_asset(pool: &sqlx::PgPool, asset_id: Uuid) -> Result<MediaAsset, ApiError> {
     let row = sqlx::query(
-        r#"SELECT id,original_name,media_type,byte_size,checksum,
+        r#"SELECT id,public_url,original_name,media_type,byte_size,checksum,
                   COALESCE(uploaded_by,'legacy') AS uploaded_by,created_at
            FROM media_assets WHERE id=$1 AND deleted_at IS NULL"#,
     )
@@ -208,9 +208,14 @@ pub async fn list_media_references(
 
 pub(crate) fn decode_media_asset(row: &PgRow) -> Result<MediaAsset, ApiError> {
     let id: Uuid = row.try_get("id")?;
+    let public_url: Option<String> = row.try_get("public_url")?;
     Ok(MediaAsset {
         id,
-        public_url: format!("/api/public/v1/media/{id}"),
+        public_url: public_url.ok_or_else(|| {
+            ApiError::service_unavailable(
+                "Legacy media URLs must be adopted in object storage settings.",
+            )
+        })?,
         download_url: format!("/api/public/v1/media/{id}/download"),
         original_name: row.try_get("original_name")?,
         media_type: row.try_get("media_type")?,

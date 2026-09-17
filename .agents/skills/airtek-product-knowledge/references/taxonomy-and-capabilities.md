@@ -1,6 +1,6 @@
 # Taxonomy and capabilities
 
-Updated: 2026-09-01
+Last reviewed: 2026-09-14
 
 ## Product families
 

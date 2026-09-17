@@ -10,6 +10,7 @@
     "dev": "pnpm --parallel --filter @airtek/web --filter @airtek/admin dev",
     "dev:web": "pnpm --filter @airtek/web dev",
     "dev:admin": "pnpm --filter @airtek/admin dev",
+    "dev:admin:reset": "docker compose run --rm -e AIRTEK_ALLOW_DEV_ADMIN_RESET=true platform-maintenance reset-development-admin",
     "build": "pnpm -r --if-present build",
     "build:production": "pnpm --filter @airtek/contracts build && pnpm --filter @airtek/ui build && pnpm --filter @airtek/web build && pnpm --filter @airtek/admin build:production",
     "typecheck": "pnpm --filter @airtek/contracts build && pnpm -r --if-present typecheck && pnpm typecheck:e2e",

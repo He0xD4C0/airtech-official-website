@@ -1,6 +1,6 @@
 {
   "generatedFrom": "packages/contracts/openapi/openapi.production.json",
-  "operationCount": 79,
+  "operationCount": 82,
   "operations": [
     {
       "method": "GET",
@@ -2829,6 +2829,123 @@
       "audit": {
         "required": true,
         "action": "updatePlatformSettings"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/settings/object-storage",
+      "operationId": "getObjectStorageSettings",
+      "permission": "settings.manage",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ObjectStorageSettings"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/v1/settings/object-storage",
+      "operationId": "updateObjectStorageSettings",
+      "permission": "settings.manage",
+      "request": {
+        "parameters": [
+          "If-Match"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "UpdateObjectStorageSettings"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ObjectStorageSettings"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "updateObjectStorageSettings"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/settings/object-storage/test",
+      "operationId": "testObjectStorageSettings",
+      "permission": "settings.manage",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "ObjectStorageSettingsInput"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ObjectStorageTestResult"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "testObjectStorageSettings"
       },
       "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
     },

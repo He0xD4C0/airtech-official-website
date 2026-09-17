@@ -1,11 +1,6 @@
-# Opt-in host diagnostics for native Rust development and object-storage work.
-# The base Compose file never publishes PostgreSQL or MinIO ports.
+# Opt-in PostgreSQL host diagnostics for native Rust development.
+# MinIO publishes fixed loopback ports only when its Compose profile is enabled.
 services:
   postgres:
     ports:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_POSTGRES_DEBUG_PORT:-54320}:5432"
-
-  minio:
-    ports:
-      - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_MINIO_DEBUG_PORT:-19000}:9000"
-      - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_MINIO_CONSOLE_DEBUG_PORT:-19001}:9001"

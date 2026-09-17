@@ -74,6 +74,8 @@ fn documents_every_production_route() {
         "/api/admin/v1/roles",
         "/api/admin/v1/roles/{id}",
         "/api/admin/v1/settings",
+        "/api/admin/v1/settings/object-storage",
+        "/api/admin/v1/settings/object-storage/test",
         "/api/admin/v1/user-invitations",
         "/api/admin/v1/user-invitations/{id}/revoke",
         "/api/admin/v1/users",
@@ -127,6 +129,23 @@ fn invitation_acceptance_is_public_auth_surface_with_write_only_secrets() {
     assert_eq!(
         document["components"]["schemas"]["InvitationAcceptance"]["properties"]["status"]["const"],
         "active"
+    );
+}
+
+#[test]
+fn object_storage_contract_only_accepts_the_secret_as_write_only_input() {
+    let document = document();
+    let schemas = &document["components"]["schemas"];
+    assert!(schemas["ObjectStorageSettings"]["properties"]
+        .get("secretAccessKey")
+        .is_none());
+    assert_eq!(
+        schemas["ObjectStorageSettingsInput"]["properties"]["secretAccessKey"]["writeOnly"],
+        true
+    );
+    assert_eq!(
+        schemas["ObjectStorageSettings"]["properties"]["secretConfigured"]["type"],
+        "boolean"
     );
 }
 
@@ -387,9 +406,9 @@ fn every_operation_has_an_id_and_problem_contracts() {
                 "{method} {path} has no operationId"
             );
             let responses = operation["responses"].as_object().expect("responses");
-            let has_success = responses
-                .keys()
-                .any(|status| status.starts_with('2') || status == "101");
+            let has_success = responses.keys().any(|status| {
+                status.starts_with('2') || status.starts_with('3') || status == "101"
+            });
             let is_explicitly_unavailable =
                 operation["operationId"] == "startFeishuSyncRun" && responses.contains_key("409");
             assert!(

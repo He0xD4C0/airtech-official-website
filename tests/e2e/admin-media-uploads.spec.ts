@@ -29,6 +29,12 @@ function severeViolations(
   return violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')
 }
 
+function hostReadableUrl(publicUrl: string): string {
+  const url = new URL(publicUrl)
+  if (url.hostname.toLowerCase() === 'host.docker.internal') url.hostname = '127.0.0.1'
+  return url.toString()
+}
+
 async function uploadFromBrowser(
   page: Page,
   key: string,
@@ -54,12 +60,42 @@ async function uploadFromBrowser(
   }, { apiBase: apiOrigin, idempotencyKey: key, name: fileName, base64: bytes.toString('base64') })
 }
 
+async function updatePublicBaseUrl(page: Page, publicBaseUrl: string): Promise<void> {
+  const result = await page.evaluate(async ({ apiBase, nextPublicBaseUrl }) => {
+    const session = await fetch(`${apiBase}/api/admin/v1/auth/session`, { credentials: 'include' })
+    const current = await fetch(`${apiBase}/api/admin/v1/settings/object-storage`, { credentials: 'include' })
+    const csrf = session.headers.get('x-csrf-token')
+    const etag = current.headers.get('etag')
+    const settings = await current.json() as Record<string, unknown>
+    if (!session.ok || !current.ok || !csrf || !etag) throw new Error('Unable to load object storage settings and mutation headers.')
+    const updated = await fetch(`${apiBase}/api/admin/v1/settings/object-storage`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'If-Match': etag, 'X-CSRF-Token': csrf },
+      body: JSON.stringify({
+        endpoint: settings.endpoint,
+        region: settings.region,
+        bucket: settings.bucket,
+        accessKeyId: settings.accessKeyId,
+        secretAccessKey: '',
+        keyPrefix: settings.keyPrefix,
+        pathStyle: settings.pathStyle,
+        publicBaseUrl: nextPublicBaseUrl,
+        adoptLegacyAssets: false,
+        reason: 'Verify immutable media URLs after an object storage settings update.',
+      }),
+    })
+    return { status: updated.status, body: await updated.text() }
+  }, { apiBase: apiOrigin, nextPublicBaseUrl: publicBaseUrl })
+  expect(result.status, result.body).toBe(200)
+}
+
 test.describe('direct public media upload', () => {
   test.skip(!runAdminWorkflows, 'Run through pnpm test:e2e:stack so uploads use a disposable stack.')
   test.describe.configure({ mode: 'serial' })
   test.use({ storageState: adminStorageStatePath })
 
-  test('returns 201 and serves the private-bucket object publicly immediately', async ({ page }, testInfo) => {
+  test('returns 201 and serves the immutable external object URL immediately', async ({ page }, testInfo) => {
     const fileName = `e2e-direct-${testInfo.workerIndex}-${Date.now().toString(36)}.png`
     await page.goto(absolute(adminOrigin, '/media'))
     await expect(page.getByRole('heading', { name: '媒体库', exact: true })).toBeVisible()
@@ -79,13 +115,14 @@ test.describe('direct public media upload', () => {
     expect(asset).toMatchObject({ originalName: fileName, mediaType: 'image/png', byteSize: RASTER_PNG.byteLength })
     expect(asset.sha256).toMatch(/^[a-f0-9]{64}$/u)
 
-    const publicResponse = await page.request.get(absolute(apiOrigin, asset.publicUrl))
+    expect(asset.publicUrl).toMatch(/^http:\/\/host\.docker\.internal:19000\/airtek-media\/media\//u)
+    const publicResponse = await page.request.get(hostReadableUrl(asset.publicUrl))
     expect(publicResponse.status()).toBe(200)
     expect(publicResponse.headers()['content-type']).toBe('image/png')
     expect((await publicResponse.body()).equals(RASTER_PNG)).toBe(true)
-    const downloadResponse = await page.request.get(absolute(apiOrigin, asset.downloadUrl))
-    expect(downloadResponse.status()).toBe(200)
-    expect(downloadResponse.headers()['content-disposition']).toContain('attachment')
+    const downloadResponse = await page.request.get(absolute(apiOrigin, asset.downloadUrl), { maxRedirects: 0 })
+    expect(downloadResponse.status()).toBe(308)
+    expect(downloadResponse.headers().location).toBe(asset.publicUrl)
 
     const row = page.locator('table.data-table tbody tr', { hasText: fileName })
     await expect(row).toBeVisible()
@@ -98,6 +135,28 @@ test.describe('direct public media upload', () => {
 
     const accessibility = await new AxeBuilder({ page }).analyze()
     expect(severeViolations(accessibility.violations)).toEqual([])
+  })
+
+  test('keeps an existing URL unchanged when the public base URL changes', async ({ page }, testInfo) => {
+    await page.goto(absolute(adminOrigin, '/media'))
+    const suffix = `${testInfo.workerIndex}-${Date.now().toString(36)}`
+    const first = await uploadFromBrowser(page, `e2e-url-a-${suffix}`, `url-a-${suffix}.png`, RASTER_PNG)
+    expect(first.status).toBe(201)
+    const assetA = first.body as MediaAsset
+
+    await updatePublicBaseUrl(page, 'http://HOST.DOCKER.INTERNAL:19000/airtek-media')
+    const second = await uploadFromBrowser(page, `e2e-url-b-${suffix}`, `url-b-${suffix}.png`, RASTER_PNG)
+    expect(second.status).toBe(201)
+    const assetB = second.body as MediaAsset
+
+    expect(assetA.publicUrl).toMatch(/^http:\/\/host\.docker\.internal:19000\/airtek-media\/media\//u)
+    expect(assetB.publicUrl).toMatch(/^http:\/\/HOST\.DOCKER\.INTERNAL:19000\/airtek-media\/media\//u)
+    expect(assetB.publicUrl).not.toBe(assetA.publicUrl)
+    for (const publicUrl of [assetA.publicUrl, assetB.publicUrl]) {
+      const response = await page.request.get(hostReadableUrl(publicUrl))
+      expect(response.status()).toBe(200)
+      expect((await response.body()).equals(RASTER_PNG)).toBe(true)
+    }
   })
 
   test('replays the same actor/key/file and rejects key reuse for another file', async ({ page }, testInfo) => {

@@ -12,8 +12,12 @@ mod storage;
 mod upload;
 mod upload_input;
 
-pub use config::{MediaSettings, MediaStorageKind, MediaStorageSettings, MAX_MEDIA_UPLOAD_BYTES};
+pub use config::{
+    MediaSettings, MediaStorageKind, MediaStorageSettings, DEFAULT_LOCAL_MEDIA_ROOT,
+    MAX_MEDIA_UPLOAD_BYTES,
+};
 pub use delivery::deliver_media_asset;
+pub(crate) use storage::probe_storage;
 pub use upload::upload_media_asset;
 
 fn validate_storage_key(key: &str) -> Result<(), crate::error::ApiError> {

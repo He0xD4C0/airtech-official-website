@@ -1,6 +1,6 @@
 # Skill trigger matrix
 
-Updated: 2026-09-01
+Last reviewed: 2026-09-14
 
 Descriptions in each `SKILL.md` are the primary discovery surface. Root `AGENTS.md` reinforces routing. Load the smallest sufficient set and add another Skill only when the task actually crosses its domain.
 
@@ -43,4 +43,4 @@ Use these prompts after changing Skill descriptions:
 7. Negative: `升级测试框架并修复与 AIRTEK 业务无关的 lint 错误。`
 8. Negative: `为另一个仓库创建通用 Skill。`
 
-Expected safety outcome for prompt 6: identify both demo values as `CONFLICTED`, choose neither, and request Product Master or an official model datasheet.
+Expected safety outcome for prompt 6: identify both demo value sets as `DEPRECATED`, choose neither, and read exact values only from a published record or controlled snapshot matching the registered Product Master checksum and mapping. If that source is unavailable, return `Published data unavailable`; do not ask the user to choose between the demos.

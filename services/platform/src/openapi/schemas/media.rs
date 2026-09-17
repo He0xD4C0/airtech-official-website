@@ -21,7 +21,7 @@ pub(super) fn add(schemas: &mut Map<String, Value>) {
             ],
             json!({
                 "id": uuid(),
-                "publicUrl": {"type": "string", "pattern": "^/api/public/v1/media/[0-9a-f-]+$"},
+                "publicUrl": {"type": "string", "format": "uri", "pattern": "^https?://"},
                 "downloadUrl": {"type": "string", "pattern": "^/api/public/v1/media/[0-9a-f-]+/download$"},
                 "originalName": {"type": "string", "minLength": 1, "maxLength": 180},
                 "mediaType": string_enum(&["image/png", "image/jpeg", "image/webp"]),
@@ -81,11 +81,98 @@ pub(super) fn add(schemas: &mut Map<String, Value>) {
             ],
             json!({
                 "assetId": uuid(),
-                "publicUrl": {"type": "string", "pattern": "^/api/public/v1/media/"},
+                "publicUrl": {"type": "string", "format": "uri", "pattern": "^https?://"},
                 "downloadUrl": {"type": "string", "pattern": "^/api/public/v1/media/"},
                 "mediaType": string_enum(&["image/png", "image/jpeg", "image/webp"]),
                 "byteSize": {"type": "integer", "minimum": 1},
                 "originalName": {"type": "string", "minLength": 1}
+            }),
+        ),
+    );
+
+    schemas.insert(
+        "ObjectStorageSettings".into(),
+        object(
+            &[
+                "configured",
+                "provider",
+                "endpoint",
+                "region",
+                "bucket",
+                "accessKeyId",
+                "secretConfigured",
+                "keyPrefix",
+                "pathStyle",
+                "publicBaseUrl",
+                "legacyAssetCount",
+                "revision",
+                "updatedAt",
+                "updatedBy",
+            ],
+            json!({
+                "configured": {"type": "boolean"},
+                "provider": {"type": "string", "const": "s3"},
+                "endpoint": nullable(json!({"type": "string", "format": "uri"})),
+                "region": nullable(json!({"type": "string"})),
+                "bucket": nullable(json!({"type": "string"})),
+                "accessKeyId": nullable(json!({"type": "string"})),
+                "secretConfigured": {"type": "boolean", "readOnly": true},
+                "keyPrefix": nullable(json!({"type": "string"})),
+                "pathStyle": {"type": "boolean"},
+                "publicBaseUrl": nullable(json!({"type": "string", "format": "uri"})),
+                "legacyAssetCount": {"type": "integer", "minimum": 0, "readOnly": true},
+                "revision": {"type": "integer", "minimum": 0, "readOnly": true},
+                "updatedAt": nullable(timestamp()),
+                "updatedBy": nullable(json!({"type": "string"}))
+            }),
+        ),
+    );
+    schemas.insert(
+        "ObjectStorageSettingsInput".into(),
+        object(
+            &[
+                "endpoint",
+                "region",
+                "bucket",
+                "accessKeyId",
+                "keyPrefix",
+                "pathStyle",
+                "publicBaseUrl",
+            ],
+            json!({
+                "endpoint": {"type": "string", "format": "uri", "maxLength": 2048},
+                "region": {"type": "string", "minLength": 1, "maxLength": 100},
+                "bucket": {"type": "string", "minLength": 1, "maxLength": 255},
+                "accessKeyId": {"type": "string", "minLength": 1, "maxLength": 512},
+                "secretAccessKey": {"type": "string", "maxLength": 2048, "writeOnly": true},
+                "keyPrefix": {"type": "string", "minLength": 1, "maxLength": 512},
+                "pathStyle": {"type": "boolean"},
+                "publicBaseUrl": {"type": "string", "format": "uri", "maxLength": 2048}
+            }),
+        ),
+    );
+    schemas.insert(
+        "UpdateObjectStorageSettings".into(),
+        json!({
+            "allOf": [
+                r("ObjectStorageSettingsInput"),
+                object(
+                    &["adoptLegacyAssets", "reason"],
+                    json!({
+                        "adoptLegacyAssets": {"type": "boolean"},
+                        "reason": {"type": "string", "minLength": 12, "maxLength": 1000}
+                    })
+                )
+            ]
+        }),
+    );
+    schemas.insert(
+        "ObjectStorageTestResult".into(),
+        object(
+            &["ok", "publicUrl"],
+            json!({
+                "ok": {"type": "boolean", "const": true},
+                "publicUrl": {"type": "string", "format": "uri"}
             }),
         ),
     );

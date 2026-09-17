@@ -1,0 +1,106 @@
+{
+  "reviewedAt": "2026-09-14",
+  "reviewBasis": "Visual inspection of every unique downloaded candidate plus source-page context",
+  "groups": [
+    {
+      "ids": ["3fd9c775dd54", "62480adeeb26", "89598065eb49"],
+      "disposition": "REVIEW_REQUIRED",
+      "governanceStatus": "PROVISIONAL",
+      "category": "logo-candidates",
+      "reason": "Used by the legacy public site as responsive logo artwork, but only 72x72 raster files are available; owner approval, vector source, clear space, and production sizing remain missing."
+    },
+    {
+      "ids": ["93694fd4a67c"],
+      "disposition": "REVIEW_REQUIRED",
+      "governanceStatus": "PROVISIONAL",
+      "category": "logo-candidates",
+      "reason": "Legacy public-site favicon; the 32x32 raster is useful only as a reference and is not approved production artwork."
+    },
+    {
+      "ids": ["147bf238e1f6"],
+      "disposition": "REVIEW_REQUIRED",
+      "governanceStatus": "PROVISIONAL",
+      "category": "facilities",
+      "reason": "Factory exterior visibly carries AIRTEK POWER signage, but current facility identity, image rights, and the legacy spaced wordmark require owner confirmation."
+    },
+    {
+      "ids": ["f59781891cb0"],
+      "disposition": "REVIEW_REQUIRED",
+      "governanceStatus": "PROVISIONAL",
+      "category": "facilities",
+      "reason": "Aerial factory image is published in a company-branch article, but the image has no identifying signage; confirm location, ownership, date, and usage rights."
+    },
+    {
+      "ids": ["4bb27c9c94df"],
+      "disposition": "HOLD_EXPIRED",
+      "governanceStatus": "DEPRECATED",
+      "category": "expired-certification",
+      "reason": "Company ISO 9001:2015 certificate image shows validity through 2026-03-30, which predates the 2026-09-14 capture; retain only as historical evidence and do not publish."
+    },
+    {
+      "ids": ["38389e71ad46", "ad9a30639886"],
+      "disposition": "EXCLUDED_RIGHTS_AND_IDENTITY_UNVERIFIED",
+      "governanceStatus": "PROVISIONAL",
+      "category": "generic-event-imagery",
+      "reason": "Generic exhibition and outdoor-event photos contain no AIRTEKPOWER people, signage, booth, or other verifiable company identity; rights and relevance are unproven."
+    },
+    {
+      "ids": ["d13073fa9bd2"],
+      "disposition": "EXCLUDED_CLAIM_UNVERIFIED",
+      "governanceStatus": "PROVISIONAL",
+      "category": "marketing-graphic",
+      "reason": "Generic world-map graphic supports a 100+ countries claim that the brand claim guardrails mark provisional; it has no standalone verified brand value."
+    },
+    {
+      "ids": ["0b8ca75fb91c", "126bbdeea470", "5642285acc18", "981c069c17fb"],
+      "disposition": "EXCLUDED_PRODUCT_RESOURCE",
+      "governanceStatus": "PROVISIONAL",
+      "category": "product-compliance",
+      "reason": "SGS, UL Product iQ, GTS, and ICG files are product or component compliance material, not company brand or enterprise-system certificates."
+    },
+    {
+      "ids": ["1afe55935c96", "24692268cda1", "75d0ae55d9a1", "a1e8d1e871de"],
+      "disposition": "EXCLUDED_PLATFORM_ARTIFACT",
+      "governanceStatus": "DEPRECATED",
+      "category": "legacy-platform-ui",
+      "reason": "Legacy site placeholder and rating-state graphics are interface artifacts, not AIRTEKPOWER brand assets."
+    },
+    {
+      "ids": [
+        "044779be3dd8",
+        "0ea21cf29c1e",
+        "1207242a4b0c",
+        "161797157689",
+        "186b2ed0ec9b",
+        "263002bb5428",
+        "28b6d64270da",
+        "2b3226f02aa6",
+        "3ac52e7a886e",
+        "3ccb131724fd",
+        "4b1b1ab5f1a3",
+        "5b47f5348db7",
+        "67c8e446bee4",
+        "70e8151321ef",
+        "80db615e43e5",
+        "81f48595fd40",
+        "8f2b4d29eb83",
+        "9e6a8ec55cf2",
+        "b3ebb540195d",
+        "b4115f58b903",
+        "b6aa8396e277",
+        "c43eafd74dde",
+        "cf5bcd3e851c",
+        "d5a302307f55",
+        "eb4c7b504202",
+        "f2a26bd05ea6",
+        "f626435f26a7",
+        "f8efcabe7ac3",
+        "fb2dfdbe87a1"
+      ],
+      "disposition": "EXCLUDED_PRODUCT_RESOURCE",
+      "governanceStatus": "PROVISIONAL",
+      "category": "product-and-demo-imagery",
+      "reason": "Product fans, product banners, and repeated consumer humidifier/demo imagery are outside the company-brand-only scope."
+    }
+  ]
+}

@@ -181,6 +181,7 @@ const migrationVersions = migrationFiles.map((file) => {
   return Number(match[1])
 })
 const latestMigration = Math.max(0, ...migrationVersions)
+const flywayTargetPattern = new RegExp(`^AIRTEK_FLYWAY_TARGET=${latestMigration}$`, 'mu')
 const expectedMigrations = Array.from({ length: latestMigration }, (_, index) => index + 1)
 const legacySqlxVersions = Array.from({ length: 10 }, (_, index) => index + 1)
 if (latestMigration < 10 || !legacySqlxVersions.every((version) => migrationVersions.includes(version))) {
@@ -241,10 +242,19 @@ requireMatch(serviceBlock(compose, 'flyway-migrate'), /dockerfile:\s*infra\/dock
 for (const variable of ['FLYWAY_URL', 'FLYWAY_USER', 'FLYWAY_PASSWORD', 'FLYWAY_PLACEHOLDERS_RUNTIME_ROLE']) {
   requireMatch(serviceBlock(compose, 'flyway-migrate'), new RegExp(`${variable}:\\s*\\$\\{${variable}`, 'u'), `Local Flyway must receive ${variable} from .env.`)
 }
+requireMatch(serviceBlock(compose, 'flyway-migrate'), new RegExp(`AIRTEK_FLYWAY_TARGET:\\s*\\$\\{AIRTEK_FLYWAY_TARGET:-${latestMigration}\\}`, 'u'), `Local Compose must target schema V${latestMigration}.`)
 requireMatch(serviceBlock(compose, 'flyway-migrate'), /AIRTEK_FLYWAY_ALLOW_SHARED_ROLE:\s*"true"/u, 'Local Compose must make its shared development role exception explicit.')
 forbidMatch(serviceBlock(compose, 'flyway-migrate'), /DATABASE_URL/u, 'Flyway must use its JDBC deployment credentials, not the Rust DATABASE_URL.')
 requireMatch(serviceBlock(compose, 'platform-maintenance'), /entrypoint:\s*\["\/usr\/local\/bin\/airtek-maintenance"\]/u, 'Local maintenance must use the dedicated binary.')
-requireMatch(serviceBlock(compose, 'platform-maintenance'), /command:\s*\["prepare-runtime"\]/u, 'Local maintenance must prepare runtime data.')
+requireMatch(serviceBlock(compose, 'platform-maintenance'), /command:\s*\["\$\{AIRTEK_MAINTENANCE_COMMAND:-prepare-development-runtime\}"\]/u, 'Local maintenance must prepare runtime data and the optional development administrator.')
+for (const marker of [
+  /AIRTEK_DEV_ADMIN_SEED:\s*\$\{AIRTEK_DEV_ADMIN_SEED:-true\}/u,
+  /AIRTEK_DEV_ADMIN_DISPLAY_NAME:\s*AIRTEK Local Administrator/u,
+  /AIRTEK_DEV_ADMIN_EMAIL:\s*local-admin@airtek\.invalid/u,
+  /AIRTEK_DEV_ADMIN_PASSWORD:\s*Airtek-Local-Admin-20260917!/u,
+]) {
+  requireMatch(serviceBlock(compose, 'platform-maintenance'), marker, 'Local maintenance must own the fixed development administrator configuration.')
+}
 requireMatch(serviceBlock(compose, 'platform-maintenance'), /flyway-migrate:[\s\S]*condition:\s*service_completed_successfully/u, 'Local maintenance must wait for Flyway.')
 for (const service of ['platform-api', 'platform-worker']) {
   requireMatch(serviceBlock(compose, service), /platform-maintenance:[\s\S]*condition:\s*service_completed_successfully/u, `${service} must wait for runtime preparation.`)
@@ -277,14 +287,14 @@ for (const variable of ['AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY', 'AIRTEK_ANALYTI
   requireMatch(serviceBlock(compose, 'platform-worker'), new RegExp(`${variable}:\\s*\\$\\{${variable}`, 'u'), `Local Worker must receive ${variable} from .env.`)
 }
 forbidMatch(serviceBlock(compose, 'postgres'), /^\s+ports:/mu, 'Base Compose must not publish PostgreSQL to the host.')
-forbidMatch(serviceBlock(compose, 'minio'), /^\s+ports:/mu, 'Base Compose must not publish MinIO API or console ports to the host.')
-forbidMatch(serviceBlock(compose, 'minio'), /profiles:/u, 'Local MinIO must start with the default development stack.')
-forbidMatch(serviceBlock(compose, 'minio-create-bucket'), /profiles:/u, 'Local bucket initialization must start with the default development stack.')
-requireMatch(serviceBlock(compose, 'minio-create-bucket'), /mc mb --ignore-existing/u, 'Local object storage must create its private media bucket idempotently.')
-requireMatch(serviceBlock(compose, 'minio'), new RegExp(`image:\\s*\\$\\{AIRTEK_MINIO_IMAGE:-${escapeRegExp(minioImage)}\\}`, 'u'), 'Local MinIO must default to the reviewed multi-architecture manifest digest.')
+requireMatch(serviceBlock(compose, 'minio'), /profiles:\s*\["minio"\]/u, 'Local MinIO must be controlled by the minio Compose profile.')
+requireMatch(serviceBlock(compose, 'minio-create-bucket'), /profiles:\s*\["minio"\]/u, 'Local bucket initialization must use the minio Compose profile.')
+requireMatch(serviceBlock(compose, 'minio'), /127\.0\.0\.1:19000:9000[\s\S]*127\.0\.0\.1:19001:9001/u, 'Profiled MinIO ports must remain fixed and loopback-only.')
+requireMatch(serviceBlock(compose, 'minio-create-bucket'), /mc mb --ignore-existing/u, 'Local object storage must create its media bucket idempotently.')
+requireMatch(serviceBlock(compose, 'minio'), new RegExp(`image:\\s*${escapeRegExp(minioImage)}`, 'u'), 'Local MinIO must use the reviewed multi-architecture manifest digest.')
 requireMatch(serviceBlock(compose, 'minio'), /healthcheck:[\s\S]*\/minio\/health\/live/u, 'Local MinIO must expose a container healthcheck.')
-requireMatch(serviceBlock(compose, 'minio-create-bucket'), new RegExp(`image:\\s*\\$\\{AIRTEK_MINIO_MC_IMAGE:-${escapeRegExp(minioMcImage)}\\}`, 'u'), 'Local mc must default to the reviewed multi-architecture manifest digest.')
-requireMatch(serviceBlock(compose, 'minio-create-bucket'), /mc anonymous set none/u, 'Local media bucket must remain private.')
+requireMatch(serviceBlock(compose, 'minio-create-bucket'), new RegExp(`image:\\s*${escapeRegExp(minioMcImage)}`, 'u'), 'Local mc must use the reviewed multi-architecture manifest digest.')
+requireMatch(serviceBlock(compose, 'minio-create-bucket'), /mc anonymous set download/u, 'Local media objects must be anonymously readable through their immutable URLs.')
 requireMatch(serviceBlock(compose, 'minio-create-bucket'), /depends_on:[\s\S]*minio:[\s\S]*condition:\s*service_healthy/u, 'Local bucket initialization must wait for a healthy MinIO server.')
 forbidMatch(serviceBlock(compose, 'platform-worker'), /^\s+(?:ports|expose):/mu, 'Worker must not expose or publish a listening port.')
 forbidMatch(serviceBlock(compose, 'public-web'), /DATABASE_URL/u, 'Public SSR must not receive database credentials.')
@@ -305,31 +315,23 @@ for (const service of ['platform-maintenance', 'platform-api', 'platform-worker'
   requireMatch(block, /CARGO_REGISTRY_MIRROR:\s*\$\{AIRTEK_CARGO_MIRROR:-\}/u, `${service} must expose the optional Cargo mirror.`)
   requireMatch(block, /HTTPS_PROXY:\s*\$\{AIRTEK_BUILD_PROXY:-\}/u, `${service} must expose the optional build proxy.`)
 }
-for (const variable of [
-  'AIRTEK_MEDIA_STORAGE',
-  'AIRTEK_MEDIA_S3_ENDPOINT',
-  'AIRTEK_MEDIA_S3_REGION',
-  'AIRTEK_MEDIA_S3_BUCKET',
-  'AIRTEK_MEDIA_S3_KEY_PREFIX',
-  'AIRTEK_MEDIA_S3_PATH_STYLE',
-]) {
-  requireMatch(serviceBlock(compose, 'platform-api'), new RegExp(`${variable}:\\s*\\$\\{${variable}`, 'u'), `Local API must receive ${variable} from .env.`)
+forbidMatch(serviceBlock(compose, 'platform-api'), /AIRTEK_MEDIA_|S3_/u, 'The API must load S3 settings from PostgreSQL, not environment variables.')
+forbidMatch(serviceBlock(compose, 'platform-worker'), /AIRTEK_MEDIA_|S3_/u, 'The ordinary Worker must not receive media storage configuration.')
+for (const service of ['platform-api', 'platform-worker', 'admin-web', 'public-web']) {
+  forbidMatch(serviceBlock(compose, service), /AIRTEK_DEV_ADMIN_|local-admin@airtek\.invalid|Airtek-Local-Admin-20260917!/u, `${service} must not receive fixed development administrator credentials.`)
 }
-for (const field of ['ACCESS_KEY_ID', 'SECRET_ACCESS_KEY']) {
-  requireMatch(serviceBlock(compose, 'platform-api'), new RegExp(`AIRTEK_MEDIA_S3_${field}:\\s*\\$\\{AIRTEK_MEDIA_API_S3_${field}`, 'u'), `Local API must use its S3 ${field}.`)
-}
-forbidMatch(serviceBlock(compose, 'platform-worker'), /AIRTEK_MEDIA_/u, 'The ordinary Worker must not receive media storage or processing configuration.')
 const debugCompose = read('compose.debug.yaml')
-for (const [variable, hostPort, containerPort] of [
-  ['AIRTEK_POSTGRES_DEBUG_PORT', 54320, 5432],
-  ['AIRTEK_MINIO_DEBUG_PORT', 19000, 9000],
-  ['AIRTEK_MINIO_CONSOLE_DEBUG_PORT', 19001, 9001],
-]) {
+for (const [variable, hostPort, containerPort] of [['AIRTEK_POSTGRES_DEBUG_PORT', 54320, 5432]]) {
   const mapping = `\\$\\{AIRTEK_BIND_ADDRESS:-127\\.0\\.0\\.1\\}:\\$\\{${variable}:-${hostPort}\\}:${containerPort}`
   requireMatch(debugCompose, new RegExp(mapping, 'u'), `Opt-in ${containerPort} diagnostic mapping must be configurable and loopback-only.`)
 }
 
 const productionCompose = read('compose.production.yaml')
+const productionEnvironment = read('infra/deploy/production.env.example')
+for (const [body, label] of [[productionCompose, 'Production Compose'], [productionEnvironment, 'Production environment example'], [platformDockerfile, 'Platform Dockerfile']]) {
+  forbidMatch(body, /AIRTEK_DEV_ADMIN_|local-admin@airtek\.invalid|Airtek-Local-Admin-20260917!|prepare-development-runtime|reset-development-admin/u, `${label} must not contain development administrator provisioning or credentials.`)
+}
+requireMatch(serviceBlock(productionCompose, 'flyway-migrate'), new RegExp(`AIRTEK_FLYWAY_TARGET:\\s*\\$\\{AIRTEK_FLYWAY_TARGET:\\?set AIRTEK_FLYWAY_TARGET=${latestMigration}\\}`, 'u'), `Production Compose must target schema V${latestMigration}.`)
 forbidMatch(productionCompose, /e2e-test/u, 'Production Compose must never reference the isolated E2E feature.')
 forbidMatch(productionCompose, /^\s+build:\s*$/mu, 'Production Compose must promote immutable images instead of building from a checkout.')
 for (const imageVariable of ['AIRTEK_PUBLIC_WEB_IMAGE', 'AIRTEK_ADMIN_WEB_IMAGE', 'AIRTEK_PLATFORM_IMAGE', 'AIRTEK_MIGRATIONS_IMAGE', 'AIRTEK_GATEWAY_IMAGE']) {
@@ -351,8 +353,8 @@ for (const service of ['flyway-migrate', 'platform-maintenance', 'platform-api',
 }
 forbidMatch(serviceBlock(productionCompose, 'public-web'), /DATABASE_URL/u, 'Production Public SSR must not receive database credentials.')
 forbidMatch(serviceBlock(productionCompose, 'admin-web'), /DATABASE_URL/u, 'Production Admin SPA must not receive database credentials.')
-requireMatch(serviceBlock(productionCompose, 'platform-api'), /AIRTEK_MEDIA_STORAGE:\s*\$\{AIRTEK_MEDIA_STORAGE:\?/u, 'Production API must require media storage.')
-forbidMatch(serviceBlock(productionCompose, 'platform-worker'), /AIRTEK_MEDIA_/u, 'Production Worker must not receive media storage or processing configuration.')
+forbidMatch(serviceBlock(productionCompose, 'platform-api'), /AIRTEK_MEDIA_|S3_/u, 'Production API must load S3 settings from PostgreSQL.')
+forbidMatch(serviceBlock(productionCompose, 'platform-worker'), /AIRTEK_MEDIA_|S3_/u, 'Production Worker must not receive media storage configuration.')
 requireMatch(serviceBlock(productionCompose, 'platform-worker'), /mem_limit:\s*768m/u, 'Production Worker must retain its memory boundary.')
 requireMatch(productionCompose, /AIRTEK_INGRESS_BIND_ADDRESS:-127\.0\.0\.1/u, 'Production gateway must bind its outer-ingress listener to loopback by default.')
 requireMatch(serviceBlock(productionCompose, 'platform-maintenance'), /entrypoint:\s*\["\/usr\/local\/bin\/airtek-maintenance"\]/u, 'Production maintenance must use the dedicated binary.')
@@ -367,8 +369,8 @@ forbidMatch(productionEnv, /e2e-test/u, 'Production environment configuration mu
 for (const origin of ['AIRTEK_PUBLIC_ORIGIN=https://', 'AIRTEK_ADMIN_ORIGIN=https://', 'AIRTEK_API_ORIGIN=https://']) {
   requireMatch(productionEnv, new RegExp(`^${origin}`, 'mu'), `Production environment example must configure ${origin.split('=')[0]} as HTTPS.`)
 }
-requireMatch(productionEnv, /^AIRTEK_MEDIA_STORAGE=s3$/mu, 'Production media storage must use S3.')
-requireMatch(productionEnv, /^AIRTEK_FLYWAY_TARGET=19$/mu, 'Production must target schema V19.')
+requireMatch(productionEnv, flywayTargetPattern, `Production must target schema V${latestMigration}.`)
+forbidMatch(productionEnv, /^(?:AIRTEK_MEDIA_|AIRTEK_MINIO_|MINIO_|S3_)/mu, 'Production environment examples must not contain S3 or MinIO settings.')
 requireMatch(productionCompose, /AIRTEK_TOTP_ENCRYPTION_KEY:\s*\$\{AIRTEK_TOTP_ENCRYPTION_KEY:\?/u, 'Production must require a secret-manager TOTP encryption key.')
 requireMatch(productionEnv, /^AIRTEK_TOTP_ENCRYPTION_KEY=REPLACE_/mu, 'Production environment example must declare the TOTP key placeholder.')
 for (const variable of ['FLYWAY_URL', 'FLYWAY_USER', 'FLYWAY_PASSWORD', 'FLYWAY_PLACEHOLDERS_RUNTIME_ROLE']) {
@@ -398,6 +400,7 @@ for (const variable of [
   'AIRTEK_ADMIN_HOST_PORT',
   'AIRTEK_API_HOST_PORT',
   'AIRTEK_GATEWAY_HOST_PORT',
+  'COMPOSE_PROFILES',
   'AIRTEK_POSTGRES_DEBUG_PORT',
   'POSTGRES_DB',
   'POSTGRES_USER',
@@ -408,13 +411,6 @@ for (const variable of [
   'AIRTEK_NPM_REGISTRY',
   'AIRTEK_CARGO_MIRROR',
   'AIRTEK_BUILD_PROXY',
-  'AIRTEK_MINIO_MC_IMAGE',
-  'AIRTEK_MEDIA_STORAGE',
-  'AIRTEK_MEDIA_S3_ENDPOINT',
-  'AIRTEK_MEDIA_S3_REGION',
-  'AIRTEK_MEDIA_S3_BUCKET',
-  'AIRTEK_MEDIA_S3_KEY_PREFIX',
-  'AIRTEK_MEDIA_S3_PATH_STYLE',
   'FLYWAY_URL',
   'FLYWAY_USER',
   'FLYWAY_PASSWORD',
@@ -438,8 +434,10 @@ for (const variable of [
 ]) {
   requireMatch(localEnvExample, new RegExp(`^${variable}=`, 'mu'), `.env.example must document ${variable}.`)
 }
-for (const field of ['ACCESS_KEY_ID', 'SECRET_ACCESS_KEY']) {
-  requireMatch(localEnvExample, new RegExp(`^AIRTEK_MEDIA_API_S3_${field}=`, 'mu'), `.env.example must document the API S3 ${field}.`)
+requireMatch(localEnvExample, flywayTargetPattern, `.env.example must target schema V${latestMigration}.`)
+forbidMatch(localEnvExample, /^(?:AIRTEK_MEDIA_|AIRTEK_MINIO_|MINIO_|S3_)/mu, '.env.example must not contain S3 or MinIO settings.')
+if (existsSync(join(root, '.env'))) {
+  forbidMatch(read('.env'), /^(?:AIRTEK_MEDIA_|AIRTEK_MINIO_|MINIO_|S3_)/mu, 'Local .env must not contain S3 or MinIO settings.')
 }
 
 const adminNginx = read('apps/admin/deploy/nginx.conf')

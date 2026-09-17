@@ -19,8 +19,9 @@ use crate::{
     idempotency::{begin as begin_idempotency, IdempotencyOutcome},
     models::{
         AnalyticsOverview, AuditEvent, BackgroundOperation, ContentDraftV2,
-        CreateTemporaryOverride, CursorPage, OperationKind, OperationStatus, Product,
-        PublicationStatus, StartSyncRequest, SyncRun, TemporaryOverride, UpdatePlatformSettings,
+        CreateTemporaryOverride, CursorPage, ObjectStorageSettingsInput, OperationKind,
+        OperationStatus, Product, PublicationStatus, StartSyncRequest, SyncRun, TemporaryOverride,
+        UpdateObjectStorageSettings, UpdatePlatformSettings,
     },
     pagination::CursorQuery,
     routes::{actor, etag, parse_if_match},
@@ -118,6 +119,14 @@ pub fn router() -> Router<AppState> {
         .route("/analytics/overview", get(analytics_overview))
         .route("/dashboard/summary", get(admin_dashboard_summary))
         .route("/settings", get(get_settings).patch(update_settings))
+        .route(
+            "/settings/object-storage",
+            get(get_object_storage_settings).put(update_object_storage_settings),
+        )
+        .route(
+            "/settings/object-storage/test",
+            post(test_object_storage_settings),
+        )
         .route("/operations/{id}", get(get_operation))
         .route("/operations/{id}/events", get(operation_events))
         .route("/audit", get(list_audit))

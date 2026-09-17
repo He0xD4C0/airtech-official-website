@@ -1,6 +1,6 @@
 # Data, SEO, analytics, and integration
 
-Updated: 2026-09-01
+Last reviewed: 2026-09-14
 
 ## Product and content data integration
 
