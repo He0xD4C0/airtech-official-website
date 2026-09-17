@@ -6,6 +6,25 @@
 import type { components } from '../components'
 
 export interface SchemasPart04 {
+RelationTargetContent: {
+            /** Format: uuid */
+            contentId: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            targetType: "content";
+        };
+RelationTargetProduct: {
+            /** Format: uuid */
+            productId: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            targetType: "product";
+        };
+RelationTargetReference: components["schemas"]["RelationTargetContent"] | components["schemas"]["RelationTargetProduct"];
 ReplacementRfqContext: {
             additionalMessage?: string;
             application: string;
@@ -45,7 +64,13 @@ ResolvedMedia: {
             downloadUrl: string;
             /** @enum {string} */
             mediaType: "image/png" | "image/jpeg" | "image/webp";
+            originalHeight: number | null;
             originalName: string;
+            originalWidth: number | null;
+            previewByteSize: number | null;
+            previewHeight: number | null;
+            previewUrl: string | null;
+            previewWidth: number | null;
             /** Format: uri */
             publicUrl: string;
         };
@@ -464,35 +489,5 @@ UpdatePlatformSettings: {
             retentionDeletionGraceDays?: number;
             rfqRetentionDays?: number;
             temporaryOverrideDefaultDays?: number;
-        };
-UpdateProductPresentation: {
-            indexable: boolean;
-            locale: string;
-            reason: string;
-            /** @default [] */
-            relatedContentIds: string[];
-            seo: components["schemas"]["SeoMetadataInput"];
-            slug: string;
-            /** @default 0 */
-            sortOrder: number;
-            summary?: string | null;
-            title: string;
-        };
-UserAdminSummary: components["schemas"]["AdminUserRecord"];
-UserInvitation: {
-            displayName: string;
-            /** Format: email */
-            email: string;
-            /** Format: date-time */
-            expiresAt: string;
-            /** Format: uuid */
-            id: string;
-            readonly invitationToken?: string;
-            /** Format: date-time */
-            invitedAt: string;
-            locale: string;
-            roleKeys: string[];
-            /** @enum {string} */
-            status: "pending" | "accepted" | "revoked" | "expired";
         };
 }

@@ -34,6 +34,7 @@ function product(overrides: Partial<BackendProduct> = {}): BackendProduct {
     seo: { title: null, description: null, canonicalPath: null, indexable: false },
     sortOrder: 0,
     relatedContentIds: [],
+    mediaGallery: [],
     updatedAt: '2026-08-31T00:00:00Z',
     presentation: {
       locale: 'en',
@@ -44,6 +45,7 @@ function product(overrides: Partial<BackendProduct> = {}): BackendProduct {
       indexable: false,
       sortOrder: 0,
       relatedContentIds: [],
+      mediaGallery: [],
       revision: 1,
       publishedRevision: null,
       updatedAt: '2026-08-31T00:00:00Z',

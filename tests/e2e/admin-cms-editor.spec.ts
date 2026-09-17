@@ -99,7 +99,7 @@ test.describe('Unified CMS content editor', () => {
     await page.getByLabel(/Slug/u).fill(slug)
     await page.getByRole('button', { name: '创建草稿' }).click()
 
-    await page.getByRole('button', { name: 'SEO', exact: true }).click()
+    await page.getByRole('tab', { name: 'SEO', exact: true }).click()
     await expect(page.locator('.canonical-preview code')).toHaveText(`/en/resources/articles/${slug}`)
     await expect(page.getByLabel(/canonical/i)).toHaveCount(0)
     expect(await page.locator(`input[value="${slug}"]`).count()).toBe(1)
@@ -231,8 +231,9 @@ test.describe('Unified CMS content editor', () => {
     }
     expect([...reachedNames].some((name) => name.includes('保存'))).toBe(true)
 
-    await page.getByRole('button', { name: '区块', exact: true }).focus()
+    const blockTab = page.getByRole('tab', { name: '区块', exact: true })
+    await blockTab.focus()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('button', { name: '区块', exact: true })).toHaveClass(/is-active/u)
+    await expect(blockTab).toHaveAttribute('aria-selected', 'true')
   })
 })

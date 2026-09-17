@@ -23,11 +23,13 @@ import StructuredBodyEditor from '@/components/content/StructuredBodyEditor.vue'
 import TypeFieldsPanel from '@/components/content/TypeFieldsPanel.vue'
 import { defaultBlock, newDraftId } from '@/services/contentDraftDefaults'
 import { useContentEditorStore } from '@/stores/contentEditor'
+import { useDeferredMediaUploads } from '@/stores/deferredMediaUploads'
 import { useUiStore } from '@/stores/ui'
 
 const emit = defineEmits<{ reload: [] }>()
 const router = useRouter()
 const store = useContentEditorStore()
+const deferredMedia = useDeferredMediaUploads()
 const ui = useUiStore()
 const activePanel = ref<'block' | 'seo'>('seo')
 const activeSection = ref('editor-basics')
@@ -154,7 +156,7 @@ async function submit(): Promise<void> {
         <button class="icon-button" type="button" :disabled="!store.canUndo || !editable" aria-label="撤销" @click="store.undo"><Undo2 :size="16" /></button>
         <button class="icon-button" type="button" :disabled="!store.canRedo || !editable" aria-label="重做" @click="store.redo"><Redo2 :size="16" /></button>
         <button class="button button--quiet" type="button" aria-controls="draft-local-preview" :aria-expanded="previewOpen" @click="previewOpen = !previewOpen"><Eye :size="15" />本地预览</button>
-        <button class="button button--quiet" type="button" :disabled="!store.isDirty || !editable || store.saveState === 'saving'" @click="save"><Save :size="15" />保存</button>
+        <button class="button button--quiet" type="button" :disabled="!store.isDirty || !editable || ['uploading', 'saving'].includes(store.saveState)" @click="save"><Save :size="15" />保存</button>
         <button class="button button--primary" type="button" :disabled="store.isDirty || !editable" @click="submit"><Send :size="15" />提交审核</button>
       </div>
     </header>
@@ -164,7 +166,7 @@ async function submit(): Promise<void> {
 
     <section v-if="previewOpen" id="draft-local-preview" class="local-preview" aria-label="编辑器内存预览">
       <p class="local-preview__notice">LOCAL MEMORY PREVIEW · 不创建 URL 或数据库记录</p>
-      <DraftVisualCanvas :document="draft" />
+      <DraftVisualCanvas :document="draft" :pending-media-urls="deferredMedia.objectUrls" />
     </section>
 
     <div class="content-editor__layout" :inert="!editable">

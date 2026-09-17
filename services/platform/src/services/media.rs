@@ -7,6 +7,7 @@
 
 mod config;
 mod delivery;
+mod preview;
 mod s3;
 mod storage;
 mod upload;
@@ -17,6 +18,7 @@ pub use config::{
     MAX_MEDIA_UPLOAD_BYTES,
 };
 pub use delivery::deliver_media_asset;
+pub(crate) use preview::{generate_preview, PreviewDerivative};
 pub(crate) use storage::probe_storage;
 pub use upload::upload_media_asset;
 

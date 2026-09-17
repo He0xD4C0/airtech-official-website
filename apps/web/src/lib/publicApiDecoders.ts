@@ -37,6 +37,10 @@ function nullableString(value: unknown): value is string | null {
   return value === null || typeof value === 'string'
 }
 
+function nullableInteger(value: unknown): value is number | null {
+  return value === null || Number.isInteger(value)
+}
+
 const contentKinds = new Set([
   'home', 'page', 'solution', 'technology', 'article', 'news', 'faq', 'caseStudy',
   'download', 'company', 'legal', 'generalInformation', 'navigation', 'footer',
@@ -95,11 +99,17 @@ function validResolvedMedia(value: unknown): boolean {
   return isRecord(value)
     && typeof value.assetId === 'string'
     && typeof value.publicUrl === 'string'
+    && nullableString(value.previewUrl)
     && typeof value.downloadUrl === 'string'
     && typeof value.originalName === 'string'
     && typeof value.mediaType === 'string'
     && Number.isInteger(value.byteSize)
     && Number(value.byteSize) >= 0
+    && nullableInteger(value.originalWidth)
+    && nullableInteger(value.originalHeight)
+    && nullableInteger(value.previewWidth)
+    && nullableInteger(value.previewHeight)
+    && nullableInteger(value.previewByteSize)
 }
 
 export function publicContentProjectionResponse(value: unknown): PublicContentProjection {

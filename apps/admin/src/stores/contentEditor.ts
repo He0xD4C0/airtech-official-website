@@ -9,11 +9,12 @@ import type {
 } from '@airtek/contracts'
 import { contentApi } from '@/services/contentApi'
 import { canonicalPathForDraft } from '@/services/canonicalPath'
+import { useDeferredMediaUploads } from '@/stores/deferredMediaUploads'
 
 export const EDITOR_HISTORY_LIMIT = 100
 
 export type EditorLoadState = 'loading' | 'ready' | 'empty' | 'error' | 'forbidden'
-export type EditorSaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'conflict' | 'error'
+export type EditorSaveState = 'idle' | 'dirty' | 'uploading' | 'saving' | 'saved' | 'conflict' | 'error'
 
 let templateCache: ContentTemplateDefinition[] | null = null
 
@@ -42,6 +43,7 @@ function errorMessage(error: unknown, fallback: string): string {
 }
 
 export const useContentEditorStore = defineStore('contentEditor', () => {
+  const deferredMedia = useDeferredMediaUploads()
   const record = ref<CmsPrivateDraft | null>(null)
   const draft = ref<ContentDraftV2 | null>(null)
   const template = ref<ContentTemplateDefinition | null>(null)
@@ -65,6 +67,7 @@ export const useContentEditorStore = defineStore('contentEditor', () => {
     draft.value ? canonicalPathForDraft(draft.value, template.value) : null
   ))
   const saveLabel = computed(() => {
+    if (saveState.value === 'uploading') return deferredMedia.uploadLabel || '正在上传并生成预览…'
     if (saveState.value === 'saving') return '正在保存…'
     if (saveState.value === 'conflict') return '版本冲突'
     if (saveState.value === 'error') return '保存失败'
@@ -175,9 +178,17 @@ export const useContentEditorStore = defineStore('contentEditor', () => {
   async function save(): Promise<boolean> {
     if (!draft.value || !record.value || record.value.state !== 'editing') return false
     if (!isDirty.value) return true
-    saveState.value = 'saving'
     saveError.value = ''
-    const sent = cloneDraft(draft.value)
+    saveState.value = 'uploading'
+    const upload = await deferredMedia.uploadValue(cloneDraft(draft.value))
+    draft.value = cloneDraft(upload.value)
+    if (!upload.complete) {
+      saveState.value = 'error'
+      saveError.value = errorMessage(upload.error, '图片上传或预览生成失败。')
+      return false
+    }
+    saveState.value = 'saving'
+    const sent = cloneDraft(upload.value)
     try {
       const saved = await contentApi.saveDraft(record.value.draftId, sent)
       record.value = saved.draft
@@ -223,6 +234,7 @@ export const useContentEditorStore = defineStore('contentEditor', () => {
     saveError.value = ''
     lastSavedAt.value = null
     savedFingerprint = ''
+    deferredMedia.clear()
     resetHistory()
   }
 

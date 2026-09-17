@@ -63,14 +63,20 @@ function pageWithProjection(
       {
         assetId: mediaId,
         publicUrl: `/api/public/v1/media/${mediaId}`,
+        previewUrl: `https://media.example.test/${mediaId}.preview.webp`,
         downloadUrl: `/api/public/v1/media/${mediaId}/download`,
         mediaType: 'image/webp', byteSize: 100, originalName: 'media.webp',
+        originalWidth: 800, originalHeight: 600, previewWidth: 800, previewHeight: 600,
+        previewByteSize: 50,
       },
       {
         assetId: downloadId,
         publicUrl: `/api/public/v1/media/${downloadId}`,
+        previewUrl: null,
         downloadUrl: `/api/public/v1/media/${downloadId}/download`,
         mediaType: 'image/png', byteSize: 200, originalName: 'controlled.png',
+        originalWidth: null, originalHeight: null, previewWidth: null, previewHeight: null,
+        previewByteSize: null,
       },
     ],
   }
@@ -154,7 +160,7 @@ describe('specialized V2 public pages', () => {
     for (const scenario of scenarios) {
       const html = await renderPage(scenario.component, scenario.page)
       expect(html, scenario.name).toContain('V2 media survives the specialized page')
-      expect(html, scenario.name).toContain(`src="http://localhost:8080/api/public/v1/media/${mediaId}"`)
+      expect(html, scenario.name).toContain(`src="https://media.example.test/${mediaId}.preview.webp"`)
       expect(html, scenario.name).toContain('V2 controlled download')
       expect(html, scenario.name).toContain(scenario.workspace)
       expect(html, scenario.name).not.toContain('Legacy hero must not render')

@@ -39,13 +39,24 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             "sourceReference": {"type": "string", "minLength": 1}, "state": r("FactState"), "points": array(r("PerformancePoint"))
         })
     ));
+    s.insert(
+        "ProductMediaGalleryItem".into(),
+        object(
+            &["assetId", "altText"],
+            json!({
+                "assetId": uuid(),
+                "altText": {"type": "string", "minLength": 1, "maxLength": 300}
+            }),
+        ),
+    );
     s.insert("Product".into(), object(
-        &["id", "stableId", "model", "slug", "locale", "family", "subtype", "motorTechnology", "title", "summary", "seo", "sortOrder", "relatedContentIds", "specifications", "performanceCurves", "sourceSnapshotId", "sourceRevision", "currentRevision", "publishedRevision", "status", "indexable", "updatedAt"],
+        &["id", "stableId", "model", "slug", "locale", "family", "subtype", "motorTechnology", "title", "summary", "seo", "sortOrder", "relatedContentIds", "mediaGallery", "specifications", "performanceCurves", "sourceSnapshotId", "sourceRevision", "currentRevision", "publishedRevision", "status", "indexable", "updatedAt"],
         json!({
             "id": uuid(), "stableId": {"type": "string"}, "model": nullable(json!({"type": "string"})), "slug": slug(), "locale": {"type": "string"},
             "family": r("ProductFamily"), "subtype": nullable(json!({"type": "string"})), "motorTechnology": nullable(json!({"type": "string"})),
             "title": {"type": "string"}, "summary": nullable(json!({"type": "string"})), "seo": r("SeoMetadata"),
             "sortOrder": {"type": "integer"}, "relatedContentIds": array(uuid()),
+            "mediaGallery": {"type": "array", "maxItems": 12, "items": r("ProductMediaGalleryItem")},
             "specifications": array(r("SpecValue")), "performanceCurves": array(r("PerformanceCurve")),
             "sourceSnapshotId": uuid(), "sourceRevision": {"type": "string"}, "currentRevision": revision(), "publishedRevision": nullable(revision()),
             "status": r("PublicationStatus"), "indexable": {"type": "boolean"}, "updatedAt": timestamp()

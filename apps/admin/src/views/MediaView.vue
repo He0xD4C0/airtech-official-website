@@ -186,7 +186,7 @@ onBeforeUnmount(() => { if (searchTimer) clearTimeout(searchTimer) })
       <template #actions>
         <input ref="uploadInput" class="sr-only" type="file" aria-label="选择要上传的图片" :accept="ACCEPTED_TYPES" @change="handleFileSelection">
         <button v-if="canWrite" class="button button--primary" type="button" :disabled="uploading || !canUpload" @click="uploadInput?.click()">
-          <UploadCloud :size="16" />{{ uploading ? '上传中…' : '上传图片' }}
+          <UploadCloud :size="16" />{{ uploading ? '正在上传并生成预览…' : '立即上传图片' }}
         </button>
       </template>
     </PageHeader>
@@ -226,8 +226,8 @@ onBeforeUnmount(() => { if (searchTimer) clearTimeout(searchTimer) })
     <div v-if="selected" class="media-drawer-backdrop" @click.self="closeDetail">
       <aside class="media-drawer" role="dialog" aria-modal="true" aria-labelledby="media-detail-title">
         <header><div><small>媒体详情</small><h2 id="media-detail-title">{{ selected.originalName }}</h2></div><button class="icon-button" type="button" aria-label="关闭媒体详情" @click="closeDetail"><X :size="18" /></button></header>
-        <img :src="absoluteMediaUrl(selected.publicUrl)" :alt="selected.originalName">
-        <dl><div><dt>公开地址</dt><dd><code>{{ absoluteMediaUrl(selected.publicUrl) }}</code></dd></div><div><dt>下载地址</dt><dd><code>{{ absoluteMediaUrl(selected.downloadUrl) }}</code></dd></div><div><dt>SHA-256</dt><dd><code>{{ selected.sha256 }}</code></dd></div><div><dt>上传者</dt><dd>{{ selected.uploadedBy }}</dd></div></dl>
+        <img :src="absoluteMediaUrl(selected.previewUrl ?? selected.publicUrl)" :alt="selected.originalName">
+        <dl><div><dt>原图地址</dt><dd><code>{{ absoluteMediaUrl(selected.publicUrl) }}</code></dd></div><div><dt>预览地址</dt><dd><code>{{ selected.previewUrl ? absoluteMediaUrl(selected.previewUrl) : '历史记录回退原图' }}</code></dd></div><div><dt>原图尺寸</dt><dd>{{ selected.originalWidth && selected.originalHeight ? `${selected.originalWidth} × ${selected.originalHeight}` : '历史记录未采集' }}</dd></div><div><dt>预览尺寸</dt><dd>{{ selected.previewWidth && selected.previewHeight ? `${selected.previewWidth} × ${selected.previewHeight}` : '回退原图' }}</dd></div><div><dt>下载地址</dt><dd><code>{{ absoluteMediaUrl(selected.downloadUrl) }}</code></dd></div><div><dt>SHA-256</dt><dd><code>{{ selected.sha256 }}</code></dd></div><div><dt>上传者</dt><dd>{{ selected.uploadedBy }}</dd></div></dl>
         <div class="media-drawer__actions"><button class="button button--quiet" type="button" @click="copyUrl(selected.publicUrl)"><Copy :size="14" />复制公开地址</button><a class="button button--secondary" :href="absoluteMediaUrl(selected.downloadUrl)" target="_blank" rel="noopener"><ExternalLink :size="14" />下载</a></div>
         <section><h3>内容引用</h3><p v-if="detailState === 'loading'">正在读取引用…</p><p v-else-if="detailState === 'error'" class="media-error">{{ detailError }}</p><p v-else-if="!references.length">暂无已发布内容引用。</p><ul v-else><li v-for="reference in references" :key="`${reference.contentId}:${reference.contentRevision}:${reference.referencePath}`"><strong>{{ reference.contentTitle }}</strong><span>{{ reference.dependencyKind }} · 修订 {{ reference.contentRevision }} · {{ reference.referencePath }}</span></li></ul></section>
       </aside>

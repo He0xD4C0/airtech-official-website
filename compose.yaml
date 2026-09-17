@@ -90,7 +90,7 @@ services:
       FLYWAY_USER: ${FLYWAY_USER:-airtek}
       FLYWAY_PASSWORD: ${FLYWAY_PASSWORD:-airtek}
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: ${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:-airtek}
-      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:-20}
+      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:-21}
       # Local compatibility for the existing single-role development volume.
       # The production boundary cannot pass this override.
       AIRTEK_FLYWAY_ALLOW_SHARED_ROLE: "true"

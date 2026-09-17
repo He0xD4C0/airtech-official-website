@@ -4985,10 +4985,95 @@
             ],
             "type": "string"
           },
+          "originalHeight": {
+            "anyOf": [
+              {
+                "maximum": 16384,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "originalName": {
             "maxLength": 180,
             "minLength": 1,
             "type": "string"
+          },
+          "originalWidth": {
+            "anyOf": [
+              {
+                "maximum": 16384,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previewByteSize": {
+            "anyOf": [
+              {
+                "maximum": 26214400,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previewHeight": {
+            "anyOf": [
+              {
+                "maximum": 1600,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previewMediaType": {
+            "anyOf": [
+              {
+                "enum": [
+                  "image/webp"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previewUrl": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "pattern": "^https?://",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previewWidth": {
+            "anyOf": [
+              {
+                "maximum": 1600,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "publicUrl": {
             "format": "uri",
@@ -5008,10 +5093,17 @@
         "required": [
           "id",
           "publicUrl",
+          "previewUrl",
           "downloadUrl",
           "originalName",
           "mediaType",
           "byteSize",
+          "originalWidth",
+          "originalHeight",
+          "previewWidth",
+          "previewHeight",
+          "previewMediaType",
+          "previewByteSize",
           "sha256",
           "uploadedBy",
           "createdAt"
@@ -5885,6 +5977,13 @@
           "locale": {
             "type": "string"
           },
+          "mediaGallery": {
+            "items": {
+              "$ref": "#/components/schemas/ProductMediaGalleryItem"
+            },
+            "maxItems": 12,
+            "type": "array"
+          },
           "model": {
             "anyOf": [
               {
@@ -6003,6 +6102,7 @@
           "seo",
           "sortOrder",
           "relatedContentIds",
+          "mediaGallery",
           "specifications",
           "performanceCurves",
           "sourceSnapshotId",
@@ -6403,6 +6503,25 @@
           }
         ]
       },
+      "ProductMediaGalleryItem": {
+        "additionalProperties": false,
+        "properties": {
+          "altText": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "assetId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "assetId",
+          "altText"
+        ],
+        "type": "object"
+      },
       "ProductPage": {
         "additionalProperties": false,
         "properties": {
@@ -6441,6 +6560,13 @@
           },
           "locale": {
             "type": "string"
+          },
+          "mediaGallery": {
+            "items": {
+              "$ref": "#/components/schemas/ProductMediaGalleryItem"
+            },
+            "maxItems": 12,
+            "type": "array"
           },
           "publishedRevision": {
             "anyOf": [
@@ -6505,6 +6631,7 @@
           "indexable",
           "sortOrder",
           "relatedContentIds",
+          "mediaGallery",
           "revision",
           "publishedRevision",
           "updatedAt"
@@ -7251,9 +7378,81 @@
             ],
             "type": "string"
           },
+          "originalHeight": {
+            "anyOf": [
+              {
+                "maximum": 16384,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "originalName": {
             "minLength": 1,
             "type": "string"
+          },
+          "originalWidth": {
+            "anyOf": [
+              {
+                "maximum": 16384,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previewByteSize": {
+            "anyOf": [
+              {
+                "maximum": 26214400,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previewHeight": {
+            "anyOf": [
+              {
+                "maximum": 1600,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previewUrl": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "pattern": "^https?://",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previewWidth": {
+            "anyOf": [
+              {
+                "maximum": 1600,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "publicUrl": {
             "format": "uri",
@@ -7264,9 +7463,15 @@
         "required": [
           "assetId",
           "publicUrl",
+          "previewUrl",
           "downloadUrl",
           "mediaType",
           "byteSize",
+          "originalWidth",
+          "originalHeight",
+          "previewWidth",
+          "previewHeight",
+          "previewByteSize",
           "originalName"
         ],
         "type": "object"
@@ -9308,6 +9513,15 @@
           "locale": {
             "type": "string"
           },
+          "mediaGallery": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProductMediaGalleryItem"
+            },
+            "maxItems": 12,
+            "type": "array",
+            "uniqueItems": true
+          },
           "reason": {
             "minLength": 10,
             "type": "string"
@@ -9359,6 +9573,7 @@
           "indexable",
           "sortOrder",
           "relatedContentIds",
+          "mediaGallery",
           "reason"
         ],
         "type": "object"

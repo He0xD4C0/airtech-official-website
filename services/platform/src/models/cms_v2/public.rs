@@ -35,9 +35,15 @@ pub struct ResolvedLinkTarget {
 pub struct ResolvedMedia {
     pub asset_id: Uuid,
     pub public_url: String,
+    pub preview_url: Option<String>,
     pub download_url: String,
     pub media_type: String,
     pub byte_size: i64,
+    pub original_width: Option<i32>,
+    pub original_height: Option<i32>,
+    pub preview_width: Option<i32>,
+    pub preview_height: Option<i32>,
+    pub preview_byte_size: Option<i64>,
     pub original_name: String,
 }
 

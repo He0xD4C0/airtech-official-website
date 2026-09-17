@@ -101,6 +101,12 @@ fn decode_presentation(row: sqlx::postgres::PgRow) -> Result<ProductPresentation
             .map(|value| decode_payload(value, "product related content ids"))
             .transpose()?
             .unwrap_or_default(),
+        media_gallery: content
+            .get("mediaGallery")
+            .cloned()
+            .map(|value| decode_payload(value, "product media gallery"))
+            .transpose()?
+            .unwrap_or_default(),
         revision: row.try_get("current_revision")?,
         published_revision: row.try_get("published_revision")?,
         updated_at: row.try_get("updated_at")?,
@@ -116,6 +122,7 @@ pub fn overlay_product_presentation(product: &mut Product, presentation: &Produc
     product.indexable = presentation.indexable;
     product.sort_order = presentation.sort_order;
     product.related_content_ids = presentation.related_content_ids.clone();
+    product.media_gallery = presentation.media_gallery.clone();
 }
 
 pub async fn load_private_pricing(

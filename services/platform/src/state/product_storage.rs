@@ -193,6 +193,7 @@ impl AppState {
             let presentation_content = serde_json::json!({
                 "sortOrder": accepted.sort_order,
                 "relatedContentIds": accepted.related_content_ids,
+                "mediaGallery": accepted.media_gallery,
             });
             let presentation_seo = serde_json::to_value(&accepted.seo).map_err(|_| {
                 ApiError::internal("Product presentation SEO serialization failed.")

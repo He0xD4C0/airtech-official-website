@@ -12,20 +12,28 @@ use crate::{error::ApiError, state::AppState};
 pub async fn deliver_media_asset(
     state: &AppState,
     asset_id: Uuid,
-    _download: bool,
+    download: bool,
     _request_headers: &HeaderMap,
 ) -> Result<Response, ApiError> {
-    let row = sqlx::query("SELECT public_url FROM media_assets WHERE id=$1 AND deleted_at IS NULL")
-        .bind(asset_id)
-        .fetch_optional(&state.pool)
-        .await?
-        .ok_or_else(|| ApiError::not_found("Media asset was not found."))?;
-    let public_url: Option<String> = row.try_get("public_url")?;
-    let public_url = public_url.ok_or_else(|| {
+    let row = sqlx::query(
+        "SELECT public_url,preview_public_url FROM media_assets WHERE id=$1 AND deleted_at IS NULL",
+    )
+    .bind(asset_id)
+    .fetch_optional(&state.pool)
+    .await?
+    .ok_or_else(|| ApiError::not_found("Media asset was not found."))?;
+    let original_url: Option<String> = row.try_get("public_url")?;
+    let original_url = original_url.ok_or_else(|| {
         ApiError::service_unavailable(
             "This legacy media asset has not been adopted into object storage settings.",
         )
     })?;
+    let preview_url: Option<String> = row.try_get("preview_public_url")?;
+    let public_url = if download {
+        original_url
+    } else {
+        preview_url.unwrap_or(original_url)
+    };
     if !(public_url.starts_with("http://") || public_url.starts_with("https://")) {
         tracing::error!(%asset_id, "stored media public URL is invalid");
         return Err(ApiError::service_unavailable(

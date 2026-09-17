@@ -147,9 +147,9 @@ function assertRequiredDataContracts(document) {
   }
 
   const requiredSchemaProperties = {
-    Product: ['seo', 'sortOrder', 'relatedContentIds'],
-    ProductPresentation: ['seo', 'sortOrder', 'relatedContentIds'],
-    UpdateProductPresentation: ['seo', 'sortOrder', 'relatedContentIds'],
+    Product: ['seo', 'sortOrder', 'relatedContentIds', 'mediaGallery'],
+    ProductPresentation: ['seo', 'sortOrder', 'relatedContentIds', 'mediaGallery'],
+    UpdateProductPresentation: ['seo', 'sortOrder', 'relatedContentIds', 'mediaGallery'],
     ProductPrivatePricing: ['productId', 'stableId', 'sourceRowNumber', 'pricingFields'],
     GuestSourceDaily: ['bucketDate', 'source', 'landingPath', 'locale', 'visits', 'pageViews', 'rfqStarts', 'rfqSubmissions'],
     ContentDraftV2: ['schemaVersion', 'kind', 'templateKey', 'isPlaceholder', 'typeFields', 'composition', 'seo', 'relations', 'draftVersion'],

@@ -266,10 +266,17 @@ fn media_contract_is_synchronous_direct_and_public() {
     for field in [
         "id",
         "publicUrl",
+        "previewUrl",
         "downloadUrl",
         "originalName",
         "mediaType",
         "byteSize",
+        "originalWidth",
+        "originalHeight",
+        "previewWidth",
+        "previewHeight",
+        "previewMediaType",
+        "previewByteSize",
         "sha256",
         "uploadedBy",
         "createdAt",
@@ -336,9 +343,15 @@ fn public_media_contract_is_asset_resolved() {
     for property in [
         "assetId",
         "publicUrl",
+        "previewUrl",
         "downloadUrl",
         "mediaType",
         "byteSize",
+        "originalWidth",
+        "originalHeight",
+        "previewWidth",
+        "previewHeight",
+        "previewByteSize",
         "originalName",
     ] {
         assert!(schemas["ResolvedMedia"]["required"]

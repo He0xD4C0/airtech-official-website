@@ -134,6 +134,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "indexable",
                 "sortOrder",
                 "relatedContentIds",
+                "mediaGallery",
                 "revision",
                 "publishedRevision",
                 "updatedAt",
@@ -147,6 +148,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "indexable": {"type": "boolean"},
                 "sortOrder": {"type": "integer"},
                 "relatedContentIds": array(uuid()),
+                "mediaGallery": {"type": "array", "maxItems": 12, "items": r("ProductMediaGalleryItem")},
                 "revision": revision(),
                 "publishedRevision": nullable(revision()),
                 "updatedAt": timestamp()
@@ -156,7 +158,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
     s.insert(
         "UpdateProductPresentation".into(),
         object(
-            &["locale", "slug", "title", "seo", "indexable", "sortOrder", "relatedContentIds", "reason"],
+            &["locale", "slug", "title", "seo", "indexable", "sortOrder", "relatedContentIds", "mediaGallery", "reason"],
             json!({
                 "locale": {"type": "string"},
                 "slug": slug(),
@@ -166,6 +168,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "indexable": {"type": "boolean"},
                 "sortOrder": {"type": "integer", "default": 0},
                 "relatedContentIds": {"type": "array", "maxItems": 100, "uniqueItems": true, "items": uuid(), "default": []},
+                "mediaGallery": {"type": "array", "maxItems": 12, "uniqueItems": true, "items": r("ProductMediaGalleryItem"), "default": []},
                 "reason": {"type": "string", "minLength": 10}
             }),
         ),

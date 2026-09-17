@@ -97,14 +97,14 @@ pnpm check:contracts
 
 ## Deployment order
 
-The current schema target is V20. Deploy the migration artifact first, then the
+The current schema target is V21. Deploy the migration artifact first, then the
 API and ordinary Worker, and finally Admin and Public Web. V17 introduces
 private drafts and review, V18 removes persisted content history, and V19 adds
 current-state query indexes. V20 moves application-side object-storage settings
 into PostgreSQL and adds immutable public media URLs. These migrations are
 forward-only.
 
-Before promotion, verify a fresh database migrates directly to V20 and a
+V21 adds immutable media preview derivatives. Before promotion, verify a fresh database migrates directly to V21 and a
 controlled legacy SQLx v1-v10 database passes
 `baseline -> migrate -> validate`.
 

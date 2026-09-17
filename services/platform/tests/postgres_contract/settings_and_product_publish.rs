@@ -123,6 +123,7 @@ async fn product_publish_requires_an_atomic_accepted_postgres_evidence_chain() {
         seo: Default::default(),
         sort_order: 0,
         related_content_ids: Vec::new(),
+        media_gallery: Vec::new(),
         specifications: vec![],
         performance_curves: vec![],
         source_snapshot_id: snapshot_id,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import type { ProductPublicationReport } from '@airtek/contracts'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import type { ProductMediaGalleryItem, ProductPublicationReport } from '@airtek/contracts'
 import { useRoute } from 'vue-router'
 import {
   ArrowLeft,
@@ -15,6 +15,7 @@ import {
 import PageHeader from '@/components/PageHeader.vue'
 import DataStatePanel from '@/components/DataStatePanel.vue'
 import ProductFactsTable from '@/components/ProductFactsTable.vue'
+import ProductMediaGalleryEditor from '@/components/ProductMediaGalleryEditor.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import {
   adminApi,
@@ -35,10 +36,12 @@ import {
 } from '@/services/productPresentation'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
+import { useDeferredMediaUploads } from '@/stores/deferredMediaUploads'
 
 const route = useRoute()
 const auth = useAuthStore()
 const ui = useUiStore()
+const deferredMedia = useDeferredMediaUploads()
 const product = ref<BackendProduct | null>(null)
 const overrides = ref<BackendTemporaryOverride[]>([])
 const loading = ref(false)
@@ -55,6 +58,7 @@ const presentationSeoDescription = ref('')
 const presentationIndexable = ref(false)
 const presentationSortOrder = ref(0)
 const presentationRelatedContentIds = ref('')
+const presentationMediaGallery = ref<ProductMediaGalleryItem[]>([])
 const privatePricing = ref<ProductPrivatePricing>()
 const pricingState = ref<'idle' | 'loading' | 'ready' | 'empty' | 'error' | 'forbidden'>('idle')
 const publicationReport = ref<ProductPublicationReport | null>(null)
@@ -92,6 +96,7 @@ async function load(): Promise<void> {
     presentationIndexable.value = found.presentation?.indexable ?? found.indexable
     presentationSortOrder.value = found.presentation?.sortOrder ?? found.sortOrder
     presentationRelatedContentIds.value = (found.presentation?.relatedContentIds ?? found.relatedContentIds).join('\n')
+    presentationMediaGallery.value = found.presentation?.mediaGallery ?? found.mediaGallery
     try {
       overrides.value = await adminApi.listAllTemporaryOverrides(found.id)
     } catch (error) {
@@ -112,6 +117,12 @@ async function savePresentation(): Promise<void> {
   savingPresentation.value = true
   try {
     const presentationRevision = product.value.presentation?.revision ?? 0
+    const uploaded = await deferredMedia.uploadValue(presentationMediaGallery.value)
+    presentationMediaGallery.value = uploaded.value
+    if (!uploaded.complete) {
+      ui.toast('图库上传失败', apiErrorMessage(uploaded.error, '本地图片仍保留，可重试保存。'), 'danger')
+      return
+    }
     const result = await adminApi.updateProductPresentation(product.value.id, presentationRevision, {
       locale: 'en',
       slug: presentationSlug.value.trim(),
@@ -126,6 +137,7 @@ async function savePresentation(): Promise<void> {
       indexable: presentationIndexable.value,
       sortOrder: presentationSortOrder.value,
       relatedContentIds: presentationRelatedContentIds.value.split(/[\s,]+/).map((value) => value.trim()).filter(Boolean),
+      mediaGallery: presentationMediaGallery.value,
       reason: 'Admin product presentation update',
     })
     product.value = result.product
@@ -164,6 +176,7 @@ async function publish(): Promise<void> {
 }
 
 onMounted(load)
+onBeforeUnmount(() => deferredMedia.clear())
 </script>
 
 <template>
@@ -250,8 +263,9 @@ onMounted(load)
     </section>
 
     <section class="panel product-detail-section" aria-labelledby="presentation-heading">
-      <header class="panel__header"><div><p class="eyebrow">PORTAL-OWNED</p><h2 id="presentation-heading">网站展示与 SEO</h2></div><button v-if="auth.hasPermission('product.write')" class="button button--primary" type="button" :disabled="savingPresentation" @click="savePresentation"><Save :size="16" />{{ savingPresentation ? '正在保存…' : '保存网站字段' }}</button></header>
+      <header class="panel__header"><div><p class="eyebrow">PORTAL-OWNED</p><h2 id="presentation-heading">网站展示与 SEO</h2></div><button v-if="auth.hasPermission('product.write')" class="button button--primary" type="button" :disabled="savingPresentation" @click="savePresentation"><Save :size="16" />{{ savingPresentation ? (deferredMedia.uploadLabel || '正在保存草稿…') : '保存网站字段' }}</button></header>
       <div class="form-grid"><label class="field"><span>公开标题</span><input v-model="presentationTitle" /></label><label class="field"><span>Slug</span><input v-model="presentationSlug" /></label><label class="field"><span>SEO Title</span><input v-model="presentationSeoTitle" /></label><label class="field"><span>SEO Description</span><textarea v-model="presentationSeoDescription" rows="3"></textarea></label><label class="field"><span>排序值</span><input v-model.number="presentationSortOrder" type="number" /></label></div><label class="field"><span>公开摘要</span><textarea v-model="presentationSummary" rows="4"></textarea></label><label class="field"><span>关联内容 UUID（每行一个）</span><textarea v-model="presentationRelatedContentIds" rows="5" placeholder="留空表示无显式关联"></textarea></label><label class="toggle-row"><span><strong>允许索引</strong><small>仍需已发布且非 placeholder；缺失产品不会生成页面。</small></span><input v-model="presentationIndexable" type="checkbox" /></label>
+      <ProductMediaGalleryEditor v-model="presentationMediaGallery" :disabled="savingPresentation" />
     </section>
 
     <section class="panel product-detail-section" aria-labelledby="private-pricing-heading">

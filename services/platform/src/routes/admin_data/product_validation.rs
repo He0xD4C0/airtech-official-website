@@ -62,6 +62,25 @@ pub(super) fn validate_product_presentation(
             vec!["Must contain at most 100 unique content ids.".into()],
         );
     }
+    let gallery_ids = input
+        .media_gallery
+        .iter()
+        .map(|item| item.asset_id)
+        .collect::<HashSet<_>>();
+    if input.media_gallery.len() > 12 || gallery_ids.len() != input.media_gallery.len() {
+        errors.insert(
+            "mediaGallery".into(),
+            vec!["Must contain at most 12 unique media assets in display order.".into()],
+        );
+    }
+    for (index, item) in input.media_gallery.iter().enumerate() {
+        if item.alt_text.trim().is_empty() || item.alt_text.chars().count() > 300 {
+            errors.insert(
+                format!("mediaGallery.{index}.altText"),
+                vec!["Must contain 1 to 300 characters.".into()],
+            );
+        }
+    }
     validate_reason(&input.reason)?;
     if errors.is_empty() {
         Ok(())

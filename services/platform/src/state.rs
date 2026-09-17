@@ -128,6 +128,12 @@ pub(crate) fn overlay_presentation_row(product: &mut Product, row: &PgRow) -> Re
         .map(|value| decode_payload(value, "product related content ids"))
         .transpose()?
         .unwrap_or_default();
+    product.media_gallery = content
+        .get("mediaGallery")
+        .cloned()
+        .map(|value| decode_payload(value, "product media gallery"))
+        .transpose()?
+        .unwrap_or_default();
     Ok(())
 }
 

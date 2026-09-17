@@ -223,7 +223,7 @@ describe('database-driven public SSR page loading', () => {
         slug: 'database-fan', locale: 'en', family: 'axial', subtype: null, motorTechnology: 'EC',
         title: 'Database fan', summary: 'Database product summary.',
         seo: { title: 'Published product SEO', description: 'Published product SEO description.', canonicalPath: '/en/products/axial/database-fan', indexable: true },
-        sortOrder: 10, relatedContentIds: [], specifications: [], performanceCurves: [],
+        sortOrder: 10, relatedContentIds: [], mediaGallery: [], specifications: [], performanceCurves: [],
         sourceSnapshotId: '593e33f3-e334-4570-8991-9c6336108b20', sourceRevision: 'csv:1',
         currentRevision: 2, publishedRevision: 2, status: 'published', indexable: true,
         updatedAt: '2026-09-02T00:00:00Z',

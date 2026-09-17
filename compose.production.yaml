@@ -13,7 +13,7 @@ services:
       FLYWAY_USER: ${FLYWAY_USER:?set the migration role}
       FLYWAY_PASSWORD: ${FLYWAY_PASSWORD:?set the migration role password from the secret manager}
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: ${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:?set the existing API and Worker database role}
-      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:?set AIRTEK_FLYWAY_TARGET=20}
+      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:?set AIRTEK_FLYWAY_TARGET=21}
     restart: "no"
 
   platform-maintenance:

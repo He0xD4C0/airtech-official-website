@@ -152,8 +152,11 @@ describe('native V2 CMS page rendering', () => {
     projection.resolvedMedia = [{
       assetId,
       publicUrl: `/api/public/v1/media/${assetId}`,
+      previewUrl: null,
       downloadUrl: `/api/public/v1/media/${assetId}/download`,
       mediaType: 'image/webp', byteSize: 200, originalName: 'approved-resource.webp',
+      originalWidth: null, originalHeight: null, previewWidth: null, previewHeight: null,
+      previewByteSize: null,
     }]
     const html = await render(pageWithProjection(path, projection))
     expect(html).toContain('Controlled resource context.')

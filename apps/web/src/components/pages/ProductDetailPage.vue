@@ -4,6 +4,7 @@ import PageHero from '@/components/common/PageHero.vue'
 import DataNotice from '@/components/common/DataNotice.vue'
 import PqCurve from '@/components/product/PqCurve.vue'
 import CallToAction from '@/components/common/CallToAction.vue'
+import ProductMediaGallery from '@/components/product/ProductMediaGallery.vue'
 import PageSlotSections from './PageSlotSections.vue'
 import { useCompareStore } from '@/stores/compare'
 import type { PublicPageModel } from '@/types/content'
@@ -64,6 +65,7 @@ function curveConditions() {
     <PageHero :eyebrow="page.eyebrow" :title="page.title" :description="page.description" :breadcrumbs="page.breadcrumbs">
       <div class="status-row"><span :class="['status', product ? 'published' : 'pending']">{{ product ? 'Published Product Master' : 'Published record unavailable' }}</span><span>Revision: {{ product?.publishedRevision ?? 'not published' }}</span></div>
     </PageHero>
+    <ProductMediaGallery v-if="product?.mediaGallery.length" :items="product.mediaGallery" />
     <section class="section shell product-overview">
       <div>
         <DataNotice v-if="!product" title="Product data unavailable" :text="page.placeholderReason || 'No published Product Master record is available. No product values have been assumed.'" />

@@ -49,7 +49,14 @@ MediaAsset: {
             id: string;
             /** @enum {string} */
             mediaType: "image/png" | "image/jpeg" | "image/webp";
+            originalHeight: number | null;
             originalName: string;
+            originalWidth: number | null;
+            previewByteSize: number | null;
+            previewHeight: number | null;
+            previewMediaType: "image/webp" | null;
+            previewUrl: string | null;
+            previewWidth: number | null;
             /** Format: uri */
             publicUrl: string;
             sha256: string;
@@ -232,6 +239,7 @@ Product: {
             id: string;
             indexable: boolean;
             locale: string;
+            mediaGallery: components["schemas"]["ProductMediaGalleryItem"][];
             model: string | null;
             motorTechnology: string | null;
             performanceCurves: components["schemas"]["PerformanceCurve"][];
@@ -331,6 +339,11 @@ ProductImportRowError: {
             stableId: string | null;
         };
 ProductImportRun: components["schemas"]["ProductImportResult"];
+ProductMediaGalleryItem: {
+            altText: string;
+            /** Format: uuid */
+            assetId: string;
+        };
 ProductPage: {
             items: components["schemas"]["Product"][];
             /** @description Opaque base64url v2 keyset cursor bound to the active filters; v1 is accepted for one compatibility release. */
@@ -339,6 +352,7 @@ ProductPage: {
 ProductPresentation: {
             indexable: boolean;
             locale: string;
+            mediaGallery: components["schemas"]["ProductMediaGalleryItem"][];
             publishedRevision: number | null;
             relatedContentIds: string[];
             /** Format: int64 */
@@ -477,23 +491,4 @@ RelationCollectionBlock: {
              */
             type: "relationCollection";
         };
-RelationTargetContent: {
-            /** Format: uuid */
-            contentId: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            targetType: "content";
-        };
-RelationTargetProduct: {
-            /** Format: uuid */
-            productId: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            targetType: "product";
-        };
-RelationTargetReference: components["schemas"]["RelationTargetContent"] | components["schemas"]["RelationTargetProduct"];
 }

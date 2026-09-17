@@ -165,6 +165,7 @@ export type ProductImportResult = components['schemas']['ProductImportResult'];
 export type ProductImportResultPage = components['schemas']['ProductImportResultPage'];
 export type ProductImportRowError = components['schemas']['ProductImportRowError'];
 export type ProductImportRun = components['schemas']['ProductImportRun'];
+export type ProductMediaGalleryItem = components['schemas']['ProductMediaGalleryItem'];
 export type ProductPage = components['schemas']['ProductPage'];
 export type ProductPresentation = components['schemas']['ProductPresentation'];
 export type ProductPrivatePricing = components['schemas']['ProductPrivatePricing'];

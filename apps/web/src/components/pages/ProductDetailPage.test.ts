@@ -20,6 +20,7 @@ const product: Product = {
   seo: { title: 'Published product', description: 'Published summary.', canonicalPath: '/en/products/axial/controlled-model', indexable: true },
   sortOrder: 0,
   relatedContentIds: [],
+  mediaGallery: [],
   specifications: [],
   performanceCurves: [{
     airflowUnit: 'm3/h',

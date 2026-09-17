@@ -11,7 +11,7 @@ use crate::{
     state::AppState,
 };
 
-use super::{storage, upload_input::stage_upload, validate_storage_key};
+use super::{generate_preview, storage, upload_input::stage_upload, validate_storage_key};
 
 pub async fn upload_media_asset(
     state: &AppState,
@@ -41,20 +41,39 @@ pub async fn upload_media_asset(
 
     let settings = crate::services::object_storage_settings::active_storage(state).await?;
     let asset_id = Uuid::new_v4();
-    let storage_key = format!(
-        "{}/{}/{}.{}",
+    let directory = format!(
+        "{}/{}",
         settings.key_prefix.trim_matches('/'),
-        Utc::now().format("%Y/%m"),
+        Utc::now().format("%Y/%m")
+    );
+    let storage_key = format!(
+        "{directory}/{}.{}",
         asset_id.simple(),
         staged.media_type.extension
     );
+    let preview_storage_key = format!("{directory}/{}.preview.webp", asset_id.simple());
     validate_storage_key(&storage_key)?;
+    validate_storage_key(&preview_storage_key)?;
     let bytes = tokio::fs::read(staged.path()).await.map_err(|error| {
         tracing::error!(%error, "staged media upload could not be read");
         ApiError::service_unavailable("Media upload staging is unavailable.")
     })?;
+    let preview = generate_preview(bytes.clone()).await?;
     storage::put_object(&settings, &storage_key, staged.media_type.mime, bytes).await?;
+    if let Err(error) = storage::put_object(
+        &settings,
+        &preview_storage_key,
+        "image/webp",
+        preview.bytes.clone(),
+    )
+    .await
+    {
+        compensate_objects(&settings, &[&storage_key]).await;
+        return Err(error);
+    }
     let public_url = crate::services::object_storage_settings::public_url(&settings, &storage_key);
+    let preview_public_url =
+        crate::services::object_storage_settings::public_url(&settings, &preview_storage_key);
 
     let persistence = persist_asset(
         state,
@@ -64,22 +83,18 @@ pub async fn upload_media_asset(
         asset_id,
         &storage_key,
         &public_url,
+        &preview_storage_key,
+        &preview_public_url,
         settings.kind.label(),
         &staged,
+        &preview,
     )
     .await;
     match persistence {
         Ok(asset) => Ok(asset),
         Err(error) => {
-            if let Err(cleanup_error) = storage::delete_object(&settings, &storage_key).await {
-                tracing::error!(
-                    %asset_id,
-                    %storage_key,
-                    persistence_error = %error,
-                    cleanup_error = %cleanup_error,
-                    "media upload compensation failed"
-                );
-            }
+            tracing::error!(%asset_id, persistence_error = %error, "media upload persistence failed");
+            compensate_objects(&settings, &[&preview_storage_key, &storage_key]).await;
             Err(error)
         }
     }
@@ -94,25 +109,40 @@ async fn persist_asset(
     asset_id: Uuid,
     storage_key: &str,
     public_url: &str,
+    preview_storage_key: &str,
+    preview_public_url: &str,
     storage_backend: &str,
     staged: &super::upload_input::StagedUpload,
+    preview: &super::PreviewDerivative,
 ) -> Result<MediaAsset, ApiError> {
     let pool = require_postgres(state)?;
     let mut transaction = pool.begin().await?;
     let row = sqlx::query(
         r#"INSERT INTO media_assets
-           (id,storage_key,public_url,original_name,media_type,byte_size,checksum,
+           (id,storage_key,public_url,preview_storage_key,preview_public_url,
+            original_name,media_type,byte_size,original_width,original_height,
+            preview_width,preview_height,preview_media_type,preview_byte_size,checksum,
             metadata,created_at,storage_backend,
             content_type,uploaded_by)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,'{}'::jsonb,now(),$8,$5,$9)
-           RETURNING id,public_url,original_name,media_type,byte_size,checksum,uploaded_by,created_at"#,
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'image/webp',$13,$14,
+                   '{}'::jsonb,now(),$15,$7,$16)
+           RETURNING id,public_url,preview_public_url,original_name,media_type,byte_size,
+                     original_width,original_height,preview_width,preview_height,
+                     preview_media_type,preview_byte_size,checksum,uploaded_by,created_at"#,
     )
     .bind(asset_id)
     .bind(storage_key)
     .bind(public_url)
+    .bind(preview_storage_key)
+    .bind(preview_public_url)
     .bind(&staged.file_name)
     .bind(staged.media_type.mime)
     .bind(staged.byte_size as i64)
+    .bind(preview.original_width as i32)
+    .bind(preview.original_height as i32)
+    .bind(preview.width as i32)
+    .bind(preview.height as i32)
+    .bind(preview.bytes.len() as i64)
     .bind(&staged.sha256)
     .bind(storage_backend)
     .bind(actor)
@@ -130,6 +160,12 @@ async fn persist_asset(
             "byteSize": asset.byte_size,
             "sha256": asset.sha256,
             "publicUrl": asset.public_url,
+            "previewUrl": asset.preview_url,
+            "originalWidth": asset.original_width,
+            "originalHeight": asset.original_height,
+            "previewWidth": asset.preview_width,
+            "previewHeight": asset.preview_height,
+            "previewByteSize": asset.preview_byte_size,
         }),
     )
     .await?;
@@ -139,6 +175,14 @@ async fn persist_asset(
     transaction.commit().await?;
     staged_idempotency.finish().await?;
     Ok(asset)
+}
+
+async fn compensate_objects(settings: &super::MediaStorageSettings, keys: &[&str]) {
+    for key in keys {
+        if let Err(error) = storage::delete_object(settings, key).await {
+            tracing::error!(storage_key = *key, %error, "media upload compensation failed");
+        }
+    }
 }
 
 async fn insert_audit(

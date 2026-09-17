@@ -92,7 +92,9 @@ pub async fn list_media_assets(
     .fetch_one(pool)
     .await?;
     let rows = sqlx::query(
-        r#"SELECT id,public_url,original_name,media_type,byte_size,checksum,
+        r#"SELECT id,public_url,preview_public_url,original_name,media_type,byte_size,
+                  original_width,original_height,preview_width,preview_height,
+                  preview_media_type,preview_byte_size,checksum,
                   COALESCE(uploaded_by,'legacy') AS uploaded_by,created_at
            FROM media_assets
            WHERE deleted_at IS NULL
@@ -140,7 +142,9 @@ pub async fn list_media_assets(
 
 pub async fn load_media_asset(pool: &sqlx::PgPool, asset_id: Uuid) -> Result<MediaAsset, ApiError> {
     let row = sqlx::query(
-        r#"SELECT id,public_url,original_name,media_type,byte_size,checksum,
+        r#"SELECT id,public_url,preview_public_url,original_name,media_type,byte_size,
+                  original_width,original_height,preview_width,preview_height,
+                  preview_media_type,preview_byte_size,checksum,
                   COALESCE(uploaded_by,'legacy') AS uploaded_by,created_at
            FROM media_assets WHERE id=$1 AND deleted_at IS NULL"#,
     )
@@ -216,10 +220,17 @@ pub(crate) fn decode_media_asset(row: &PgRow) -> Result<MediaAsset, ApiError> {
                 "Legacy media URLs must be adopted in object storage settings.",
             )
         })?,
+        preview_url: row.try_get("preview_public_url")?,
         download_url: format!("/api/public/v1/media/{id}/download"),
         original_name: row.try_get("original_name")?,
         media_type: row.try_get("media_type")?,
         byte_size: row.try_get("byte_size")?,
+        original_width: row.try_get("original_width")?,
+        original_height: row.try_get("original_height")?,
+        preview_width: row.try_get("preview_width")?,
+        preview_height: row.try_get("preview_height")?,
+        preview_media_type: row.try_get("preview_media_type")?,
+        preview_byte_size: row.try_get("preview_byte_size")?,
         sha256: row.try_get("checksum")?,
         uploaded_by: row.try_get("uploaded_by")?,
         created_at: row.try_get("created_at")?,

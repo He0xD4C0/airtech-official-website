@@ -20,7 +20,10 @@ pub(crate) async fn resolve_published_media(
         return Err(resolution_failed(content_id, revision));
     }
     let rows = sqlx::query(
-        r#"SELECT DISTINCT asset.id,asset.public_url,asset.media_type,asset.byte_size,asset.original_name
+        r#"SELECT DISTINCT asset.id,asset.public_url,asset.preview_public_url,
+                  asset.media_type,asset.byte_size,asset.original_name,
+                  asset.original_width,asset.original_height,asset.preview_width,
+                  asset.preview_height,asset.preview_byte_size
            FROM cms_current_publication_dependencies dependency
            JOIN media_assets asset
              ON asset.id=dependency.target_media_asset_id
@@ -43,9 +46,15 @@ pub(crate) async fn resolve_published_media(
                         "Published media includes a legacy URL that has not been adopted.",
                     )
                 })?,
+                preview_url: row.try_get("preview_public_url")?,
                 download_url: format!("/api/public/v1/media/{asset_id}/download"),
                 media_type: row.try_get("media_type")?,
                 byte_size: row.try_get("byte_size")?,
+                original_width: row.try_get("original_width")?,
+                original_height: row.try_get("original_height")?,
+                preview_width: row.try_get("preview_width")?,
+                preview_height: row.try_get("preview_height")?,
+                preview_byte_size: row.try_get("preview_byte_size")?,
                 original_name: row.try_get("original_name")?,
             })
         })

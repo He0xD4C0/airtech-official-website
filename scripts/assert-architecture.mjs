@@ -28,7 +28,7 @@ function forbidText(path, pattern, message) {
 const migrations = filesUnder('services/platform/migrations')
   .filter((path) => /\/V\d{4}__.+\.sql$/u.test(path))
   .sort()
-for (const version of ['0017', '0018', '0019', '0020']) {
+for (const version of ['0017', '0018', '0019', '0020', '0021']) {
   const matches = migrations.filter((path) => path.includes(`/V${version}__`))
   if (matches.length !== 1) failures.push(`Expected exactly one V${version} migration.`)
   for (const path of matches) {

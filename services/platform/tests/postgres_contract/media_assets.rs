@@ -118,6 +118,20 @@ fn media_multipart(boundary: &str, file_name: &str, bytes: &[u8]) -> Vec<u8> {
 }
 
 #[cfg(feature = "devtools")]
+fn test_png(color: [u8; 4]) -> Vec<u8> {
+    let image =
+        image::DynamicImage::ImageRgba8(image::ImageBuffer::from_pixel(16, 8, image::Rgba(color)));
+    let mut bytes = Vec::new();
+    image
+        .write_to(
+            &mut std::io::Cursor::new(&mut bytes),
+            image::ImageFormat::Png,
+        )
+        .unwrap();
+    bytes
+}
+
+#[cfg(feature = "devtools")]
 async fn upload_direct_media(app: &Router, key: &str, file_name: &str, bytes: &[u8]) -> Response {
     let boundary = format!("airtek-{}", Uuid::new_v4().simple());
     app.clone()
@@ -167,23 +181,28 @@ async fn direct_upload_is_public_immediately_and_idempotent_per_actor() {
     let admin = airtek_platform::routes::admin::router()
         .layer(Extension(principal))
         .with_state(state.clone());
-    let bytes = b"\x89PNG\r\n\x1a\n";
+    let bytes = test_png([20, 80, 120, 128]);
     let key = format!("media-upload-{}", Uuid::new_v4());
 
-    let created = upload_direct_media(&admin, &key, "../hero.png", bytes).await;
+    let created = upload_direct_media(&admin, &key, "../hero.png", &bytes).await;
     assert_eq!(created.status(), StatusCode::CREATED);
     let asset = response_json(created).await;
     assert_eq!(asset["originalName"], "hero.png");
     assert_eq!(asset["mediaType"], "image/png");
     assert_eq!(asset["byteSize"], bytes.len());
     assert_eq!(asset["uploadedBy"], principal_email);
-    assert_eq!(asset.as_object().unwrap().len(), 9);
-    assert_eq!(stored_files(&root), 1);
+    assert_eq!(asset.as_object().unwrap().len(), 16);
+    assert_eq!(asset["originalWidth"], 16);
+    assert_eq!(asset["originalHeight"], 8);
+    assert_eq!(asset["previewWidth"], 16);
+    assert_eq!(asset["previewHeight"], 8);
+    assert_eq!(asset["previewMediaType"], "image/webp");
+    assert_eq!(stored_files(&root), 2);
 
-    let replay = upload_direct_media(&admin, &key, "../hero.png", bytes).await;
+    let replay = upload_direct_media(&admin, &key, "../hero.png", &bytes).await;
     assert_eq!(replay.status(), StatusCode::CREATED);
     assert_eq!(response_json(replay).await, asset);
-    assert_eq!(stored_files(&root), 1);
+    assert_eq!(stored_files(&root), 2);
 
     let public = airtek_platform::routes::public::router().with_state(state);
     let delivered = public
@@ -197,7 +216,7 @@ async fn direct_upload_is_public_immediately_and_idempotent_per_actor() {
     assert_eq!(delivered.status(), StatusCode::PERMANENT_REDIRECT);
     assert_eq!(
         delivered.headers().get(header::LOCATION).unwrap(),
-        asset["publicUrl"].as_str().unwrap()
+        asset["previewUrl"].as_str().unwrap()
     );
 
     drop(admin);
@@ -219,19 +238,19 @@ async fn direct_upload_rejects_key_reuse_for_different_files() {
         .with_state(state);
     let key = format!("media-conflict-{}", Uuid::new_v4());
     assert_eq!(
-        upload_direct_media(&admin, &key, "first.png", b"\x89PNG\r\n\x1a\n")
+        upload_direct_media(&admin, &key, "first.png", &test_png([1, 2, 3, 255]))
             .await
             .status(),
         StatusCode::CREATED
     );
-    let conflict = upload_direct_media(&admin, &key, "second.jpg", b"\xff\xd8\xff\xe0").await;
+    let conflict = upload_direct_media(&admin, &key, "second.png", &test_png([4, 5, 6, 255])).await;
     assert_eq!(conflict.status(), StatusCode::CONFLICT);
     let problem = response_json(conflict).await;
     assert_eq!(
         problem["type"],
         "https://api.airtekpower.example/problems/media_idempotency_conflict"
     );
-    assert_eq!(stored_files(&root), 1);
+    assert_eq!(stored_files(&root), 2);
 
     drop(admin);
     sandbox.cleanup().await;
@@ -261,7 +280,7 @@ async fn failed_catalogue_write_compensates_the_uploaded_object() {
         &admin,
         &format!("media-db-failure-{}", Uuid::new_v4()),
         "rollback.png",
-        b"\x89PNG\r\n\x1a\n",
+        &test_png([20, 80, 120, 255]),
     )
     .await;
     assert_eq!(failed.status(), StatusCode::SERVICE_UNAVAILABLE);
@@ -297,7 +316,7 @@ async fn unavailable_storage_fails_without_catalogue_rows() {
         &admin,
         &format!("media-storage-failure-{}", Uuid::new_v4()),
         "unavailable.png",
-        b"\x89PNG\r\n\x1a\n",
+        &test_png([20, 80, 120, 255]),
     )
     .await;
     assert_eq!(failed.status(), StatusCode::SERVICE_UNAVAILABLE);
@@ -328,7 +347,7 @@ async fn upload_without_database_object_storage_settings_returns_503() {
         &admin,
         &format!("media-unconfigured-{}", Uuid::new_v4()),
         "unconfigured.png",
-        b"\x89PNG\r\n\x1a\n",
+        &test_png([20, 80, 120, 255]),
     )
     .await;
     assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);

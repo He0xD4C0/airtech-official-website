@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { ImageIcon, LoaderCircle, RefreshCcw, Search, Trash2 } from 'lucide-vue-next'
+import { computed, getCurrentInstance, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { ImageIcon, LoaderCircle, RefreshCcw, Search, Trash2, Upload } from 'lucide-vue-next'
 import type { AssetVersionReference, MediaAsset, MediaUseReference } from '@airtek/contracts'
 import { contentApi } from '@/services/contentApi'
 import { apiErrorMessage } from '@/services/cursorPagination'
+import { PENDING_MEDIA_PREFIX, useDeferredMediaUploads } from '@/stores/deferredMediaUploads'
 
 type MediaFieldValue = MediaUseReference | AssetVersionReference | null
 
@@ -19,6 +20,10 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{ 'update:modelValue': [value: MediaFieldValue] }>()
+// The field also renders in read-only SSR previews and component audits where
+// no application Pinia exists. Deferred uploads are an editor-only capability.
+const activePinia = getCurrentInstance()?.appContext.config.globalProperties.$pinia
+const deferredMedia = activePinia ? useDeferredMediaUploads(activePinia) : null
 
 const dialogOpen = ref(false)
 const query = ref('')
@@ -26,6 +31,7 @@ const options = ref<MediaAsset[]>([])
 const listState = ref<'idle' | 'loading' | 'ready' | 'empty' | 'error'>('idle')
 const listError = ref('')
 const searchInput = ref<HTMLInputElement | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
 let previousFocus: HTMLElement | null = null
 let debounce: ReturnType<typeof setTimeout> | undefined
 
@@ -42,9 +48,14 @@ const selected = computed(() => {
 
 const selectionLabel = computed(() => {
   if (!selected.value) return '未选择资产'
+  const pending = deferredMedia?.entries[selected.value.assetId]
+  if (pending) return `${pending.file.name}（待保存上传）`
   const name = options.value.find((entry) => entry.id === selected.value?.assetId)?.originalName
   return name ?? `资产 ${selected.value.assetId.slice(0, 8)}`
 })
+const previewSrc = computed(() => selected.value
+  ? deferredMedia?.objectUrls[selected.value.assetId]
+  : undefined)
 
 function mediaValue(assetId: string): MediaUseReference {
   return {
@@ -55,6 +66,7 @@ function mediaValue(assetId: string): MediaUseReference {
 }
 
 function selectAsset(option: MediaAsset): void {
+  discardSelectedPending()
   emit('update:modelValue', props.mode === 'asset'
     ? { assetId: option.id }
     : mediaValue(option.id))
@@ -80,7 +92,29 @@ function updateDecorative(value: boolean): void {
 }
 
 function clearSelection(): void {
+  discardSelectedPending()
   emit('update:modelValue', null)
+}
+
+function discardSelectedPending(): void {
+  const id = selected.value?.assetId
+  if (id?.startsWith(PENDING_MEDIA_PREFIX)) deferredMedia?.discard(id)
+}
+
+function chooseLocalFile(): void {
+  if (!props.disabled) fileInput.value?.click()
+}
+
+function selectLocalFile(event: Event): void {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file || !deferredMedia) return
+  discardSelectedPending()
+  const assetId = deferredMedia.register(file)
+  emit('update:modelValue', props.mode === 'asset'
+    ? { assetId }
+    : mediaValue(assetId))
 }
 
 async function loadOptions(): Promise<void> {
@@ -145,12 +179,25 @@ defineExpose({ loadOptions })
   <div class="media-field">
     <div class="media-field__row">
       <span class="media-field__icon" aria-hidden="true"><ImageIcon :size="15" /></span>
+      <img v-if="previewSrc" class="media-field__preview" :src="previewSrc" alt="" />
       <div class="media-field__summary">
         <strong>{{ selectionLabel }}</strong>
         <small v-if="selected">ID {{ selected.assetId }}</small>
         <small v-else>媒体只能从资产库选择，不接受手填 UUID 或 URL。</small>
       </div>
       <div class="media-field__actions">
+        <input
+          ref="fileInput"
+          class="sr-only"
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          :aria-label="`选择${label}本地图片`"
+          :disabled="disabled"
+          @change="selectLocalFile"
+        />
+        <button class="button button--quiet" type="button" :disabled="disabled" @click="chooseLocalFile">
+          <Upload :size="15" />本地图片
+        </button>
         <button class="button button--quiet" type="button" :disabled="disabled" @click="openDialog">
           {{ selected ? '更换' : '选择' }}
         </button>
@@ -256,6 +303,7 @@ defineExpose({ loadOptions })
 .media-field { display: flex; flex-direction: column; gap: 0.55rem; }
 .media-field__row { display: flex; align-items: center; gap: 0.55rem; padding: 0.6rem; border: 1px solid var(--border-default); border-radius: 8px; background: white; }
 .media-field__icon { display: grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: 7px; background: var(--surface-info); color: var(--airtek-blue); }
+.media-field__preview { width: 2.75rem; height: 2.75rem; border-radius: 7px; object-fit: cover; }
 .media-field__summary { display: flex; flex: 1; min-width: 0; flex-direction: column; }
 .media-field__summary strong { overflow: hidden; font-size: 0.75rem; text-overflow: ellipsis; white-space: nowrap; }
 .media-field__summary small { color: var(--text-secondary); font-size: 0.75rem; }
