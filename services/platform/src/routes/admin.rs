@@ -54,6 +54,7 @@ pub fn router() -> Router<AppState> {
             post(withdraw_private_draft),
         )
         .route("/content-reviews", get(list_content_reviews))
+        .route("/site-singletons/{kind}", get(get_site_singleton))
         .route(
             "/content-reviews/{draftId}/approve",
             post(approve_content_review),

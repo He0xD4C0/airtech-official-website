@@ -6,6 +6,23 @@
 import type { operations } from '../operations'
 
 export interface PathsPart04 {
+"/api/public/v1/rfqs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a structured RFQ */
+        post: operations["createRfqSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/public/v1/routes/resolve": {
         parameters: {
             query?: never;

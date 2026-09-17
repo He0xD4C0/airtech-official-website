@@ -99,6 +99,19 @@ function goToSection(id: string): void {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+function selectInspector(panel: 'block' | 'seo'): void {
+  activePanel.value = panel
+  document.getElementById(`inspector-tab-${panel}`)?.focus()
+}
+
+function onInspectorKeydown(event: KeyboardEvent): void {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+  event.preventDefault()
+  if (event.key === 'Home') selectInspector('block')
+  else if (event.key === 'End') selectInspector('seo')
+  else selectInspector(activePanel.value === 'block' ? 'seo' : 'block')
+}
+
 async function save(): Promise<void> {
   if (await store.save()) ui.toast('草稿已保存', '当前私人草稿已写入数据库。')
   else ui.toast('保存失败', store.saveError || '请重试。', 'danger')
@@ -137,18 +150,18 @@ async function submit(): Promise<void> {
       </div>
       <div class="content-editor__actions">
         <span class="save-state">{{ store.saveLabel }}</span>
-        <button class="icon-button" :disabled="!store.canUndo || !editable" aria-label="撤销" @click="store.undo"><Undo2 :size="16" /></button>
-        <button class="icon-button" :disabled="!store.canRedo || !editable" aria-label="重做" @click="store.redo"><Redo2 :size="16" /></button>
-        <button class="button button--quiet" @click="previewOpen = !previewOpen"><Eye :size="15" />本地预览</button>
-        <button class="button button--quiet" :disabled="!store.isDirty || !editable || store.saveState === 'saving'" @click="save"><Save :size="15" />保存</button>
-        <button class="button button--primary" :disabled="store.isDirty || !editable" @click="submit"><Send :size="15" />提交审核</button>
+        <button class="icon-button" type="button" :disabled="!store.canUndo || !editable" aria-label="撤销" @click="store.undo"><Undo2 :size="16" /></button>
+        <button class="icon-button" type="button" :disabled="!store.canRedo || !editable" aria-label="重做" @click="store.redo"><Redo2 :size="16" /></button>
+        <button class="button button--quiet" type="button" aria-controls="draft-local-preview" :aria-expanded="previewOpen" @click="previewOpen = !previewOpen"><Eye :size="15" />本地预览</button>
+        <button class="button button--quiet" type="button" :disabled="!store.isDirty || !editable || store.saveState === 'saving'" @click="save"><Save :size="15" />保存</button>
+        <button class="button button--primary" type="button" :disabled="store.isDirty || !editable" @click="submit"><Send :size="15" />提交审核</button>
       </div>
     </header>
 
     <p v-if="!editable" class="pending-banner">该草稿处于待审核状态，当前只读；所有者可在草稿列表撤回。</p>
     <p v-if="store.saveError" class="save-error">{{ store.saveError }} <button class="button button--quiet" @click="store.reloadServerVersion">重新载入</button></p>
 
-    <section v-if="previewOpen" class="panel local-preview" aria-label="编辑器内存预览">
+    <section v-if="previewOpen" id="draft-local-preview" class="panel local-preview" aria-label="编辑器内存预览">
       <small>LOCAL MEMORY PREVIEW · 不创建 URL 或数据库记录</small>
       <h1>{{ draft.title }}</h1><p>{{ draft.summary }}</p>
       <ol><li v-for="block in draft.composition.blocks" :key="block.id">{{ block.type }}</li></ol>
@@ -167,10 +180,18 @@ async function submit(): Promise<void> {
         <section v-if="bodyPolicy !== 'forbidden'" id="editor-body" class="panel editor-section"><h2>正文</h2><StructuredBodyEditor :model-value="draft.body" :policy="bodyPolicy" @update:model-value="patchDraft('body', value => { value.body = $event })" /></section>
         <section id="editor-type-fields" class="panel editor-section"><h2>类型字段</h2><TypeFieldsPanel :model-value="draft.typeFields" :kind="draft.kind" @update:model-value="patchDraft('typeFields', value => { value.typeFields = $event as ContentTypeFields })" /></section>
       </div>
-      <aside class="content-editor__inspector">
-        <div class="inspector-tabs"><button :class="{ 'is-active': activePanel === 'block' }" @click="activePanel = 'block'"><Settings2 :size="15" />区块</button><button :class="{ 'is-active': activePanel === 'seo' }" @click="activePanel = 'seo'">SEO</button></div>
-        <BlockInspector v-if="activePanel === 'block' && selectedBlock" :model-value="selectedBlock" :relations="draft.relations" @update:model-value="updateBlock" @remove="removeBlock(selectedBlock.id)" @add-relation="addRelation" />
-        <SeoInspector v-else-if="activePanel === 'seo'" :model-value="draft.seo" :slug="draft.slug ?? null" :locale="draft.locale" :template="template" :is-placeholder="draft.isPlaceholder" @update:model-value="patchDraft('seo', value => { value.seo = $event as SeoInputV2 })" @update:slug="patchDraft('slug', value => { value.slug = $event })" />
+      <aside class="content-editor__inspector" aria-label="内容检查器">
+        <div class="inspector-tabs" role="tablist" aria-label="检查器面板" @keydown="onInspectorKeydown">
+          <button id="inspector-tab-block" type="button" role="tab" aria-controls="inspector-panel-block" :aria-selected="activePanel === 'block'" :tabindex="activePanel === 'block' ? 0 : -1" :class="{ 'is-active': activePanel === 'block' }" @click="selectInspector('block')"><Settings2 :size="15" />区块</button>
+          <button id="inspector-tab-seo" type="button" role="tab" aria-controls="inspector-panel-seo" :aria-selected="activePanel === 'seo'" :tabindex="activePanel === 'seo' ? 0 : -1" :class="{ 'is-active': activePanel === 'seo' }" @click="selectInspector('seo')">SEO</button>
+        </div>
+        <section v-if="activePanel === 'block'" id="inspector-panel-block" role="tabpanel" aria-labelledby="inspector-tab-block">
+          <BlockInspector v-if="selectedBlock" :model-value="selectedBlock" :relations="draft.relations" @update:model-value="updateBlock" @remove="removeBlock(selectedBlock.id)" @add-relation="addRelation" />
+          <div v-else class="panel inspector-empty"><strong>尚未选择区块</strong><p>从页面组成中选择一个区块后，可在这里编辑其属性。</p></div>
+        </section>
+        <section v-else id="inspector-panel-seo" role="tabpanel" aria-labelledby="inspector-tab-seo">
+          <SeoInspector :model-value="draft.seo" :slug="draft.slug ?? null" :locale="draft.locale" :template="template" :is-placeholder="draft.isPlaceholder" @update:model-value="patchDraft('seo', value => { value.seo = $event as SeoInputV2 })" @update:slug="patchDraft('slug', value => { value.slug = $event })" />
+        </section>
       </aside>
     </div>
     <ContentMediaBlockDialog :kind="mediaDialogKind" @confirm="confirmMediaBlock" @close="mediaDialogKind = null" />
@@ -178,5 +199,5 @@ async function submit(): Promise<void> {
 </template>
 
 <style scoped>
-.content-editor { display:flex; flex-direction:column; gap:1rem }.content-editor__topbar,.content-editor__actions,.content-editor__identity { display:flex; align-items:center; gap:.55rem }.content-editor__topbar { justify-content:space-between; flex-wrap:wrap }.content-editor__identity span { display:block; color:var(--admin-muted); font-size:.72rem }.content-editor__layout { display:grid; grid-template-columns:180px minmax(0,1fr) 320px; gap:1rem; align-items:start }.content-editor__workspace,.content-editor__inspector,.editor-section { display:flex; flex-direction:column; gap:.75rem }.save-state { color:var(--admin-muted); font-size:.8rem }.pending-banner,.save-error { padding:.65rem; border-radius:.45rem; background:#fff8e6 }.local-preview { border:2px solid var(--airtek-blue); }.local-preview small { color:var(--admin-muted) }.inspector-tabs { display:flex; gap:.25rem }.inspector-tabs button { padding:.5rem; border:1px solid transparent; background:white }.inspector-tabs .is-active { border-color:var(--color-border) }[inert] { opacity:.72 }@media(max-width:1280px){.content-editor__layout{grid-template-columns:1fr}}
+.content-editor { display:flex; flex-direction:column; gap:1rem }.content-editor__topbar,.content-editor__actions,.content-editor__identity { display:flex; align-items:center; gap:.55rem }.content-editor__topbar { justify-content:space-between; flex-wrap:wrap }.content-editor__identity span { display:block; color:var(--admin-muted); font-size:.75rem }.content-editor__layout { display:grid; grid-template-columns:180px minmax(0,1fr) 320px; gap:1rem; align-items:start }.content-editor__workspace,.content-editor__inspector,.editor-section { display:flex; flex-direction:column; gap:.75rem }.save-state { color:var(--admin-muted); font-size:.8rem }.pending-banner,.save-error { padding:.65rem; border-radius:.45rem; background:#fff8e6 }.local-preview { border:2px solid var(--airtek-blue); }.local-preview small { color:var(--admin-muted) }.inspector-tabs { display:flex; gap:.25rem }.inspector-tabs button { padding:.5rem; border:1px solid transparent; background:white }.inspector-tabs .is-active { border-color:var(--admin-line) }.inspector-empty p { margin:0; color:var(--admin-muted) }[inert] { opacity:.72 }@media(max-width:1280px){.content-editor__layout{grid-template-columns:1fr}}
 </style>

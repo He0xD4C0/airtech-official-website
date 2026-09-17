@@ -2,8 +2,9 @@ use super::*;
 
 pub(super) use crate::{
     models::{
-        CmsDraftPage, CmsDraftSharesRequest, CmsPrivateDraft, CmsPublishResult,
-        CmsPublishedContent, CmsPublishedPage, CmsRejectRequest, CmsReviewPage, CmsSubmitResult,
+        CmsContentKind, CmsDraftPage, CmsDraftSharesRequest, CmsPrivateDraft, CmsPublishResult,
+        CmsPublishedContent, CmsPublishedPage, CmsRejectRequest, CmsReviewPage,
+        CmsSiteSingletonState, CmsSubmitResult,
     },
     services::cms_workflow::{self, CmsListQuery},
 };
@@ -14,10 +15,26 @@ pub(super) struct ContentTemplateListPage {
     pub(super) items: Vec<crate::models::ContentTemplateDefinition>,
 }
 
+#[derive(Debug, serde::Deserialize)]
+pub(super) struct SiteSingletonQuery {
+    locale: String,
+}
+
 pub(super) async fn list_content_templates() -> Result<Json<ContentTemplateListPage>, ApiError> {
     Ok(Json(ContentTemplateListPage {
         items: crate::services::cms_templates::template_registry().to_vec(),
     }))
+}
+
+pub(super) async fn get_site_singleton(
+    State(state): State<AppState>,
+    Extension(principal): Extension<AdminPrincipal>,
+    Path(kind): Path<CmsContentKind>,
+    Query(query): Query<SiteSingletonQuery>,
+) -> Result<Json<CmsSiteSingletonState>, ApiError> {
+    Ok(Json(
+        cms_workflow::get_site_singleton(&state, &principal, kind, &query.locale).await?,
+    ))
 }
 
 pub(super) async fn list_private_drafts(

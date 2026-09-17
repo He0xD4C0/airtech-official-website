@@ -355,27 +355,26 @@ testObjectStorageSettings: {
             };
         };
     };
-listUserInvitations: {
+getSiteSingletonState: {
         parameters: {
-            query?: {
-                /** @description Opaque endpoint-scoped cursor returned by the previous page. */
-                cursor?: string;
-                /** @description Page size; values outside 1 through 100 return Problem Details 400. */
-                limit?: number;
+            query: {
+                locale: string;
             };
             header?: never;
-            path?: never;
+            path: {
+                kind: "generalInformation" | "navigation" | "footer";
+            };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description User invitations */
+            /** @description Site singleton state */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserInvitationPage"];
+                    "application/json": components["schemas"]["CmsSiteSingletonState"];
                 };
             };
             /** @description Malformed request */

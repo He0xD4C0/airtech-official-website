@@ -137,6 +137,7 @@ function assertRequiredDataContracts(document) {
     ['post', '/api/admin/v1/content-reviews/{draftId}/approve', 'approveContentReview'],
     ['get', '/api/admin/v1/published-content/{contentId}', 'getCurrentPublishedContent'],
     ['post', '/api/admin/v1/published-content/{contentId}/drafts', 'copyPublishedContentToPrivateDraft'],
+    ['get', '/api/admin/v1/site-singletons/{kind}', 'getSiteSingletonState'],
     ['get', '/api/admin/v1/products/{id}/private-pricing', 'getProductPrivatePricing'],
   ]
   for (const [method, path, operationId] of operations) {
@@ -155,6 +156,7 @@ function assertRequiredDataContracts(document) {
     CmsPrivateDraft: ['draftId', 'contentId', 'ownerUserId', 'document', 'draftVersion', 'basePublicationVersion', 'state'],
     CmsPublishedContent: ['contentId', 'document', 'publicationVersion', 'publishedBy', 'publishedAt'],
     CmsReviewItem: ['draft', 'submittedByUserId', 'submittedAt'],
+    CmsSiteSingletonState: ['ownDraft', 'published'],
     GeneralInformationTypeFields: ['contact', 'socialLinks', 'defaultSeo', 'productCategories', 'navigationCta'],
   }
   for (const [schemaName, properties] of Object.entries(requiredSchemaProperties)) {

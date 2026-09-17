@@ -179,6 +179,23 @@ export interface PathsPart03 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/site-singletons/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the caller's draft and current publication for a site singleton */
+        get: operations["getSiteSingletonState"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/user-invitations": {
         parameters: {
             query?: never;
@@ -464,23 +481,6 @@ export interface PathsPart03 {
         get: operations["getPublishedProduct"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/rfqs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Submit a structured RFQ */
-        post: operations["createRfqSubmission"];
         delete?: never;
         options?: never;
         head?: never;

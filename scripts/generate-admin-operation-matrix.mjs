@@ -88,6 +88,7 @@ function permissionFor(path, method) {
   if (path === '/api/admin/v1/media/assets' && method === 'get') return 'content.read | media.write'
   if (path.includes('/media/')) return write ? 'media.write' : 'content.read'
   if (path.includes('/content-reviews')) return 'content.publish'
+  if (path.includes('/site-singletons/')) return 'content.read'
   if (path.includes('/published-content')) {
     return write && path.endsWith('/drafts') ? 'content.write' : 'content.read'
   }
@@ -124,6 +125,7 @@ function auditFor(path, method, operationId) {
 
 function frontendConsumerFor(path) {
   if (path.includes('/auth/')) return 'apps/admin/src/services/adminAuthApi.ts'
+  if (path.includes('/site-singletons/')) return 'apps/admin/src/services/contentApi.ts'
   if (path.includes('/content')) return 'apps/admin/src/services/contentApi.ts'
   if (path.includes('/products')) return 'apps/admin/src/services/adminProductApi.ts'
   if (path.includes('/media/')) return 'apps/admin/src/services/mediaApi.ts'

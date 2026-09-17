@@ -54,6 +54,7 @@ export type CmsPublishResult = components['schemas']['CmsPublishResult'];
 export type CmsRejectRequest = components['schemas']['CmsRejectRequest'];
 export type CmsReviewItem = components['schemas']['CmsReviewItem'];
 export type CmsReviewPage = components['schemas']['CmsReviewPage'];
+export type CmsSiteSingletonState = components['schemas']['CmsSiteSingletonState'];
 export type CmsSubmitResult = components['schemas']['CmsSubmitResult'];
 export type CollectionPresentation = components['schemas']['CollectionPresentation'];
 export type ConsentedAnalyticsEvent = components['schemas']['ConsentedAnalyticsEvent'];

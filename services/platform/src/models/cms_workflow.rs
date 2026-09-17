@@ -67,6 +67,13 @@ pub struct CmsReviewPage {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CmsSiteSingletonState {
+    pub own_draft: Option<CmsPrivateDraft>,
+    pub published: Option<CmsPublishedContent>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CmsDraftSharesRequest {
     pub user_ids: Vec<Uuid>,
 }

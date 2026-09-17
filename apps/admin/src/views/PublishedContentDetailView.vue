@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import type { CmsPublishedContent } from '@airtek/contracts'
 import DataStatePanel from '@/components/DataStatePanel.vue'
 import PageHeader from '@/components/PageHeader.vue'
+import PublishedDocumentView from '@/components/content/PublishedDocumentView.vue'
 import { contentApi } from '@/services/contentApi'
 
 const route = useRoute()
@@ -35,9 +36,7 @@ onMounted(load)
       <PageHeader eyebrow="CONTENT / PUBLISHED" :title="record.document.title" :description="`当前发布版本 ${record.publicationVersion}`">
         <template #actions><button class="button button--primary" :disabled="copying" @click="copy">{{ copying ? '正在复制…' : '复制为新私人草稿' }}</button></template>
       </PageHeader>
-      <section class="panel"><p>{{ record.document.summary }}</p><pre>{{ JSON.stringify(record.document.composition, null, 2) }}</pre></section>
+      <PublishedDocumentView :document="record.document" />
     </template>
   </div>
 </template>
-
-<style scoped>pre { max-height: 50vh; overflow: auto; white-space: pre-wrap; }</style>

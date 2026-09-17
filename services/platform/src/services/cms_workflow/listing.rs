@@ -10,7 +10,10 @@ use super::{
 use crate::{
     auth::AdminPrincipal,
     error::ApiError,
-    models::{CmsDraftPage, CmsPublishedPage, CmsReviewItem, CmsReviewPage},
+    models::{
+        CmsContentKind, CmsDraftPage, CmsPublishedPage, CmsReviewItem, CmsReviewPage,
+        CmsSiteSingletonState,
+    },
     pagination::{cursor_limit, decode_scoped_cursor, encode_scoped_cursor, CursorQuery},
     state::AppState,
 };
@@ -217,6 +220,70 @@ pub async fn list_reviews(
         items,
         next_cursor,
         total,
+    })
+}
+
+pub async fn get_site_singleton(
+    state: &AppState,
+    principal: &AdminPrincipal,
+    kind: CmsContentKind,
+    locale: &str,
+) -> Result<CmsSiteSingletonState, ApiError> {
+    if !matches!(
+        kind,
+        CmsContentKind::GeneralInformation | CmsContentKind::Navigation | CmsContentKind::Footer
+    ) {
+        return Err(ApiError::bad_request(
+            "Site singleton kind must be generalInformation, navigation, or footer.",
+        ));
+    }
+    let locale = locale.trim();
+    if locale.is_empty()
+        || locale.chars().count() > 32
+        || !locale
+            .chars()
+            .all(|value| value.is_ascii_alphanumeric() || matches!(value, '-' | '_'))
+    {
+        return Err(ApiError::bad_request(
+            "locale must be a valid locale identifier.",
+        ));
+    }
+    let kind = serde_json::to_value(kind)
+        .ok()
+        .and_then(|value| value.as_str().map(str::to_owned))
+        .ok_or_else(|| ApiError::internal("Site singleton kind serialization failed."))?;
+    let own_draft = sqlx::query(&format!(
+        r#"SELECT {DRAFT_COLUMNS} FROM cms_drafts draft
+           WHERE draft.owner_user_id=$1
+             AND draft.document->>'kind'=$2
+             AND draft.document->>'locale'=$3
+           ORDER BY draft.updated_at DESC,draft.draft_id DESC LIMIT 1"#
+    ))
+    .bind(principal.user_id)
+    .bind(&kind)
+    .bind(locale)
+    .fetch_optional(&state.pool)
+    .await?
+    .as_ref()
+    .map(decode_draft)
+    .transpose()?;
+    let published = sqlx::query(
+        r#"SELECT content_id,document,publication_version,published_by,
+                  published_at,updated_at
+           FROM cms_published_content
+           WHERE document->>'kind'=$1 AND document->>'locale'=$2
+           ORDER BY updated_at DESC,content_id DESC LIMIT 1"#,
+    )
+    .bind(&kind)
+    .bind(locale)
+    .fetch_optional(&state.pool)
+    .await?
+    .as_ref()
+    .map(decode_published)
+    .transpose()?;
+    Ok(CmsSiteSingletonState {
+        own_draft,
+        published,
     })
 }
 

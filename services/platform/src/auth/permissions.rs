@@ -84,6 +84,8 @@ pub fn required_permission(path: &str, method: &axum::http::Method) -> Option<&'
         Some(if write { "media.write" } else { "content.read" })
     } else if path.contains("/content-reviews") {
         Some("content.publish")
+    } else if path.contains("/site-singletons/") {
+        Some("content.read")
     } else if path.contains("/published-content") {
         Some(if write && path.ends_with("/drafts") {
             "content.write"

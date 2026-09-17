@@ -52,6 +52,7 @@ fn documents_every_production_route() {
         "/api/admin/v1/media/assets/{id}/references",
         "/api/admin/v1/operations/{id}",
         "/api/admin/v1/operations/{id}/events",
+        "/api/admin/v1/site-singletons/{kind}",
         "/api/admin/v1/products",
         "/api/admin/v1/products/imports",
         "/api/admin/v1/products/imports/{id}",
