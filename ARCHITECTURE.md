@@ -249,6 +249,20 @@ the editor entry and lazy chunks. It does not scan source length. Keeping these
 checks independent prevents a bundle assertion from silently defining source
 governance and makes each failure identify the boundary that was violated.
 
+Repository cleanup and source reorganization are separate concerns. Generated
+artifacts are removed only through the explicit local-cleanup whitelist, while
+`check:workspace-hygiene` rejects accidental numbered copies in source and
+document directories. It never deletes files.
+
+Admin source moves are incremental and domain-scoped: content first,
+catalog/media second, then identity/analytics/settings. A migration keeps each
+domain's views, components, services, stores, and tests together while shared
+transport, authentication, pagination, and base UI remain common. Each change
+preserves routes, request contracts, state behavior, and the `@` source alias.
+The Rust Platform remains one crate with Route → Service → Storage boundaries;
+growing modules continue to use the existing `module.rs` plus `module/` layout
+rather than introducing a parallel architecture.
+
 ## Developer tools
 
 Development builds may include the browser terminal UI and PTY API. The PTY
