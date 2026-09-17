@@ -22,6 +22,7 @@ const from = ref(typeof route.query.from === 'string' ? route.query.from : '')
 const to = ref(typeof route.query.to === 'string' ? route.query.to : '')
 const total = ref(0)
 const exporting = ref(false)
+const expandedEventId = ref<string | null>(null)
 let filterTimer: ReturnType<typeof setTimeout> | undefined
 
 function filters() {
@@ -84,6 +85,14 @@ async function exportCsv(): Promise<void> {
   }
 }
 
+function toggleDetails(eventId: string): void {
+  expandedEventId.value = expandedEventId.value === eventId ? null : eventId
+}
+
+function formatPayload(value: unknown): string {
+  return value === null || value === undefined ? '无记录' : JSON.stringify(value, null, 2)
+}
+
 onMounted(auditPager.first)
 watch([q, actor, action, resourceType, from, to], scheduleFilter)
 </script>
@@ -108,7 +117,7 @@ watch([q, actor, action, resourceType, from, to], scheduleFilter)
     <DataStatePanel v-if="state !== 'ready'" :state="state" :title="state === 'empty' ? '暂无符合条件的审计记录' : state === 'error' ? auditPager.error.value || '' : ''" @retry="auditPager.refresh" />
 
     <section v-else class="panel table-panel">
-      <div class="data-table-wrap"><table class="data-table audit-table"><thead><tr><th>事件</th><th>操作者</th><th>资源</th><th>原因</th><th>Request ID</th><th>时间</th></tr></thead><tbody><tr v-for="event in events" :key="event.id"><td><span class="event-name"><History :size="15" /><code>{{ event.action }}</code></span></td><td>{{ event.actor }}</td><td><code>{{ event.entityType }}/{{ event.entityId || 'global' }}</code></td><td>{{ event.reason || '—' }}</td><td><code>{{ event.requestId }}</code></td><td>{{ new Date(event.occurredAt).toLocaleString('zh-CN') }}</td></tr></tbody></table></div>
+      <div class="data-table-wrap"><table class="data-table audit-table"><thead><tr><th>事件</th><th>操作者</th><th>资源</th><th>原因</th><th>Request ID</th><th>时间</th><th aria-label="操作"></th></tr></thead><tbody><template v-for="event in events" :key="event.id"><tr><td><span class="event-name"><History :size="15" /><code>{{ event.action }}</code></span></td><td>{{ event.actor }}</td><td><code>{{ event.entityType }}/{{ event.entityId || 'global' }}</code></td><td>{{ event.reason || '—' }}</td><td><code>{{ event.requestId }}</code></td><td>{{ new Date(event.occurredAt).toLocaleString('zh-CN') }}</td><td><button class="button button--quiet" type="button" :aria-expanded="expandedEventId === event.id" :aria-controls="`audit-detail-${event.id}`" @click="toggleDetails(event.id)">{{ expandedEventId === event.id ? '收起' : '查看详情' }}</button></td></tr><tr v-if="expandedEventId === event.id" class="audit-detail-row"><td colspan="7"><section :id="`audit-detail-${event.id}`" class="audit-detail" :aria-label="`${event.action} 变更详情`"><header><strong>{{ event.action }}</strong><span>Revision {{ event.currentVersion ?? '—' }}</span></header><div><article><h3>变更前</h3><pre>{{ formatPayload(event.before) }}</pre></article><article><h3>变更后</h3><pre>{{ formatPayload(event.after) }}</pre></article></div></section></td></tr></template></tbody></table></div>
       <CursorPaginationControls :item-count="events.length" :page-number="auditPager.pageNumber.value" :can-previous="auditPager.canPrevious.value" :can-next="auditPager.canNext.value" :loading="auditPager.loading.value" :label="`条记录，共 ${total} 条`" @previous="auditPager.previous" @next="auditPager.next" />
     </section>
   </div>
@@ -117,5 +126,14 @@ watch([q, actor, action, resourceType, from, to], scheduleFilter)
 <style scoped>
 .audit-filters { display: grid; grid-template-columns: minmax(260px, 2fr) repeat(3, minmax(140px, 1fr)); gap: .75rem; align-items: end; }
 .audit-filters .search-field { grid-column: span 2; }
+.audit-detail-row > td { padding: 0; background: color-mix(in srgb, var(--admin-surface, #fff) 92%, var(--airtek-green, #5db37a)); }
+.audit-detail { display: grid; gap: .75rem; padding: 1rem; }
+.audit-detail > header { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
+.audit-detail > header span { color: var(--admin-muted, #556663); font-size: .78rem; }
+.audit-detail > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.audit-detail article { min-width: 0; }
+.audit-detail h3 { margin: 0 0 .35rem; font-size: .75rem; color: var(--admin-muted, #556663); }
+.audit-detail pre { max-height: 280px; margin: 0; overflow: auto; padding: .75rem; border: 1px solid var(--admin-line); border-radius: 8px; background: white; font-size: .72rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 900px) { .audit-detail > div { grid-template-columns: 1fr; } }
 @media (max-width: 768px) { .audit-filters, .audit-filters .search-field { grid-template-columns: 1fr; grid-column: auto; } }
 </style>
