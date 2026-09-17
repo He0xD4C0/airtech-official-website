@@ -116,6 +116,7 @@ services:
     image: ${AIRTEK_ADMIN_WEB_IMAGE:?set AIRTEK_ADMIN_WEB_IMAGE to an immutable image reference}
     environment:
       ADMIN_API_ORIGIN: ${AIRTEK_API_ORIGIN:?set AIRTEK_API_ORIGIN}
+      ADMIN_MEDIA_IMAGE_SOURCES: "https:"
     expose:
       - "3100"
     depends_on:
@@ -136,6 +137,7 @@ services:
       ADMIN_HOST: ${ADMIN_HOST:?set ADMIN_HOST}
       API_HOST: ${API_HOST:?set API_HOST}
       API_BROWSER_ORIGIN: ${AIRTEK_API_ORIGIN:?set AIRTEK_API_ORIGIN}
+      MEDIA_IMAGE_SOURCES: "https:"
     ports:
       - "${AIRTEK_INGRESS_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_INGRESS_HTTP_PORT:-8088}:8088"
     depends_on:

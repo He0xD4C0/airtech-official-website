@@ -425,7 +425,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
         secretAccessKey: 'local-api-media-only',
         keyPrefix: 'media',
         pathStyle: true,
-        publicBaseUrl: 'http://host.docker.internal:19000/airtek-media',
+        publicBaseUrl: 'http://media.localhost:19000/airtek-media',
         adoptLegacyAssets: true,
         reason: 'Configure isolated E2E object storage through the Admin API.',
       },

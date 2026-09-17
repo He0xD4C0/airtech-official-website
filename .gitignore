@@ -13,5 +13,6 @@ target/
 coverage/
 playwright-report/
 test-results/
+dogfood-output/
 *.log
 Internal-docs/

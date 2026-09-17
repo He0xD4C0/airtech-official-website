@@ -8,6 +8,7 @@ describe('public server infrastructure routes', () => {
     expect(response.headers.get('location')).toBe('/en')
     expect(response.headers.get('x-content-type-options')).toBe('nosniff')
     expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'none'")
+    expect(response.headers.get('content-security-policy')).toContain('http://media.localhost:19000')
   })
 
   it('does not proxy the isolated Admin namespace', async () => {

@@ -30,6 +30,7 @@ RUN pnpm --filter @airtek/contracts build \
 
 FROM nginx:1.27-alpine
 ENV ADMIN_API_ORIGIN=http://localhost:8080
+ENV ADMIN_MEDIA_IMAGE_SOURCES=https:
 RUN sed -i '/^user /d' /etc/nginx/nginx.conf \
     && rm -f /etc/nginx/conf.d/default.conf \
     && touch /var/run/nginx.pid \

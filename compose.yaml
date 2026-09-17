@@ -160,6 +160,7 @@ services:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_API_HOST_PORT:-8080}:8080"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+      - "media.localhost:host-gateway"
     depends_on:
       platform-maintenance:
         condition: service_completed_successfully
@@ -248,6 +249,7 @@ services:
         VITE_ADMIN_API_BASE_URL: ${VITE_ADMIN_API_BASE_URL:-http://localhost:8080/api/admin/v1}
     environment:
       ADMIN_API_ORIGIN: ${API_BROWSER_ORIGIN:-http://localhost:8080}
+      ADMIN_MEDIA_IMAGE_SOURCES: "https: http://media.localhost:19000 http://localhost:19000"
     ports:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_ADMIN_HOST_PORT:-3100}:3100"
     depends_on:
@@ -270,6 +272,7 @@ services:
       ADMIN_HOST: ${ADMIN_HOST:-admin.localhost}
       API_HOST: ${API_HOST:-api.localhost}
       API_BROWSER_ORIGIN: ${API_BROWSER_ORIGIN:-http://api.localhost:8088}
+      MEDIA_IMAGE_SOURCES: "https: http://media.localhost:19000 http://localhost:19000"
     ports:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_GATEWAY_HOST_PORT:-8088}:8088"
     depends_on:

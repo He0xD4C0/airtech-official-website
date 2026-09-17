@@ -6,6 +6,7 @@ import { defineConfig, loadEnv, type Connect, type Plugin } from 'vite'
 const DEVTOOLS_MODULE = 'virtual:devtools-routes'
 const RESOLVED_DEVTOOLS_MODULE = `\0${DEVTOOLS_MODULE}`
 const WORKSPACE_ROOT = fileURLToPath(new URL('../..', import.meta.url))
+const DEVELOPMENT_MEDIA_IMAGE_SOURCES = 'https: http://media.localhost:19000 http://localhost:19000'
 
 function setIsolationHeaders(
   _req: Connect.IncomingMessage,
@@ -18,7 +19,7 @@ function setIsolationHeaders(
   res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), microphone=()')
   res.setHeader(
     'Content-Security-Policy',
-    `default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ${connectSources}; form-action 'self'`,
+    `default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob: ${DEVELOPMENT_MEDIA_IMAGE_SOURCES}; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ${connectSources}; form-action 'self'`,
   )
 }
 

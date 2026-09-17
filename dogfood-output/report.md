@@ -144,3 +144,76 @@ CMS 的基础视觉方向是成立的：AIRTEKPOWER 蓝、绿、深墨色在导�
 - 当前数据量不足以用 GUI 复现第 101 条记录，但源码中的固定 `limit: 100` 和缺少分页已直接确认。
 - 截图已在本次浏览器会话中逐页检查；当前浏览器驱动只返回内联图像，未生成持久截图文件。
 - 工作区原有未跟踪合同文件未被触碰。
+
+---
+
+# OODA 循环 2：媒体上传成功但浏览器预览失败
+
+审计日期：2026-09-18
+审计范围：Admin 登录、对象存储设置、媒体上传、详情预览、CSP 与本地运行时可达性
+审计方式：真实 Chromium 浏览器自动化 + 控制台与网络失败检查 + Compose 运行时响应头核对
+结果：发现 1 个中优先级问题，已完成复现、根因分析、修复和浏览器回归验证
+
+## CMS-MEDIA-001 — 上传成功后媒体预览不可见
+
+- 严重度：Medium
+- 类型：Functional / Visual / Console
+- 位置：`/settings/object-storage`、`/media`
+- 状态：已修复并验证
+
+### 发现
+
+通过 Admin GUI 登录并完成 TOTP 后，在对象存储页面配置本地 MinIO，从媒体页面上传图片。上传接口返回 HTTP 201，媒体记录和预览对象均已生成，但详情抽屉显示破图。
+
+首次失败的浏览器控制台明确报告 `img-src` CSP 拒绝外部 MinIO URL。只放开该来源后，Chromium 又报告 `ERR_NAME_NOT_RESOLVED`：`host.docker.internal` 可用于容器访问宿主机，却不是宿主浏览器可稳定解析的公开媒体域名。
+
+修复前证据：
+
+`MEDIA:/Users/he0xd4c0/CodeBank/airtech-official-website/dogfood-output/screenshots/media-after-upload.png`
+
+### 分析
+
+本地公开媒体 URL 同时跨越两个运行时边界，但旧实现只满足了其中一个：
+
+- Admin 与公开站点 CSP 只允许同源图片，阻止 GUI 展示数据库中固化的外部媒体 URL。
+- `host.docker.internal` 满足 API 容器到宿主 MinIO 的访问，却不能保证宿主 Chromium 能解析同一 URL。
+
+因此，上传链路本身正常，故障发生在“数据库中固化的公开 URL 是否真能被最终用户浏览器读取”这一验收边界。
+
+### 规划与修复
+
+- 本地 GUI 配置统一使用 `http://media.localhost:19000/airtek-media`。
+- 仅在 API 容器中把 `media.localhost` 映射到 Docker host gateway。
+- 开发环境 CSP 明确允许固定的本地媒体来源；生产环境仍只允许 `https:` 外部媒体。
+- 对象存储设置页增加开发提示，避免再次录入只对容器有效的主机名。
+- 部署门禁新增本地/生产 CSP 和 host mapping 检查。
+- E2E 不再只验证 HTTP 200，而是等待图片 `naturalWidth > 0`，覆盖真实浏览器渲染。
+
+### GUI 回归结果
+
+通过对象存储 GUI 执行连接测试并保存新地址后，再从媒体 GUI 上传新图片：
+
+- 上传响应为 HTTP 201。
+- 固化 URL 使用 `media.localhost`。
+- 详情预览成功加载，图片尺寸为 1000 × 1000。
+- 浏览器控制台错误为 0。
+- 网络失败请求为 0。
+- Admin、公开站点及 gateway 的本地 CSP 均包含该媒体来源；生产 Compose 仍限制为 `https:`。
+
+修复后证据：
+
+`MEDIA:/Users/he0xd4c0/CodeBank/airtech-official-website/dogfood-output/screenshots/media-preview-fixed.png`
+
+对象存储 GUI 证据：
+
+`MEDIA:/Users/he0xd4c0/CodeBank/airtech-official-website/dogfood-output/screenshots/object-storage-media-localhost.png`
+
+### 本轮边界
+
+已实际操作：`/login`、`/account/security`、`/settings/object-storage`、`/media`。
+
+本轮未覆盖：
+
+- 同一媒体在已发布公开内容中的最终渲染。
+- 媒体删除等破坏性生命周期操作。
+- 真实生产 CDN 或外部 S3 endpoint。

@@ -8,10 +8,12 @@ import {
   type UpdateObjectStorageSettings,
 } from '@/services/adminApi'
 import { apiErrorMessage } from '@/services/cursorPagination'
+import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import type { ApiProblem } from '@/types/domain'
 
 const ui = useUiStore()
+const auth = useAuthStore()
 const loaded = ref<ObjectStorageSettings | null>(null)
 const endpoint = ref('')
 const region = ref('us-east-1')
@@ -164,7 +166,7 @@ onMounted(() => void load())
       <div class="settings-section">
         <h3>公开媒体地址</h3>
         <p>新媒体会把此基础地址与对象 key 拼接并永久写入记录；以后修改不会重写旧 URL。</p>
-        <label class="field"><span>Public Base URL</span><input v-model="publicBaseUrl" placeholder="https://media.example.com" autocomplete="off" /></label>
+        <label class="field"><span>Public Base URL</span><input v-model="publicBaseUrl" placeholder="https://media.example.com" autocomplete="off" /><small v-if="auth.isDevelopment">本地 MinIO 使用 http://media.localhost:19000/airtek-media；该地址同时可由浏览器和 API 容器访问。</small></label>
         <label v-if="needsAdoption" class="toggle-row storage-adoption"><span><strong>接管 {{ loaded.legacyAssetCount }} 条历史媒体</strong><small>按当前 Public Base URL 与原 storage key 一次性固化，操作不可由设置更新自动撤销。</small></span><input v-model="adoptLegacyAssets" type="checkbox" /></label>
       </div>
 

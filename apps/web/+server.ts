@@ -17,6 +17,13 @@ function publicApiBrowserOrigin(): string {
   return ''
 }
 
+function publicMediaImageSources(): string {
+  const publicOrigin = process.env.PUBLIC_ORIGIN || 'http://localhost:3000'
+  return publicOrigin.startsWith('https:')
+    ? 'https:'
+    : 'https: http://media.localhost:19000 http://localhost:19000'
+}
+
 export function withPublicSecurityHeaders(response: Response, pathname = ''): Response {
   const headers = new Headers(response.headers)
   headers.set('X-Content-Type-Options', 'nosniff')
@@ -24,7 +31,7 @@ export function withPublicSecurityHeaders(response: Response, pathname = ''): Re
   headers.set('Permissions-Policy', 'camera=(), geolocation=(), microphone=()')
   headers.set(
     'Content-Security-Policy',
-    `default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' ${publicApiBrowserOrigin()}; form-action 'self'`,
+    `default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob: ${publicMediaImageSources()}; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' ${publicApiBrowserOrigin()}; form-action 'self'`,
   )
   if (pathname === '/en/preview' || pathname === '/en/preview/') {
     headers.set('Cache-Control', 'private, no-store, max-age=0')

@@ -31,7 +31,7 @@ function severeViolations(
 
 function hostReadableUrl(publicUrl: string): string {
   const url = new URL(publicUrl)
-  if (url.hostname.toLowerCase() === 'host.docker.internal') url.hostname = '127.0.0.1'
+  if (url.hostname.toLowerCase() === 'media.localhost') url.hostname = '127.0.0.1'
   return url.toString()
 }
 
@@ -115,7 +115,7 @@ test.describe('direct public media upload', () => {
     expect(asset).toMatchObject({ originalName: fileName, mediaType: 'image/png', byteSize: RASTER_PNG.byteLength })
     expect(asset.sha256).toMatch(/^[a-f0-9]{64}$/u)
 
-    expect(asset.publicUrl).toMatch(/^http:\/\/host\.docker\.internal:19000\/airtek-media\/media\//u)
+    expect(asset.publicUrl).toMatch(/^http:\/\/media\.localhost:19000\/airtek-media\/media\//u)
     const publicResponse = await page.request.get(hostReadableUrl(asset.publicUrl))
     expect(publicResponse.status()).toBe(200)
     expect(publicResponse.headers()['content-type']).toBe('image/png')
@@ -130,6 +130,7 @@ test.describe('direct public media upload', () => {
     if (!await detail.isVisible()) {
       await row.getByRole('button', { name: new RegExp(fileName, 'u') }).click()
     }
+    await expect.poll(() => detail.locator('img').evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
     await expect(detail.getByText(asset.sha256)).toBeVisible()
     await expect(detail.getByText('暂无已发布内容引用。')).toBeVisible()
 
@@ -144,13 +145,13 @@ test.describe('direct public media upload', () => {
     expect(first.status).toBe(201)
     const assetA = first.body as MediaAsset
 
-    await updatePublicBaseUrl(page, 'http://HOST.DOCKER.INTERNAL:19000/airtek-media')
+    await updatePublicBaseUrl(page, 'http://MEDIA.LOCALHOST:19000/airtek-media')
     const second = await uploadFromBrowser(page, `e2e-url-b-${suffix}`, `url-b-${suffix}.png`, RASTER_PNG)
     expect(second.status).toBe(201)
     const assetB = second.body as MediaAsset
 
-    expect(assetA.publicUrl).toMatch(/^http:\/\/host\.docker\.internal:19000\/airtek-media\/media\//u)
-    expect(assetB.publicUrl).toMatch(/^http:\/\/HOST\.DOCKER\.INTERNAL:19000\/airtek-media\/media\//u)
+    expect(assetA.publicUrl).toMatch(/^http:\/\/media\.localhost:19000\/airtek-media\/media\//u)
+    expect(assetB.publicUrl).toMatch(/^http:\/\/MEDIA\.LOCALHOST:19000\/airtek-media\/media\//u)
     expect(assetB.publicUrl).not.toBe(assetA.publicUrl)
     for (const publicUrl of [assetA.publicUrl, assetB.publicUrl]) {
       const response = await page.request.get(hostReadableUrl(publicUrl))
