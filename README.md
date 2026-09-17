@@ -18,6 +18,26 @@ PostgreSQL remains the database. SQLx is used only by the Rust API and Worker
 for runtime data access; Flyway `13.4.0` exclusively owns schema versions and
 migration history.
 
+## Repository layout
+
+| Path | Responsibility |
+| --- | --- |
+| `apps/` | Deployable Public SSR and Admin SPA applications |
+| `packages/` | Shared contracts, design assets, and draft-rendering primitives |
+| `services/` | Rust API, Worker, Maintenance, and Flyway-owned schema history |
+| `infra/` | Container, gateway, deployment, and object-storage configuration |
+| `tests/` | Cross-application browser contracts and their support code |
+| `docs/` | Source evidence and planning inputs; not generated runtime output |
+| `deliverables/` | Versioned working deliverables, kept separate from source evidence |
+| `reports/` | Dated QA and audit evidence intended for repository retention |
+| `scripts/` | Generation, validation, boundary checks, and local maintenance tools |
+
+Dependencies, build output, caches, browser reports, and temporary conversion
+files are local generated artifacts and remain Git-ignored. `pnpm clean:local`
+previews the cleanup whitelist; `pnpm clean:local:apply` explicitly removes it.
+Neither command deletes dependencies, environment files, deliverables, or
+arbitrary untracked files.
+
 ## Local development
 
 Prerequisites:
@@ -246,11 +266,15 @@ docker compose --env-file infra/deploy/production.env.example -f compose.product
 ## Verification
 
 ```sh
+pnpm check:workspace-hygiene
 pnpm test:source-lines
 pnpm check:source-lines
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm test:frontend
+pnpm test:rust
+pnpm test:all
 pnpm db:validate
 pnpm test:e2e
 pnpm test:e2e:stack
@@ -262,6 +286,12 @@ cargo fmt --manifest-path services/platform/Cargo.toml --all -- --check
 cargo clippy --manifest-path services/platform/Cargo.toml --all-targets -- -D warnings
 cargo test --manifest-path services/platform/Cargo.toml
 ```
+
+The historical `pnpm test` command remains the frontend workspace test entry
+point. Use `pnpm test:all` when a local check must also run the repository-tool
+tests and Rust Platform tests. The workspace hygiene check rejects copy-conflict
+filenames such as `example 2.ts` when `example.ts` exists beside them; it does
+not reject legitimate numbered names without a canonical counterpart.
 
 `check:source-lines` audits application code, tests, executable scripts, SQL,
 and generated source across the repository. Ordinary source files may contain
