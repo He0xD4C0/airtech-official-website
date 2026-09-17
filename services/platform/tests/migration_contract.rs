@@ -3,6 +3,14 @@ use uuid::Uuid;
 
 mod support;
 
+// These contracts repeatedly create and remove the complete legacy schema.
+// PostgreSQL relation-cache invalidation is database-wide, so concurrent DDL
+// in separate schemas can still race with a relation that has just been
+// dropped and surface as "could not open relation with OID ...". Keep the
+// migration chains serial while leaving the rest of the PostgreSQL contracts
+// on Cargo's default test parallelism.
+static MIGRATION_CHAIN_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 fn migration_document(suffix: &str, version: i64) -> Value {
     json!({
         "schemaVersion": 2,
@@ -69,6 +77,7 @@ async fn insert_v16_content(
 #[tokio::test]
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
 async fn current_publication_and_private_draft_migrate_without_history() {
+    let _migration_guard = MIGRATION_CHAIN_LOCK.lock().await;
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
     let sandbox = support::MigrationSandbox::create(&database_url).await;
@@ -143,6 +152,7 @@ async fn current_publication_and_private_draft_migrate_without_history() {
 #[tokio::test]
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
 async fn invalid_current_publication_aborts_v17() {
+    let _migration_guard = MIGRATION_CHAIN_LOCK.lock().await;
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
     let sandbox = support::MigrationSandbox::create(&database_url).await;

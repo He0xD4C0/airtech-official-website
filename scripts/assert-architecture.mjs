@@ -11,9 +11,10 @@ function filesUnder(path) {
   if (!existsSync(absolute)) return []
   return readdirSync(absolute).flatMap((name) => {
     const child = join(absolute, name)
+    const relativeChild = relative(root, child).replaceAll('\\', '/')
     return statSync(child).isDirectory()
-      ? filesUnder(relative(root, child))
-      : [relative(root, child)]
+      ? filesUnder(relativeChild)
+      : [relativeChild]
   })
 }
 

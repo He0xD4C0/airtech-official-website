@@ -9,7 +9,7 @@ function read(relativePath) {
     failures.push(`${relativePath} is missing.`)
     return ''
   }
-  return readFileSync(path, 'utf8')
+  return readFileSync(path, 'utf8').replace(/\r\n/gu, '\n')
 }
 
 function requireMatch(body, pattern, failure) {
@@ -393,6 +393,22 @@ for (const variable of ['AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES', 'AIRTEK_ANALYTIC
   requireMatch(serviceBlock(productionCompose, 'platform-api'), new RegExp(`${variable}:\\s*\\$\\{${variable}`, 'u'), `Production API must receive ${variable}.`)
   requireMatch(productionEnv, new RegExp(`^${variable}=`, 'mu'), `Production environment example must declare ${variable}.`)
 }
+
+const productionRelease = read('.github/workflows/release-production.yml')
+requireMatch(productionRelease, /^\s+packages:\s+write$/mu, 'Production image publishing must grant the workflow package write permission.')
+requireMatch(productionRelease, /registry:\s+ghcr\.io/u, 'Production images must publish to GHCR.')
+requireMatch(productionRelease, /password:\s*\$\{\{ github\.token \}\}/u, 'GHCR publishing must use the short-lived GitHub workflow token.')
+requireMatch(productionRelease, /tags:\s+\$\{\{ needs\.prepare\.outputs\.image_prefix \}\}-\$\{\{ matrix\.image \}\}:\$\{\{ needs\.prepare\.outputs\.image_tag \}\}/u, 'Published image tags must use the AIRTEKPOWER package prefix and prepared immutable tag.')
+forbidMatch(productionRelease, /ACR_/u, 'Production release workflow must not retain Alibaba Container Registry configuration.')
+requireMatch(productionRelease, /image_tag=\$REQUESTED_SHA-candidate/u, 'Incomplete production origins must publish a distinct candidate tag.')
+requireMatch(productionRelease, /public_origin=http:\/\/www\.localhost:8088/u, 'Candidate Public builds must use the reviewed local origin.')
+requireMatch(productionRelease, /api_origin=http:\/\/api\.localhost:8088/u, 'Candidate browser builds must use the reviewed local API origin.')
+forbidMatch(productionRelease, /^  deploy:\s*$/mu, 'Image publishing must not contain a server deployment job.')
+forbidMatch(productionRelease, /ECS_|SSH_PRIVATE_KEY|deploy_after_publish/u, 'Image publishing must not accept server credentials or deployment controls.')
+
+const productionDeploy = read('infra/deploy/deploy-app.sh')
+requireMatch(productionDeploy, /compose_release "\$release_dir" run --rm flyway-migrate validate\ncompose_release "\$release_dir" run --rm platform-maintenance\n/u, 'Production deployment must prepare runtime data immediately after Flyway validation.')
+requireMatch(productionDeploy, /AIRTEK_PLATFORM_IMAGE=\$image_prefix-platform:\$release_id/u, 'Production deployment must reference the GHCR AIRTEKPOWER platform package.')
 
 const localEnvExample = read('.env.example')
 for (const variable of [

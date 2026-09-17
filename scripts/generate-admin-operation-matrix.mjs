@@ -25,7 +25,8 @@ const output = `${JSON.stringify({
 }, null, 2)}\n`
 
 if (check) {
-  if (!existsSync(matrixPath) || readFileSync(matrixPath, 'utf8') !== output) {
+  const current = existsSync(matrixPath) ? readFileSync(matrixPath, 'utf8').replaceAll('\r\n', '\n') : ''
+  if (current !== output) {
     throw new Error('Admin operation matrix is stale. Run pnpm generate:contracts.')
   }
   console.log(`Admin operation matrix is current (${matrix.length} operations).`)

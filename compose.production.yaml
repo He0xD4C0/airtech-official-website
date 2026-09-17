@@ -1,4 +1,4 @@
-name: airtekpower-production
+name: ${AIRTEK_APP_PROJECT_NAME:-airtek-app}
 
 # Provider-neutral production process boundary. The image references and
 # browser-visible origins are deliberately mandatory: a release must promote
@@ -158,6 +158,5 @@ services:
 
 networks:
   default:
-    ipam:
-      config:
-        - subnet: ${AIRTEK_COMPOSE_SUBNET:-172.29.0.0/24}
+    external: true
+    name: ${AIRTEK_PRODUCTION_NETWORK:-airtek-production}

@@ -41,7 +41,8 @@ ${responseLines.join('\n')}
 
 if (source.split('\n').length > 500) throw new Error('Runtime parser data exceeds 500 lines.')
 if (check) {
-  if (!existsSync(output) || readFileSync(output, 'utf8') !== source) {
+  const current = existsSync(output) ? readFileSync(output, 'utf8').replaceAll('\r\n', '\n') : ''
+  if (current !== source) {
     throw new Error('Generated OpenAPI runtime parser data is stale.')
   }
   console.log('Generated OpenAPI runtime parser data is current.')

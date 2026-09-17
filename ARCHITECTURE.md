@@ -149,6 +149,13 @@ platform and database boundary; there is no media-specific service or heartbeat.
 Historical media review columns remain inert for schema compatibility and are
 not read by runtime code.
 
+The selected single-host production topology operates PostgreSQL in the
+independent `airtek-infra` project. Object storage is an external application
+dependency configured through Admin and persisted in PostgreSQL, not production
+Compose or environment configuration. Production readiness still requires a
+reviewed public delivery origin, monitoring, off-host backup, restore validation,
+and an endpoint smoke test.
+
 The required product-master paths are:
 
 ```text
@@ -269,7 +276,7 @@ S3-compatible direct media transport is implemented. MinIO is the local/E2E
 reference service; production media remains unverified until an approved
 HTTPS endpoint and public origin, least-privilege API identity, monitoring, and
 a real endpoint smoke test are in place. Feishu network synchronization, GA4
-loading, CDN purge, external search
-providers and email/CRM/webhooks
-are not connected. Environment placeholders, passing local tests, or Admin
-screens must not be treated as proof of an active external integration.
+loading, CDN purge, external search providers, email/CRM/webhooks, backup
+executors, and isolated restore executors are not connected. Environment
+placeholders, passing local tests, or Admin screens must not be treated as proof
+of an active external integration.

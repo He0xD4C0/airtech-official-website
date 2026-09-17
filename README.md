@@ -443,6 +443,11 @@ heartbeat, or media job types.
 Historical review-related database columns from early migrations are inert
 compatibility columns and are not part of runtime models, OpenAPI, or Admin UI.
 
+Production connects only the API to an independently operated S3-compatible
+service using settings saved through Admin. The browser receives no object-store
+credentials and reads the immutable public URL recorded for the asset. This
+repository does not provide a CDN or third-party malware scanner.
+
 ## Data and publication rules
 
 - A supplied, owner-approved Product Master CSV is authoritative only for its
@@ -485,8 +490,9 @@ compatibility columns and are not part of runtime models, OpenAPI, or Admin UI.
 - The API owns the direct S3-compatible upload and delete-compensation path,
   while browsers read the immutable external URL. Production still requires a
   reviewed HTTPS object-store endpoint and public origin, least-privilege API
-  credentials, monitoring, and an end-to-end smoke
-  test; none is implied by checked-in configuration.
+  credentials, monitoring, off-host backup and an end-to-end smoke test; none
+  is implied by checked-in configuration. Machine scanning is not part of the
+  media workflow.
 - Feishu and GA4 values are still reserved configuration only; no live Feishu
   synchronization or GA4 loading is implied.
 - Consent-gated first-party analytics events are sanitized in the public client,

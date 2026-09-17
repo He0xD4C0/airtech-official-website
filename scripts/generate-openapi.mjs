@@ -55,10 +55,9 @@ try {
   mkdirSync(dirname(rawGenerated), { recursive: true })
   writeFileSync(candidateSnapshot, `${JSON.stringify(document, null, 2)}\n`)
 
-  const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
-  execFileSync(pnpm, [
-    'exec',
-    'openapi-typescript',
+  const openApiTypescriptCli = join(root, 'node_modules/openapi-typescript/bin/cli.js')
+  execFileSync(process.execPath, [
+    openApiTypescriptCli,
     candidateSnapshot,
     '--output',
     rawGenerated,

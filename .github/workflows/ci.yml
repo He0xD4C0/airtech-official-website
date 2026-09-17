@@ -130,6 +130,7 @@ jobs:
       FLYWAY_USER: airtek
       FLYWAY_PASSWORD: airtek
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: airtek_runtime
+      AIRTEK_FLYWAY_TARGET: 19
     steps:
       - uses: actions/checkout@v4
       - name: Generate a temporary CI-only runtime database password
@@ -155,14 +156,14 @@ jobs:
             --set "runtime_password=${AIRTEK_RUNTIME_DATABASE_PASSWORD}" <<'SQL'
           CREATE ROLE airtek_runtime LOGIN PASSWORD :'runtime_password';
           SQL
-          docker exec ${{ job.services.postgres.id }} psql --username airtek --dbname airtek --set ON_ERROR_STOP=1 --command "CREATE SEQUENCE public.ci_runtime_grant_sequence"
       - name: Build the non-root Flyway migrations image
         run: docker build --file infra/docker/Dockerfile.flyway --tag airtek-flyway:ci .
       - name: Apply Flyway migrations twice and validate history
         run: |
-          docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE airtek-flyway:ci migrate
-          docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE airtek-flyway:ci migrate
-          docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE airtek-flyway:ci validate
+          docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE -e AIRTEK_FLYWAY_TARGET airtek-flyway:ci migrate
+          docker exec ${{ job.services.postgres.id }} psql --username airtek --dbname airtek --set ON_ERROR_STOP=1 --command "CREATE SEQUENCE public.ci_runtime_grant_sequence"
+          docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE -e AIRTEK_FLYWAY_TARGET airtek-flyway:ci migrate
+          docker run --rm --network host -e FLYWAY_URL -e FLYWAY_USER -e FLYWAY_PASSWORD -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE -e AIRTEK_FLYWAY_TARGET airtek-flyway:ci validate
           docker exec ${{ job.services.postgres.id }} psql --username airtek --dbname airtek --set ON_ERROR_STOP=1 --command "DO \$\$ BEGIN IF NOT has_table_privilege('airtek_runtime', 'public.content_entries', 'SELECT') OR NOT has_sequence_privilege('airtek_runtime', 'public.ci_runtime_grant_sequence', 'USAGE') OR NOT has_database_privilege('airtek_runtime', current_database(), 'TEMPORARY') OR NOT has_table_privilege('airtek_runtime', 'public.flyway_schema_history', 'SELECT') OR has_table_privilege('airtek_runtime', 'public.flyway_schema_history', 'INSERT') OR has_table_privilege('airtek_runtime', 'public.flyway_schema_history', 'TRUNCATE') OR NOT has_schema_privilege('airtek_runtime', 'public', 'USAGE') OR has_schema_privilege('airtek_runtime', 'public', 'CREATE') THEN RAISE EXCEPTION 'runtime role boundary is invalid'; END IF; END \$\$"
           docker exec \
             -e "PGPASSWORD=${AIRTEK_RUNTIME_DATABASE_PASSWORD}" \
@@ -197,6 +198,7 @@ jobs:
               -e FLYWAY_USER \
               -e FLYWAY_PASSWORD \
               -e FLYWAY_PLACEHOLDERS_RUNTIME_ROLE \
+              -e AIRTEK_FLYWAY_TARGET \
               airtek-flyway:ci "$@"
           }
 
@@ -213,9 +215,15 @@ jobs:
               checksum bytea NOT NULL,
               execution_time bigint NOT NULL
           );
-          CREATE TABLE public.content_entries (id bigint PRIMARY KEY);
-          CREATE TABLE public.jobs (id bigint PRIMARY KEY);
+          SQL
 
+          for migration in \
+            services/platform/migrations/V000{1..9}__*.sql \
+            services/platform/migrations/V0010__*.sql; do
+            run_psql airtek_sqlx_adoption < "${migration}"
+          done
+
+          run_psql airtek_sqlx_adoption <<'SQL'
           INSERT INTO public._sqlx_migrations
               (version, description, success, checksum, execution_time)
           VALUES
@@ -344,11 +352,16 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/assert-deployment-config.mjs
+      - run: node scripts/assert-production-infrastructure.mjs
       - run: docker compose config --quiet
       - name: Validate opt-in debug port override
         run: docker compose -f compose.yaml -f compose.debug.yaml --profile object-storage config --quiet
       - name: Validate provider-neutral production Compose
         run: docker compose --env-file infra/deploy/production.env.example -f compose.production.yaml config --quiet
+      - name: Validate independently operated production infrastructure
+        run: docker compose --env-file infra/deploy/infrastructure.env.example -f compose.infrastructure.production.yaml --profile bootstrap config --quiet
+      - name: Validate production shell scripts
+        run: sh -n infra/deploy/deploy-app.sh infra/deploy/postgres-bootstrap.sh
       - name: Validate Admin Nginx template
         run: >-
           docker run --rm

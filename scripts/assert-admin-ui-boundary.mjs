@@ -37,7 +37,7 @@ if (oversizedChunks.length) {
     .join('\n')}`)
 }
 
-const editorEntries = javascriptAssets.filter((path) => /\/ContentEditorShell-[^/]+\.js$/u.test(path))
+const editorEntries = javascriptAssets.filter((path) => /[\\/]ContentEditorShell-[^\\/]+\.js$/u.test(path))
 if (editorEntries.length !== 1) {
   throw new Error(`Expected exactly one ContentEditorShell JavaScript chunk, found ${editorEntries.length}.`)
 }

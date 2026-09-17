@@ -1,0 +1,112 @@
+name: Publish application images
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Full commit SHA to publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: application-images
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    outputs:
+      release_sha: ${{ steps.release.outputs.sha }}
+      image_prefix: ${{ steps.release.outputs.image_prefix }}
+      image_tag: ${{ steps.release.outputs.image_tag }}
+      public_origin: ${{ steps.release.outputs.public_origin }}
+      api_origin: ${{ steps.release.outputs.api_origin }}
+    steps:
+      - id: release
+        env:
+          REQUESTED_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.release_sha }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          PUBLIC_ORIGIN: ${{ vars.PRODUCTION_PUBLIC_ORIGIN }}
+          ADMIN_ORIGIN: ${{ vars.PRODUCTION_ADMIN_ORIGIN }}
+          API_ORIGIN: ${{ vars.PRODUCTION_API_ORIGIN }}
+        run: |
+          if ! printf '%s' "$REQUESTED_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "A full lowercase Git commit SHA is required." >&2
+            exit 1
+          fi
+          owner=$(printf '%s' "$REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          echo "sha=$REQUESTED_SHA" >> "$GITHUB_OUTPUT"
+          echo "image_prefix=ghcr.io/$owner/airtekpower" >> "$GITHUB_OUTPUT"
+          if test -n "$PUBLIC_ORIGIN" && test -n "$ADMIN_ORIGIN" && test -n "$API_ORIGIN"; then
+            echo "image_tag=$REQUESTED_SHA" >> "$GITHUB_OUTPUT"
+            echo "public_origin=$PUBLIC_ORIGIN" >> "$GITHUB_OUTPUT"
+            echo "api_origin=$API_ORIGIN" >> "$GITHUB_OUTPUT"
+          else
+            echo "Production origins are incomplete; publishing a pullable candidate image set."
+            echo "image_tag=$REQUESTED_SHA-candidate" >> "$GITHUB_OUTPUT"
+            echo "public_origin=http://www.localhost:8088" >> "$GITHUB_OUTPUT"
+            echo "api_origin=http://api.localhost:8088" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-images:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: public-web
+            dockerfile: infra/docker/Dockerfile.web
+          - image: admin-web
+            dockerfile: infra/docker/Dockerfile.admin
+          - image: platform
+            dockerfile: infra/docker/Dockerfile.platform
+          - image: migrations
+            dockerfile: infra/docker/Dockerfile.flyway
+          - image: gateway
+            dockerfile: infra/docker/Dockerfile.gateway
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.release_sha }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - id: publish
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: ${{ vars.PRODUCTION_CONTAINER_PLATFORM || 'linux/amd64' }}
+          push: true
+          tags: ${{ needs.prepare.outputs.image_prefix }}-${{ matrix.image }}:${{ needs.prepare.outputs.image_tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ needs.prepare.outputs.release_sha }}
+          build-args: |
+            VITE_PUBLIC_API_BASE_URL=${{ needs.prepare.outputs.api_origin }}/api/public/v1
+            VITE_PUBLIC_ORIGIN=${{ needs.prepare.outputs.public_origin }}
+            VITE_ADMIN_API_BASE_URL=${{ needs.prepare.outputs.api_origin }}/api/admin/v1
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+      - name: Record the immutable image
+        env:
+          IMAGE: ${{ needs.prepare.outputs.image_prefix }}-${{ matrix.image }}:${{ needs.prepare.outputs.image_tag }}
+          DIGEST: ${{ steps.publish.outputs.digest }}
+        run: |
+          printf '### `%s`\n\nDigest: `%s`\n' "$IMAGE" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"
