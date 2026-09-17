@@ -225,6 +225,11 @@ void loadSettings()
       <template #actions><button v-if="active === 'retention' && settingsState === 'ready'" class="button button--primary" type="button" :disabled="settingsLoading || settingsSaving || !loadedSettings" @click="save"><Save :size="16" />{{ settingsSaving ? '保存中…' : '保存业务设置' }}</button></template>
     </PageHeader>
 
+    <div v-if="auth.requiresTotpEnrollment" class="security-baseline" role="status">
+      <LockKeyhole :size="18" />
+      <div><strong>完成 TOTP 后解锁管理功能</strong><p>账号角色仍然保留；服务端在完成绑定前暂不下发业务权限。绑定成功后，侧栏和对应功能会自动恢复。</p></div>
+    </div>
+
     <div v-if="accountSecurityOnly || settingsState === 'ready'" class="status-banner"><span>{{ active === 'security' ? '实时身份服务' : '实时业务设置' }}</span><p>{{ active === 'security' ? 'TOTP、恢复码与会话操作直接调用受认证、CSRF 保护且可审计的 API。' : `三个业务策略值由 Settings API 管理；当前 ${settingsEtag}。部署凭据与 origin 始终只读。` }}</p></div>
 
     <section class="settings-layout">
