@@ -5,6 +5,7 @@ import type {
   CmsPublishedPage,
   CmsPublishResult,
   CmsReviewPage,
+  CmsSiteSingletonState,
   CmsSubmitResult,
   ContentDraftV2,
   ContentTemplateDefinition,
@@ -123,6 +124,15 @@ export const contentApi = {
   async listPublished(value: ContentListQuery = {}): Promise<CmsPublishedPage> {
     return (await adminContractClient.get('/api/admin/v1/published-content', {
       parameters: { query: query(value) },
+    })).data
+  },
+
+  async getSiteSingleton(
+    kind: 'generalInformation' | 'navigation' | 'footer',
+    locale = 'en',
+  ): Promise<CmsSiteSingletonState> {
+    return (await adminContractClient.get('/api/admin/v1/site-singletons/{kind}', {
+      parameters: { path: { kind }, query: { locale } },
     })).data
   },
 

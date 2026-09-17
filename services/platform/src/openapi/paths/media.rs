@@ -106,12 +106,12 @@ fn add_public_reads(paths: &mut Map<String, Value>) {
         (
             "/api/public/v1/media/{assetId}",
             "getPublicMediaAsset",
-            "Serve a live media asset without authentication",
+            "Redirect to a live media asset without authentication",
         ),
         (
             "/api/public/v1/media/{assetId}/download",
             "downloadPublicMediaAsset",
-            "Download a live media asset without authentication",
+            "Redirect to a live media asset without authentication",
         ),
     ] {
         add(
@@ -124,11 +124,11 @@ fn add_public_reads(paths: &mut Map<String, Value>) {
                     summary,
                     "public",
                     [(
-                        "200",
-                        text_response(
-                            "Media bytes",
-                            "application/octet-stream",
-                            json!({"type": "string", "format": "binary"}),
+                        "308",
+                        response_header(
+                            json!({"description": "Redirect to the immutable external media URL"}),
+                            "Location",
+                            "Stored external media URL",
                         ),
                     )],
                 ),

@@ -8,7 +8,41 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
     add_drafts(paths);
     add_reviews(paths);
     add_published(paths);
+    add_site_singletons(paths);
     add_media_list(paths);
+}
+
+fn add_site_singletons(paths: &mut Map<String, Value>) {
+    add(
+        paths,
+        "/api/admin/v1/site-singletons/{kind}",
+        "get",
+        admin(
+            params(
+                op(
+                    "getSiteSingletonState",
+                    "Read the caller's draft and current publication for a site singleton",
+                    "adminContentDrafts",
+                    [(
+                        "200",
+                        json_response("Site singleton state", r("CmsSiteSingletonState")),
+                    )],
+                ),
+                vec![
+                    path_param(
+                        "kind",
+                        string_enum(&["generalInformation", "navigation", "footer"]),
+                    ),
+                    query_param(
+                        "locale",
+                        true,
+                        json!({"type":"string","minLength":1,"maxLength":32}),
+                    ),
+                ],
+            ),
+            false,
+        ),
+    );
 }
 
 fn add_drafts(paths: &mut Map<String, Value>) {

@@ -76,14 +76,20 @@ const projection: PublicContentProjection = {
     {
       assetId: mediaId,
       publicUrl: `/api/public/v1/media/${mediaId}`,
+      previewUrl: `https://media.example.test/${mediaId}.preview.webp`,
       downloadUrl: `/api/public/v1/media/${mediaId}/download`,
       mediaType: 'image/webp', byteSize: 1024, originalName: 'fan.webp',
+      originalWidth: 1800, originalHeight: 1200, previewWidth: 1600, previewHeight: 1067,
+      previewByteSize: 512,
     },
     {
       assetId: downloadId,
       publicUrl: `/api/public/v1/media/${downloadId}`,
+      previewUrl: null,
       downloadUrl: `/api/public/v1/media/${downloadId}/download`,
       mediaType: 'image/png', byteSize: 2048, originalName: 'diagram.png',
+      originalWidth: null, originalHeight: null, previewWidth: null, previewHeight: null,
+      previewByteSize: null,
     },
   ],
 }
@@ -100,7 +106,8 @@ describe('PublicBlockRenderer', () => {
     expect(html).toContain('Published hero')
     expect(html).toContain('href="/en/company/contact"')
     expect(html).toContain(developmentBodyCopy)
-    expect(html).toContain('src="http://localhost:8080/api/public/v1/media/88888888-8888-4888-8888-888888888888"')
+    expect(html).toContain(`src="https://media.example.test/${mediaId}.preview.webp"`)
+    expect(html).not.toContain(`src="http://localhost:8080/api/public/v1/media/${mediaId}"`)
     expect(html).toContain('Media caption')
     expect(html).toContain('Airflow')
     expect(html).toContain('Verified statement')

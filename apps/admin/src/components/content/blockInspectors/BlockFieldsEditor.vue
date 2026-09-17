@@ -325,14 +325,16 @@ function updateCtaAction(action: EditorialAction | null): void {
 </template>
 
 <style scoped>
+@layer components {
 .block-fields { display: flex; flex-direction: column; gap: 0.65rem; }
 .block-fields__list { display: flex; flex-direction: column; gap: 0.5rem; }
 .block-fields__list-head { display: flex; align-items: center; justify-content: space-between; }
-.block-fields__list-head strong { font-size: 0.63rem; }
-.block-fields__item { display: flex; flex-direction: column; gap: 0.45rem; padding: 0.55rem; border: 1px solid var(--admin-line); border-radius: 8px; background: white; }
+.block-fields__list-head strong { font-size: 0.75rem; }
+.block-fields__item { display: flex; flex-direction: column; gap: 0.45rem; padding: 0.55rem; border: 1px solid var(--border-default); border-radius: 8px; background: white; }
 .block-fields__item-head { display: flex; align-items: center; justify-content: space-between; }
-.block-fields__item-head strong { color: var(--admin-muted); font-size: 0.56rem; letter-spacing: 0.05em; text-transform: uppercase; }
+.block-fields__item-head strong { color: var(--text-secondary); font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; }
 .block-fields__item-head > div { display: flex; gap: 0.15rem; }
-.block-fields__channels { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.5rem; margin: 0; border: 1px solid var(--admin-line); border-radius: 8px; }
-.block-fields__channels legend { padding: 0 0.3rem; color: var(--admin-muted); font-size: 0.58rem; }
+.block-fields__channels { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.5rem; margin: 0; border: 1px solid var(--border-default); border-radius: 8px; }
+.block-fields__channels legend { padding: 0 0.3rem; color: var(--text-secondary); font-size: 0.75rem; }
+}
 </style>

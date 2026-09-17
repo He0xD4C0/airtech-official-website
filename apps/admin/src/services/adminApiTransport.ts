@@ -35,8 +35,8 @@ export function cursorQuery(pagination: CursorPageRequest = {}): { cursor?: stri
   }
 }
 
-export function revisionEtag(revision: number | undefined): string {
-  if (!Number.isInteger(revision) || (revision ?? 0) < 1) {
+export function revisionEtag(revision: number | undefined, allowZero = false): string {
+  if (!Number.isInteger(revision) || (revision ?? -1) < (allowZero ? 0 : 1)) {
     throw new TypeError('A positive entity revision is required for this update.')
   }
   return `"revision-${revision}"`

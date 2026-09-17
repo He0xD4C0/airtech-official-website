@@ -144,6 +144,58 @@ export interface PathsPart03 {
         patch: operations["updatePlatformSettings"];
         trace?: never;
     };
+"/api/admin/v1/settings/object-storage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get database-owned S3 settings without returning the secret access key */
+        get: operations["getObjectStorageSettings"];
+        /** Test and atomically save database-owned S3 settings */
+        put: operations["updateObjectStorageSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/settings/object-storage/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test S3 write, anonymous public read, and cleanup without saving */
+        post: operations["testObjectStorageSettings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/site-singletons/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the caller's draft and current publication for a site singleton */
+        get: operations["getSiteSingletonState"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/user-invitations": {
         parameters: {
             query?: never;
@@ -340,7 +392,7 @@ export interface PathsPart03 {
             path?: never;
             cookie?: never;
         };
-        /** Serve a live media asset without authentication */
+        /** Redirect to a live media asset without authentication */
         get: operations["getPublicMediaAsset"];
         put?: never;
         post?: never;
@@ -357,7 +409,7 @@ export interface PathsPart03 {
             path?: never;
             cookie?: never;
         };
-        /** Download a live media asset without authentication */
+        /** Redirect to a live media asset without authentication */
         get: operations["downloadPublicMediaAsset"];
         put?: never;
         post?: never;
@@ -429,57 +481,6 @@ export interface PathsPart03 {
         get: operations["getPublishedProduct"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/rfqs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Submit a structured RFQ */
-        post: operations["createRfqSubmission"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/routes/resolve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Resolve one canonical published public route */
-        get: operations["resolvePublishedRoute"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/selector": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Evaluate validated selector candidates */
-        post: operations["selectProducts"];
         delete?: never;
         options?: never;
         head?: never;

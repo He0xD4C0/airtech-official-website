@@ -43,7 +43,7 @@ describe('admin product API', () => {
         presentation: {
           locale: 'en', slug: 'portal-title', title: 'Portal title', summary: null,
           seo: { title: null, description: null, canonicalPath: '/en/products/axial/portal-title', indexable: false },
-          indexable: false, sortOrder: 0, relatedContentIds: [], revision: 5, publishedRevision: null,
+          indexable: false, sortOrder: 0, relatedContentIds: [], mediaGallery: [], revision: 5, publishedRevision: null,
           updatedAt: '2026-09-02T00:00:00Z',
         },
         sourceKind: 'verifiedCsv', missingAssets: [],
@@ -59,6 +59,7 @@ describe('admin product API', () => {
       indexable: false,
       sortOrder: 0,
       relatedContentIds: [],
+      mediaGallery: [],
       reason: 'Update reviewed website presentation',
     }
 

@@ -95,7 +95,9 @@ function updateFooter(value: FooterTypeFields): void {
 </template>
 
 <style scoped>
+@layer components {
 .type-panel { display: flex; flex-direction: column; gap: 0.85rem; }
-.type-panel__lock { display: flex; align-items: flex-start; gap: 0.4rem; margin: 0; color: var(--admin-muted); font-size: 0.62rem; line-height: 1.5; }
-.type-panel__guard { display: flex; align-items: flex-start; gap: 0.45rem; padding: 0.7rem; margin: 0; border: 1px solid #f2c9c2; border-radius: 9px; background: var(--admin-soft-red); color: #8a2c1c; font-size: 0.64rem; line-height: 1.55; }
+.type-panel__lock { display: flex; align-items: flex-start; gap: 0.4rem; margin: 0; color: var(--text-secondary); font-size: 0.75rem; line-height: 1.5; }
+.type-panel__guard { display: flex; align-items: flex-start; gap: 0.45rem; padding: 0.7rem; margin: 0; border: 1px solid #f2c9c2; border-radius: 9px; background: var(--surface-danger); color: #8a2c1c; font-size: 0.75rem; line-height: 1.55; }
+}
 </style>

@@ -5,9 +5,10 @@ description: >-
   capabilities, family-level ranges, testing evidence, case-study facts, and product-data
   quality rules. Use for fan/product solutions, engineering technical content, selectors,
   comparisons, SKU schemas, datasheets, catalogs, case studies, or product SEO. Exact model values require a
-  validated Product Master or official datasheet; demo HTML is never authoritative.
+  validated Product Master or official datasheet; demo HTML is never authoritative. Consult the
+  registered resolution before labeling a known demo disagreement as an active conflict.
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
 ---
 
 # AIRTEKPOWER Product Knowledge
@@ -17,7 +18,7 @@ Use product-family knowledge to structure and explain the offer, but do not manu
 ## Route the task
 
 - Read [taxonomy-and-capabilities.md](references/taxonomy-and-capabilities.md) for product families, applications, engineering, manufacturing, and testing.
-- Read [product-data-rules.md](references/product-data-rules.md) for models, specifications, units, filters, PQ curves, downloads, selector/comparison logic, or data import.
+- Read [product-data-rules.md](references/product-data-rules.md) for models, specifications, units, filters, PQ curves, downloads, selector/comparison logic, data import, or any request to choose between conflicting model values.
 - Read [cases-and-claims.md](references/cases-and-claims.md) for solution proof, case studies, performance claims, delivery claims, or competitor comparisons.
 - Also load `$airtek-brand` for publication-ready company or marketing copy.
 - Also load `$airtek-website-growth` for page structure, SEO mechanics, RFQ handoff, analytics, or platform integration.
@@ -31,6 +32,7 @@ Use product-family knowledge to structure and explain the offer, but do not manu
 - A selector must filter hard constraints before ranking preferences and must explain why a candidate matched or failed.
 - Do not hard-code match percentages, comparison rows, curve points, downloads, certifications, availability, or RFQ responses.
 - Never copy exact values from either HTML demo into production content or data.
+- Do not revive a demo disagreement that the conflict register marks `DEPRECATED` after an approved Product Master takeover. For `B23E280H128-102-B0`, reject both demo value sets, load `$airtek-knowledge-governance`, and use only the registered Product Master provenance; if it is unavailable, return `Published data unavailable`.
 - Do not provide installation, wiring, safety, or compliance instructions without an approved manual for the exact model.
 
 ## Output check

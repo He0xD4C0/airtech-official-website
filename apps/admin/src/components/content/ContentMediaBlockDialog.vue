@@ -37,7 +37,9 @@ function confirm(): void {
 </template>
 
 <style scoped>
+@layer components {
 .dialog-backdrop { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(15, 23, 42, .45); padding: 1rem; z-index: 50; }
 .dialog-panel { width: min(560px, 100%); max-height: 85vh; overflow: auto; background: #fff; border-radius: .6rem; padding: 1.1rem; display: flex; flex-direction: column; gap: .75rem; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: .5rem; }
+}
 </style>

@@ -1,6 +1,6 @@
 # Identity and copy baseline
 
-Updated: 2026-09-01
+Last reviewed: 2026-09-14
 
 ## Canonical identity
 
@@ -47,8 +47,10 @@ Write for industrial buyers and engineers: clear, evidence-led, concise, and tec
 
 ## Source basis
 
-- `docs/PDF版本：企业介绍 (English Version) .pdf`
-- `docs/About AIRTEK.pdf`
-- `docs/品牌视觉系统管理.pdf`
+- `docs/Internal-docs/PDF版本：企业介绍 (English Version) .pdf`
+- `docs/Internal-docs/About AIRTEK.pdf`
+- `docs/Internal-docs/品牌视觉系统管理.pdf`
+
+These internal evidence files are intentionally excluded from Git. If they are unavailable in a checkout, do not substitute another file or infer the missing evidence; report `internal evidence unavailable` and request access to the controlled source.
 
 See `$airtek-knowledge-governance` when updating these values or resolving source conflicts.

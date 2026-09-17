@@ -29,44 +29,27 @@ const productionEnv = read('infra/deploy/production.env.example')
 const deployScript = read('infra/deploy/deploy-app.sh')
 
 requireMatch(infrastructure, /^name: \$\{AIRTEK_INFRA_PROJECT_NAME:-airtek-infra\}$/mu, 'Infrastructure must have an independent Compose project name.')
-for (const service of ['postgres', 'minio']) {
-  requireMatch(serviceBlock(infrastructure, service), /restart: unless-stopped/u, `${service} must survive an ECS restart.`)
-}
-for (const service of ['postgres-bootstrap', 'minio-bootstrap']) {
-  const block = serviceBlock(infrastructure, service)
-  requireMatch(block, /profiles: \["bootstrap"\]/u, `${service} must be explicitly opt-in.`)
-  requireMatch(block, /restart: "no"/u, `${service} must remain a one-shot task.`)
-}
-forbidMatch(infrastructure, /^  (?:platform-api|platform-worker|public-web|admin-web|gateway|flyway-migrate):/mu, 'Infrastructure Compose must not own application services.')
+requireMatch(serviceBlock(infrastructure, 'postgres'), /restart: unless-stopped/u, 'PostgreSQL must survive an ECS restart.')
+const postgresBootstrap = serviceBlock(infrastructure, 'postgres-bootstrap')
+requireMatch(postgresBootstrap, /profiles: \["bootstrap"\]/u, 'PostgreSQL bootstrap must be explicitly opt-in.')
+requireMatch(postgresBootstrap, /restart: "no"/u, 'PostgreSQL bootstrap must remain a one-shot task.')
+forbidMatch(infrastructure, /^  (?:minio|minio-bootstrap|platform-api|platform-worker|public-web|admin-web|gateway|flyway-migrate):/mu, 'Infrastructure Compose must own only PostgreSQL and its bootstrap task.')
 requireMatch(infrastructure, /external: true\s+name: \$\{AIRTEK_PRODUCTION_NETWORK:-airtek-production\}/u, 'Infrastructure must join the shared external network.')
 requireMatch(infrastructure, /AIRTEK_INFRA_BIND_ADDRESS:-127\.0\.0\.1/u, 'Stateful administration ports must bind to loopback by default.')
 
 requireMatch(application, /^name: \$\{AIRTEK_APP_PROJECT_NAME:-airtek-app\}$/mu, 'Application must have an independent Compose project name.')
 forbidMatch(application, /^  (?:postgres|minio|minio-bootstrap):/mu, 'Application Compose must not own PostgreSQL or MinIO.')
 requireMatch(application, /external: true\s+name: \$\{AIRTEK_PRODUCTION_NETWORK:-airtek-production\}/u, 'Application must join the shared external network.')
-for (const variable of [
-  'AIRTEK_MEDIA_STORAGE',
-  'AIRTEK_MEDIA_S3_ENDPOINT',
-  'AIRTEK_MEDIA_S3_BUCKET',
-]) {
-  requireMatch(serviceBlock(application, 'platform-api'), new RegExp(`${variable}:\\s*\\$\\{${variable}`, 'u'), `Production API must receive ${variable}.`)
-  requireMatch(productionEnv, new RegExp(`^${variable}=`, 'mu'), `production.env.example must declare ${variable}.`)
-}
-for (const field of ['ACCESS_KEY_ID', 'SECRET_ACCESS_KEY']) {
-  requireMatch(serviceBlock(application, 'platform-api'), new RegExp(`AIRTEK_MEDIA_S3_${field}:\\s*\\$\\{AIRTEK_MEDIA_API_S3_${field}:\\?`, 'u'), `Production API must require its MinIO ${field}.`)
-  requireMatch(productionEnv, new RegExp(`^AIRTEK_MEDIA_API_S3_${field}=`, 'mu'), `production.env.example must declare the API MinIO ${field}.`)
-  requireMatch(serviceBlock(infrastructure, 'minio-bootstrap'), new RegExp(`AIRTEK_MEDIA_S3_${field}:\\s*\\$\\{AIRTEK_MEDIA_API_S3_${field}:\\?`, 'u'), `MinIO bootstrap must receive the same API ${field}.`)
-  requireMatch(infrastructureEnv, new RegExp(`^AIRTEK_MEDIA_API_S3_${field}=`, 'mu'), `infrastructure.env.example must declare the API MinIO ${field}.`)
-}
+const storageEnvironmentPattern = /(?:AIRTEK_MEDIA_|AIRTEK_MINIO_|MINIO_|S3_)/u
+forbidMatch(application, storageEnvironmentPattern, 'Application Compose must load object-storage settings from PostgreSQL.')
+forbidMatch(productionEnv, storageEnvironmentPattern, 'production.env.example must not contain object-storage settings.')
+forbidMatch(infrastructure, storageEnvironmentPattern, 'Production infrastructure Compose must not provision application object storage.')
+forbidMatch(infrastructureEnv, storageEnvironmentPattern, 'infrastructure.env.example must not contain object-storage settings.')
 
 for (const variable of [
   'AIRTEK_POSTGRES_IMAGE',
-  'AIRTEK_MINIO_IMAGE',
-  'AIRTEK_MINIO_MC_IMAGE',
   'POSTGRES_SUPERUSER_PASSWORD',
   'AIRTEK_RUNTIME_DATABASE_PASSWORD',
-  'MINIO_ROOT_PASSWORD',
-  'AIRTEK_MEDIA_API_S3_SECRET_ACCESS_KEY',
 ]) {
   requireMatch(infrastructureEnv, new RegExp(`^${variable}=`, 'mu'), `infrastructure.env.example must declare ${variable}.`)
 }

@@ -18,7 +18,7 @@ export type ResolvedMedia = GeneratedResolvedMedia
  */
 export type PublicContentProjection = GeneratedPublicContentProjection
 
-function publicMediaHref(href: string): string {
+export function publicMediaHref(href: string): string {
   if (/^https?:\/\//u.test(href)) return href
   const apiBase = import.meta.env.VITE_PUBLIC_API_BASE_URL
     || 'http://localhost:8080/api/public/v1'
@@ -38,10 +38,15 @@ export function linkTargetHref(
 export function mediaAssetHref(
   asset: MediaUseReference | undefined | null,
   resolvedMedia: ResolvedMedia[],
+  intent: 'display' | 'original' = 'display',
 ): string | undefined {
   if (!asset) return undefined
   const resolved = resolvedMedia.find((entry) => entry.assetId === asset.asset.assetId)
-  if (resolved) return publicMediaHref(resolved.publicUrl)
+  if (resolved) {
+    return publicMediaHref(intent === 'display'
+      ? resolved.previewUrl ?? resolved.publicUrl
+      : resolved.publicUrl)
+  }
   reportMissingMedia(asset.asset.assetId, 'inline')
   return undefined
 }

@@ -27,6 +27,7 @@ const composeBuildArgument = process.env.E2E_SKIP_BUILD === 'true' ? '--no-build
 const environment = {
   ...process.env,
   COMPOSE_PROJECT_NAME: project,
+  COMPOSE_PROFILES: 'minio',
   AIRTEK_PUBLIC_HOST_PORT: publicPort,
   AIRTEK_ADMIN_HOST_PORT: adminPort,
   AIRTEK_API_HOST_PORT: apiPort,
@@ -46,6 +47,9 @@ const environment = {
   AIRTEK_GATEWAY_INTERNAL_IP: process.env.AIRTEK_E2E_GATEWAY_INTERNAL_IP ?? '172.29.0.10',
   AIRTEK_TRUSTED_PROXY_CIDRS: process.env.AIRTEK_E2E_TRUSTED_PROXY_CIDRS ?? '172.29.0.10/32',
   AIRTEK_PLATFORM_FEATURES: 'production',
+  AIRTEK_MAINTENANCE_COMMAND: 'prepare-runtime',
+  AIRTEK_DEV_ADMIN_SEED: 'false',
+  AIRTEK_FLYWAY_TARGET: '21',
   AIRTEK_ADMIN_BOOTSTRAP_TOKEN: process.env.E2E_ADMIN_BOOTSTRAP_TOKEN
     ?? 'airtek-e2e-bootstrap-token-change-me',
   AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY: process.env.AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY
@@ -65,16 +69,6 @@ const environment = {
     ?? 'integration-test',
   AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS: process.env.AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS
     ?? 'admin-acceptance',
-  MINIO_ROOT_USER: 'airtek-e2e',
-  MINIO_ROOT_PASSWORD: 'airtek-e2e-local-only',
-  AIRTEK_MEDIA_STORAGE: 's3',
-  AIRTEK_MEDIA_S3_ENDPOINT: 'http://minio:9000',
-  AIRTEK_MEDIA_S3_REGION: 'us-east-1',
-  AIRTEK_MEDIA_S3_BUCKET: 'airtek-e2e-media',
-  AIRTEK_MEDIA_API_S3_ACCESS_KEY_ID: 'airtek-e2e-api',
-  AIRTEK_MEDIA_API_S3_SECRET_ACCESS_KEY: 'airtek-e2e-api-only',
-  AIRTEK_MEDIA_S3_KEY_PREFIX: 'media',
-  AIRTEK_MEDIA_S3_PATH_STYLE: 'true',
   E2E_PUBLIC_ORIGIN: publicOrigin,
   E2E_ADMIN_ORIGIN: adminOrigin,
   E2E_API_ORIGIN: apiOrigin,
@@ -100,15 +94,61 @@ function run(command, args, options = {}) {
   return result.status ?? 1
 }
 
+function capture(command, args) {
+  return spawnSync(command, args, {
+    cwd: process.cwd(),
+    env: environment,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+}
+
+function waitForSuccessfulJobs(services, timeoutMs = 300_000) {
+  const deadline = Date.now() + timeoutMs
+  const pending = new Set(services)
+  while (pending.size > 0 && Date.now() < deadline) {
+    for (const service of pending) {
+      const listed = capture('docker', ['compose', 'ps', '--all', '--quiet', service])
+      const containerId = listed.stdout.trim()
+      if (listed.status !== 0 || !containerId) continue
+      const inspected = capture('docker', [
+        'inspect', '--format', '{{.State.Status}} {{.State.ExitCode}}', containerId,
+      ])
+      const [status, exitCode] = inspected.stdout.trim().split(/\s+/)
+      if (status !== 'exited') continue
+      if (exitCode !== '0') {
+        console.error(`${service} exited with status ${exitCode || 'unknown'}.`)
+        return 1
+      }
+      pending.delete(service)
+    }
+    if (pending.size > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500)
+  }
+  if (pending.size > 0) {
+    console.error(`Timed out waiting for one-shot services: ${[...pending].join(', ')}`)
+    return 1
+  }
+  return 0
+}
+
 let testStatus = 1
 try {
   run('docker', ['compose', 'down', '--volumes', '--remove-orphans'])
-  const upStatus = run('docker', [
-    'compose', 'up', composeBuildArgument, '--detach', '--wait', '--wait-timeout', '300',
+  const launchStatus = run('docker', [
+    'compose', 'up', composeBuildArgument, '--detach',
   ])
-  if (upStatus !== 0) {
+  const initStatus = launchStatus === 0
+    ? waitForSuccessfulJobs(['flyway-migrate', 'platform-maintenance', 'minio-create-bucket'])
+    : launchStatus
+  const readyStatus = initStatus === 0
+    ? run('docker', [
+        'compose', 'up', '--detach', '--wait', '--wait-timeout', '300', '--no-deps',
+        'postgres', 'minio', 'platform-api', 'platform-worker', 'public-web', 'admin-web', 'gateway',
+      ])
+    : initStatus
+  if (readyStatus !== 0) {
     run('docker', ['compose', 'logs', '--no-color'])
-    process.exitCode = upStatus
+    process.exitCode = readyStatus
   }
   else {
     testStatus = run('pnpm', ['exec', 'playwright', 'test', ...playwrightArgs])

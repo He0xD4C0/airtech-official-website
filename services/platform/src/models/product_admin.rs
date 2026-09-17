@@ -53,6 +53,7 @@ pub struct ProductPresentation {
     pub indexable: bool,
     pub sort_order: i32,
     pub related_content_ids: Vec<Uuid>,
+    pub media_gallery: Vec<ProductMediaGalleryItem>,
     /// Independent portal-owned presentation revision used by ETag/If-Match.
     /// This is deliberately unrelated to `Product::current_revision`.
     pub revision: i64,
@@ -73,6 +74,8 @@ pub struct UpdateProductPresentation {
     pub sort_order: i32,
     #[serde(default)]
     pub related_content_ids: Vec<Uuid>,
+    #[serde(default)]
+    pub media_gallery: Vec<ProductMediaGalleryItem>,
     pub reason: String,
 }
 

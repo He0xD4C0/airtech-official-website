@@ -57,6 +57,13 @@ mod cases {
         );
         assert_eq!(
             required_permission(
+                "/api/admin/v1/settings/object-storage/test",
+                &axum::http::Method::POST
+            ),
+            Some("settings.manage")
+        );
+        assert_eq!(
+            required_permission(
                 "/api/admin/v1/roles/00000000-0000-0000-0000-000000000001",
                 &axum::http::Method::PATCH
             ),

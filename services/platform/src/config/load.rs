@@ -65,7 +65,7 @@ impl Config {
                 .as_deref()
                 .unwrap_or_default(),
         )?;
-        let media = MediaSettings::from_env().map_err(ConfigError::InvalidMediaSettings)?;
+        let media = MediaSettings::disabled();
         if admin_bootstrap_token
             .as_ref()
             .is_some_and(|token| token.len() < 24)

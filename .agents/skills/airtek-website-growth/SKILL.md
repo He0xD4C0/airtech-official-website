@@ -7,7 +7,7 @@ description: >-
   requirements, routes, page flows, CMS/data models, lead generation, deployment, or roadmap
   work. Do not treat draft schedules, cloud choices, costs, or HTML demos as approved behavior.
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # AIRTEKPOWER Website Growth
@@ -19,7 +19,7 @@ Turn the supplied strategy into an evidence-led B2B product-discovery and inquir
 - Read [information-architecture.md](references/information-architecture.md) for positioning, sitemap, routes, navigation, page types, CMS relationships, and public-site scope.
 - Read [conversion-and-product-experience.md](references/conversion-and-product-experience.md) for product detail, selector, comparison, FAQ, Contact, RFQ, uploads, and lead handoff.
 - Read [data-seo-and-analytics.md](references/data-seo-and-analytics.md) for SEO, structured data, internal links, product/content data flows, APIs, analytics, consent, or MCP.
-- Read [delivery-decisions.md](references/delivery-decisions.md) before estimating, choosing a stack, deploying, purchasing services, or implementing the management platform.
+- Read [delivery-decisions.md](references/delivery-decisions.md) before estimating, changing the approved stack, deploying, purchasing services, or extending the management platform.
 - Also load `$airtek-brand` for identity, public copy, and visual decisions.
 - Also load `$airtek-product-knowledge` for taxonomy, exact specifications, selector rules, engineering statements, and cases.
 - Load `$airtek-knowledge-governance` when changing canonical knowledge or resolving a source conflict.
@@ -32,7 +32,7 @@ Turn the supplied strategy into an evidence-led B2B product-discovery and inquir
 - Treat the HTML files as UX sketches, not implemented behavior, data, styling, or acceptance tests.
 - Keep optional analytics consent-aware and data-minimized. Do not put RFQ contents or direct personal identifiers into analytics event properties.
 - Give public clients and MCP controlled APIs, authentication, authorization, rate limits, and auditability; never direct production-database access.
-- Do not hard-code the disputed deployment region, cloud provider, instance size, cost, schedule, or framework.
+- Do not hard-code the disputed deployment region, cloud provider, instance size, cost, or schedule. Preserve the repository's implemented framework and platform boundaries unless the user explicitly approves a change.
 
 ## Definition of done
 

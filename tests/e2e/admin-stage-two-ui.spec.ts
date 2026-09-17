@@ -117,4 +117,24 @@ test.describe('stage two Admin workspace acceptance', () => {
     await page.keyboard.press('Escape')
     await expect(trigger).toBeFocused()
   })
+
+  test('resets reused view state when navigating between named routes', async ({ page }) => {
+    await settle(page, '/site/navigation')
+    const createNavigationDraft = page.getByRole('button', { name: '创建编辑草稿' })
+    if (await createNavigationDraft.isVisible().catch(() => false)) await createNavigationDraft.click()
+    await expect(page.getByText('内容类型锁定为 导航', { exact: false })).toBeVisible()
+
+    await page.getByRole('link', { name: 'Footer', exact: true }).click()
+    await expect(page).toHaveURL(absolute(adminOrigin, '/site/footer'))
+    await expect(page.locator('#main-content')).not.toContainText('navigation · navigation')
+    const createFooterDraft = page.getByRole('button', { name: '创建编辑草稿' })
+    if (await createFooterDraft.isVisible().catch(() => false)) await createFooterDraft.click()
+    await expect(page.getByText('内容类型锁定为 页脚', { exact: false })).toBeVisible()
+
+    await page.getByRole('link', { name: '系统设置', exact: true }).click()
+    await expect(page.getByRole('heading', { name: '系统设置', exact: true })).toBeVisible()
+    await page.getByRole('link', { name: '安全会话', exact: true }).click()
+    await expect(page).toHaveURL(absolute(adminOrigin, '/account/security'))
+    await expect(page.getByRole('heading', { name: '账号安全', exact: true })).toBeVisible()
+  })
 })

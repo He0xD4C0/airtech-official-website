@@ -25,6 +25,7 @@ function product(slug: string, family: Product['family'], value: number): Produc
     seo: { title: `Published ${slug}`, description: 'Published comparison record.', canonicalPath: `/en/products/${family}/${slug}`, indexable: true },
     sortOrder: 0,
     relatedContentIds: [],
+    mediaGallery: [],
     specifications: [{
       key: 'capacity',
       label: 'Capacity',

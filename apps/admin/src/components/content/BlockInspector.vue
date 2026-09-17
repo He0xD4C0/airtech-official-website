@@ -93,15 +93,17 @@ const warnings = computed(() => {
 </template>
 
 <style scoped>
+@layer components {
 .block-inspector { display: flex; flex-direction: column; gap: 0.7rem; }
 .block-inspector__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.4rem; }
 .block-inspector__header > div:first-child { display: flex; flex-direction: column; gap: 0.1rem; }
-.block-inspector__header span { color: var(--admin-muted); font-size: 0.55rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.block-inspector__header span { color: var(--text-secondary); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; }
 .block-inspector__header strong { font-size: 0.75rem; }
-.block-inspector__header code { color: var(--admin-muted); font-size: 0.55rem; }
+.block-inspector__header code { color: var(--text-secondary); font-size: 0.75rem; }
 .block-inspector__confirm { display: flex; gap: 0.25rem; }
-.block-inspector__warnings { display: flex; flex-direction: column; gap: 0.25rem; margin: 0; padding: 0.45rem 0.55rem; border: 1px solid #f0dca8; border-radius: 8px; background: var(--admin-soft-amber); list-style: none; }
-.block-inspector__warnings li { display: flex; align-items: center; gap: 0.3rem; color: #8a6100; font-size: 0.6rem; }
+.block-inspector__warnings { display: flex; flex-direction: column; gap: 0.25rem; margin: 0; padding: 0.45rem 0.55rem; border: 1px solid #f0dca8; border-radius: 8px; background: var(--surface-warning); list-style: none; }
+.block-inspector__warnings li { display: flex; align-items: center; gap: 0.3rem; color: #8a6100; font-size: 0.75rem; }
 .button.block-inspector__danger { border-color: #d64545; background: #d64545; color: white; }
 .button.block-inspector__danger:hover:not(:disabled) { border-color: #b33535; background: #b33535; }
+}
 </style>

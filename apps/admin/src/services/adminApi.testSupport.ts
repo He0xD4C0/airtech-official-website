@@ -24,6 +24,7 @@ export function product(id: string): BackendProduct {
     seo: { title: null, description: null, canonicalPath: null, indexable: false },
     sortOrder: 0,
     relatedContentIds: [],
+    mediaGallery: [],
     updatedAt: '2026-08-31T00:00:00Z',
   }
 }

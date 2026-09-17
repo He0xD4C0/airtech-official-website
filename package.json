@@ -10,6 +10,7 @@
     "dev": "pnpm --parallel --filter @airtek/web --filter @airtek/admin dev",
     "dev:web": "pnpm --filter @airtek/web dev",
     "dev:admin": "pnpm --filter @airtek/admin dev",
+    "dev:admin:reset": "docker compose run --rm -e AIRTEK_ALLOW_DEV_ADMIN_RESET=true platform-maintenance reset-development-admin",
     "build": "pnpm -r --if-present build",
     "build:production": "pnpm --filter @airtek/contracts build && pnpm --filter @airtek/ui build && pnpm --filter @airtek/web build && pnpm --filter @airtek/admin build:production",
     "typecheck": "pnpm --filter @airtek/contracts build && pnpm -r --if-present typecheck && pnpm typecheck:e2e",
@@ -27,8 +28,11 @@
     "check:architecture": "node scripts/assert-architecture.mjs && pnpm check:source-lines",
     "check:postgres-boundary": "node scripts/assert-postgres-runtime-boundary.mjs",
     "test:source-lines": "node --test scripts/assert-source-line-limits.test.mjs",
+    "test:css": "node --test scripts/assert-css-architecture.test.mjs",
     "check:deployment": "node scripts/assert-deployment-config.mjs && node scripts/assert-production-infrastructure.mjs",
     "check:media-boundary": "node scripts/assert-direct-media-boundary.mjs",
+    "lint:css": "stylelint 'packages/ui/src/**/*.css' 'packages/content-renderer/src/**/*.vue' 'apps/admin/src/**/*.{css,vue}'",
+    "check:css": "pnpm lint:css && node scripts/assert-css-architecture.mjs",
     "check:isolation": "node scripts/smoke-isolation.mjs",
     "generate:contracts": "node scripts/generate-openapi.mjs && node scripts/generate-openapi-runtime.mjs && node scripts/generate-admin-operation-matrix.mjs && pnpm --filter @airtek/contracts typecheck",
     "check:contracts": "node scripts/generate-openapi.mjs --check && node scripts/generate-openapi-runtime.mjs --check && node scripts/generate-admin-operation-matrix.mjs --check && pnpm --filter @airtek/contracts typecheck"
@@ -37,6 +41,8 @@
     "@axe-core/playwright": "4.10.2",
     "@playwright/test": "1.55.0",
     "@types/node": "22.20.1",
+    "postcss-html": "1.8.0",
+    "stylelint": "16.23.1",
     "openapi-typescript": "7.13.0",
     "typescript": "5.9.3"
   }

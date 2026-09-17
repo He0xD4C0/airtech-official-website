@@ -421,6 +421,10 @@ CmsReviewPage: {
             nextCursor: string | null;
             total: number;
         };
+CmsSiteSingletonState: {
+            ownDraft: components["schemas"]["CmsPrivateDraft"] | null;
+            published: components["schemas"]["CmsPublishedContent"] | null;
+        };
 CmsSubmitResult: {
             draft: components["schemas"]["CmsPrivateDraft"] | null;
             publication: components["schemas"]["CmsPublishResult"] | null;

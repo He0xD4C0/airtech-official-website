@@ -25,6 +25,7 @@ const product: Product = {
   seo: { title: 'Published axial product', description: 'Summary from the published Product Master projection.', canonicalPath: '/en/products/axial/published-axial-product', indexable: true },
   sortOrder: 0,
   relatedContentIds: [],
+  mediaGallery: [],
   specifications: [],
   performanceCurves: [],
   sourceSnapshotId: 'c44656ad-fc7a-41c0-909e-930466096b37',

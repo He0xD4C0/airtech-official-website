@@ -158,20 +158,22 @@ function summary(block: ContentBlock): string {
 </template>
 
 <style scoped>
+@layer components {
 .composition-editor { display: flex; flex-direction: column; gap: 0.5rem; }
-.composition-editor__hint { margin: 0; color: var(--admin-muted); font-size: 0.58rem; }
+.composition-editor__hint { margin: 0; color: var(--text-secondary); font-size: 0.75rem; }
 .composition-editor__list { display: flex; flex-direction: column; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
-.composition-editor__item { display: flex; align-items: stretch; gap: 0.3rem; border: 1px solid var(--admin-line); border-radius: 9px; background: white; }
+.composition-editor__item { display: flex; align-items: stretch; gap: 0.3rem; border: 1px solid var(--border-default); border-radius: 9px; background: white; }
 .composition-editor__item.is-selected { border-color: var(--airtek-blue); box-shadow: 0 0 0 1px var(--airtek-blue); }
 .composition-editor__select { display: flex; flex: 1; align-items: center; gap: 0.45rem; min-width: 0; padding: 0.45rem 0.5rem; border: 0; border-radius: 9px 0 0 9px; background: transparent; text-align: left; }
 .composition-editor__select:focus-visible { outline: 2px solid var(--airtek-blue); outline-offset: -2px; }
-.composition-editor__index { display: grid; place-items: center; width: 1.35rem; height: 1.35rem; border-radius: 6px; background: var(--admin-soft-blue); color: var(--airtek-blue-dark); font-size: 0.58rem; }
+.composition-editor__index { display: grid; place-items: center; width: 1.35rem; height: 1.35rem; border-radius: 6px; background: var(--surface-info); color: var(--airtek-blue-dark); font-size: 0.75rem; }
 .composition-editor__meta { display: flex; flex-direction: column; min-width: 0; }
-.composition-editor__meta strong { font-size: 0.68rem; }
-.composition-editor__meta small { color: var(--admin-muted); font-size: 0.58rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.composition-editor__badge { padding: 0.08rem 0.3rem; border-radius: 5px; background: var(--admin-soft-blue); color: var(--airtek-blue-dark); font-size: 0.52rem; }
-.composition-editor__actions { display: flex; align-items: center; gap: 0.1rem; padding: 0 0.35rem; border-left: 1px solid var(--admin-line-soft); }
+.composition-editor__meta strong { font-size: 0.75rem; }
+.composition-editor__meta small { color: var(--text-secondary); font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.composition-editor__badge { padding: 0.08rem 0.3rem; border-radius: 5px; background: var(--surface-info); color: var(--airtek-blue-dark); font-size: 0.75rem; }
+.composition-editor__actions { display: flex; align-items: center; gap: 0.1rem; padding: 0 0.35rem; border-left: 1px solid var(--border-subtle); }
 .composition-editor__actions .icon-button:disabled { opacity: 0.35; cursor: not-allowed; }
-.composition-editor__empty { margin: 0; padding: 0.65rem; border: 1px dashed var(--admin-line); border-radius: 9px; color: var(--admin-muted); font-size: 0.6rem; }
+.composition-editor__empty { margin: 0; padding: 0.65rem; border: 1px dashed var(--border-default); border-radius: 9px; color: var(--text-secondary); font-size: 0.75rem; }
 .composition-editor__add { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+}
 </style>

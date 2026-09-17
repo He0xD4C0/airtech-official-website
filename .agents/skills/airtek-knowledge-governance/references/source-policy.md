@@ -1,6 +1,6 @@
 # Source policy
 
-Updated: 2026-09-01
+Last reviewed: 2026-09-14
 
 ## Status vocabulary
 
@@ -15,7 +15,7 @@ Updated: 2026-09-01
 
 ## Operational rule
 
-For ordinary AIRTEKPOWER work, use the normalized references in the relevant project Skill. Consult raw `docs/` only when the Skill routes to them, the requested detail is absent, or the user asks for source verification.
+For ordinary AIRTEKPOWER work, use the normalized references in the relevant project Skill. Consult raw `docs/` only when the Skill routes to them, the requested detail is absent, or the user asks for source verification. Files under `docs/Internal-docs/` are controlled local evidence and intentionally excluded from Git. If a routed internal source is absent, report `internal evidence unavailable`; do not search obsolete paths, substitute a lower-authority source, or infer the missing fact.
 
 ## Precedence when maintaining knowledge
 

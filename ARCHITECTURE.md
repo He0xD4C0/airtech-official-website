@@ -5,8 +5,8 @@
 ```text
 Public browser ─┐   HTTP gateway :8088 (Host routing) ─> Public SSR :3000 ─┐
 Admin browser  ─┼─────────────────────────────────────> Admin SPA  :3100   ├─> API :8080 ─> PostgreSQL
-API clients    ─┘                                      API Host             ┘       └──────> private object storage
-Public /media/* ───────── same-origin API proxy ───────────────────────────┘
+API clients    ─┘                                      API Host             ┘       └──────> S3-compatible object storage
+Public media ───────────────────── immutable external URL ─────────────────────────> public object origin / CDN
 
 Worker ────────────────────────────────────────────────────────────────────> PostgreSQL
 
@@ -16,13 +16,11 @@ Flyway 13.4.0 migration job ─────────── schema DDL ──�
 ```
 
 The public SSR process and both browsers have no database or object-storage
-credentials. The Rust platform contains local-file and S3-compatible adapters.
-Only the API receives a least-privilege media identity, limited to reading,
-writing, and compensating failed uploads under its media prefix. Storage is
-disabled when no backend is selected or an S3 selection
-lacks a required endpoint, bucket, or credential. Malformed explicit values
-still fail configuration, and an incomplete selection never falls back to local
-disk.
+credentials. The Rust platform loads S3-compatible connection settings from
+PostgreSQL only. The API uses that identity to write and compensate failed
+uploads; browsers read the public origin stored with each media row. Storage is
+disabled until a settings administrator saves a successfully tested complete
+configuration, and there is no environment or local-disk fallback.
 Public and admin builds do not share a router, cache namespace, service worker,
 manifest, or crawl-control files.
 
@@ -39,9 +37,9 @@ Public SSR, Admin Nginx, Platform, Migrations, and Gateway production images
 run as non-root users. The Flyway migration image is an independent release
 artifact rather than part of the Rust Platform image. The local Compose
 diagnostic ports bind to loopback by default.
-PostgreSQL is never host-published by the base stack. MinIO is part of the local
-stack for the S3-compatible media adapter; its API and console loopback
-mappings live only in `compose.debug.yaml`, and its bucket remains private.
+PostgreSQL is never host-published by the base stack. MinIO is an optional
+`minio` Compose profile; when enabled, its API and console use fixed loopback
+ports and its development bucket permits anonymous object reads.
 The image-only `compose.production.yaml` publishes only the Gateway listener;
 Public `3000`, Admin `3100`, and API `8080` remain internal. Its five immutable
 image references are independent release and rollback units.
@@ -137,24 +135,26 @@ SHA-256 while staging. It writes one immutable object, then atomically commits
 the catalogue row, audit event, and idempotency replay. If the database phase
 fails, it deletes that exact object; if storage fails, it creates no row.
 
-Every successful upload is immediately public. Known URLs remain readable when
-referencing content is draft or published. Publication validation requires each
-referenced asset to exist and not be soft-deleted. Public responses use the
-SHA-256 as a strong ETag, one-year
-immutable caching, `nosniff`, and a sanitized inline or attachment disposition.
+Every successful upload is immediately public at the absolute URL stored in the
+catalogue row. Known URLs remain unchanged when object-storage settings change
+and remain readable while their original origin and object exist. Publication
+validation requires each referenced asset to exist and not be soft-deleted.
+Legacy same-origin media routes return permanent redirects to the stored URL.
 
-MinIO/S3 remains private. The API identity has only GetObject, PutObject, and
-DeleteObject for compensation under the media prefix. The ordinary Worker has
-no media credentials or media jobs. `/healthz` and `/readyz` cover the
+The API identity has the least privileges needed for probe/upload and
+DeleteObject compensation under the media prefix; anonymous reads use the
+configured public origin. The ordinary Worker has no media credentials or
+media jobs. `/healthz` and `/readyz` cover the
 platform and database boundary; there is no media-specific service or heartbeat.
 Historical media review columns remain inert for schema compatibility and are
 not read by runtime code.
 
-The selected single-host production topology operates MinIO in the independent
-`airtek-infra` project and gives only the API a bucket-scoped identity over the
-private `airtek-production` network. The gateway keeps delivery same-origin but
-is not a CDN. Production readiness still requires monitoring, off-host backup,
-restore validation, and an endpoint smoke test.
+The selected single-host production topology operates PostgreSQL in the
+independent `airtek-infra` project. Object storage is an external application
+dependency configured through Admin and persisted in PostgreSQL, not production
+Compose or environment configuration. Production readiness still requires a
+reviewed public delivery origin, monitoring, off-host backup, restore validation,
+and an endpoint smoke test.
 
 The required product-master paths are:
 
@@ -272,12 +272,11 @@ entrypoint. `production` and `devtools` are mutually exclusive build features.
 
 PostgreSQL persistence, Flyway-managed schema versions, internal jobs, and
 durable outbox claiming are local platform capabilities. Local-file and
-S3-compatible direct media transport are implemented. MinIO is the local/E2E
-reference service and the selected single-host production object store, operated
-as independent stateful infrastructure. Production media remains unverified
-until the least-privilege API identity, monitoring, off-host backup and a real
-endpoint smoke test are in place. Feishu network synchronization, GA4 loading,
-CDN purge, external search providers, email/CRM/webhooks, backup executors, and
-isolated restore executors are not connected. Environment placeholders, passing
-local tests, or Admin screens must not be treated as proof of an active external
-integration.
+S3-compatible direct media transport is implemented. MinIO is the local/E2E
+reference service; production media remains unverified until an approved
+HTTPS endpoint and public origin, least-privilege API identity, monitoring, and
+a real endpoint smoke test are in place. Feishu network synchronization, GA4
+loading, CDN purge, external search providers, email/CRM/webhooks, backup
+executors, and isolated restore executors are not connected. Environment
+placeholders, passing local tests, or Admin screens must not be treated as proof
+of an active external integration.

@@ -29,7 +29,7 @@ function forbidText(path, pattern, message) {
 const migrations = filesUnder('services/platform/migrations')
   .filter((path) => /\/V\d{4}__.+\.sql$/u.test(path))
   .sort()
-for (const version of ['0017', '0018', '0019']) {
+for (const version of ['0017', '0018', '0019', '0020', '0021']) {
   const matches = migrations.filter((path) => path.includes(`/V${version}__`))
   if (matches.length !== 1) failures.push(`Expected exactly one V${version} migration.`)
   for (const path of matches) {
@@ -37,10 +37,16 @@ for (const version of ['0017', '0018', '0019']) {
     if (lines > 500) failures.push(`${path} has ${lines} logical lines; limit is 500.`)
   }
 }
+const latestMigration = Number(migrations.at(-1)?.match(/\/V(\d{4})__/u)?.[1] ?? 0)
+if (!latestMigration) failures.push('Unable to derive the latest Flyway migration version.')
 
 requireText('services/platform/Cargo.toml', /^rust-version = "1\.88"$/mu, 'Rust MSRV must be 1.88.')
 for (const path of ['compose.yaml', 'compose.production.yaml', 'infra/deploy/production.env.example']) {
-  requireText(path, /AIRTEK_FLYWAY_TARGET[^\n]*19/u, `${path} must target Flyway V19.`)
+  requireText(
+    path,
+    new RegExp(`AIRTEK_FLYWAY_TARGET[^\\n]*${latestMigration}`, 'u'),
+    `${path} must target the latest Flyway migration V${latestMigration}.`,
+  )
 }
 
 const rustFiles = [
@@ -100,4 +106,4 @@ for (const dependency of ['vue', 'pinia', 'typescript', 'vite', 'vue-tsc']) {
 if (failures.length) {
   throw new Error(`Architecture checks failed:\n${failures.map((failure) => `- ${failure}`).join('\n')}`)
 }
-console.log(`Architecture checks passed: ${routeFiles.length} route files are SQL-free; CMS V19, MSRV, retired-path, parser, and toolchain boundaries are enforced.`)
+console.log(`Architecture checks passed: ${routeFiles.length} route files are SQL-free; CMS V${latestMigration}, MSRV, retired-path, parser, and toolchain boundaries are enforced.`)

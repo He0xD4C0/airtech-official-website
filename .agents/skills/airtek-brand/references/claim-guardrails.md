@@ -1,6 +1,6 @@
 # Public claim guardrails
 
-Updated: 2026-09-01
+Last reviewed: 2026-09-14
 
 ## Safe baseline
 
@@ -20,6 +20,8 @@ The supplied decks report the following, but they are `PROVISIONAL` until an own
 - ISO 9001, ISO 14001, ISO 45001, CE, and ETL/UL coverage.
 
 For certifications, verify certificate holder, standard/version, issuing body, validity, product/site scope, model coverage, market, and permission to display marks. Never imply that every product carries every listed certification.
+
+The ISO 9001:2015 image recovered from the legacy public site is `DEPRECATED` because its displayed validity ended 2026-03-30. It is historical evidence, not publication artwork; see [brand-assets.md](brand-assets.md).
 
 ## Contacts and privacy
 

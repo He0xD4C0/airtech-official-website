@@ -63,6 +63,16 @@ pub(super) fn add(s: &mut Map<String, Value>) {
     s.insert("CmsPublishedPage".into(), cms_page("CmsPublishedContent"));
     s.insert("CmsReviewPage".into(), cms_page("CmsReviewItem"));
     s.insert(
+        "CmsSiteSingletonState".into(),
+        object(
+            &["ownDraft", "published"],
+            json!({
+                "ownDraft":nullable(r("CmsPrivateDraft")),
+                "published":nullable(r("CmsPublishedContent"))
+            }),
+        ),
+    );
+    s.insert(
         "CmsDraftSharesRequest".into(),
         object(
             &["userIds"],

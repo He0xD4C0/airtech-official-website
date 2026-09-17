@@ -159,5 +159,7 @@ function fromDateTimeLocal(value: string): string | null {
 </template>
 
 <style scoped>
+@layer components {
 .type-fields { display: flex; flex-direction: column; gap: 0.75rem; }
+}
 </style>

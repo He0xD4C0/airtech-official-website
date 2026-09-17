@@ -81,10 +81,16 @@ function isResolvedMedia(value: unknown): boolean {
   return isRecord(value)
     && typeof value.assetId === 'string'
     && typeof value.publicUrl === 'string'
+    && (value.previewUrl === null || typeof value.previewUrl === 'string')
     && typeof value.downloadUrl === 'string'
     && typeof value.originalName === 'string'
     && typeof value.mediaType === 'string'
     && Number.isInteger(value.byteSize)
+    && (value.originalWidth === null || Number.isInteger(value.originalWidth))
+    && (value.originalHeight === null || Number.isInteger(value.originalHeight))
+    && (value.previewWidth === null || Number.isInteger(value.previewWidth))
+    && (value.previewHeight === null || Number.isInteger(value.previewHeight))
+    && (value.previewByteSize === null || Number.isInteger(value.previewByteSize))
 }
 
 function isRelationCard(value: unknown): value is ResolvedRelationCard {

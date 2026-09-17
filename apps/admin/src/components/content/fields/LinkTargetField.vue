@@ -151,15 +151,17 @@ watch(contentId, async (id) => {
 </template>
 
 <style scoped>
+@layer components {
 .link-target { display: flex; flex-direction: column; gap: 0.5rem; }
 .link-target__content { display: flex; flex-direction: column; gap: 0.45rem; }
-.link-target__current { display: flex; align-items: center; gap: 0.35rem; margin: 0; color: var(--airtek-blue-dark); font-size: 0.64rem; }
-.link-target__hint { margin: 0; color: var(--admin-muted); font-size: 0.58rem; }
-.link-target__state { display: flex; align-items: center; gap: 0.35rem; margin: 0; color: var(--admin-muted); font-size: 0.62rem; }
+.link-target__current { display: flex; align-items: center; gap: 0.35rem; margin: 0; color: var(--airtek-blue-dark); font-size: 0.75rem; }
+.link-target__hint { margin: 0; color: var(--text-secondary); font-size: 0.75rem; }
+.link-target__state { display: flex; align-items: center; gap: 0.35rem; margin: 0; color: var(--text-secondary); font-size: 0.75rem; }
 .link-target__state--error { color: #b42318; }
 .link-target__results { display: flex; flex-direction: column; gap: 0.3rem; max-height: 12rem; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
-.link-target__results button { display: flex; flex-direction: column; width: 100%; padding: 0.45rem 0.55rem; border: 1px solid var(--admin-line); border-radius: 7px; background: white; text-align: left; }
-.link-target__results button:hover { border-color: var(--airtek-blue); background: var(--admin-soft-blue); }
-.link-target__results strong { font-size: 0.64rem; }
-.link-target__results small { color: var(--admin-muted); font-size: 0.55rem; }
+.link-target__results button { display: flex; flex-direction: column; width: 100%; padding: 0.45rem 0.55rem; border: 1px solid var(--border-default); border-radius: 7px; background: white; text-align: left; }
+.link-target__results button:hover { border-color: var(--airtek-blue); background: var(--surface-info); }
+.link-target__results strong { font-size: 0.75rem; }
+.link-target__results small { color: var(--text-secondary); font-size: 0.75rem; }
+}
 </style>

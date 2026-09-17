@@ -144,15 +144,17 @@ function toggleIndexable(enabled: boolean): void {
 </template>
 
 <style scoped>
+@layer components {
 .seo-inspector { display: flex; flex-direction: column; gap: 0.7rem; }
-.seo-inspector__banner { display: flex; align-items: flex-start; gap: 0.4rem; padding: 0.55rem 0.6rem; margin: 0; border: 1px solid #f0dca8; border-radius: 8px; background: var(--admin-soft-amber); color: #8a6100; font-size: 0.6rem; line-height: 1.5; }
+.seo-inspector__banner { display: flex; align-items: flex-start; gap: 0.4rem; padding: 0.55rem 0.6rem; margin: 0; border: 1px solid #f0dca8; border-radius: 8px; background: var(--surface-warning); color: #8a6100; font-size: 0.75rem; line-height: 1.5; }
 .seo-inspector__error { color: #b42318; }
 .seo-inspector__over { color: #b42318; }
 .seo-inspector__preview { display: flex; flex-direction: column; gap: 0.35rem; }
-.seo-inspector__preview h3 { display: flex; align-items: center; gap: 0.3rem; margin: 0; color: var(--airtek-blue-dark); font-size: 0.62rem; letter-spacing: 0.05em; text-transform: uppercase; }
-.seo-inspector__serp { padding: 0.6rem; border: 1px solid var(--admin-line); border-radius: 8px; background: white; }
-.seo-inspector__serp-path { margin: 0 0 0.2rem; color: #3c7d3a; font-size: 0.56rem; overflow-wrap: anywhere; }
-.seo-inspector__serp-title { margin: 0 0 0.15rem; color: #1a0dab; font-size: 0.72rem; }
-.seo-inspector__serp-description { margin: 0; color: var(--admin-muted); font-size: 0.6rem; line-height: 1.5; }
-.seo-inspector__serp-note { margin: 0.3rem 0 0; color: #8a6100; font-size: 0.55rem; }
+.seo-inspector__preview h3 { display: flex; align-items: center; gap: 0.3rem; margin: 0; color: var(--airtek-blue-dark); font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; }
+.seo-inspector__serp { padding: 0.6rem; border: 1px solid var(--border-default); border-radius: 8px; background: white; }
+.seo-inspector__serp-path { margin: 0 0 0.2rem; color: #3c7d3a; font-size: 0.75rem; overflow-wrap: anywhere; }
+.seo-inspector__serp-title { margin: 0 0 0.15rem; color: #1a0dab; font-size: 0.75rem; }
+.seo-inspector__serp-description { margin: 0; color: var(--text-secondary); font-size: 0.75rem; line-height: 1.5; }
+.seo-inspector__serp-note { margin: 0.3rem 0 0; color: #8a6100; font-size: 0.75rem; }
+}
 </style>

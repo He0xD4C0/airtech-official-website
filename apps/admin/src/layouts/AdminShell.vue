@@ -14,6 +14,7 @@ import BrandMark from '@/components/BrandMark.vue'
 import { navigation, quickActions } from '@/config/navigation'
 import { adminApi } from '@/services/adminApi'
 import { contentApi } from '@/services/contentApi'
+import { routeComponentKey } from '@/router/routeComponentKey'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 
@@ -119,7 +120,7 @@ watch(() => ui.commandOpen, async (open) => {
 
     <aside class="sidebar" :class="{ 'sidebar--open': ui.sidebarOpen }">
       <div class="sidebar__brand">
-        <BrandMark inverse />
+        <BrandMark compact />
         <button class="icon-button sidebar__mobile-close" type="button" aria-label="关闭导航" @click="ui.closeSidebar">
           <X :size="18" />
         </button>
@@ -178,7 +179,9 @@ watch(() => ui.commandOpen, async (open) => {
       </header>
 
       <main id="main-content" class="workspace__main" tabindex="-1">
-        <RouterView />
+        <RouterView v-slot="{ Component, route: activeRoute }">
+          <component :is="Component" :key="routeComponentKey(activeRoute)" />
+        </RouterView>
       </main>
     </section>
 

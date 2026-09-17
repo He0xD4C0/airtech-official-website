@@ -86,6 +86,18 @@ pub(crate) async fn load_published_product_rows(
                     )
                 })?
                 .unwrap_or_default();
+            product.media_gallery = content
+                .get("mediaGallery")
+                .cloned()
+                .map(serde_json::from_value)
+                .transpose()
+                .map_err(|error| {
+                    tracing::error!(%error, "published product media gallery is invalid");
+                    ApiError::service_unavailable(
+                        "Stored published product media gallery is invalid.",
+                    )
+                })?
+                .unwrap_or_default();
             product.indexable = row.try_get::<bool, _>("localized_indexable")?;
             Ok(product)
         })

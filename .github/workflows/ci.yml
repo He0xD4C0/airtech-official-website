@@ -361,7 +361,7 @@ jobs:
       - name: Validate independently operated production infrastructure
         run: docker compose --env-file infra/deploy/infrastructure.env.example -f compose.infrastructure.production.yaml --profile bootstrap config --quiet
       - name: Validate production shell scripts
-        run: sh -n infra/deploy/deploy-app.sh infra/deploy/postgres-bootstrap.sh infra/deploy/minio-bootstrap.sh
+        run: sh -n infra/deploy/deploy-app.sh infra/deploy/postgres-bootstrap.sh
       - name: Validate Admin Nginx template
         run: >-
           docker run --rm

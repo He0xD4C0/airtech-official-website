@@ -5,7 +5,9 @@
   "type": "module",
   "exports": {
     "./tokens.css": "./src/tokens.css",
-    "./base.css": "./src/base.css"
+    "./base.css": "./src/base.css",
+    "./assets/brand/airtek-standard-lockup-horizontal.webp": "./src/assets/brand/airtek-standard-lockup-horizontal.webp",
+    "./assets/brand/airtek-standard-lockup-vertical.webp": "./src/assets/brand/airtek-standard-lockup-vertical.webp"
   },
   "scripts": {
     "build": "node -e \"console.log('CSS package: no compilation required')\"",

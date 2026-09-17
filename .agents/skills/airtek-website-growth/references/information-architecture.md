@@ -1,6 +1,6 @@
 # Information architecture
 
-Updated: 2026-09-01
+Last reviewed: 2026-09-14
 
 ## Strategic objective
 
@@ -73,4 +73,4 @@ Each index/detail page should define purpose, audience and search intent, canoni
 
 ## Scope boundary
 
-The working interpretation of the strategy is a public website plus controlled core-platform interfaces. A full internal management portal is a later independent phase. This boundary is `PROVISIONAL` because the rebuild spreadsheet also places substantial portal/MCP work in an early stage; confirm scope before implementation.
+The list above remains a `PROVISIONAL` public-site content proposal. It does not describe the repository's Admin scope or prove that every proposed public route is implemented. The current repository already contains a separate internal management portal and controlled core-platform interfaces; verify their live boundaries in the root README and architecture documentation. MCP remains a separate, unapproved extension over controlled APIs.

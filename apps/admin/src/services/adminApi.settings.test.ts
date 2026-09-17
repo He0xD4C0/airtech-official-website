@@ -39,4 +39,53 @@ describe('platform settings API', () => {
       reason: 'Align retention with approved policy',
     })
   })
+
+  it('keeps object-storage secrets write-only and sends revision preconditions', async () => {
+    const current = {
+      configured: true,
+      provider: 's3',
+      endpoint: 'https://s3.example.test',
+      region: 'test-1',
+      bucket: 'media',
+      accessKeyId: 'access',
+      secretConfigured: true,
+      keyPrefix: 'media',
+      pathStyle: true,
+      publicBaseUrl: 'https://media.example.test',
+      legacyAssetCount: 0,
+      revision: 3,
+      updatedAt: '2026-09-17T00:00:00Z',
+      updatedBy: 'admin@example.test',
+    }
+    const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      if (init?.method === 'POST') return response({ ok: true, publicUrl: `${current.publicBaseUrl}/media/.airtek-probe/test.txt` })
+      if (init?.method === 'PUT') return response({ ...current, revision: 4 }, { ETag: '"revision-4"' })
+      return response(current, { ETag: '"revision-3"' })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const loaded = await adminApi.getObjectStorageSettings()
+    expect(loaded.settings).not.toHaveProperty('secretAccessKey')
+    const input = {
+      endpoint: current.endpoint,
+      region: current.region,
+      bucket: current.bucket,
+      accessKeyId: current.accessKeyId,
+      secretAccessKey: '',
+      keyPrefix: current.keyPrefix,
+      pathStyle: current.pathStyle,
+      publicBaseUrl: current.publicBaseUrl,
+    }
+    await expect(adminApi.testObjectStorageSettings(input)).resolves.toMatchObject({ ok: true })
+    await adminApi.updateObjectStorageSettings({
+      ...input,
+      adoptLegacyAssets: false,
+      reason: 'Rotate the public delivery configuration.',
+    }, 3)
+
+    const [, updateInit] = fetchMock.mock.calls[2] ?? []
+    expect(updateInit?.method).toBe('PUT')
+    expect(new Headers(updateInit?.headers).get('If-Match')).toBe('"revision-3"')
+    expect(JSON.parse(String(updateInit?.body)).secretAccessKey).toBe('')
+  })
 })

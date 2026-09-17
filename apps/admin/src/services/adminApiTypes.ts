@@ -10,6 +10,9 @@ import type {
   GuestSourceDaily as ContractGuestSourceDaily,
   InvitationAcceptance as ContractInvitationAcceptance,
   MissingAssetReference as ContractMissingAssetReference,
+  ObjectStorageSettings as ContractObjectStorageSettings,
+  ObjectStorageSettingsInput as ContractObjectStorageSettingsInput,
+  ObjectStorageTestResult as ContractObjectStorageTestResult,
   PerformanceCurve as ContractPerformanceCurve,
   PerformancePoint as ContractPerformancePoint,
   PlatformSettings as ContractPlatformSettings,
@@ -26,6 +29,7 @@ import type {
   TotpEnrollment as ContractTotpEnrollment,
   UpdateAdminRole as ContractUpdateAdminRole,
   UpdateAdminUser as ContractUpdateAdminUser,
+  UpdateObjectStorageSettings as ContractUpdateObjectStorageSettings,
   UpdatePlatformSettings as ContractUpdatePlatformSettings,
   UpdateProductPresentation as ContractUpdateProductPresentation,
   UserInvitation as ContractUserInvitation,
@@ -67,3 +71,7 @@ export type RecoveryCodeSet = ContractRecoveryCodeSet
 export type AdminSession = ContractAdminSession
 export type PlatformSettings = ContractPlatformSettings
 export type UpdatePlatformSettings = ContractUpdatePlatformSettings
+export type ObjectStorageSettings = ContractObjectStorageSettings
+export type ObjectStorageSettingsInput = ContractObjectStorageSettingsInput
+export type ObjectStorageTestResult = ContractObjectStorageTestResult
+export type UpdateObjectStorageSettings = ContractUpdateObjectStorageSettings

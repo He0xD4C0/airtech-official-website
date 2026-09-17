@@ -35,3 +35,6 @@ pub use operations::*;
 mod settings;
 use settings::*;
 pub use settings::*;
+#[path = "models/object_storage.rs"]
+mod object_storage;
+pub use object_storage::*;

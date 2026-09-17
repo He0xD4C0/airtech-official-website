@@ -142,10 +142,12 @@ function addChild(): void {
 </template>
 
 <style scoped>
+@layer components {
 .nav-item { margin: 0; list-style: none; }
-.nav-item__card { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.6rem; margin-top: 0.5rem; border: 1px solid var(--admin-line); border-radius: 9px; background: white; }
-.nav-item__header { display: flex; align-items: center; gap: 0.35rem; color: var(--admin-muted); }
-.nav-item__header strong { flex: 1; font-size: 0.6rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.nav-item__card { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.6rem; margin-top: 0.5rem; border: 1px solid var(--border-default); border-radius: 9px; background: white; }
+.nav-item__header { display: flex; align-items: center; gap: 0.35rem; color: var(--text-secondary); }
+.nav-item__header strong { flex: 1; font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; }
 .nav-item__controls { display: flex; align-items: center; gap: 0.15rem; }
-.nav-item__children { padding: 0 0 0 0.6rem; margin: 0; border-left: 2px solid var(--admin-line-soft); }
+.nav-item__children { padding: 0 0 0 0.6rem; margin: 0; border-left: 2px solid var(--border-subtle); }
+}
 </style>

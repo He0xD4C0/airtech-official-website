@@ -34,7 +34,7 @@ async function submit(): Promise<void> {
 <template>
   <main class="auth-layout">
     <section class="auth-brand-panel">
-      <BrandMark inverse />
+      <BrandMark vertical />
       <div class="auth-brand-panel__body">
         <p class="eyebrow eyebrow--light">AIRTEKPOWER CONTROL CENTER</p>
         <h1>把复杂的产品信息，<br />变成可信的发布流程。</h1>

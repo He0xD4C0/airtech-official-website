@@ -49,7 +49,15 @@ MediaAsset: {
             id: string;
             /** @enum {string} */
             mediaType: "image/png" | "image/jpeg" | "image/webp";
+            originalHeight: number | null;
             originalName: string;
+            originalWidth: number | null;
+            previewByteSize: number | null;
+            previewHeight: number | null;
+            previewMediaType: "image/webp" | null;
+            previewUrl: string | null;
+            previewWidth: number | null;
+            /** Format: uri */
             publicUrl: string;
             sha256: string;
             uploadedBy: string;
@@ -138,6 +146,41 @@ NewsRevisionPage: {
             items: components["schemas"]["NewsRevision"][];
             nextCursor: string | null;
         };
+ObjectStorageSettings: {
+            accessKeyId: string | null;
+            bucket: string | null;
+            configured: boolean;
+            endpoint: string | null;
+            keyPrefix: string | null;
+            readonly legacyAssetCount: number;
+            pathStyle: boolean;
+            /** @constant */
+            provider: "s3";
+            publicBaseUrl: string | null;
+            region: string | null;
+            readonly revision: number;
+            readonly secretConfigured: boolean;
+            updatedAt: string | null;
+            updatedBy: string | null;
+        };
+ObjectStorageSettingsInput: {
+            accessKeyId: string;
+            bucket: string;
+            /** Format: uri */
+            endpoint: string;
+            keyPrefix: string;
+            pathStyle: boolean;
+            /** Format: uri */
+            publicBaseUrl: string;
+            region: string;
+            secretAccessKey?: string;
+        };
+ObjectStorageTestResult: {
+            /** @constant */
+            ok: true;
+            /** Format: uri */
+            publicUrl: string;
+        };
 OpenApiDocument: {
             [key: string]: unknown;
         };
@@ -196,6 +239,7 @@ Product: {
             id: string;
             indexable: boolean;
             locale: string;
+            mediaGallery: components["schemas"]["ProductMediaGalleryItem"][];
             model: string | null;
             motorTechnology: string | null;
             performanceCurves: components["schemas"]["PerformanceCurve"][];
@@ -295,6 +339,11 @@ ProductImportRowError: {
             stableId: string | null;
         };
 ProductImportRun: components["schemas"]["ProductImportResult"];
+ProductMediaGalleryItem: {
+            altText: string;
+            /** Format: uuid */
+            assetId: string;
+        };
 ProductPage: {
             items: components["schemas"]["Product"][];
             /** @description Opaque base64url v2 keyset cursor bound to the active filters; v1 is accepted for one compatibility release. */
@@ -303,6 +352,7 @@ ProductPage: {
 ProductPresentation: {
             indexable: boolean;
             locale: string;
+            mediaGallery: components["schemas"]["ProductMediaGalleryItem"][];
             publishedRevision: number | null;
             relatedContentIds: string[];
             /** Format: int64 */
@@ -440,56 +490,5 @@ RelationCollectionBlock: {
              * @enum {string}
              */
             type: "relationCollection";
-        };
-RelationTargetContent: {
-            /** Format: uuid */
-            contentId: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            targetType: "content";
-        };
-RelationTargetProduct: {
-            /** Format: uuid */
-            productId: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            targetType: "product";
-        };
-RelationTargetReference: components["schemas"]["RelationTargetContent"] | components["schemas"]["RelationTargetProduct"];
-ReplacementRfqContext: {
-            additionalMessage?: string;
-            application: string;
-            dutyPoint: components["schemas"]["RfqDutyPoint"];
-            electrical?: components["schemas"]["RfqElectricalContext"];
-            environment?: string;
-            existingModel: string;
-            installationConstraints?: string;
-            /** @enum {string} */
-            priority?: "efficiency" | "noise" | "size" | "headroom";
-            quantity?: components["schemas"]["RfqQuantity"];
-            replacementGoal?: string;
-        };
-ReplacementRfqRequest: {
-            /** @enum {boolean} */
-            consent: true;
-            contact: components["schemas"]["BusinessContact"];
-            context: components["schemas"]["ReplacementRfqContext"];
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            journey: "replacement";
-            /** @enum {string} */
-            locale: "en";
-            sourcePath: string;
-        };
-ResolvedLinkTarget: {
-            /** Format: uuid */
-            contentId: string;
-            href: string;
         };
 }

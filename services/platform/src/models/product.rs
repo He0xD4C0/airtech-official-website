@@ -54,6 +54,13 @@ pub struct PerformanceCurve {
     pub points: Vec<CurvePoint>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProductMediaGalleryItem {
+    pub asset_id: Uuid,
+    pub alt_text: String,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Product {
@@ -73,6 +80,9 @@ pub struct Product {
     pub sort_order: i32,
     #[serde(default)]
     pub related_content_ids: Vec<Uuid>,
+    /// Portal-owned website imagery. Product Master attachments stay separate.
+    #[serde(default)]
+    pub media_gallery: Vec<ProductMediaGalleryItem>,
     pub specifications: Vec<SpecValue>,
     pub performance_curves: Vec<PerformanceCurve>,
     pub source_snapshot_id: Uuid,

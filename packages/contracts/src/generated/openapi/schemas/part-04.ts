@@ -6,6 +6,57 @@
 import type { components } from '../components'
 
 export interface SchemasPart04 {
+RelationTargetContent: {
+            /** Format: uuid */
+            contentId: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            targetType: "content";
+        };
+RelationTargetProduct: {
+            /** Format: uuid */
+            productId: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            targetType: "product";
+        };
+RelationTargetReference: components["schemas"]["RelationTargetContent"] | components["schemas"]["RelationTargetProduct"];
+ReplacementRfqContext: {
+            additionalMessage?: string;
+            application: string;
+            dutyPoint: components["schemas"]["RfqDutyPoint"];
+            electrical?: components["schemas"]["RfqElectricalContext"];
+            environment?: string;
+            existingModel: string;
+            installationConstraints?: string;
+            /** @enum {string} */
+            priority?: "efficiency" | "noise" | "size" | "headroom";
+            quantity?: components["schemas"]["RfqQuantity"];
+            replacementGoal?: string;
+        };
+ReplacementRfqRequest: {
+            /** @enum {boolean} */
+            consent: true;
+            contact: components["schemas"]["BusinessContact"];
+            context: components["schemas"]["ReplacementRfqContext"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            journey: "replacement";
+            /** @enum {string} */
+            locale: "en";
+            sourcePath: string;
+        };
+ResolvedLinkTarget: {
+            /** Format: uuid */
+            contentId: string;
+            href: string;
+        };
 ResolvedMedia: {
             /** Format: uuid */
             assetId: string;
@@ -13,7 +64,14 @@ ResolvedMedia: {
             downloadUrl: string;
             /** @enum {string} */
             mediaType: "image/png" | "image/jpeg" | "image/webp";
+            originalHeight: number | null;
             originalName: string;
+            originalWidth: number | null;
+            previewByteSize: number | null;
+            previewHeight: number | null;
+            previewUrl: string | null;
+            previewWidth: number | null;
+            /** Format: uri */
             publicUrl: string;
         };
 ResolvedRelationCard: {
@@ -422,49 +480,14 @@ UpdateBusinessStatusRequest: {
             reason: string;
             status: components["schemas"]["BusinessInboxStatus"];
         };
+UpdateObjectStorageSettings: components["schemas"]["ObjectStorageSettingsInput"] & {
+            adoptLegacyAssets: boolean;
+            reason: string;
+        };
 UpdatePlatformSettings: {
             reason: string;
             retentionDeletionGraceDays?: number;
             rfqRetentionDays?: number;
             temporaryOverrideDefaultDays?: number;
-        };
-UpdateProductPresentation: {
-            indexable: boolean;
-            locale: string;
-            reason: string;
-            /** @default [] */
-            relatedContentIds: string[];
-            seo: components["schemas"]["SeoMetadataInput"];
-            slug: string;
-            /** @default 0 */
-            sortOrder: number;
-            summary?: string | null;
-            title: string;
-        };
-UserAdminSummary: components["schemas"]["AdminUserRecord"];
-UserInvitation: {
-            displayName: string;
-            /** Format: email */
-            email: string;
-            /** Format: date-time */
-            expiresAt: string;
-            /** Format: uuid */
-            id: string;
-            readonly invitationToken?: string;
-            /** Format: date-time */
-            invitedAt: string;
-            locale: string;
-            roleKeys: string[];
-            /** @enum {string} */
-            status: "pending" | "accepted" | "revoked" | "expired";
-        };
-UserInvitationPage: {
-            items: components["schemas"]["UserInvitation"][];
-            nextCursor: string | null;
-        };
-ValidationIssue: {
-            code: string;
-            detail: string;
-            fieldPath: string;
         };
 }

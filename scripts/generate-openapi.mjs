@@ -136,6 +136,7 @@ function assertRequiredDataContracts(document) {
     ['post', '/api/admin/v1/content-reviews/{draftId}/approve', 'approveContentReview'],
     ['get', '/api/admin/v1/published-content/{contentId}', 'getCurrentPublishedContent'],
     ['post', '/api/admin/v1/published-content/{contentId}/drafts', 'copyPublishedContentToPrivateDraft'],
+    ['get', '/api/admin/v1/site-singletons/{kind}', 'getSiteSingletonState'],
     ['get', '/api/admin/v1/products/{id}/private-pricing', 'getProductPrivatePricing'],
   ]
   for (const [method, path, operationId] of operations) {
@@ -145,15 +146,16 @@ function assertRequiredDataContracts(document) {
   }
 
   const requiredSchemaProperties = {
-    Product: ['seo', 'sortOrder', 'relatedContentIds'],
-    ProductPresentation: ['seo', 'sortOrder', 'relatedContentIds'],
-    UpdateProductPresentation: ['seo', 'sortOrder', 'relatedContentIds'],
+    Product: ['seo', 'sortOrder', 'relatedContentIds', 'mediaGallery'],
+    ProductPresentation: ['seo', 'sortOrder', 'relatedContentIds', 'mediaGallery'],
+    UpdateProductPresentation: ['seo', 'sortOrder', 'relatedContentIds', 'mediaGallery'],
     ProductPrivatePricing: ['productId', 'stableId', 'sourceRowNumber', 'pricingFields'],
     GuestSourceDaily: ['bucketDate', 'source', 'landingPath', 'locale', 'visits', 'pageViews', 'rfqStarts', 'rfqSubmissions'],
     ContentDraftV2: ['schemaVersion', 'kind', 'templateKey', 'isPlaceholder', 'typeFields', 'composition', 'seo', 'relations', 'draftVersion'],
     CmsPrivateDraft: ['draftId', 'contentId', 'ownerUserId', 'document', 'draftVersion', 'basePublicationVersion', 'state'],
     CmsPublishedContent: ['contentId', 'document', 'publicationVersion', 'publishedBy', 'publishedAt'],
     CmsReviewItem: ['draft', 'submittedByUserId', 'submittedAt'],
+    CmsSiteSingletonState: ['ownDraft', 'published'],
     GeneralInformationTypeFields: ['contact', 'socialLinks', 'defaultSeo', 'productCategories', 'navigationCta'],
   }
   for (const [schemaName, properties] of Object.entries(requiredSchemaProperties)) {

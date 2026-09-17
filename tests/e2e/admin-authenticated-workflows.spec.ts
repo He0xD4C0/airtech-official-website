@@ -50,10 +50,12 @@ test.describe('Authenticated Admin workflows against Rust and PostgreSQL', () =>
 
   test('updates, explicitly saves and publishes General Information', async ({ page }) => {
     await page.goto(absolute(adminOrigin, '/site/general-information'))
-    const initialize = page.getByRole('button', { name: /初始化 General Information/u })
-    if (await initialize.isVisible().catch(() => false)) await initialize.click()
+    const createDraft = page.getByRole('button', { name: '创建编辑草稿' })
+    const editorHeading = page.getByRole('heading', { name: '基本信息', exact: true })
+    await expect(createDraft.or(editorHeading)).toBeVisible()
+    if (await createDraft.isVisible()) await createDraft.click()
 
-    await expect(page.getByRole('heading', { name: '基本信息' })).toBeVisible()
+    await expect(editorHeading).toBeVisible()
     await page.getByLabel('品牌标语').fill('AIRTEK E2E database-backed identity')
     await expect(page.locator('.save-state')).toContainText('有未保存更改')
     await page.getByRole('button', { name: '保存', exact: true }).click()

@@ -102,10 +102,12 @@ pub async fn write_product_presentation(
     now: DateTime<Utc>,
 ) -> Result<ProductPresentation, ApiError> {
     validate_related_content(transaction, &input.related_content_ids).await?;
+    validate_media_gallery(transaction, input).await?;
     let revision = expected + 1;
     let content = json!({
         "sortOrder": input.sort_order,
         "relatedContentIds": input.related_content_ids,
+        "mediaGallery": input.media_gallery,
     });
     let seo = serde_json::to_value(&input.seo)
         .map_err(|_| ApiError::internal("Product presentation SEO serialization failed."))?;
@@ -193,10 +195,38 @@ pub async fn write_product_presentation(
         indexable,
         sort_order: input.sort_order,
         related_content_ids: input.related_content_ids.clone(),
+        media_gallery: input.media_gallery.clone(),
         revision,
         published_revision: context.published_revision,
         updated_at: now,
     })
+}
+
+async fn validate_media_gallery(
+    transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    input: &UpdateProductPresentation,
+) -> Result<(), ApiError> {
+    if input.media_gallery.is_empty() {
+        return Ok(());
+    }
+    let ids = input
+        .media_gallery
+        .iter()
+        .map(|item| item.asset_id)
+        .collect::<Vec<_>>();
+    let count = sqlx::query_scalar::<_, i64>(
+        "SELECT count(*) FROM media_assets WHERE id=ANY($1) AND deleted_at IS NULL",
+    )
+    .bind(&ids)
+    .fetch_one(&mut **transaction)
+    .await?;
+    if count != ids.len() as i64 {
+        return Err(ApiError::validation(BTreeMap::from([(
+            "mediaGallery".into(),
+            vec!["Every gallery media asset must exist.".into()],
+        )])));
+    }
+    Ok(())
 }
 
 async fn validate_related_content(

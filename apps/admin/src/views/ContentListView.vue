@@ -102,14 +102,16 @@ onMounted(() => load(true))
 </template>
 
 <style scoped>
+@layer components {
 .draft-search { display: flex; align-items: center; gap: .5rem; }
 .draft-search input { flex: 1; }
 .draft-list { display: flex; flex-direction: column; gap: .25rem; }
-.draft-list__summary { color: var(--admin-muted); font-size: .8rem; padding: .4rem; }
+.draft-list__summary { color: var(--text-secondary); font-size: .8rem; padding: .4rem; }
 .draft-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto auto; align-items: center; gap: 1rem; padding: .75rem; border-radius: .45rem; color: inherit; }
 .draft-row a { color: inherit; text-decoration: none; }
 .draft-row:hover { background: #f5f8f8; }
 .draft-row strong,.draft-row span { display: block; }
-.draft-row span,.draft-row time { color: var(--admin-muted); font-size: .75rem; }
+.draft-row span,.draft-row time { color: var(--text-secondary); font-size: .75rem; }
 .draft-list__paging { display: flex; justify-content: flex-end; gap: .4rem; padding-top: .6rem; }
+}
 </style>

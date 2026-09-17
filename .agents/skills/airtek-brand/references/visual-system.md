@@ -1,6 +1,6 @@
 # Visual system
 
-Updated: 2026-09-01
+Last reviewed: 2026-09-14
 
 ## Core palette
 
@@ -27,9 +27,11 @@ Keep typography tokens configurable until the conflict is resolved. Avoid loadin
 
 ## Logo
 
-The manual states that the identity combines a graphic mark with a wordmark and that the elements should not be redrawn (PDF pp. 7–8). Apply that rule to `AIRTEKPOWER`, replacing the legacy names in those pages. Use an approved vector or high-resolution source asset when one becomes available. Do not trace a PDF screenshot, redraw the symbol, alter proportions, recolor outside approved variants, add effects, or substitute a legacy wordmark.
+The manual states that the identity combines a graphic mark with a wordmark, fixes their relationship, prohibits using the text alone, and says to copy approved final artwork instead of redrawing it (PDF pp. 7–8). Apply that construction rule to `AIRTEKPOWER`, replacing the legacy names in those pages. The combined treatment is corroborated by the company deck PDF pp. 1–6 and 34 and the eight-page About subset.
 
-No approved standalone logo asset or clear-space/minimum-size production file is present in the repository. Treat those implementation details as `PROVISIONAL` until assets are supplied.
+Use an approved vector or high-resolution source asset when one becomes available. Do not trace or crop a PDF screenshot, redraw the symbol or lettering, alter proportions, recolor outside approved variants, add effects, separate the mark, or substitute a legacy wordmark.
+
+The exact horizontal and vertical combination marks embedded in the controlled manual PDF p. 8, A.3.2 were extracted and explicitly approved by the repository owner on 2026-09-17 for the public website and CMS. Their original extracts, Web derivatives, checksums, and scope are recorded in [brand-assets.md](brand-assets.md). Three 72/73 px graphic-only PNGs recovered from the legacy public site remain `DEPRECATED` and `BLOCKED`; the 32 px legacy favicon remains `PROVISIONAL` because the manual does not define a small-format exception.
 
 ## UI application
 
@@ -41,5 +43,7 @@ No approved standalone logo asset or clear-space/minimum-size production file is
 
 ## Source basis
 
-- `docs/品牌视觉系统管理.pdf`
+- `docs/Internal-docs/品牌视觉系统管理.pdf`
 - Demo HTML files are negative references only; they do not define brand tokens.
+
+The internal PDF is intentionally excluded from Git. If it is unavailable, report `internal evidence unavailable`; never fall back to a demo or an obsolete path.

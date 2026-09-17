@@ -31,6 +31,13 @@ The maintenance command is idempotent and must complete after Flyway and before
 the API or Worker. Those long-running binaries only verify its versioned marker;
 they do not migrate or backfill data during startup.
 
+The local DevTools image uses `prepare-development-runtime`, which performs the
+same readiness checks and creates `local-admin@airtek.invalid` only when the user
+table is empty. Existing users are never modified during startup. The explicit
+`reset-development-admin` command requires `AIRTEK_ALLOW_DEV_ADMIN_RESET=true`,
+targets only that reserved `.invalid` account, and is not compiled into the
+production feature build.
+
 Flyway `13.4.0` exclusively owns schema versions and migration history through
 the independent, non-root `flyway-migrate` image. From the repository root, use
 `pnpm db:migrate`, `pnpm db:info`, and `pnpm db:validate`; Flyway receives its

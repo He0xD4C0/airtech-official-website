@@ -1,19 +1,24 @@
 # Production deployment contract
 
 The selected first production topology is one Alibaba Cloud ECS instance in
-Singapore with two independent Docker Compose projects:
+Singapore with two independent operational boundaries:
 
-- `airtek-infra` owns the long-lived PostgreSQL and MinIO processes. Operators
-  start, back up, restore and upgrade it independently from application releases.
+- `airtek-infra` owns the long-lived PostgreSQL process. Operators start, back
+  up, restore and upgrade it independently from application releases.
 - `airtek-app` owns Flyway, Platform API/Worker, Public Web, Admin Web and the
   HTTP Gateway. GitHub Actions may replace only these application containers.
+
+Object storage is not application Compose configuration. An administrator
+connects an external S3-compatible service through the Admin GUI after startup;
+the application stores that configuration in PostgreSQL.
 
 Both projects join the pre-created external `airtek-production` Docker network.
 Application deployment must never run `docker compose down` against the
 infrastructure project and must never remove its bind-mounted data directories.
 
-This is a single-host topology, not high availability. PostgreSQL and MinIO
-backups must leave the ECS instance and must be restore-tested.
+This is a single-host topology, not high availability. PostgreSQL backups must
+leave the ECS instance and must be restore-tested. The selected object-storage
+provider needs its own reviewed durability, backup and restore controls.
 
 ## Stateful infrastructure boundary
 
@@ -30,11 +35,10 @@ docker compose \
   --profile bootstrap up -d
 ```
 
-The bootstrap profile creates separate migration/runtime PostgreSQL roles, a
-private media bucket and a bucket-scoped MinIO application user. PostgreSQL and
-MinIO restart with the server; bootstrap tasks and Flyway remain one-shot.
-Administrative ports bind only to `127.0.0.1` and are reachable remotely only
-through an authenticated SSH tunnel.
+The bootstrap profile creates separate migration/runtime PostgreSQL roles.
+PostgreSQL restarts with the server; bootstrap tasks and Flyway remain one-shot.
+Its administrative port binds only to `127.0.0.1` and is reachable remotely
+only through an authenticated SSH tunnel.
 
 ## Release artifacts
 
@@ -88,16 +92,22 @@ Before deployment:
    Start API and Worker only after it exits successfully.
 8. Supply any initial setup token from a secret manager and remove it after the
    first Super Admin has been created.
-9. Configure the Platform API with `AIRTEK_MEDIA_STORAGE=s3`, the internal
-   `http://minio:9000` endpoint and the bucket-scoped API credentials. Never give
-   the application MinIO root credentials.
+9. Configure object storage after startup through Admin. Use a least-privilege
+   identity and a reviewed public delivery base URL; do not place S3 fields or
+   credentials in `production.env` or application Compose.
 10. Trust only the exact Gateway address plus any exact outer-proxy hops needed
    to interpret `X-Forwarded-For`; never trust a whole private range by default.
 11. Configure provider logs, health probes, off-host backups, restore targets,
-   retention, alerting and image/SBOM policy. These provider resources are
-   intentionally absent from this repository.
+    retention, alerting and image/SBOM policy. These provider resources are
+    intentionally absent from this repository.
 12. Verify Search Console and webmaster files only on the Public origin. Admin
-   and API must keep their crawl-denial and sitemap `404` behavior.
+    and API must keep their crawl-denial and sitemap `404` behavior.
+
+The fixed local-development administrator is not a deployment mechanism.
+Production images compile only the `production` feature, support only
+`airtek-maintenance prepare-runtime`, and receive no `AIRTEK_DEV_ADMIN_*`
+configuration. A fresh production database therefore remains without users
+until the one-time setup flow is completed.
 
 ## Direct media object identity
 
@@ -108,12 +118,13 @@ the configured `media/*` prefix. DeleteObject is used solely to compensate an
 object whose catalogue transaction failed. The identity cannot list the bucket,
 alter bucket policy, or make the bucket public.
 
-The browser never receives object-store credentials or provider URLs. Successful
-PNG, JPEG, and WebP uploads are immediately served without authentication by
-the platform's public media route. Production must provide a private HTTPS
-endpoint, scoped credentials, monitoring, and a smoke test that covers
-upload, immediate GET, idempotent replay, conflict, and database-failure
-compensation.
+The browser never receives object-store credentials. Administrators configure
+the S3-compatible endpoint, bucket, scoped credentials, and public delivery
+base URL in Admin; the API stores them in PostgreSQL. Successful PNG, JPEG, and
+WebP uploads persist an immutable external public URL. Production must provide
+a private HTTPS API endpoint, a public CDN or bucket URL, monitoring, and a
+smoke test covering upload, anonymous GET, idempotent replay, conflict, and
+database-failure compensation.
 
 Run configuration and repository assertions before promotion:
 
@@ -141,8 +152,8 @@ artifacts, not production-release images, and never overwrite the production
 SHA tag.
 
 The server keeps `/etc/airtek/production.env` and its registry pull credential.
-The publishing workflow never receives PostgreSQL superuser, MinIO root, or
-server access secrets. The separate deployment script retains its application
+The publishing workflow never receives PostgreSQL superuser, object-storage,
+or server access secrets. The separate deployment script retains its application
 health rollback; schema migrations are forward-only and are never automatically
 reversed.
 
@@ -171,12 +182,14 @@ the target host and operational controls are ready.
 
 ## Deployment order
 
-The current schema target is V19. Deploy the migration artifact first, then the
+The current schema target is V21. Deploy the migration artifact first, then the
 API and ordinary Worker, and finally Admin and Public Web. V17 introduces
 private drafts and review, V18 removes persisted content history, and V19 adds
-current-state query indexes. These migrations are forward-only.
+current-state query indexes. V20 moves application-side object-storage settings
+into PostgreSQL and adds immutable public media URLs. These migrations are
+forward-only.
 
-Before promotion, verify a fresh database migrates directly to V19 and a
+V21 adds immutable media preview derivatives. Before promotion, verify a fresh database migrates directly to V21 and a
 controlled legacy SQLx v1-v10 database passes
 `baseline -> migrate -> validate`.
 

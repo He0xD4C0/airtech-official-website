@@ -94,6 +94,7 @@ async fn feishu_takes_over_verified_csv_stable_id_and_projects_all_facts_atomica
         seo: SeoMetadata::default(),
         sort_order: 0,
         related_content_ids: Vec::new(),
+        media_gallery: Vec::new(),
         specifications: vec![SpecValue {
             key: "power".into(),
             label: "Power".into(),

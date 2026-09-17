@@ -5,6 +5,7 @@ import { Copy, ExternalLink, FileImage, RefreshCcw, Search, UploadCloud, X } fro
 import { ApiError, type MediaAsset, type MediaAssetReference } from '@airtek/contracts'
 import DataStatePanel from '@/components/DataStatePanel.vue'
 import PageHeader from '@/components/PageHeader.vue'
+import { adminApi } from '@/services/adminApi'
 import { contentApi } from '@/services/contentApi'
 import { getMediaAsset, listMediaAssetReferences, uploadMediaAsset } from '@/services/mediaApi'
 import { DEFAULT_ADMIN_PAGE_SIZE } from '@/services/cursorPagination'
@@ -25,6 +26,7 @@ const errorMessage = ref('')
 const notice = ref('')
 const query = ref(typeof route.query.q === 'string' ? route.query.q : '')
 const uploading = ref(false)
+const storageConfigured = ref<boolean | null>(null)
 const uploadInput = ref<HTMLInputElement | null>(null)
 const cursorStack = ref<string[]>([])
 const nextCursor = ref<string | null>(null)
@@ -35,6 +37,8 @@ const detailError = ref('')
 let searchTimer: ReturnType<typeof setTimeout> | undefined
 
 const canWrite = computed(() => auth.hasPermission('media.write'))
+const canManageStorage = computed(() => auth.hasPermission('settings.manage'))
+const canUpload = computed(() => canWrite.value && storageConfigured.value !== false)
 const hasFilters = computed(() => Boolean(query.value.trim()))
 
 function absoluteMediaUrl(value: string): string {
@@ -72,6 +76,15 @@ async function load(reset = false): Promise<void> {
       errorMessage.value = error instanceof Error ? error.message : '媒体库读取失败。'
       pageState.value = 'error'
     }
+  }
+}
+
+async function loadStorageStatus(): Promise<void> {
+  if (!canManageStorage.value) return
+  try {
+    storageConfigured.value = (await adminApi.getObjectStorageSettings()).settings.configured
+  } catch {
+    storageConfigured.value = null
   }
 }
 
@@ -163,6 +176,7 @@ watch(() => route.query.q, (value) => {
   query.value = typeof value === 'string' ? value : ''
   void load(true)
 }, { immediate: true })
+void loadStorageStatus()
 onBeforeUnmount(() => { if (searchTimer) clearTimeout(searchTimer) })
 </script>
 
@@ -171,11 +185,16 @@ onBeforeUnmount(() => { if (searchTimer) clearTimeout(searchTimer) })
     <PageHeader eyebrow="内容资源" title="媒体库" description="上传 PNG、JPEG 或 WebP；成功后公开链接立即生效，内容发布状态只控制页面是否展示。">
       <template #actions>
         <input ref="uploadInput" class="sr-only" type="file" aria-label="选择要上传的图片" :accept="ACCEPTED_TYPES" @change="handleFileSelection">
-        <button v-if="canWrite" class="button button--primary" type="button" :disabled="uploading" @click="uploadInput?.click()">
-          <UploadCloud :size="16" />{{ uploading ? '上传中…' : '上传图片' }}
+        <button v-if="canWrite" class="button button--primary" type="button" :disabled="uploading || !canUpload" @click="uploadInput?.click()">
+          <UploadCloud :size="16" />{{ uploading ? '正在上传并生成预览…' : '立即上传图片' }}
         </button>
       </template>
     </PageHeader>
+
+    <section v-if="storageConfigured === false" class="panel media-storage-warning" role="status">
+      <div><strong>对象存储尚未配置</strong><p>平台其余功能可继续使用；媒体上传会保持禁用，直到通过系统设置完成连接测试并保存。</p></div>
+      <button class="button button--primary" type="button" @click="router.push('/settings/object-storage')">前往对象存储设置</button>
+    </section>
 
     <section class="panel media-toolbar" aria-label="媒体筛选">
       <label class="media-toolbar__search"><Search :size="16" /><span class="sr-only">搜索媒体</span><input v-model="query" type="search" placeholder="按原文件名搜索" @input="scheduleSearch"></label>
@@ -207,8 +226,8 @@ onBeforeUnmount(() => { if (searchTimer) clearTimeout(searchTimer) })
     <div v-if="selected" class="media-drawer-backdrop" @click.self="closeDetail">
       <aside class="media-drawer" role="dialog" aria-modal="true" aria-labelledby="media-detail-title">
         <header><div><small>媒体详情</small><h2 id="media-detail-title">{{ selected.originalName }}</h2></div><button class="icon-button" type="button" aria-label="关闭媒体详情" @click="closeDetail"><X :size="18" /></button></header>
-        <img :src="absoluteMediaUrl(selected.publicUrl)" :alt="selected.originalName">
-        <dl><div><dt>公开地址</dt><dd><code>{{ absoluteMediaUrl(selected.publicUrl) }}</code></dd></div><div><dt>下载地址</dt><dd><code>{{ absoluteMediaUrl(selected.downloadUrl) }}</code></dd></div><div><dt>SHA-256</dt><dd><code>{{ selected.sha256 }}</code></dd></div><div><dt>上传者</dt><dd>{{ selected.uploadedBy }}</dd></div></dl>
+        <img :src="absoluteMediaUrl(selected.previewUrl ?? selected.publicUrl)" :alt="selected.originalName">
+        <dl><div><dt>原图地址</dt><dd><code>{{ absoluteMediaUrl(selected.publicUrl) }}</code></dd></div><div><dt>预览地址</dt><dd><code>{{ selected.previewUrl ? absoluteMediaUrl(selected.previewUrl) : '历史记录回退原图' }}</code></dd></div><div><dt>原图尺寸</dt><dd>{{ selected.originalWidth && selected.originalHeight ? `${selected.originalWidth} × ${selected.originalHeight}` : '历史记录未采集' }}</dd></div><div><dt>预览尺寸</dt><dd>{{ selected.previewWidth && selected.previewHeight ? `${selected.previewWidth} × ${selected.previewHeight}` : '回退原图' }}</dd></div><div><dt>下载地址</dt><dd><code>{{ absoluteMediaUrl(selected.downloadUrl) }}</code></dd></div><div><dt>SHA-256</dt><dd><code>{{ selected.sha256 }}</code></dd></div><div><dt>上传者</dt><dd>{{ selected.uploadedBy }}</dd></div></dl>
         <div class="media-drawer__actions"><button class="button button--quiet" type="button" @click="copyUrl(selected.publicUrl)"><Copy :size="14" />复制公开地址</button><a class="button button--secondary" :href="absoluteMediaUrl(selected.downloadUrl)" target="_blank" rel="noopener"><ExternalLink :size="14" />下载</a></div>
         <section><h3>内容引用</h3><p v-if="detailState === 'loading'">正在读取引用…</p><p v-else-if="detailState === 'error'" class="media-error">{{ detailError }}</p><p v-else-if="!references.length">暂无已发布内容引用。</p><ul v-else><li v-for="reference in references" :key="`${reference.contentId}:${reference.contentRevision}:${reference.referencePath}`"><strong>{{ reference.contentTitle }}</strong><span>{{ reference.dependencyKind }} · 修订 {{ reference.contentRevision }} · {{ reference.referencePath }}</span></li></ul></section>
       </aside>
@@ -217,5 +236,7 @@ onBeforeUnmount(() => { if (searchTimer) clearTimeout(searchTimer) })
 </template>
 
 <style scoped>
-.media-toolbar { display: flex; align-items: center; gap: .75rem; }.media-toolbar__search { display: flex; flex: 1; align-items: center; gap: .45rem; }.media-toolbar__search input { width: 100%; }.media-notice { margin: 0; padding: .6rem .8rem; border-radius: .5rem; background: var(--admin-soft-blue); font-size: .75rem; }.media-name { display: flex; align-items: center; gap: .5rem; padding: 0; border: 0; background: none; color: inherit; text-align: left; }.media-name span { display: grid; }.media-name small { color: var(--admin-muted); font-size: .55rem; }.media-actions { display: flex; flex-wrap: wrap; gap: .35rem; }.media-pagination { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .65rem .25rem 0; font-size: .72rem; }.media-pagination div { display: flex; gap: .4rem; }.media-drawer-backdrop { position: fixed; z-index: 50; inset: 0; background: rgb(11 38 48 / 35%); }.media-drawer { position: absolute; top: 0; right: 0; display: flex; width: min(34rem, 100%); height: 100%; flex-direction: column; gap: 1rem; padding: 1.25rem; overflow-y: auto; background: white; box-shadow: -20px 0 45px rgb(11 38 48 / 18%); }.media-drawer header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }.media-drawer h2 { margin: .2rem 0 0; font-size: 1rem; }.media-drawer img { width: 100%; max-height: 20rem; object-fit: contain; border-radius: .5rem; background: var(--admin-surface-subtle); }.media-drawer dl { display: grid; gap: .65rem; margin: 0; }.media-drawer dl div { display: grid; gap: .2rem; }.media-drawer dt { color: var(--admin-muted); font-size: .6rem; }.media-drawer dd { margin: 0; font-size: .7rem; }.media-drawer code { overflow-wrap: anywhere; }.media-drawer__actions { display: flex; flex-wrap: wrap; gap: .5rem; }.media-drawer section h3 { font-size: .8rem; }.media-drawer ul { display: grid; gap: .5rem; padding: 0; list-style: none; }.media-drawer li { display: grid; gap: .15rem; padding: .55rem; border: 1px solid var(--admin-line); border-radius: .5rem; }.media-drawer li span { color: var(--admin-muted); font-size: .6rem; }.media-error { color: var(--danger-text, #b91c1c); }
+@layer components {
+.media-toolbar { display: flex; align-items: center; gap: .75rem; }.media-toolbar__search { display: flex; flex: 1; align-items: center; gap: .45rem; }.media-toolbar__search input { width: 100%; }.media-storage-warning { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-color: #d97706; }.media-storage-warning p { margin: .25rem 0 0; color: var(--text-secondary); font-size: 0.75rem; }.media-notice { margin: 0; padding: .6rem .8rem; border-radius: .5rem; background: var(--surface-info); font-size: .75rem; }.media-name { display: flex; align-items: center; gap: .5rem; padding: 0; border: 0; background: none; color: inherit; text-align: left; }.media-name span { display: grid; }.media-name small { color: var(--text-secondary); font-size: 0.75rem; }.media-actions { display: flex; flex-wrap: wrap; gap: .35rem; }.media-pagination { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .65rem .25rem 0; font-size: 0.75rem; }.media-pagination div { display: flex; gap: .4rem; }.media-drawer-backdrop { position: fixed; z-index: 50; inset: 0; background: rgb(11 38 48 / 35%); }.media-drawer { position: absolute; top: 0; right: 0; display: flex; width: min(34rem, 100%); height: 100%; flex-direction: column; gap: 1rem; padding: 1.25rem; overflow-y: auto; background: white; box-shadow: -20px 0 45px rgb(11 38 48 / 18%); }.media-drawer header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }.media-drawer h2 { margin: .2rem 0 0; font-size: 1rem; }.media-drawer img { width: 100%; max-height: 20rem; object-fit: contain; border-radius: .5rem; background: var(--surface-subtle); }.media-drawer dl { display: grid; gap: .65rem; margin: 0; }.media-drawer dl div { display: grid; gap: .2rem; }.media-drawer dt { color: var(--text-secondary); font-size: 0.75rem; }.media-drawer dd { margin: 0; font-size: 0.75rem; }.media-drawer code { overflow-wrap: anywhere; }.media-drawer__actions { display: flex; flex-wrap: wrap; gap: .5rem; }.media-drawer section h3 { font-size: .8rem; }.media-drawer ul { display: grid; gap: .5rem; padding: 0; list-style: none; }.media-drawer li { display: grid; gap: .15rem; padding: .55rem; border: 1px solid var(--border-default); border-radius: .5rem; }.media-drawer li span { color: var(--text-secondary); font-size: 0.75rem; }.media-error { color: var(--text-danger, #b91c1c); }
+}
 </style>

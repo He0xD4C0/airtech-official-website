@@ -1,6 +1,6 @@
 # Conversion and product experience
 
-Updated: 2026-09-01
+Last reviewed: 2026-09-14
 
 Status: `PROVISIONAL` product-experience proposal normalized from the strategy DOCX and rebuild XLSX. Confirm the selected capabilities and acceptance criteria before implementation. Once a capability is approved, the validation, security, privacy, and accessibility controls described here are required implementation guardrails rather than optional marketing features.
 
