@@ -6,6 +6,74 @@
 import type { components } from '../components'
 
 export interface SchemasPart03 {
+GuestVisit: {
+            /** Format: uuid */
+            anonymousSessionId: string;
+            campaign: string | null;
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: uuid */
+            id: string;
+            landingPath: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            medium: string | null;
+            referrerDomain: string | null;
+            /** Format: date-time */
+            retentionUntil: string;
+            source: string;
+        };
+GuestVisitPage: {
+            items: components["schemas"]["GuestVisit"][];
+            nextCursor: string | null;
+        };
+HealthStatus: {
+            persistence: string;
+            service: string;
+            status: string;
+            /** Format: date-time */
+            timestamp: string;
+            version: string;
+        };
+HeroBlock: {
+            actions: components["schemas"]["EditorialAction"][];
+            eyebrow?: string | null;
+            heading?: string | null;
+            /** Format: uuid */
+            id: string;
+            lead?: string | null;
+            media?: components["schemas"]["MediaUseReference"] | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "hero";
+            variant: components["schemas"]["HeroVariant"];
+        };
+/** @enum {string} */
+        HeroVariant: "standard" | "splitMedia" | "minimal";
+InvitationAcceptance: {
+            /** Format: date-time */
+            acceptedAt: string;
+            displayName: string;
+            /** Format: email */
+            email: string;
+            locale: string;
+            roleKeys: string[];
+            /** @constant */
+            status: "active";
+            /** Format: uuid */
+            userId: string;
+        };
+InviteAdminUser: {
+            displayName: string;
+            /** Format: email */
+            email: string;
+            roleKeys: string[];
+        };
+LegalTypeFields: {
+            effectiveDate?: string | null;
+        };
 LinkTargetContent: {
             /** Format: uuid */
             contentId: string;
@@ -48,7 +116,7 @@ MediaAsset: {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            mediaType: "image/png" | "image/jpeg" | "image/webp";
+            mediaType: "image/png" | "image/jpeg" | "image/webp" | "application/pdf" | "application/msword" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "application/vnd.ms-excel" | "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" | "image/vnd.dxf" | "image/vnd.dwg" | "model/step" | "model/iges" | "model/stl" | "model/obj" | "application/x-3ds" | "application/octet-stream";
             originalHeight: number | null;
             originalName: string;
             originalWidth: number | null;
@@ -416,79 +484,5 @@ ProductRfqRequest: {
             locale: "en";
             productContext: components["schemas"]["ProductRfqProductContext"];
             sourcePath: string;
-        };
-ProjectRfqContext: {
-            additionalMessage?: string;
-            application: string;
-            electrical?: components["schemas"]["RfqElectricalContext"];
-            engineeringNeeds?: string;
-            environment?: string;
-            /** @enum {string} */
-            priority?: "efficiency" | "noise" | "size" | "headroom";
-            projectScale?: string;
-            /** @enum {string} */
-            projectStage: "Concept" | "Engineering" | "Prototype" | "Production planning";
-            quantity?: components["schemas"]["RfqQuantity"];
-            schedule?: string;
-        };
-ProjectRfqRequest: {
-            /** @enum {boolean} */
-            consent: true;
-            contact: components["schemas"]["BusinessContact"];
-            context: components["schemas"]["ProjectRfqContext"];
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            journey: "project";
-            /** @enum {string} */
-            locale: "en";
-            sourcePath: string;
-        };
-/** @enum {string} */
-        PublicationStatus: "draft" | "scheduled" | "published" | "archived";
-PublicContentProjection: {
-            body: components["schemas"]["TiptapDocument"] | null;
-            composition: components["schemas"]["PageComposition"];
-            /** Format: uuid */
-            id: string;
-            isPlaceholder: boolean;
-            kind: components["schemas"]["CmsContentKind"];
-            locale: string;
-            /** Format: int64 */
-            publishedRevision: number;
-            resolvedLinks: components["schemas"]["ResolvedLinkTarget"][];
-            resolvedMedia: components["schemas"]["ResolvedMedia"][];
-            resolvedRelations: components["schemas"]["ResolvedRelationCard"][];
-            /** @constant */
-            schemaVersion: 2;
-            seo: components["schemas"]["SeoInputV2"];
-            slug: string | null;
-            summary: string | null;
-            templateKey: components["schemas"]["ContentTemplateKey"];
-            title: string;
-            typeFields: components["schemas"]["ContentTypeFields"];
-            /** Format: date-time */
-            updatedAt: string;
-        };
-ReasonRequest: {
-            reason: string;
-        };
-RecoveryCodeSet: {
-            /** Format: date-time */
-            generatedAt: string;
-            readonly recoveryCodes: string[];
-        };
-RelationCollectionBlock: {
-            heading?: string | null;
-            /** Format: uuid */
-            id: string;
-            presentation: components["schemas"]["CollectionPresentation"];
-            relationIds: string[];
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "relationCollection";
         };
 }

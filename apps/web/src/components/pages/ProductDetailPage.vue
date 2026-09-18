@@ -9,11 +9,13 @@ import PageSlotSections from './PageSlotSections.vue'
 import { useCompareStore } from '@/stores/compare'
 import type { PublicPageModel } from '@/types/content'
 import { hasCompleteProductContext } from '@/lib/submissions'
+import { publicMediaHref } from '@/types/projection'
 
 const props = defineProps<{ page: PublicPageModel }>()
 type ProductTab = 'overview' | 'performance'
 const family = computed(() => props.page.productFamilies?.find((item) => item.slug === props.page.category))
 const product = computed(() => props.page.publishedProduct)
+const sourceAssets = computed(() => props.page.productAssets ?? [])
 const verifiedCurve = computed(() => product.value?.performanceCurves.find((curve) => curve.state === 'verified'))
 const tabs = computed<ProductTab[]>(() => [
   ...(product.value?.specifications.length ? ['overview' as const] : []),
@@ -58,6 +60,20 @@ function curveConditions() {
     curve.testMethod || '',
   ].filter(Boolean).join(' · ')
 }
+
+function assetHref(value: string): string {
+  return publicMediaHref(value)
+}
+
+function fileType(name: string, mediaType: string): string {
+  return name.split('.').at(-1)?.toUpperCase() || mediaType.split('/').at(-1)?.toUpperCase() || 'FILE'
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KiB`
+  return `${(bytes / 1024 ** 2).toFixed(1)} MiB`
+}
 </script>
 
 <template>
@@ -80,6 +96,16 @@ function curveConditions() {
           <a v-if="productRfqHref" class="button" :href="productRfqHref">Request a quote for this product</a>
           <a v-else class="button" href="/en/request-a-quote/selection">Request selection support</a>
         </div>
+      </div>
+    </section>
+    <section v-if="sourceAssets.length" class="section shell source-assets" aria-labelledby="source-assets-title">
+      <div class="source-assets__heading"><div><p class="eyebrow">PRODUCT MASTER FILES</p><h2 id="source-assets-title">Source attachments</h2></div><p>Original files synchronized from the current published Feishu revision.</p></div>
+      <div class="source-assets__grid">
+        <article v-for="asset in sourceAssets" :key="asset.assetId" class="source-asset-card">
+          <img v-if="asset.previewUrl" :src="assetHref(asset.previewUrl)" :alt="asset.originalName" loading="lazy" />
+          <div v-else class="source-asset-card__type" aria-hidden="true">{{ fileType(asset.originalName, asset.mediaType) }}</div>
+          <div class="source-asset-card__body"><strong>{{ asset.originalName }}</strong><span>{{ asset.usage }} · {{ formatBytes(asset.byteSize) }}</span><small>SHA-256 {{ asset.sha256.slice(0, 12) }}…</small><a class="button secondary" :href="assetHref(asset.downloadUrl)" download>Download original</a></div>
+        </article>
       </div>
     </section>
     <section v-if="tabs.length" class="shell product-tabs">
@@ -109,3 +135,19 @@ function curveConditions() {
     />
   </main>
 </template>
+
+<style scoped>
+@layer components {
+.source-assets { display: grid; gap: var(--space-5); }
+.source-assets__heading { display: flex; align-items: end; justify-content: space-between; gap: var(--space-5); }
+.source-assets__heading h2,.source-assets__heading p { margin: 0; }
+.source-assets__grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,16rem),1fr)); gap: var(--space-4); }
+.source-asset-card { overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--airtek-radius-md); background: var(--color-surface); }
+.source-asset-card > img,.source-asset-card__type { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
+.source-asset-card__type { display: grid; place-items: center; background: var(--color-surface-subtle); font: 700 1.5rem/1 monospace; letter-spacing: .08em; }
+.source-asset-card__body { display: grid; gap: .55rem; padding: var(--space-4); }
+.source-asset-card__body span,.source-asset-card__body small { color: var(--color-text-muted); overflow-wrap: anywhere; }
+.source-asset-card__body .button { justify-self: start; }
+@media (max-width: 720px) { .source-assets__heading { align-items: start; flex-direction: column; } }
+}
+</style>

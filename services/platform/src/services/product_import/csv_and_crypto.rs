@@ -50,7 +50,7 @@ pub(super) fn parse_csv(csv: &str) -> Result<Vec<(i32, Vec<String>)>, ApiError> 
     Ok(records)
 }
 
-pub(super) fn encrypt_confidential(
+pub(crate) fn encrypt_confidential(
     key: &ProductStagingEncryptionKey,
     aad: &[u8],
     plaintext: &[u8],
@@ -115,9 +115,13 @@ pub fn decrypt_private_pricing(
     Ok(source
         .into_iter()
         .filter_map(|(name, value)| {
-            (is_private_pricing_header(envelope.mapping_version, &name))
-                .then(|| value.as_str().map(|value| (name, value.to_owned())))
-                .flatten()
+            (is_private_pricing_header(envelope.mapping_version, &name)).then(|| {
+                let value = value
+                    .as_str()
+                    .map(str::to_owned)
+                    .unwrap_or_else(|| value.to_string());
+                (name, value)
+            })
         })
         .collect())
 }
@@ -133,6 +137,23 @@ pub(super) fn is_private_pricing_header(mapping_version: &str, name: &str) -> bo
         ),
         // Minimal synthetic contract mapping used only by unit tests.
         "v1" => matches!(name, "price" | "cost" | "currency"),
+        "feishu-product-v1" => matches!(
+            name,
+            "样品报价sample"
+                | "样品报价(Sample)"
+                | "样品报价"
+                | "报价"
+                | "单价"
+                | "1-99PCS"
+                | "100-499PCS"
+                | "500-999PCS"
+                | "1000-4999PCS"
+                | "5000PCS"
+                | "100-500pcs"
+                | "500-1000pcs"
+                | "1000-5000pcs"
+                | "5000pcs"
+        ),
         _ => false,
     }
 }

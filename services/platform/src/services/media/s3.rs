@@ -45,7 +45,6 @@ pub(super) fn put(
     }
 }
 
-#[allow(dead_code)]
 pub(super) async fn get(
     settings: &MediaStorageSettings,
     key: &str,

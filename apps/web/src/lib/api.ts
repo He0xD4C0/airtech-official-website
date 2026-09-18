@@ -45,6 +45,10 @@ export function getPublishedProduct(slug: string, family?: ProductFamily) {
   return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).getProduct(slug, family)
 }
 
+export function getPublishedProductAssets(slug: string, family?: ProductFamily) {
+  return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).getProductAssets(slug, family)
+}
+
 export function getPublishedProducts(query: PublishedProductListQuery = {}) {
   return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).listProducts(query)
 }

@@ -9,30 +9,61 @@ pub enum SyncRunStatus {
     AwaitingResolution,
     ReadyToPublish,
     Completed,
+    CompletedWithErrors,
     Failed,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub enum SyncRunKind {
+    Incremental,
+    #[default]
+    Full,
+}
+
+impl SyncRunKind {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Incremental => "incremental",
+            Self::Full => "full",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct StartSyncRequest {
-    #[serde(default)]
-    pub dry_run: bool,
-    pub mapping_version: String,
-    pub cursor: Option<String>,
+    pub run_kind: SyncRunKind,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncRun {
     pub id: Uuid,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub connector_id: Option<Uuid>,
     pub source: String,
     pub dry_run: bool,
+    #[serde(default)]
+    pub run_kind: SyncRunKind,
     pub mapping_version: String,
     pub status: SyncRunStatus,
     pub resume_cursor: Option<String>,
     pub records_seen: u64,
     pub records_valid: u64,
     pub conflict_count: u64,
+    #[serde(default)]
+    pub records_applied: u64,
+    #[serde(default)]
+    pub records_failed: u64,
+    #[serde(default)]
+    pub assets_seen: u64,
+    #[serde(default)]
+    pub assets_copied: u64,
+    #[serde(default)]
+    pub assets_reused: u64,
+    #[serde(default)]
+    pub assets_failed: u64,
     pub started_at: DateTime<Utc>,
     pub completed_at: Option<DateTime<Utc>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -132,6 +163,91 @@ pub struct FeishuConnectionStatus {
     pub unavailable_reason: Option<String>,
     pub updated_at: Option<DateTime<Utc>>,
     pub latest_sync: Option<SyncRun>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FeishuSource {
+    pub wiki_token: String,
+    pub table_id: String,
+    pub name: String,
+    pub family: ProductFamily,
+    pub application: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeishuSettings {
+    pub connector_id: Uuid,
+    pub enabled: bool,
+    pub interval_minutes: i32,
+    pub full_reconcile_enabled: bool,
+    pub full_reconcile_local_time: String,
+    pub timezone: String,
+    pub mapping_version: String,
+    pub sources: Vec<FeishuSource>,
+    pub revision: i64,
+    pub last_incremental_at: Option<DateTime<Utc>>,
+    pub last_full_at: Option<DateTime<Utc>>,
+    pub updated_at: DateTime<Utc>,
+    pub updated_by: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct UpdateFeishuSettings {
+    pub enabled: bool,
+    pub interval_minutes: i32,
+    pub full_reconcile_enabled: bool,
+    pub full_reconcile_local_time: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeishuTableCheck {
+    pub table_id: String,
+    pub name: String,
+    pub accessible: bool,
+    pub field_count: usize,
+    pub mapping_valid: bool,
+    pub errors: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeishuConnectionTest {
+    pub credentials_configured: bool,
+    pub token_issued: bool,
+    pub object_storage_ready: bool,
+    pub runnable: bool,
+    pub tables: Vec<FeishuTableCheck>,
+    pub checked_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeishuSyncError {
+    pub source_record_id: Option<String>,
+    pub code: String,
+    pub field_path: Option<String>,
+    pub message: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeishuSyncRunDetail {
+    pub run: SyncRun,
+    pub errors: Vec<FeishuSyncError>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeishuRollbackReport {
+    pub sync_run_id: Uuid,
+    pub restored: u64,
+    pub skipped: u64,
+    pub completed_at: DateTime<Utc>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

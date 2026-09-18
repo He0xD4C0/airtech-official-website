@@ -32,8 +32,8 @@ pub(super) fn add(schemas: &mut Map<String, Value>) {
                 "previewUrl": nullable(json!({"type": "string", "format": "uri", "pattern": "^https?://"})),
                 "downloadUrl": {"type": "string", "pattern": "^/api/public/v1/media/[0-9a-f-]+/download$"},
                 "originalName": {"type": "string", "minLength": 1, "maxLength": 180},
-                "mediaType": string_enum(&["image/png", "image/jpeg", "image/webp"]),
-                "byteSize": {"type": "integer", "minimum": 1, "maximum": 26214400},
+                "mediaType": supported_media_type(),
+                "byteSize": {"type": "integer", "minimum": 1, "maximum": 104857600},
                 "originalWidth": nullable(json!({"type": "integer", "minimum": 1, "maximum": 16384})),
                 "originalHeight": nullable(json!({"type": "integer", "minimum": 1, "maximum": 16384})),
                 "previewWidth": nullable(json!({"type": "integer", "minimum": 1, "maximum": 1600})),
@@ -104,8 +104,8 @@ pub(super) fn add(schemas: &mut Map<String, Value>) {
                 "publicUrl": {"type": "string", "format": "uri", "pattern": "^https?://"},
                 "previewUrl": nullable(json!({"type": "string", "format": "uri", "pattern": "^https?://"})),
                 "downloadUrl": {"type": "string", "pattern": "^/api/public/v1/media/"},
-                "mediaType": string_enum(&["image/png", "image/jpeg", "image/webp"]),
-                "byteSize": {"type": "integer", "minimum": 1},
+                "mediaType": supported_media_type(),
+                "byteSize": {"type": "integer", "minimum": 1, "maximum": 104857600},
                 "originalWidth": nullable(json!({"type": "integer", "minimum": 1, "maximum": 16384})),
                 "originalHeight": nullable(json!({"type": "integer", "minimum": 1, "maximum": 16384})),
                 "previewWidth": nullable(json!({"type": "integer", "minimum": 1, "maximum": 1600})),
@@ -202,4 +202,25 @@ pub(super) fn add(schemas: &mut Map<String, Value>) {
             }),
         ),
     );
+}
+
+fn supported_media_type() -> Value {
+    string_enum(&[
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "image/vnd.dxf",
+        "image/vnd.dwg",
+        "model/step",
+        "model/iges",
+        "model/stl",
+        "model/obj",
+        "application/x-3ds",
+        "application/octet-stream",
+    ])
 }

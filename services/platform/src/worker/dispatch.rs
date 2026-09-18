@@ -5,9 +5,8 @@ use super::*;
 /// which keeps retry and operation-status behavior observable without a
 /// second implementation.
 pub async fn run_one_pending_job(state: &AppState) -> Result<(), ApiError> {
-    let pool = &state.pool;
     claim_and_run(
-        pool,
+        state,
         state.config.guest_raw_retention_days,
         state.config.guest_aggregate_retention_months,
         state.config.approved_product_master.as_ref(),
@@ -99,17 +98,19 @@ pub(super) fn is_public_projection_topic(topic: &str) -> bool {
         "public.content.published"
             | "public.content.unpublished"
             | "public.product.published"
+            | "public.product.unpublished"
             | "public.news.published"
             | "public.generalInformation.published"
     )
 }
 
 pub(super) async fn claim_and_run(
-    pool: &PgPool,
+    state: &AppState,
     guest_raw_retention_days: i64,
     guest_aggregate_retention_months: i64,
     approved_product_master: Option<&crate::config::ApprovedProductMaster>,
 ) -> Result<(), ApiError> {
+    let pool = &state.pool;
     let mut transaction = pool.begin().await?;
     if terminalize_one_expired_exhausted_job(&mut transaction).await? {
         transaction.commit().await?;
@@ -164,7 +165,7 @@ pub(super) async fn claim_and_run(
         pool,
         &lease,
         execute_job(
-            pool,
+            state,
             &job_type,
             payload,
             guest_raw_retention_days,
@@ -267,13 +268,14 @@ pub(super) async fn terminalize_one_expired_exhausted_job(
 }
 
 pub(super) async fn execute_job(
-    pool: &PgPool,
+    state: &AppState,
     job_type: &str,
     payload: Value,
     guest_raw_retention_days: i64,
     guest_aggregate_retention_months: i64,
     approved_product_master: Option<&crate::config::ApprovedProductMaster>,
 ) -> Result<Value, String> {
+    let pool = &state.pool;
     match job_type {
         "retentionApply" => {
             apply_retention_with_deployment_defaults(
@@ -291,8 +293,26 @@ pub(super) async fn execute_job(
                     .map_err(|error| error.to_string())?;
             Ok(json!({"import": report}))
         }
+        "feishuSync" => {
+            let sync_run_id = feishu_sync_id_from_job_payload(&payload)?;
+            crate::services::feishu::execute_sync_run(state, sync_run_id).await
+        }
         _ => Err("This retired job type is no longer executable.".into()),
     }
+}
+
+pub(super) fn feishu_sync_id_from_job_payload(payload: &Value) -> Result<Uuid, String> {
+    let object = payload
+        .as_object()
+        .ok_or_else(|| "Feishu sync job payload must contain only syncRunId.".to_owned())?;
+    if object.len() != 1 {
+        return Err("Feishu sync job payload must contain only syncRunId.".to_owned());
+    }
+    object
+        .get("syncRunId")
+        .and_then(Value::as_str)
+        .and_then(|value| value.parse::<Uuid>().ok())
+        .ok_or_else(|| "Feishu sync job syncRunId is invalid.".to_owned())
 }
 
 pub(super) fn product_import_id_from_job_payload(payload: &Value) -> Result<Uuid, String> {

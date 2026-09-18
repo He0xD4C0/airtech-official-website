@@ -134,6 +134,21 @@ pub(super) async fn get_product(
     Ok(with_etag(product, revision))
 }
 
+pub(super) async fn get_product_assets(
+    State(state): State<AppState>,
+    Path(slug): Path<String>,
+    Query(query): Query<ProductDetailQuery>,
+) -> Result<Response, ApiError> {
+    let document = crate::services::public_content::load_published_product_assets(
+        &state.pool,
+        &slug,
+        query.family,
+    )
+    .await?;
+    let revision = document.product_revision;
+    Ok(with_etag(document, revision))
+}
+
 pub(super) fn require_unique_published_product<T>(mut products: Vec<T>) -> Result<T, ApiError> {
     match products.len() {
         0 => Err(ApiError::not_found("Published product was not found.")),

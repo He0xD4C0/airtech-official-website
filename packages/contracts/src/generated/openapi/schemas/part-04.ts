@@ -6,6 +6,100 @@
 import type { components } from '../components'
 
 export interface SchemasPart04 {
+ProductSourceAsset: {
+            /** Format: uuid */
+            assetId: string;
+            byteSize: number;
+            downloadUrl: string;
+            /** @enum {string} */
+            mediaType: "image/png" | "image/jpeg" | "image/webp" | "application/pdf" | "application/msword" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "application/vnd.ms-excel" | "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" | "image/vnd.dxf" | "image/vnd.dwg" | "model/step" | "model/iges" | "model/stl" | "model/obj" | "application/x-3ds" | "application/octet-stream";
+            originalName: string;
+            previewUrl: string | null;
+            sha256: string;
+            /** @enum {string} */
+            usage: "curve" | "drawing" | "cad" | "datasheet" | "technicalDocument";
+        };
+ProductSourceAssetDocument: {
+            items: components["schemas"]["ProductSourceAsset"][];
+            /** Format: uuid */
+            productId: string;
+            /** Format: int64 */
+            productRevision: number;
+        };
+ProjectRfqContext: {
+            additionalMessage?: string;
+            application: string;
+            electrical?: components["schemas"]["RfqElectricalContext"];
+            engineeringNeeds?: string;
+            environment?: string;
+            /** @enum {string} */
+            priority?: "efficiency" | "noise" | "size" | "headroom";
+            projectScale?: string;
+            /** @enum {string} */
+            projectStage: "Concept" | "Engineering" | "Prototype" | "Production planning";
+            quantity?: components["schemas"]["RfqQuantity"];
+            schedule?: string;
+        };
+ProjectRfqRequest: {
+            /** @enum {boolean} */
+            consent: true;
+            contact: components["schemas"]["BusinessContact"];
+            context: components["schemas"]["ProjectRfqContext"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            journey: "project";
+            /** @enum {string} */
+            locale: "en";
+            sourcePath: string;
+        };
+/** @enum {string} */
+        PublicationStatus: "draft" | "scheduled" | "published" | "archived";
+PublicContentProjection: {
+            body: components["schemas"]["TiptapDocument"] | null;
+            composition: components["schemas"]["PageComposition"];
+            /** Format: uuid */
+            id: string;
+            isPlaceholder: boolean;
+            kind: components["schemas"]["CmsContentKind"];
+            locale: string;
+            /** Format: int64 */
+            publishedRevision: number;
+            resolvedLinks: components["schemas"]["ResolvedLinkTarget"][];
+            resolvedMedia: components["schemas"]["ResolvedMedia"][];
+            resolvedRelations: components["schemas"]["ResolvedRelationCard"][];
+            /** @constant */
+            schemaVersion: 2;
+            seo: components["schemas"]["SeoInputV2"];
+            slug: string | null;
+            summary: string | null;
+            templateKey: components["schemas"]["ContentTemplateKey"];
+            title: string;
+            typeFields: components["schemas"]["ContentTypeFields"];
+            /** Format: date-time */
+            updatedAt: string;
+        };
+ReasonRequest: {
+            reason: string;
+        };
+RecoveryCodeSet: {
+            /** Format: date-time */
+            generatedAt: string;
+            readonly recoveryCodes: string[];
+        };
+RelationCollectionBlock: {
+            heading?: string | null;
+            /** Format: uuid */
+            id: string;
+            presentation: components["schemas"]["CollectionPresentation"];
+            relationIds: string[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "relationCollection";
+        };
 RelationTargetContent: {
             /** Format: uuid */
             contentId: string;
@@ -63,7 +157,7 @@ ResolvedMedia: {
             byteSize: number;
             downloadUrl: string;
             /** @enum {string} */
-            mediaType: "image/png" | "image/jpeg" | "image/webp";
+            mediaType: "image/png" | "image/jpeg" | "image/webp" | "application/pdf" | "application/msword" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "application/vnd.ms-excel" | "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" | "image/vnd.dxf" | "image/vnd.dwg" | "model/step" | "model/iges" | "model/stl" | "model/obj" | "application/x-3ds" | "application/octet-stream";
             originalHeight: number | null;
             originalName: string;
             originalWidth: number | null;
@@ -278,10 +372,7 @@ StagingRecordPage: {
 /** @enum {string} */
         StagingValidationStatus: "pending" | "valid" | "invalid" | "conflicted";
 StartSyncRequest: {
-            cursor?: string | null;
-            /** @default false */
-            dryRun?: boolean;
-            mappingVersion: string;
+            runKind: components["schemas"]["SyncRunKind"];
         };
 SyncConflict: {
             diffs: components["schemas"]["FieldDiff"][];
@@ -320,27 +411,37 @@ SyncMappingPage: {
             nextCursor: string | null;
         };
 SyncRun: {
+            assetsCopied: number;
+            assetsFailed: number;
+            assetsReused: number;
+            assetsSeen: number;
             completedAt: string | null;
             conflictCount: number;
+            connectorId?: string | null;
             dryRun: boolean;
             error?: string | null;
             /** Format: uuid */
             id: string;
             mappingVersion: string;
+            recordsApplied: number;
+            recordsFailed: number;
             recordsSeen: number;
             recordsValid: number;
             resumeCursor: string | null;
+            runKind: components["schemas"]["SyncRunKind"];
             source: string;
             /** Format: date-time */
             startedAt: string;
             status: components["schemas"]["SyncRunStatus"];
         };
+/** @enum {string} */
+        SyncRunKind: "incremental" | "full";
 SyncRunPage: {
             items: components["schemas"]["SyncRun"][];
             nextCursor: string | null;
         };
 /** @enum {string} */
-        SyncRunStatus: "queued" | "fetching" | "validating" | "awaitingResolution" | "readyToPublish" | "completed" | "failed";
+        SyncRunStatus: "queued" | "fetching" | "validating" | "awaitingResolution" | "readyToPublish" | "completed" | "completedWithErrors" | "failed";
 TaxonomyTypeFields: {
             key?: string | null;
         };
@@ -389,105 +490,5 @@ TiptapFormulaNode: {
         };
 TiptapHeadingAttrs: {
             level: number;
-        };
-TiptapHeadingNode: {
-            attrs: components["schemas"]["TiptapHeadingAttrs"];
-            content?: components["schemas"]["TiptapNode"][];
-            marks?: components["schemas"]["TiptapMark"][];
-            /** @enum {string} */
-            type: "heading";
-        };
-TiptapLinkAttrs: {
-            href: string;
-            rel?: string | null;
-            target?: ("_self" | "_blank") | null;
-        };
-TiptapLinkMark: {
-            attrs: components["schemas"]["TiptapLinkAttrs"];
-            /** @constant */
-            type: "link";
-        };
-TiptapMark: components["schemas"]["TiptapSimpleMark"] | components["schemas"]["TiptapLinkMark"];
-TiptapNoAttrs: Record<string, never>;
-TiptapNode: components["schemas"]["TiptapTextNode"] | components["schemas"]["TiptapPlainNode"] | components["schemas"]["TiptapHeadingNode"] | components["schemas"]["TiptapOrderedListNode"] | components["schemas"]["TiptapCodeBlockNode"] | components["schemas"]["TiptapFormulaNode"] | components["schemas"]["TiptapTableCellNode"];
-TiptapOrderedListAttrs: {
-            start?: number;
-        };
-TiptapOrderedListNode: {
-            attrs?: components["schemas"]["TiptapOrderedListAttrs"];
-            content?: components["schemas"]["TiptapNode"][];
-            marks?: components["schemas"]["TiptapMark"][];
-            /** @enum {string} */
-            type: "orderedList";
-        };
-TiptapPlainNode: {
-            attrs?: components["schemas"]["TiptapNoAttrs"];
-            content?: components["schemas"]["TiptapNode"][];
-            marks?: components["schemas"]["TiptapMark"][];
-            /** @enum {string} */
-            type: "paragraph" | "bulletList" | "listItem" | "blockquote" | "hardBreak" | "table" | "tableRow";
-        };
-TiptapSimpleMark: {
-            /** @enum {string} */
-            type: "bold" | "italic" | "underline" | "strike" | "code";
-        };
-TiptapTableCellAttrs: {
-            colspan?: number;
-            rowspan?: number;
-        };
-TiptapTableCellNode: {
-            attrs?: components["schemas"]["TiptapTableCellAttrs"];
-            content?: components["schemas"]["TiptapNode"][];
-            marks?: components["schemas"]["TiptapMark"][];
-            /** @enum {string} */
-            type: "tableHeader" | "tableCell";
-        };
-TiptapTextNode: {
-            marks?: components["schemas"]["TiptapMark"][];
-            text: string;
-            /** @enum {string} */
-            type: "text";
-        };
-TotpCodeRequest: {
-            code: string;
-        };
-TotpEnrollment: {
-            /** @constant */
-            algorithm: "SHA1";
-            /** @constant */
-            digits: 6;
-            /** Format: uri */
-            readonly otpAuthUri: string;
-            /** @constant */
-            periodSeconds: 30;
-            readonly secret: string;
-        };
-UpdateAdminRole: {
-            displayName?: string;
-            permissions?: string[];
-            reason: string;
-        };
-UpdateAdminUser: {
-            displayName?: string;
-            locale?: string;
-            managerUserId?: string | null;
-            reason: string;
-            roleKeys?: string[];
-            /** @enum {string} */
-            status?: "invited" | "active" | "disabled";
-        };
-UpdateBusinessStatusRequest: {
-            reason: string;
-            status: components["schemas"]["BusinessInboxStatus"];
-        };
-UpdateObjectStorageSettings: components["schemas"]["ObjectStorageSettingsInput"] & {
-            adoptLegacyAssets: boolean;
-            reason: string;
-        };
-UpdatePlatformSettings: {
-            reason: string;
-            retentionDeletionGraceDays?: number;
-            rfqRetentionDays?: number;
-            temporaryOverrideDefaultDays?: number;
         };
 }

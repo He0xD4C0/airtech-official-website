@@ -9,7 +9,7 @@ use crate::error::ApiError;
 
 use super::config::{MediaStorageKind, MediaStorageSettings};
 use super::s3;
-use super::{validate_storage_key, MAX_MEDIA_UPLOAD_BYTES};
+use super::{validate_storage_key, MAX_ATTACHMENT_BYTES};
 
 #[allow(dead_code)]
 pub struct MediaObject {
@@ -53,9 +53,9 @@ pub async fn put_object(
     bytes: Vec<u8>,
 ) -> Result<(), ApiError> {
     validate_storage_key(key)?;
-    if bytes.is_empty() || bytes.len() > MAX_MEDIA_UPLOAD_BYTES {
+    if bytes.is_empty() || bytes.len() > MAX_ATTACHMENT_BYTES {
         return Err(ApiError::bad_request(
-            "Media objects must be between 1 byte and 25 MiB.",
+            "Stored objects must be between 1 byte and 100 MiB.",
         ));
     }
     let settings = settings.clone();
@@ -77,14 +77,13 @@ pub async fn delete_object(settings: &MediaStorageSettings, key: &str) -> Result
         .map_err(|_| ApiError::service_unavailable("Media storage task failed."))?
 }
 
-#[allow(dead_code)]
 pub async fn get_object(
     settings: &MediaStorageSettings,
     key: &str,
     expected_size: u64,
 ) -> Result<MediaObject, ApiError> {
     validate_storage_key(key)?;
-    if expected_size > MAX_MEDIA_UPLOAD_BYTES as u64 {
+    if expected_size > MAX_ATTACHMENT_BYTES as u64 {
         return Err(ApiError::service_unavailable(
             "Stored media object exceeds the delivery limit.",
         ));

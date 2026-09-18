@@ -9,7 +9,7 @@ fn documents_every_production_route() {
     }
     let document = document();
     let paths = document["paths"].as_object().expect("paths object");
-    let expected = [
+    let mut expected = [
         "/api/admin/v1/analytics/overview",
         "/api/admin/v1/analytics/sources",
         "/api/admin/v1/audit",
@@ -43,10 +43,14 @@ fn documents_every_production_route() {
         "/api/admin/v1/dashboard/summary",
         "/api/admin/v1/feishu/conflicts",
         "/api/admin/v1/feishu/conflicts/{id}/resolve",
+        "/api/admin/v1/feishu/connection-test",
         "/api/admin/v1/feishu/connection-status",
         "/api/admin/v1/feishu/mappings",
         "/api/admin/v1/feishu/staging",
+        "/api/admin/v1/feishu/settings",
         "/api/admin/v1/feishu/sync-runs",
+        "/api/admin/v1/feishu/sync-runs/{id}",
+        "/api/admin/v1/feishu/sync-runs/{id}/rollback",
         "/api/admin/v1/media/assets",
         "/api/admin/v1/media/assets/{id}",
         "/api/admin/v1/media/assets/{id}/references",
@@ -94,6 +98,7 @@ fn documents_every_production_route() {
         "/api/public/v1/news/{slug}",
         "/api/public/v1/products",
         "/api/public/v1/products/{slug}",
+        "/api/public/v1/products/{slug}/assets",
         "/api/public/v1/rfqs",
         "/api/public/v1/routes/resolve",
         "/api/public/v1/selector",
@@ -104,7 +109,9 @@ fn documents_every_production_route() {
         "/readyz",
         "/robots.txt",
     ];
-    let actual: Vec<_> = paths.keys().map(String::as_str).collect();
+    let mut actual: Vec<_> = paths.keys().map(String::as_str).collect();
+    actual.sort_unstable();
+    expected.sort_unstable();
     assert_eq!(actual, expected);
 }
 
@@ -283,6 +290,21 @@ fn media_contract_is_synchronous_direct_and_public() {
     ] {
         assert!(required.contains(&json!(field)), "missing {field}");
     }
+    let media_types = schema["properties"]["mediaType"]["enum"]
+        .as_array()
+        .expect("media types");
+    for media_type in [
+        "image/webp",
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "model/step",
+    ] {
+        assert!(
+            media_types.contains(&json!(media_type)),
+            "missing {media_type}"
+        );
+    }
+    assert_eq!(schema["properties"]["byteSize"]["maximum"], 104_857_600);
 }
 
 #[test]
@@ -423,12 +445,7 @@ fn every_operation_has_an_id_and_problem_contracts() {
             let has_success = responses.keys().any(|status| {
                 status.starts_with('2') || status.starts_with('3') || status == "101"
             });
-            let is_explicitly_unavailable =
-                operation["operationId"] == "startFeishuSyncRun" && responses.contains_key("409");
-            assert!(
-                has_success || is_explicitly_unavailable,
-                "{method} {path} has no success response"
-            );
+            assert!(has_success, "{method} {path} has no success response");
             assert_eq!(
                 responses["422"]["content"]["application/problem+json"]["schema"]["$ref"],
                 "#/components/schemas/ProblemDetails"

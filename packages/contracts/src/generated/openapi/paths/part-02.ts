@@ -64,7 +64,7 @@ export interface PathsPart02 {
             path?: never;
             cookie?: never;
         };
-        /** List three-way product conflicts */
+        /** List legacy manually created source conflicts */
         get: operations["listFeishuConflicts"];
         put?: never;
         post?: never;
@@ -83,7 +83,7 @@ export interface PathsPart02 {
         };
         get?: never;
         put?: never;
-        /** Resolve a conflict only by accepting incoming data or retaining an evidenced local value temporarily */
+        /** Resolve one legacy Feishu conflict */
         post: operations["resolveFeishuConflict"];
         delete?: never;
         options?: never;
@@ -108,6 +108,23 @@ export interface PathsPart02 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/feishu/connection-test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test credentials, all four tables, field mapping, and object storage */
+        post: operations["testFeishuConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/feishu/mappings": {
         parameters: {
             query?: never;
@@ -125,6 +142,24 @@ export interface PathsPart02 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/feishu/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read non-secret Feishu sources and scheduling policy */
+        get: operations["getFeishuSettings"];
+        /** Update Feishu enablement and automatic schedule */
+        put: operations["updateFeishuSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/feishu/staging": {
         parameters: {
             query?: never;
@@ -132,7 +167,7 @@ export interface PathsPart02 {
             path?: never;
             cookie?: never;
         };
-        /** List server-filtered Feishu staging records and validation results */
+        /** List Feishu staging records and validation results */
         get: operations["listFeishuStagingRecords"];
         put?: never;
         post?: never;
@@ -149,11 +184,45 @@ export interface PathsPart02 {
             path?: never;
             cookie?: never;
         };
-        /** List Feishu sync runs */
+        /** List automatic Feishu synchronization runs */
         get: operations["listFeishuSyncRuns"];
         put?: never;
-        /** Report that Feishu synchronization is unavailable until the provider adapter is connected */
+        /** Queue an incremental or full Feishu synchronization */
         post: operations["startFeishuSyncRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/feishu/sync-runs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read counters and isolated errors for one synchronization run */
+        get: operations["getFeishuSyncRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/feishu/sync-runs/{id}/rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore prior public revisions when no later run changed them */
+        post: operations["rollbackFeishuSyncRun"];
         delete?: never;
         options?: never;
         head?: never;
@@ -410,74 +479,6 @@ export interface PathsPart02 {
         };
         /** Get one Product Master import report */
         get: operations["getProductImportRun"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/published-content": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List company current published content */
-        get: operations["listCurrentPublishedContent"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/published-content/{contentId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read company current published content */
-        get: operations["getCurrentPublishedContent"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/published-content/{contentId}/drafts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Copy current published content to the user's new private draft */
-        post: operations["copyPublishedContentToPrivateDraft"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/rfqs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List always-redacted RFQ inbox items with server filtering and total count */
-        get: operations["listRfqInboxItems"];
         put?: never;
         post?: never;
         delete?: never;

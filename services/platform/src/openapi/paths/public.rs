@@ -177,6 +177,33 @@ pub(super) fn add_core(paths: &mut Map<String, Value>) {
     );
     add(
         paths,
+        "/api/public/v1/products/{slug}/assets",
+        "get",
+        params(
+            op(
+                "getPublishedProductAssets",
+                "List source attachments bound to the current published product revision",
+                "publicCatalog",
+                [(
+                    "200",
+                    response_header(
+                        json_response(
+                            "Published product attachments",
+                            r("ProductSourceAssetDocument"),
+                        ),
+                        "ETag",
+                        "Immutable published revision tag",
+                    ),
+                )],
+            ),
+            vec![
+                path_param("slug", slug()),
+                query_param("family", false, r("ProductFamily")),
+            ],
+        ),
+    );
+    add(
+        paths,
         "/api/public/v1/discovery",
         "get",
         op(

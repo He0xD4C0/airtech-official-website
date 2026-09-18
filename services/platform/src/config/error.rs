@@ -50,6 +50,8 @@ pub enum ConfigError {
     InvalidTrustedProxyCidr(String),
     #[error("media configuration is invalid: {0}")]
     InvalidMediaSettings(String),
+    #[error("FEISHU_APP_ID and FEISHU_APP_SECRET must be configured together")]
+    IncompleteFeishuCredentials,
     #[error("a devtools build requires DATABASE_URL or AIRTEK_ADMIN_BOOTSTRAP_TOKEN so an authenticated administrator can be established")]
     MissingDevtoolsAuthentication,
 }

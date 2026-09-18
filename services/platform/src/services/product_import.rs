@@ -136,7 +136,8 @@ pub use loading_and_parsing::*;
 #[path = "product_import/csv_and_crypto.rs"]
 mod csv_and_crypto;
 pub use csv_and_crypto::decrypt_private_pricing;
-use csv_and_crypto::{encrypt_confidential, parse_csv};
+pub(crate) use csv_and_crypto::encrypt_confidential;
+use csv_and_crypto::parse_csv;
 #[path = "product_import/normalization.rs"]
 mod normalization;
 use normalization::*;

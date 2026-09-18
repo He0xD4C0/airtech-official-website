@@ -97,6 +97,19 @@ pub fn router() -> Router<AppState> {
             "/feishu/sync-runs",
             get(list_sync_runs).post(start_sync_run),
         )
+        .route("/feishu/sync-runs/{id}", get(get_sync_run))
+        .route(
+            "/feishu/sync-runs/{id}/rollback",
+            post(rollback_sync_run_route),
+        )
+        .route(
+            "/feishu/settings",
+            get(get_feishu_settings_route).put(update_feishu_settings_route),
+        )
+        .route(
+            "/feishu/connection-test",
+            post(test_feishu_connection_route),
+        )
         .route(
             "/feishu/connection-status",
             get(get_feishu_connection_status),

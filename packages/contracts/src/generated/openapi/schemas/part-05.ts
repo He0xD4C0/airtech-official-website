@@ -6,6 +6,112 @@
 import type { components } from '../components'
 
 export interface SchemasPart05 {
+TiptapHeadingNode: {
+            attrs: components["schemas"]["TiptapHeadingAttrs"];
+            content?: components["schemas"]["TiptapNode"][];
+            marks?: components["schemas"]["TiptapMark"][];
+            /** @enum {string} */
+            type: "heading";
+        };
+TiptapLinkAttrs: {
+            href: string;
+            rel?: string | null;
+            target?: ("_self" | "_blank") | null;
+        };
+TiptapLinkMark: {
+            attrs: components["schemas"]["TiptapLinkAttrs"];
+            /** @constant */
+            type: "link";
+        };
+TiptapMark: components["schemas"]["TiptapSimpleMark"] | components["schemas"]["TiptapLinkMark"];
+TiptapNoAttrs: Record<string, never>;
+TiptapNode: components["schemas"]["TiptapTextNode"] | components["schemas"]["TiptapPlainNode"] | components["schemas"]["TiptapHeadingNode"] | components["schemas"]["TiptapOrderedListNode"] | components["schemas"]["TiptapCodeBlockNode"] | components["schemas"]["TiptapFormulaNode"] | components["schemas"]["TiptapTableCellNode"];
+TiptapOrderedListAttrs: {
+            start?: number;
+        };
+TiptapOrderedListNode: {
+            attrs?: components["schemas"]["TiptapOrderedListAttrs"];
+            content?: components["schemas"]["TiptapNode"][];
+            marks?: components["schemas"]["TiptapMark"][];
+            /** @enum {string} */
+            type: "orderedList";
+        };
+TiptapPlainNode: {
+            attrs?: components["schemas"]["TiptapNoAttrs"];
+            content?: components["schemas"]["TiptapNode"][];
+            marks?: components["schemas"]["TiptapMark"][];
+            /** @enum {string} */
+            type: "paragraph" | "bulletList" | "listItem" | "blockquote" | "hardBreak" | "table" | "tableRow";
+        };
+TiptapSimpleMark: {
+            /** @enum {string} */
+            type: "bold" | "italic" | "underline" | "strike" | "code";
+        };
+TiptapTableCellAttrs: {
+            colspan?: number;
+            rowspan?: number;
+        };
+TiptapTableCellNode: {
+            attrs?: components["schemas"]["TiptapTableCellAttrs"];
+            content?: components["schemas"]["TiptapNode"][];
+            marks?: components["schemas"]["TiptapMark"][];
+            /** @enum {string} */
+            type: "tableHeader" | "tableCell";
+        };
+TiptapTextNode: {
+            marks?: components["schemas"]["TiptapMark"][];
+            text: string;
+            /** @enum {string} */
+            type: "text";
+        };
+TotpCodeRequest: {
+            code: string;
+        };
+TotpEnrollment: {
+            /** @constant */
+            algorithm: "SHA1";
+            /** @constant */
+            digits: 6;
+            /** Format: uri */
+            readonly otpAuthUri: string;
+            /** @constant */
+            periodSeconds: 30;
+            readonly secret: string;
+        };
+UpdateAdminRole: {
+            displayName?: string;
+            permissions?: string[];
+            reason: string;
+        };
+UpdateAdminUser: {
+            displayName?: string;
+            locale?: string;
+            managerUserId?: string | null;
+            reason: string;
+            roleKeys?: string[];
+            /** @enum {string} */
+            status?: "invited" | "active" | "disabled";
+        };
+UpdateBusinessStatusRequest: {
+            reason: string;
+            status: components["schemas"]["BusinessInboxStatus"];
+        };
+UpdateFeishuSettings: {
+            enabled: boolean;
+            fullReconcileEnabled: boolean;
+            fullReconcileLocalTime: string;
+            intervalMinutes: number;
+        };
+UpdateObjectStorageSettings: components["schemas"]["ObjectStorageSettingsInput"] & {
+            adoptLegacyAssets: boolean;
+            reason: string;
+        };
+UpdatePlatformSettings: {
+            reason: string;
+            retentionDeletionGraceDays?: number;
+            rfqRetentionDays?: number;
+            temporaryOverrideDefaultDays?: number;
+        };
 UpdateProductPresentation: {
             indexable: boolean;
             locale: string;

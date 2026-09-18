@@ -35,6 +35,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/content/{kind}/{slug}", get(get_content))
         .route("/products", get(list_products))
+        .route("/products/{slug}/assets", get(get_product_assets))
         .route("/products/{slug}", get(get_product))
         .route("/discovery", get(discovery))
         .route("/media/{assetId}", get(get_public_media))

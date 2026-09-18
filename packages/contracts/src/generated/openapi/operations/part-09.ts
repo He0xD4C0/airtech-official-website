@@ -132,7 +132,7 @@ listFeishuConflicts: {
         };
         requestBody?: never;
         responses: {
-            /** @description Sync conflicts */
+            /** @description List legacy manually created source conflicts */
             200: {
                 headers: {
                     [name: string]: unknown;

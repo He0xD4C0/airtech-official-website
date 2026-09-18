@@ -7,7 +7,7 @@ use crate::{
     error::ApiError,
     models::{
         CmsContentKind, DataClass, GuestVisit, NewsEntry, Product, ProductFamily,
-        PublicContentProjection,
+        ProductSourceAsset, ProductSourceAssetDocument, PublicContentProjection,
     },
     state::AppState,
 };

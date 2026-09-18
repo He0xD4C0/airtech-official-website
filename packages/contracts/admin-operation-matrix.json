@@ -1,6 +1,6 @@
 {
   "generatedFrom": "packages/contracts/openapi/openapi.production.json",
-  "operationCount": 83,
+  "operationCount": 88,
   "operations": [
     {
       "method": "GET",
@@ -1412,6 +1412,41 @@
       "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
     },
     {
+      "method": "POST",
+      "path": "/api/admin/v1/feishu/connection-test",
+      "operationId": "testFeishuConnection",
+      "permission": "integration.run",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "FeishuConnectionTest"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "testFeishuConnection"
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+    },
+    {
       "method": "GET",
       "path": "/api/admin/v1/feishu/mappings",
       "operationId": "listFeishuMappings",
@@ -1447,6 +1482,83 @@
       },
       "audit": {
         "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/feishu/settings",
+      "operationId": "getFeishuSettings",
+      "permission": "integration.run",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "FeishuSettings"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/v1/feishu/settings",
+      "operationId": "updateFeishuSettings",
+      "permission": "integration.run",
+      "request": {
+        "parameters": [
+          "If-Match"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "UpdateFeishuSettings"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "FeishuSettings"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "updateFeishuSettings"
       },
       "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
     },
@@ -1545,7 +1657,17 @@
           }
         ]
       },
-      "response": [],
+      "response": [
+        {
+          "status": 202,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "SyncRun"
+            }
+          ]
+        }
+      ],
       "pagination": {
         "strategy": "none"
       },
@@ -1557,6 +1679,79 @@
       },
       "audit": {
         "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/feishu/sync-runs/{id}",
+      "operationId": "getFeishuSyncRun",
+      "permission": "integration.run",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "FeishuSyncRunDetail"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/feishu/sync-runs/{id}/rollback",
+      "operationId": "rollbackFeishuSyncRun",
+      "permission": "integration.run",
+      "request": {
+        "parameters": [
+          "id"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "FeishuRollbackReport"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "rollbackFeishuSyncRun"
       },
       "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
     },

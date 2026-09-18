@@ -14,7 +14,7 @@ use crate::{
         cursor_limit, decode_scoped_cursor_compat, encode_scoped_cursor, CursorQuery, DecodedCursor,
     },
     services::request_metrics::LegacyCursorEndpoint,
-    state::{decode_payload, AppState},
+    state::AppState,
 };
 
 #[derive(Deserialize, Serialize)]
@@ -66,7 +66,10 @@ pub async fn list_sync_runs(
         None => None,
     };
     let rows = sqlx::query(
-        r#"SELECT id,started_at,payload FROM sync_runs
+        r#"SELECT id,connector_id,source,dry_run,run_kind,mapping_version,status,
+                  resume_cursor,records_seen,records_valid,conflict_count,records_applied,
+                  records_failed,assets_seen,assets_copied,assets_reused,assets_failed,
+                  started_at,completed_at,payload FROM sync_runs
            WHERE ($1::timestamptz IS NULL OR (started_at,id)<($1,$2))
            ORDER BY started_at DESC,id DESC LIMIT $3"#,
     )
@@ -77,7 +80,7 @@ pub async fn list_sync_runs(
     .await?;
     let mut items = rows
         .iter()
-        .map(|row| decode_payload::<SyncRun>(row.try_get("payload")?, "sync run"))
+        .map(crate::services::feishu::decode_sync_run)
         .collect::<Result<Vec<_>, _>>()?;
     let has_more = items.len() > limit;
     items.truncate(limit);
@@ -99,48 +102,76 @@ pub async fn list_sync_runs(
 
 pub async fn connection_status(state: &AppState) -> Result<FeishuConnectionStatus, ApiError> {
     let connector = sqlx::query(
-        r#"SELECT id,display_name,enabled,encrypted_configuration IS NOT NULL AS configured,updated_at
-           FROM source_connectors WHERE connector_type='feishu'
-           ORDER BY updated_at DESC LIMIT 1"#,
+        r#"SELECT connector.id,connector.display_name,connector.enabled,connector.updated_at,
+                  EXISTS(SELECT 1 FROM object_storage_settings WHERE singleton=true) AS storage_ready,
+                  EXISTS(SELECT 1 FROM sync_mappings mapping
+                         WHERE mapping.connector_id=connector.id AND mapping.active) AS mapping_ready
+           FROM source_connectors connector WHERE connector.connector_type='feishu'
+           ORDER BY connector.updated_at DESC LIMIT 1"#,
     )
     .fetch_optional(&state.pool)
     .await?;
     let latest_sync = latest_sync_run(state).await?;
     Ok(match connector {
-        Some(row) => FeishuConnectionStatus {
-            connector_id: Some(row.try_get("id")?),
-            display_name: Some(row.try_get("display_name")?),
-            configured: row.try_get("configured")?,
-            enabled: row.try_get("enabled")?,
-            runnable: false,
-            unavailable_reason: Some(unavailable_reason()),
-            updated_at: Some(row.try_get("updated_at")?),
-            latest_sync,
-        },
+        Some(row) => {
+            let credentials = state.feishu_client.configured();
+            let enabled: bool = row.try_get("enabled")?;
+            let storage_ready: bool = row.try_get("storage_ready")?;
+            let mapping_ready: bool = row.try_get("mapping_ready")?;
+            let encryption_ready = state.config.product_staging_encryption_key.is_some();
+            let unavailable_reason = if !credentials {
+                Some("Feishu deployment credentials are not configured.".into())
+            } else if !storage_ready {
+                Some("Object storage is not configured.".into())
+            } else if !encryption_ready {
+                Some("Product staging encryption is not configured.".into())
+            } else if !mapping_ready {
+                Some("Run the connection test to discover and validate the field mapping.".into())
+            } else if !enabled {
+                Some("Automatic synchronization is disabled.".into())
+            } else {
+                None
+            };
+            FeishuConnectionStatus {
+                connector_id: Some(row.try_get("id")?),
+                display_name: Some(row.try_get("display_name")?),
+                configured: credentials,
+                enabled,
+                runnable: credentials
+                    && enabled
+                    && storage_ready
+                    && mapping_ready
+                    && encryption_ready,
+                unavailable_reason,
+                updated_at: Some(row.try_get("updated_at")?),
+                latest_sync,
+            }
+        }
         None => FeishuConnectionStatus {
             connector_id: None,
             display_name: None,
             configured: false,
             enabled: false,
             runnable: false,
-            unavailable_reason: Some(unavailable_reason()),
+            unavailable_reason: Some("Feishu connector settings are not initialized.".into()),
             updated_at: None,
             latest_sync,
         },
     })
 }
 
-fn unavailable_reason() -> String {
-    "Feishu provider adapter is not connected; synchronization is disabled.".into()
-}
-
 async fn latest_sync_run(state: &AppState) -> Result<Option<SyncRun>, ApiError> {
-    sqlx::query_scalar::<_, Value>(
-        "SELECT payload FROM sync_runs ORDER BY started_at DESC,id DESC LIMIT 1",
+    sqlx::query(
+        r#"SELECT id,connector_id,source,dry_run,run_kind,mapping_version,status,
+                  resume_cursor,records_seen,records_valid,conflict_count,records_applied,
+                  records_failed,assets_seen,assets_copied,assets_reused,assets_failed,
+                  started_at,completed_at,payload
+           FROM sync_runs ORDER BY started_at DESC,id DESC LIMIT 1"#,
     )
     .fetch_optional(&state.pool)
     .await?
-    .map(|value| decode_payload(value, "sync run"))
+    .as_ref()
+    .map(crate::services::feishu::decode_sync_run)
     .transpose()
 }
 

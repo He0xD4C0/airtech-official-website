@@ -182,14 +182,14 @@ the target host and operational controls are ready.
 
 ## Deployment order
 
-The current schema target is V21. Deploy the migration artifact first, then the
+The current schema target is V24. Deploy the migration artifact first, then the
 API and ordinary Worker, and finally Admin and Public Web. V17 introduces
 private drafts and review, V18 removes persisted content history, and V19 adds
 current-state query indexes. V20 moves application-side object-storage settings
 into PostgreSQL and adds immutable public media URLs. These migrations are
 forward-only.
 
-V21 adds immutable media preview derivatives. Before promotion, verify a fresh database migrates directly to V21 and a
+V21 adds immutable media preview derivatives. V22-V24 add automatic Feishu product synchronization, source-asset bindings, and revision provenance. Before promotion, verify a fresh database migrates directly to V24 and a
 controlled legacy SQLx v1-v10 database passes
 `baseline -> migrate -> validate`.
 

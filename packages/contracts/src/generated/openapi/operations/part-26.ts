@@ -6,22 +6,28 @@
 import type { components } from '../components'
 
 export interface OperationsPart26 {
-getInternalMetrics: {
+getPublishedProductAssets: {
         parameters: {
-            query?: never;
+            query?: {
+                family?: components["schemas"]["ProductFamily"];
+            };
             header?: never;
-            path?: never;
+            path: {
+                slug: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description OpenMetrics telemetry */
+            /** @description Published product attachments */
             200: {
                 headers: {
+                    /** @description Immutable published revision tag */
+                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/openmetrics-text": string;
+                    "application/json": components["schemas"]["ProductSourceAssetDocument"];
                 };
             };
             /** @description Malformed request */
@@ -116,22 +122,38 @@ getInternalMetrics: {
             };
         };
     };
-getOpenApiDocument: {
+createRfqSubmission: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
+                "Idempotency-Key": string;
+            };
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRfqRequest"];
+            };
+        };
         responses: {
-            /** @description OpenAPI document */
+            /** @description Idempotent replay */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OpenApiDocument"];
+                    "application/json": components["schemas"]["AcceptedResponse"];
+                };
+            };
+            /** @description RFQ accepted */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptedResponse"];
                 };
             };
             /** @description Malformed request */
@@ -226,22 +248,25 @@ getOpenApiDocument: {
             };
         };
     };
-getReadiness: {
+resolvePublishedRoute: {
         parameters: {
-            query?: never;
+            query: {
+                locale?: "en";
+                path: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Service is ready */
+            /** @description Resolved public route */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HealthStatus"];
+                    "application/json": components["schemas"]["RouteResolution"];
                 };
             };
             /** @description Malformed request */
@@ -336,22 +361,26 @@ getReadiness: {
             };
         };
     };
-getApiRobots: {
+selectProducts: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelectorRequest"];
+            };
+        };
         responses: {
-            /** @description Crawler policy */
+            /** @description Selector evaluation */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/plain": string;
+                    "application/json": components["schemas"]["SelectorResponse"];
                 };
             };
             /** @description Malformed request */

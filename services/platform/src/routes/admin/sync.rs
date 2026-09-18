@@ -67,12 +67,79 @@ pub(super) async fn list_feishu_staging(
 }
 
 pub(super) async fn start_sync_run(
-    State(_state): State<AppState>,
-    _headers: HeaderMap,
-    Json(_request): Json<StartSyncRequest>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<StartSyncRequest>,
 ) -> Result<Response, ApiError> {
-    Err(ApiError::conflict(
-        "Feishu provider adapter is not connected; synchronization is disabled.",
+    let run =
+        crate::services::feishu::queue_sync_run(&state, request.run_kind, &actor(&headers)).await?;
+    let mut response = (StatusCode::ACCEPTED, Json(run.clone())).into_response();
+    response.headers_mut().insert(
+        header::LOCATION,
+        HeaderValue::from_str(&format!("/api/admin/v1/feishu/sync-runs/{}", run.id))
+            .expect("sync run URL is valid"),
+    );
+    Ok(response)
+}
+
+pub(super) async fn get_feishu_settings_route(
+    State(state): State<AppState>,
+) -> Result<Response, ApiError> {
+    let settings = crate::services::feishu::get_feishu_settings(&state).await?;
+    let mut response = entity_response(StatusCode::OK, &settings, settings.revision);
+    add_private_no_store_headers(&mut response);
+    Ok(response)
+}
+
+pub(super) async fn update_feishu_settings_route(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(input): Json<crate::models::UpdateFeishuSettings>,
+) -> Result<Response, ApiError> {
+    let expected = parse_if_match(&headers)?;
+    let request_id = headers
+        .get("x-request-id")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| Uuid::parse_str(value).ok())
+        .unwrap_or_else(Uuid::new_v4);
+    let settings = crate::services::feishu::update_feishu_settings(
+        &state,
+        expected,
+        &input,
+        &actor(&headers),
+        request_id,
+    )
+    .await?;
+    let mut response = entity_response(StatusCode::OK, &settings, settings.revision);
+    add_private_no_store_headers(&mut response);
+    Ok(response)
+}
+
+pub(super) async fn test_feishu_connection_route(
+    State(state): State<AppState>,
+) -> Result<Response, ApiError> {
+    let result = crate::services::feishu::test_feishu_connection(&state).await?;
+    let mut response = (StatusCode::OK, Json(result)).into_response();
+    add_private_no_store_headers(&mut response);
+    Ok(response)
+}
+
+pub(super) async fn get_sync_run(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<crate::models::FeishuSyncRunDetail>, ApiError> {
+    Ok(Json(
+        crate::services::feishu::load_sync_run_detail(&state, id).await?,
+    ))
+}
+
+pub(super) async fn rollback_sync_run_route(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    headers: HeaderMap,
+) -> Result<Json<crate::models::FeishuRollbackReport>, ApiError> {
+    Ok(Json(
+        crate::services::feishu::rollback_sync_run(&state, id, &actor(&headers)).await?,
     ))
 }
 

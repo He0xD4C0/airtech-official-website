@@ -3,6 +3,8 @@ use std::{fmt, path::PathBuf};
 /// Hard ceiling for a single uploaded object. The public delivery path and the
 /// multipart reader share it so an oversized body is never buffered twice.
 pub const MAX_MEDIA_UPLOAD_BYTES: usize = 25 * 1024 * 1024;
+/// Source documents and CAD originals may be larger than display images.
+pub const MAX_ATTACHMENT_BYTES: usize = 100 * 1024 * 1024;
 
 pub const DEFAULT_LOCAL_MEDIA_ROOT: &str = "/var/lib/airtek-media";
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

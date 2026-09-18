@@ -4,6 +4,7 @@ mod admin_analytics;
 mod admin_auth;
 mod admin_catalog;
 mod admin_content;
+mod admin_feishu;
 mod admin_identity;
 mod admin_operations;
 #[cfg(feature = "devtools")]
@@ -21,6 +22,7 @@ pub(super) fn add_all(paths: &mut Map<String, Value>) {
     admin_content::add_paths(paths);
     media::add_paths(paths);
     admin_catalog::add_publication_and_sync(paths);
+    admin_feishu::add_paths(paths);
     admin_analytics::add_overview(paths);
 
     admin_catalog::add_management(paths);

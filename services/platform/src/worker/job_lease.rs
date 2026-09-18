@@ -163,6 +163,29 @@ pub(super) async fn persist_related_failure(
         .bind(retrying)
         .execute(&mut **transaction)
         .await?;
+    } else if job_type == "feishuSync" {
+        sqlx::query(
+            r#"UPDATE sync_runs
+               SET status=CASE WHEN $2 THEN status ELSE 'failed' END,
+                   completed_at=CASE WHEN $2 THEN NULL ELSE now() END,
+                   payload=CASE WHEN $2 THEN payload ELSE payload || $3 END
+               WHERE id=$1 AND status NOT IN ('completed','completedWithErrors')"#,
+        )
+        .bind(job_id)
+        .bind(retrying)
+        .bind(json!({"error": "Feishu synchronization exhausted its retry budget."}))
+        .execute(&mut **transaction)
+        .await?;
+        sqlx::query(
+            r#"UPDATE product_import_runs
+               SET status=CASE WHEN $2 THEN status ELSE 'failed' END,
+                   completed_at=CASE WHEN $2 THEN NULL ELSE now() END
+               WHERE id=$1 AND status <> 'completed'"#,
+        )
+        .bind(job_id)
+        .bind(retrying)
+        .execute(&mut **transaction)
+        .await?;
     }
     Ok(())
 }

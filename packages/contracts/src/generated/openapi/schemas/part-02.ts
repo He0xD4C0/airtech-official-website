@@ -329,6 +329,70 @@ FeishuConnectionStatus: {
             unavailableReason: string | null;
             updatedAt: string | null;
         };
+FeishuConnectionTest: {
+            /** Format: date-time */
+            checkedAt: string;
+            credentialsConfigured: boolean;
+            objectStorageReady: boolean;
+            runnable: boolean;
+            tables: components["schemas"]["FeishuTableCheck"][];
+            tokenIssued: boolean;
+        };
+FeishuRollbackReport: {
+            /** Format: date-time */
+            completedAt: string;
+            restored: number;
+            skipped: number;
+            /** Format: uuid */
+            syncRunId: string;
+        };
+FeishuSettings: {
+            /** Format: uuid */
+            connectorId: string;
+            enabled: boolean;
+            fullReconcileEnabled: boolean;
+            fullReconcileLocalTime: string;
+            intervalMinutes: number;
+            lastFullAt: string | null;
+            lastIncrementalAt: string | null;
+            /** @constant */
+            mappingVersion: "feishu-product-v1";
+            /** Format: int64 */
+            revision: number;
+            sources: components["schemas"]["FeishuSource"][];
+            /** @constant */
+            timezone: "Asia/Shanghai";
+            /** Format: date-time */
+            updatedAt: string;
+            updatedBy: string;
+        };
+FeishuSource: {
+            application: string | null;
+            family: components["schemas"]["ProductFamily"];
+            name: string;
+            tableId: string;
+            wikiToken: string;
+        };
+FeishuSyncError: {
+            code: string;
+            /** Format: date-time */
+            createdAt: string;
+            fieldPath: string | null;
+            message: string;
+            sourceRecordId: string | null;
+        };
+FeishuSyncRunDetail: {
+            errors: components["schemas"]["FeishuSyncError"][];
+            run: components["schemas"]["SyncRun"];
+        };
+FeishuTableCheck: {
+            accessible: boolean;
+            errors: string[];
+            fieldCount: number;
+            mappingValid: boolean;
+            name: string;
+            tableId: string;
+        };
 FieldDiff: {
             baseValue: unknown | null;
             fieldPath: string;
@@ -425,72 +489,4 @@ GuestSourceDailyPage: {
             nextCursor: string | null;
         };
 GuestSourceSummary: components["schemas"]["GuestSourceDaily"];
-GuestVisit: {
-            /** Format: uuid */
-            anonymousSessionId: string;
-            campaign: string | null;
-            /** Format: date-time */
-            firstSeenAt: string;
-            /** Format: uuid */
-            id: string;
-            landingPath: string;
-            /** Format: date-time */
-            lastSeenAt: string;
-            medium: string | null;
-            referrerDomain: string | null;
-            /** Format: date-time */
-            retentionUntil: string;
-            source: string;
-        };
-GuestVisitPage: {
-            items: components["schemas"]["GuestVisit"][];
-            nextCursor: string | null;
-        };
-HealthStatus: {
-            persistence: string;
-            service: string;
-            status: string;
-            /** Format: date-time */
-            timestamp: string;
-            version: string;
-        };
-HeroBlock: {
-            actions: components["schemas"]["EditorialAction"][];
-            eyebrow?: string | null;
-            heading?: string | null;
-            /** Format: uuid */
-            id: string;
-            lead?: string | null;
-            media?: components["schemas"]["MediaUseReference"] | null;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            type: "hero";
-            variant: components["schemas"]["HeroVariant"];
-        };
-/** @enum {string} */
-        HeroVariant: "standard" | "splitMedia" | "minimal";
-InvitationAcceptance: {
-            /** Format: date-time */
-            acceptedAt: string;
-            displayName: string;
-            /** Format: email */
-            email: string;
-            locale: string;
-            roleKeys: string[];
-            /** @constant */
-            status: "active";
-            /** Format: uuid */
-            userId: string;
-        };
-InviteAdminUser: {
-            displayName: string;
-            /** Format: email */
-            email: string;
-            roleKeys: string[];
-        };
-LegalTypeFields: {
-            effectiveDate?: string | null;
-        };
 }

@@ -133,6 +133,10 @@ mod cms_private_workflow;
 #[cfg(feature = "devtools")]
 #[path = "postgres_contract/development_admin.rs"]
 mod development_admin;
+#[path = "postgres_contract/feishu_asset_storage.rs"]
+mod feishu_asset_storage;
+#[path = "postgres_contract/feishu_sync.rs"]
+mod feishu_sync;
 #[path = "postgres_contract/identity_mutation_atomicity.rs"]
 mod identity_mutation_atomicity;
 #[path = "postgres_contract/media_assets.rs"]

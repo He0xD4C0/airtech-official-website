@@ -21,6 +21,7 @@ import {
   productListQuery,
   productPageResponse,
   productResponse,
+  productSourceAssetDocumentResponse,
   publicDiscoveryResponse,
   routeProjectionResponse,
   selectorResponse,
@@ -136,6 +137,21 @@ export function createPublicApiClient(options: PublicApiClientOptions) {
         },
       }))
       return productResponse(result.data)
+    },
+
+    async getProductAssets(slug: string, family?: ProductFamily) {
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(slug)) throw new Error('The product slug is invalid.')
+      if (family && !['centrifugal', 'axial', 'crossFlow', 'inlineDuct', 'motors'].includes(family)) {
+        throw new Error('The product family is invalid.')
+      }
+      const result = await publicContractRequest(client.get('/api/public/v1/products/{slug}/assets', {
+        credentials: 'omit',
+        parameters: {
+          path: { slug },
+          ...(family ? { query: { family } } : {}),
+        },
+      }))
+      return productSourceAssetDocumentResponse(result.data)
     },
 
     async listProducts(query: PublishedProductListQuery = {}) {

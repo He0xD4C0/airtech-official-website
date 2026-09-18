@@ -15,12 +15,14 @@ mod upload_input;
 
 pub use config::{
     MediaSettings, MediaStorageKind, MediaStorageSettings, DEFAULT_LOCAL_MEDIA_ROOT,
-    MAX_MEDIA_UPLOAD_BYTES,
+    MAX_ATTACHMENT_BYTES, MAX_MEDIA_UPLOAD_BYTES,
 };
 pub use delivery::deliver_media_asset;
 pub(crate) use preview::{generate_preview, PreviewDerivative};
 pub(crate) use storage::probe_storage;
+pub(crate) use storage::{delete_object, get_object, put_object};
 pub use upload::upload_media_asset;
+pub(crate) use upload_input::sniff_media_type;
 
 fn validate_storage_key(key: &str) -> Result<(), crate::error::ApiError> {
     let valid = !key.is_empty()

@@ -96,18 +96,24 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             "awaitingResolution",
             "readyToPublish",
             "completed",
+            "completedWithErrors",
             "failed",
         ]),
     );
-    s.insert("StartSyncRequest".into(), json!({
-        "type": "object", "additionalProperties": false, "required": ["mappingVersion"],
-        "properties": {"dryRun": {"type": "boolean", "default": false}, "mappingVersion": {"type": "string", "minLength": 1}, "cursor": nullable(json!({"type": "string"}))}
-    }));
-    s.insert("SyncRun".into(), object(
-        &["id", "source", "dryRun", "mappingVersion", "status", "resumeCursor", "recordsSeen", "recordsValid", "conflictCount", "startedAt", "completedAt"],
+    s.insert("SyncRunKind".into(), string_enum(&["incremental", "full"]));
+    s.insert(
+        "StartSyncRequest".into(),
         json!({
-            "id": uuid(), "source": {"type": "string"}, "dryRun": {"type": "boolean"}, "mappingVersion": {"type": "string"}, "status": r("SyncRunStatus"),
-            "resumeCursor": nullable(json!({"type": "string"})), "recordsSeen": counter(), "recordsValid": counter(), "conflictCount": counter(),
+            "type": "object", "additionalProperties": false, "required": ["runKind"],
+            "properties": {"runKind": r("SyncRunKind")}
+        }),
+    );
+    s.insert("SyncRun".into(), object(
+        &["id", "source", "dryRun", "runKind", "mappingVersion", "status", "resumeCursor", "recordsSeen", "recordsValid", "conflictCount", "recordsApplied", "recordsFailed", "assetsSeen", "assetsCopied", "assetsReused", "assetsFailed", "startedAt", "completedAt"],
+        json!({
+            "id": uuid(), "connectorId": nullable(uuid()), "source": {"type": "string"}, "dryRun": {"type": "boolean"}, "runKind": r("SyncRunKind"), "mappingVersion": {"type": "string"}, "status": r("SyncRunStatus"),
+            "resumeCursor": nullable(json!({"type": "string"})), "recordsSeen": counter(), "recordsValid": counter(), "conflictCount": counter(), "recordsApplied": counter(), "recordsFailed": counter(),
+            "assetsSeen": counter(), "assetsCopied": counter(), "assetsReused": counter(), "assetsFailed": counter(),
             "startedAt": timestamp(), "completedAt": nullable(timestamp()), "error": nullable(json!({"type": "string"}))
         })
     ));
@@ -139,6 +145,47 @@ pub(super) fn add(s: &mut Map<String, Value>) {
     s.insert("FeishuConnectionStatus".into(), object(
         &["connectorId", "displayName", "configured", "enabled", "runnable", "unavailableReason", "updatedAt", "latestSync"],
         json!({"connectorId": nullable(uuid()), "displayName": nullable(json!({"type": "string"})), "configured": {"type": "boolean"}, "enabled": {"type": "boolean"}, "runnable": {"type": "boolean"}, "unavailableReason": nullable(json!({"type": "string"})), "updatedAt": nullable(timestamp()), "latestSync": nullable(r("SyncRun"))})
+    ));
+    s.insert("FeishuSource".into(), object(
+        &["wikiToken", "tableId", "name", "family", "application"],
+        json!({"wikiToken": {"type": "string"}, "tableId": {"type": "string"}, "name": {"type": "string"}, "family": r("ProductFamily"), "application": nullable(json!({"type": "string"}))})
+    ));
+    s.insert("FeishuSettings".into(), object(
+        &["connectorId", "enabled", "intervalMinutes", "fullReconcileEnabled", "fullReconcileLocalTime", "timezone", "mappingVersion", "sources", "revision", "lastIncrementalAt", "lastFullAt", "updatedAt", "updatedBy"],
+        json!({
+            "connectorId": uuid(), "enabled": {"type": "boolean"}, "intervalMinutes": {"type": "integer", "minimum": 5, "maximum": 1440},
+            "fullReconcileEnabled": {"type": "boolean"}, "fullReconcileLocalTime": {"type": "string", "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"},
+            "timezone": {"type": "string", "const": "Asia/Shanghai"}, "mappingVersion": {"type": "string", "const": "feishu-product-v1"},
+            "sources": array(r("FeishuSource")), "revision": revision(), "lastIncrementalAt": nullable(timestamp()), "lastFullAt": nullable(timestamp()),
+            "updatedAt": timestamp(), "updatedBy": {"type": "string"}
+        })
+    ));
+    s.insert("UpdateFeishuSettings".into(), object(
+        &["enabled", "intervalMinutes", "fullReconcileEnabled", "fullReconcileLocalTime"],
+        json!({"enabled": {"type": "boolean"}, "intervalMinutes": {"type": "integer", "minimum": 5, "maximum": 1440}, "fullReconcileEnabled": {"type": "boolean"}, "fullReconcileLocalTime": {"type": "string", "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"}})
+    ));
+    s.insert("FeishuTableCheck".into(), object(
+        &["tableId", "name", "accessible", "fieldCount", "mappingValid", "errors"],
+        json!({"tableId": {"type": "string"}, "name": {"type": "string"}, "accessible": {"type": "boolean"}, "fieldCount": counter(), "mappingValid": {"type": "boolean"}, "errors": array(json!({"type": "string"}))})
+    ));
+    s.insert("FeishuConnectionTest".into(), object(
+        &["credentialsConfigured", "tokenIssued", "objectStorageReady", "runnable", "tables", "checkedAt"],
+        json!({"credentialsConfigured": {"type": "boolean"}, "tokenIssued": {"type": "boolean"}, "objectStorageReady": {"type": "boolean"}, "runnable": {"type": "boolean"}, "tables": array(r("FeishuTableCheck")), "checkedAt": timestamp()})
+    ));
+    s.insert("FeishuSyncError".into(), object(
+        &["sourceRecordId", "code", "fieldPath", "message", "createdAt"],
+        json!({"sourceRecordId": nullable(json!({"type": "string"})), "code": {"type": "string"}, "fieldPath": nullable(json!({"type": "string"})), "message": {"type": "string"}, "createdAt": timestamp()})
+    ));
+    s.insert(
+        "FeishuSyncRunDetail".into(),
+        object(
+            &["run", "errors"],
+            json!({"run": r("SyncRun"), "errors": array(r("FeishuSyncError"))}),
+        ),
+    );
+    s.insert("FeishuRollbackReport".into(), object(
+        &["syncRunId", "restored", "skipped", "completedAt"],
+        json!({"syncRunId": uuid(), "restored": counter(), "skipped": counter(), "completedAt": timestamp()})
     ));
     s.insert("SyncMapping".into(), object(
         &["id", "connectorId", "version", "mapping", "schemaVersion", "active", "createdAt"],

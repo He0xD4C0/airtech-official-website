@@ -104,9 +104,13 @@ export async function enrichPage(
       if (!match || !slugPattern.test(match[2])) throw new PublicPageDataError('The product route is invalid.', 404)
       const family = page.productFamilies?.find((item) => item.slug === match[1])
       if (!family) throw new PublicPageDataError('The published product family is unavailable.', 404)
-      const product = await client.getProduct(match[2], family.code)
+      const [product, assets] = await Promise.all([
+        client.getProduct(match[2], family.code),
+        client.getProductAssets(match[2], family.code),
+      ])
       if (product.family !== family.code || product.slug !== match[2]) throw new PublicPageDataError('The published product route does not match the product record.', 404)
       if (!product.publishedRevision) throw new PublicPageDataError('The published product record has no revision.', 503)
+      if (assets.productId !== product.id || assets.productRevision !== product.publishedRevision) throw new PublicPageDataError('The published product attachments do not match the product revision.', 503)
       page.category = family.slug
       page.slug = product.slug
       page.title = product.title
@@ -115,6 +119,7 @@ export async function enrichPage(
       page.eyebrow = product.model?.trim() || product.stableId
       page.indexable = page.indexable && product.indexable
       page.publishedProduct = product
+      page.productAssets = assets.items
       page.productContext = productContext(product)
       page.breadcrumbs = [...page.breadcrumbs.slice(0, -1), { label: product.title }]
       page.analyticsContext = {

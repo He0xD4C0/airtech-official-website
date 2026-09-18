@@ -1,4 +1,4 @@
-import type { ContentBlock, Product, ProductContext } from '@airtek/contracts'
+import type { ContentBlock, Product, ProductContext, ProductSourceAsset } from '@airtek/contracts'
 import type { PublicContentProjection } from '@/types/projection'
 
 export type PageKind =
@@ -128,6 +128,7 @@ export interface PublicPageModel {
   productNextCursor?: string | null
   newsNextCursor?: string | null
   publishedProduct?: Product
+  productAssets?: ProductSourceAsset[]
   productContext?: ProductContext
   primaryCta?: PublicCallToAction
   sections?: PublicPageSection[]

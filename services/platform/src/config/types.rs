@@ -2,6 +2,42 @@ use super::*;
 
 pub const API_PORT: u16 = 8080;
 
+#[derive(Clone)]
+pub struct FeishuCredentials {
+    app_id: String,
+    app_secret: String,
+}
+
+impl FeishuCredentials {
+    /// Construct server-only credentials for a deployment or isolated test.
+    /// Debug output remains redacted and both values are zeroized on drop.
+    pub fn new(app_id: String, app_secret: String) -> Self {
+        Self { app_id, app_secret }
+    }
+
+    pub fn app_id(&self) -> &str {
+        &self.app_id
+    }
+
+    pub fn app_secret(&self) -> &str {
+        &self.app_secret
+    }
+}
+
+impl fmt::Debug for FeishuCredentials {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("FeishuCredentials([redacted])")
+    }
+}
+
+impl Drop for FeishuCredentials {
+    fn drop(&mut self) {
+        use zeroize::Zeroize;
+        self.app_id.zeroize();
+        self.app_secret.zeroize();
+    }
+}
+
 /// Exact, deployment-owned authority registration for a production Product
 /// Master import. A checksum alone is insufficient: the mapping and accepted
 /// row/error cardinality are part of the reviewed source decision.
@@ -53,6 +89,10 @@ pub struct Config {
     /// unconfigured deployment keeps the catalogue readable and refuses
     /// uploads instead of writing objects it cannot serve.
     pub media: MediaSettings,
+    /// Server-side Feishu credentials. They are never serialized or persisted.
+    pub feishu: Option<FeishuCredentials>,
+    /// Overridable only to support an isolated mock server in integration tests.
+    pub feishu_api_base_url: String,
     pub production: bool,
 }
 
@@ -105,6 +145,8 @@ impl fmt::Debug for Config {
             )
             .field("trusted_proxy_cidrs", &self.trusted_proxy_cidrs)
             .field("media_storage", &self.media.storage_kind_label())
+            .field("feishu", &self.feishu.as_ref().map(|_| "[configured]"))
+            .field("feishu_api_base_url", &self.feishu_api_base_url)
             .field("production", &self.production)
             .finish()
     }

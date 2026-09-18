@@ -218,6 +218,11 @@ describe('database-driven public SSR page loading', () => {
       if (url.includes('/routes/resolve?')) return json(route(null, {
         path: '/en/products/axial/database-fan',
       }))
+      if (url.includes('/products/database-fan/assets?')) return json({
+        productId: '21dab5e7-b0d7-48ce-ab97-ddf36f80dff4',
+        productRevision: 2,
+        items: [],
+      })
       return json({
         id: '21dab5e7-b0d7-48ce-ab97-ddf36f80dff4', stableId: 'DATABASE-FAN', model: 'DATABASE-FAN',
         slug: 'database-fan', locale: 'en', family: 'axial', subtype: null, motorTechnology: 'EC',
@@ -236,8 +241,10 @@ describe('database-driven public SSR page loading', () => {
     expect(result.page.metaTitle).toBe('Published product SEO')
     expect(result.page.description).toBe('Published product SEO description.')
     expect(result.page.publishedProduct?.relatedContentIds).toEqual([])
+    expect(result.page.productAssets).toEqual([])
     const calls = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls
     expect(calls.some(([input]) => String(input).endsWith('/products/database-fan?family=axial'))).toBe(true)
+    expect(calls.some(([input]) => String(input).endsWith('/products/database-fan/assets?family=axial'))).toBe(true)
   })
 
   it('serves the native V2 projection shape end to end', async () => {

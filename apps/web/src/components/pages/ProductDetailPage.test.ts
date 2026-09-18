@@ -68,4 +68,34 @@ describe('product detail progressive enhancement', () => {
     expect(html).not.toContain('Controlled resources')
     expect(html).not.toContain('/en/resources/downloads')
   })
+
+  it('previews only images while exposing every source original as a download', async () => {
+    const assetPage: PublicPageModel = {
+      ...page,
+      productAssets: [
+        {
+          assetId: '11111111-1111-4111-8111-111111111111', usage: 'curve',
+          originalName: 'pq-curve.png', mediaType: 'image/png', byteSize: 2048,
+          sha256: 'a'.repeat(64), downloadUrl: '/api/public/v1/media/11111111-1111-4111-8111-111111111111/download',
+          previewUrl: '/api/public/v1/media/11111111-1111-4111-8111-111111111111',
+        },
+        {
+          assetId: '22222222-2222-4222-8222-222222222222', usage: 'technicalDocument',
+          originalName: 'drawing.step', mediaType: 'model/step', byteSize: 4096,
+          sha256: 'b'.repeat(64), downloadUrl: '/api/public/v1/media/22222222-2222-4222-8222-222222222222/download',
+          previewUrl: null,
+        },
+      ],
+    }
+    const app = createSSRApp(ProductDetailPage, { page: assetPage })
+    app.use(createPinia())
+    const html = await renderToString(app)
+
+    expect(html).toContain('Source attachments')
+    expect(html).toContain('pq-curve.png')
+    expect(html).toContain('drawing.step')
+    expect(html).toContain('http://localhost:8080/api/public/v1/media/11111111-1111-4111-8111-111111111111')
+    expect(html).not.toContain('src="http://localhost:8080/api/public/v1/media/22222222-2222-4222-8222-222222222222')
+    expect(html.match(/Download original/g)).toHaveLength(2)
+  })
 })

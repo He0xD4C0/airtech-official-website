@@ -1,16 +1,22 @@
 use super::*;
 
 pub(super) const RETENTION_SCHEDULE_CHECK_INTERVAL: Duration = Duration::from_secs(60 * 60);
+pub(super) const FEISHU_SCHEDULE_CHECK_INTERVAL: Duration = Duration::from_secs(60);
 pub(super) const RETENTION_JOB_CADENCE_HOURS: i64 = 24;
 
 pub async fn run(state: AppState) -> Result<(), ApiError> {
     let pool = state.pool.clone();
 
     ensure_periodic_retention_job(&pool).await?;
+    ensure_scheduled_feishu_sync(&state).await?;
     let mut interval = time::interval(Duration::from_secs(2));
     let mut retention_schedule_interval = time::interval_at(
         time::Instant::now() + RETENTION_SCHEDULE_CHECK_INTERVAL,
         RETENTION_SCHEDULE_CHECK_INTERVAL,
+    );
+    let mut feishu_schedule_interval = time::interval_at(
+        time::Instant::now() + FEISHU_SCHEDULE_CHECK_INTERVAL,
+        FEISHU_SCHEDULE_CHECK_INTERVAL,
     );
     loop {
         tokio::select! {
@@ -18,6 +24,11 @@ pub async fn run(state: AppState) -> Result<(), ApiError> {
             _ = retention_schedule_interval.tick() => {
                 if let Err(error) = ensure_periodic_retention_job(&pool).await {
                     tracing::error!(error = %error, "retention scheduling failed");
+                }
+            }
+            _ = feishu_schedule_interval.tick() => {
+                if let Err(error) = ensure_scheduled_feishu_sync(&state).await {
+                    tracing::error!(error = %error, "Feishu scheduling failed");
                 }
             }
             _ = interval.tick() => {
@@ -30,6 +41,51 @@ pub async fn run(state: AppState) -> Result<(), ApiError> {
             }
         }
     }
+}
+
+pub async fn ensure_scheduled_feishu_sync(state: &AppState) -> Result<Option<Uuid>, ApiError> {
+    let settings = crate::services::feishu::get_feishu_settings(state).await?;
+    if !settings.enabled {
+        return Ok(None);
+    }
+    let active: bool = sqlx::query_scalar(
+        r#"SELECT EXISTS(SELECT 1 FROM sync_runs WHERE connector_id=$1
+           AND status IN ('queued','fetching','validating','readyToPublish'))"#,
+    )
+    .bind(settings.connector_id)
+    .fetch_one(&state.pool)
+    .await?;
+    if active {
+        return Ok(None);
+    }
+    let now = Utc::now();
+    let shanghai =
+        chrono::FixedOffset::east_opt(8 * 60 * 60).expect("Asia/Shanghai fixed offset is valid");
+    let local_now = now.with_timezone(&shanghai);
+    let full_time = chrono::NaiveTime::parse_from_str(&settings.full_reconcile_local_time, "%H:%M")
+        .map_err(|_| ApiError::service_unavailable("Stored Feishu full-sync time is invalid."))?;
+    let full_due = settings.full_reconcile_enabled
+        && local_now.time() >= full_time
+        && settings
+            .last_full_at
+            .map(|value| value.with_timezone(&shanghai).date_naive() < local_now.date_naive())
+            .unwrap_or(true);
+    let last_automatic = match (settings.last_incremental_at, settings.last_full_at) {
+        (Some(left), Some(right)) => Some(left.max(right)),
+        (left, right) => left.or(right),
+    };
+    let incremental_due = last_automatic
+        .map(|value| value <= now - chrono::Duration::minutes(i64::from(settings.interval_minutes)))
+        .unwrap_or(true);
+    let run_kind = if full_due {
+        crate::models::SyncRunKind::Full
+    } else if incremental_due {
+        crate::models::SyncRunKind::Incremental
+    } else {
+        return Ok(None);
+    };
+    let run = crate::services::feishu::queue_sync_run(state, run_kind, "feishuScheduler").await?;
+    Ok(Some(run.id))
 }
 
 /// Ensure there is at most one daily retention operation across all worker

@@ -130,6 +130,28 @@ describe('public API client', () => {
     )
   })
 
+  it('loads revision-bound source attachments without treating documents as previews', async () => {
+    const response = {
+      productId: '77935cef-4111-4c4c-bdb8-17679a8b42fe',
+      productRevision: 7,
+      items: [{
+        assetId: '11111111-1111-4111-8111-111111111111', usage: 'datasheet',
+        originalName: 'datasheet.pdf', mediaType: 'application/pdf', byteSize: 4096,
+        sha256: 'a'.repeat(64),
+        downloadUrl: '/api/public/v1/media/11111111-1111-4111-8111-111111111111/download',
+        previewUrl: null,
+      }],
+    }
+    const fetchImpl = vi.fn(async () => jsonResponse(response)) as unknown as typeof fetch
+    const result = await createPublicApiClient({ baseUrl: 'http://api:8080/api/public/v1', fetchImpl })
+      .getProductAssets('validated-model', 'axial')
+    expect(result.items[0]?.previewUrl).toBeNull()
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://api:8080/api/public/v1/products/validated-model/assets?family=axial',
+      expect.objectContaining({ credentials: 'omit' }),
+    )
+  })
+
   it('loads an opaque cursor page with bounded public filters', async () => {
     const product = {
       id: '77935cef-4111-4c4c-bdb8-17679a8b42fe', stableId: 'AT-P-001', model: 'Validated model', slug: 'validated-model',

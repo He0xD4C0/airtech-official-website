@@ -4037,6 +4037,291 @@
         ],
         "type": "object"
       },
+      "FeishuConnectionTest": {
+        "additionalProperties": false,
+        "properties": {
+          "checkedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "credentialsConfigured": {
+            "type": "boolean"
+          },
+          "objectStorageReady": {
+            "type": "boolean"
+          },
+          "runnable": {
+            "type": "boolean"
+          },
+          "tables": {
+            "items": {
+              "$ref": "#/components/schemas/FeishuTableCheck"
+            },
+            "type": "array"
+          },
+          "tokenIssued": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "credentialsConfigured",
+          "tokenIssued",
+          "objectStorageReady",
+          "runnable",
+          "tables",
+          "checkedAt"
+        ],
+        "type": "object"
+      },
+      "FeishuRollbackReport": {
+        "additionalProperties": false,
+        "properties": {
+          "completedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "restored": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "skipped": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "syncRunId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "syncRunId",
+          "restored",
+          "skipped",
+          "completedAt"
+        ],
+        "type": "object"
+      },
+      "FeishuSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "connectorId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "fullReconcileEnabled": {
+            "type": "boolean"
+          },
+          "fullReconcileLocalTime": {
+            "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "intervalMinutes": {
+            "maximum": 1440,
+            "minimum": 5,
+            "type": "integer"
+          },
+          "lastFullAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastIncrementalAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mappingVersion": {
+            "const": "feishu-product-v1",
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/FeishuSource"
+            },
+            "type": "array"
+          },
+          "timezone": {
+            "const": "Asia/Shanghai",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedBy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "connectorId",
+          "enabled",
+          "intervalMinutes",
+          "fullReconcileEnabled",
+          "fullReconcileLocalTime",
+          "timezone",
+          "mappingVersion",
+          "sources",
+          "revision",
+          "lastIncrementalAt",
+          "lastFullAt",
+          "updatedAt",
+          "updatedBy"
+        ],
+        "type": "object"
+      },
+      "FeishuSource": {
+        "additionalProperties": false,
+        "properties": {
+          "application": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "family": {
+            "$ref": "#/components/schemas/ProductFamily"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tableId": {
+            "type": "string"
+          },
+          "wikiToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "wikiToken",
+          "tableId",
+          "name",
+          "family",
+          "application"
+        ],
+        "type": "object"
+      },
+      "FeishuSyncError": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "fieldPath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "sourceRecordId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "sourceRecordId",
+          "code",
+          "fieldPath",
+          "message",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "FeishuSyncRunDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/FeishuSyncError"
+            },
+            "type": "array"
+          },
+          "run": {
+            "$ref": "#/components/schemas/SyncRun"
+          }
+        },
+        "required": [
+          "run",
+          "errors"
+        ],
+        "type": "object"
+      },
+      "FeishuTableCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "accessible": {
+            "type": "boolean"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "fieldCount": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "mappingValid": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tableId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tableId",
+          "name",
+          "accessible",
+          "fieldCount",
+          "mappingValid",
+          "errors"
+        ],
+        "type": "object"
+      },
       "FieldDiff": {
         "additionalProperties": false,
         "properties": {
@@ -4961,7 +5246,7 @@
         "additionalProperties": false,
         "properties": {
           "byteSize": {
-            "maximum": 26214400,
+            "maximum": 104857600,
             "minimum": 1,
             "type": "integer"
           },
@@ -4981,7 +5266,20 @@
             "enum": [
               "image/png",
               "image/jpeg",
-              "image/webp"
+              "image/webp",
+              "application/pdf",
+              "application/msword",
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "application/vnd.ms-excel",
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+              "image/vnd.dxf",
+              "image/vnd.dwg",
+              "model/step",
+              "model/iges",
+              "model/stl",
+              "model/obj",
+              "application/x-3ds",
+              "application/octet-stream"
             ],
             "type": "string"
           },
@@ -6829,6 +7127,112 @@
         ],
         "type": "object"
       },
+      "ProductSourceAsset": {
+        "additionalProperties": false,
+        "properties": {
+          "assetId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "byteSize": {
+            "maximum": 104857600,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "downloadUrl": {
+            "pattern": "^/api/public/v1/media/[0-9a-f-]+/download$",
+            "type": "string"
+          },
+          "mediaType": {
+            "enum": [
+              "image/png",
+              "image/jpeg",
+              "image/webp",
+              "application/pdf",
+              "application/msword",
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "application/vnd.ms-excel",
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+              "image/vnd.dxf",
+              "image/vnd.dwg",
+              "model/step",
+              "model/iges",
+              "model/stl",
+              "model/obj",
+              "application/x-3ds",
+              "application/octet-stream"
+            ],
+            "type": "string"
+          },
+          "originalName": {
+            "maxLength": 180,
+            "minLength": 1,
+            "type": "string"
+          },
+          "previewUrl": {
+            "anyOf": [
+              {
+                "pattern": "^/api/public/v1/media/[0-9a-f-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "usage": {
+            "enum": [
+              "curve",
+              "drawing",
+              "cad",
+              "datasheet",
+              "technicalDocument"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "assetId",
+          "usage",
+          "originalName",
+          "mediaType",
+          "byteSize",
+          "sha256",
+          "downloadUrl",
+          "previewUrl"
+        ],
+        "type": "object"
+      },
+      "ProductSourceAssetDocument": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProductSourceAsset"
+            },
+            "type": "array"
+          },
+          "productId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "productRevision": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "productId",
+          "productRevision",
+          "items"
+        ],
+        "type": "object"
+      },
       "ProjectRfqContext": {
         "additionalProperties": false,
         "properties": {
@@ -7363,6 +7767,7 @@
             "type": "string"
           },
           "byteSize": {
+            "maximum": 104857600,
             "minimum": 1,
             "type": "integer"
           },
@@ -7374,7 +7779,20 @@
             "enum": [
               "image/png",
               "image/jpeg",
-              "image/webp"
+              "image/webp",
+              "application/pdf",
+              "application/msword",
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "application/vnd.ms-excel",
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+              "image/vnd.dxf",
+              "image/vnd.dwg",
+              "model/step",
+              "model/iges",
+              "model/stl",
+              "model/obj",
+              "application/x-3ds",
+              "application/octet-stream"
             ],
             "type": "string"
           },
@@ -8482,27 +8900,12 @@
       "StartSyncRequest": {
         "additionalProperties": false,
         "properties": {
-          "cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "dryRun": {
-            "default": false,
-            "type": "boolean"
-          },
-          "mappingVersion": {
-            "minLength": 1,
-            "type": "string"
+          "runKind": {
+            "$ref": "#/components/schemas/SyncRunKind"
           }
         },
         "required": [
-          "mappingVersion"
+          "runKind"
         ],
         "type": "object"
       },
@@ -8680,6 +9083,22 @@
       "SyncRun": {
         "additionalProperties": false,
         "properties": {
+          "assetsCopied": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "assetsFailed": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "assetsReused": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "assetsSeen": {
+            "minimum": 0,
+            "type": "integer"
+          },
           "completedAt": {
             "anyOf": [
               {
@@ -8694,6 +9113,17 @@
           "conflictCount": {
             "minimum": 0,
             "type": "integer"
+          },
+          "connectorId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "dryRun": {
             "type": "boolean"
@@ -8715,6 +9145,14 @@
           "mappingVersion": {
             "type": "string"
           },
+          "recordsApplied": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "recordsFailed": {
+            "minimum": 0,
+            "type": "integer"
+          },
           "recordsSeen": {
             "minimum": 0,
             "type": "integer"
@@ -8733,6 +9171,9 @@
               }
             ]
           },
+          "runKind": {
+            "$ref": "#/components/schemas/SyncRunKind"
+          },
           "source": {
             "type": "string"
           },
@@ -8748,16 +9189,30 @@
           "id",
           "source",
           "dryRun",
+          "runKind",
           "mappingVersion",
           "status",
           "resumeCursor",
           "recordsSeen",
           "recordsValid",
           "conflictCount",
+          "recordsApplied",
+          "recordsFailed",
+          "assetsSeen",
+          "assetsCopied",
+          "assetsReused",
+          "assetsFailed",
           "startedAt",
           "completedAt"
         ],
         "type": "object"
+      },
+      "SyncRunKind": {
+        "enum": [
+          "incremental",
+          "full"
+        ],
+        "type": "string"
       },
       "SyncRunPage": {
         "additionalProperties": false,
@@ -8793,6 +9248,7 @@
           "awaitingResolution",
           "readyToPublish",
           "completed",
+          "completedWithErrors",
           "failed"
         ],
         "type": "string"
@@ -9447,6 +9903,33 @@
         "required": [
           "status",
           "reason"
+        ],
+        "type": "object"
+      },
+      "UpdateFeishuSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "fullReconcileEnabled": {
+            "type": "boolean"
+          },
+          "fullReconcileLocalTime": {
+            "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "intervalMinutes": {
+            "maximum": 1440,
+            "minimum": 5,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "enabled",
+          "intervalMinutes",
+          "fullReconcileEnabled",
+          "fullReconcileLocalTime"
         ],
         "type": "object"
       },
@@ -14693,7 +15176,7 @@
                 }
               }
             },
-            "description": "Sync conflicts"
+            "description": "List legacy manually created source conflicts"
           },
           "400": {
             "content": {
@@ -14801,7 +15284,7 @@
             "adminSession": []
           }
         ],
-        "summary": "List three-way product conflicts",
+        "summary": "List legacy manually created source conflicts",
         "tags": [
           "adminFeishu"
         ]
@@ -14970,7 +15453,7 @@
             "csrfToken": []
           }
         ],
-        "summary": "Resolve a conflict only by accepting incoming data or retaining an evidenced local value temporarily",
+        "summary": "Resolve one legacy Feishu conflict",
         "tags": [
           "adminFeishu"
         ]
@@ -15102,6 +15585,133 @@
         ]
       }
     },
+    "/api/admin/v1/feishu/connection-test": {
+      "post": {
+        "operationId": "testFeishuConnection",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeishuConnectionTest"
+                }
+              }
+            },
+            "description": "Connection test"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Test credentials, all four tables, field mapping, and object storage",
+        "tags": [
+          "adminFeishu"
+        ]
+      }
+    },
     "/api/admin/v1/feishu/mappings": {
       "get": {
         "operationId": "listFeishuMappings",
@@ -15139,7 +15749,7 @@
                 }
               }
             },
-            "description": "Feishu mappings"
+            "description": "List versioned Feishu field mappings"
           },
           "400": {
             "content": {
@@ -15253,70 +15863,27 @@
         ]
       }
     },
-    "/api/admin/v1/feishu/staging": {
+    "/api/admin/v1/feishu/settings": {
       "get": {
-        "operationId": "listFeishuStagingRecords",
-        "parameters": [
-          {
-            "description": "Opaque endpoint-scoped cursor returned by the previous page.",
-            "in": "query",
-            "name": "cursor",
-            "required": false,
-            "schema": {
-              "maxLength": 2048,
-              "minLength": 1,
-              "type": "string"
-            }
-          },
-          {
-            "description": "Page size; values outside 1 through 100 return Problem Details 400.",
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 50,
-              "maximum": 100,
-              "minimum": 1,
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "syncRunId",
-            "required": false,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "status",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/StagingValidationStatus"
-            }
-          },
-          {
-            "in": "query",
-            "name": "q",
-            "required": false,
-            "schema": {
-              "maxLength": 200,
-              "type": "string"
-            }
-          }
-        ],
+        "operationId": "getFeishuSettings",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StagingRecordPage"
+                  "$ref": "#/components/schemas/FeishuSettings"
                 }
               }
             },
-            "description": "Feishu staging"
+            "description": "Feishu settings",
+            "headers": {
+              "ETag": {
+                "description": "Settings revision tag",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "400": {
             "content": {
@@ -15424,7 +15991,339 @@
             "adminSession": []
           }
         ],
-        "summary": "List server-filtered Feishu staging records and validation results",
+        "summary": "Read non-secret Feishu sources and scheduling policy",
+        "tags": [
+          "adminFeishu"
+        ]
+      },
+      "put": {
+        "operationId": "updateFeishuSettings",
+        "parameters": [
+          {
+            "description": "Current entity ETag, formatted as revision-N.",
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "pattern": "^\\\"revision-[0-9]+\\\"$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFeishuSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeishuSettings"
+                }
+              }
+            },
+            "description": "Feishu settings",
+            "headers": {
+              "ETag": {
+                "description": "Updated settings revision tag",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Update Feishu enablement and automatic schedule",
+        "tags": [
+          "adminFeishu"
+        ]
+      }
+    },
+    "/api/admin/v1/feishu/staging": {
+      "get": {
+        "operationId": "listFeishuStagingRecords",
+        "parameters": [
+          {
+            "description": "Opaque endpoint-scoped cursor returned by the previous page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page size; values outside 1 through 100 return Problem Details 400.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "syncRunId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/StagingValidationStatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StagingRecordPage"
+                }
+              }
+            },
+            "description": "List Feishu staging records and validation results"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "List Feishu staging records and validation results",
         "tags": [
           "adminFeishu"
         ]
@@ -15575,7 +16474,7 @@
             "adminSession": []
           }
         ],
-        "summary": "List Feishu sync runs",
+        "summary": "List automatic Feishu synchronization runs",
         "tags": [
           "adminFeishu"
         ]
@@ -15593,6 +16492,24 @@
           "required": true
         },
         "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncRun"
+                }
+              }
+            },
+            "description": "Sync run accepted",
+            "headers": {
+              "Location": {
+                "description": "Sync run detail URL",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "400": {
             "content": {
               "application/problem+json": {
@@ -15641,7 +16558,7 @@
                 }
               }
             },
-            "description": "Feishu provider adapter is not connected"
+            "description": "Concurrent or domain conflict"
           },
           "422": {
             "content": {
@@ -15700,7 +16617,282 @@
             "csrfToken": []
           }
         ],
-        "summary": "Report that Feishu synchronization is unavailable until the provider adapter is connected",
+        "summary": "Queue an incremental or full Feishu synchronization",
+        "tags": [
+          "adminFeishu"
+        ]
+      }
+    },
+    "/api/admin/v1/feishu/sync-runs/{id}": {
+      "get": {
+        "operationId": "getFeishuSyncRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeishuSyncRunDetail"
+                }
+              }
+            },
+            "description": "Sync run detail"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "Read counters and isolated errors for one synchronization run",
+        "tags": [
+          "adminFeishu"
+        ]
+      }
+    },
+    "/api/admin/v1/feishu/sync-runs/{id}/rollback": {
+      "post": {
+        "operationId": "rollbackFeishuSyncRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeishuRollbackReport"
+                }
+              }
+            },
+            "description": "Rollback report"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Restore prior public revisions when no later run changed them",
         "tags": [
           "adminFeishu"
         ]
@@ -24117,6 +25309,156 @@
           }
         },
         "summary": "Get a published product",
+        "tags": [
+          "publicCatalog"
+        ]
+      }
+    },
+    "/api/public/v1/products/{slug}/assets": {
+      "get": {
+        "operationId": "getPublishedProductAssets",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "maxLength": 180,
+              "minLength": 1,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "family",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ProductFamily"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductSourceAssetDocument"
+                }
+              }
+            },
+            "description": "Published product attachments",
+            "headers": {
+              "ETag": {
+                "description": "Immutable published revision tag",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "summary": "List source attachments bound to the current published product revision",
         "tags": [
           "publicCatalog"
         ]

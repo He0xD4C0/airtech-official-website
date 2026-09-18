@@ -6,35 +6,29 @@
 import type { components } from '../components'
 
 export interface OperationsPart13 {
-updateProductPresentation: {
+listAdminMediaAssetReferences: {
         parameters: {
-            query?: never;
-            header: {
-                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
-                "Idempotency-Key": string;
-                /** @description Current entity ETag, formatted as revision-N. */
-                "If-Match": string;
+            query?: {
+                /** @description Opaque endpoint-scoped cursor returned by the previous page. */
+                cursor?: string;
+                /** @description Page size; values outside 1 through 100 return Problem Details 400. */
+                limit?: number;
             };
+            header?: never;
             path: {
                 id: string;
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateProductPresentation"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description Admin product detail updated */
+            /** @description Media references */
             200: {
                 headers: {
-                    /** @description New independent product presentation revision tag */
-                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminProductDetail"];
+                    "application/json": components["schemas"]["MediaAssetReferencePage"];
                 };
             };
             /** @description Malformed request */
@@ -129,7 +123,7 @@ updateProductPresentation: {
             };
         };
     };
-getProductPrivatePricing: {
+getBackgroundOperation: {
         parameters: {
             query?: never;
             header?: never;
@@ -140,13 +134,13 @@ getProductPrivatePricing: {
         };
         requestBody?: never;
         responses: {
-            /** @description Private Product Master pricing */
+            /** @description Background operation */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProductPrivatePricing"];
+                    "application/json": components["schemas"]["BackgroundOperation"];
                 };
             };
             /** @description Malformed request */
@@ -241,7 +235,7 @@ getProductPrivatePricing: {
             };
         };
     };
-getProductPublicationReadiness: {
+streamBackgroundOperationEvents: {
         parameters: {
             query?: never;
             header?: never;
@@ -252,13 +246,13 @@ getProductPublicationReadiness: {
         };
         requestBody?: never;
         responses: {
-            /** @description Product publication report */
+            /** @description Operation event stream */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProductPublicationReport"];
+                    "text/event-stream": string;
                 };
             };
             /** @description Malformed request */
@@ -353,31 +347,31 @@ getProductPublicationReadiness: {
             };
         };
     };
-publishProductRevision: {
+listAdminProducts: {
         parameters: {
-            query?: never;
-            header: {
-                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
-                "Idempotency-Key": string;
-                /** @description Current entity ETag, formatted as revision-N. */
-                "If-Match": string;
+            query?: {
+                /** @description Opaque endpoint-scoped cursor returned by the previous page. */
+                cursor?: string;
+                dataState?: "verified" | "pending";
+                family?: components["schemas"]["ProductFamily"];
+                /** @description Page size; values outside 1 through 100 return Problem Details 400. */
+                limit?: number;
+                q?: string;
+                status?: components["schemas"]["PublicationStatus"];
             };
-            path: {
-                id: string;
-            };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Product published */
+            /** @description Product records */
             200: {
                 headers: {
-                    /** @description Published revision tag */
-                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Product"];
+                    "application/json": components["schemas"]["AdminProductPage"];
                 };
             };
             /** @description Malformed request */

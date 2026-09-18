@@ -6,6 +6,7 @@ import type {
   NewsEntry,
   NewsPage,
   ProductFamilyPresentation,
+  ProductSourceAssetDocument,
   RouteResolution,
   SiteBootstrap,
   operations,
@@ -31,3 +32,4 @@ export type PublicDiscoveryEntryResponse = DiscoveryEntry
 export type PublicDiscoveryResponse = DiscoveryDocument
 export type GuestVisitRequest = CreateGuestVisit
 export type GuestVisitResponse = GuestVisit
+export type ProductSourceAssetDocumentResponse = ProductSourceAssetDocument

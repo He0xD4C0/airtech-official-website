@@ -5,6 +5,7 @@ import type {
   DataClass,
   Product,
   ProductPage,
+  ProductSourceAssetDocument,
   SelectorResponse,
 } from '@airtek/contracts'
 import { parseOpenApiSchema } from '@airtek/contracts'
@@ -404,6 +405,29 @@ export function productPageResponse(value: unknown): ProductPage {
     items: value.items.map(productResponse),
     nextCursor: value.nextCursor,
   }
+}
+
+export function productSourceAssetDocumentResponse(value: unknown): ProductSourceAssetDocument {
+  const validAsset = (asset: unknown) => isRecord(asset)
+    && typeof asset.assetId === 'string'
+    && typeof asset.usage === 'string'
+    && typeof asset.originalName === 'string'
+    && typeof asset.mediaType === 'string'
+    && Number.isInteger(asset.byteSize)
+    && Number(asset.byteSize) >= 0
+    && typeof asset.sha256 === 'string'
+    && /^[0-9a-f]{64}$/u.test(asset.sha256)
+    && typeof asset.downloadUrl === 'string'
+    && nullableString(asset.previewUrl)
+  if (!isRecord(value)
+    || typeof value.productId !== 'string'
+    || !Number.isInteger(value.productRevision)
+    || Number(value.productRevision) < 1
+    || !Array.isArray(value.items)
+    || !value.items.every(validAsset)) {
+    throw new Error('The server returned invalid published product attachments.')
+  }
+  return parseOpenApiSchema<ProductSourceAssetDocument>('ProductSourceAssetDocument', value)
 }
 
 export function productListQuery(query: PublishedProductListQuery): PublishedProductListQuery {

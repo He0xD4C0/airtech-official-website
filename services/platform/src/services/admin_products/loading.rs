@@ -147,7 +147,7 @@ pub async fn load_private_pricing(
              ON staging.import_run_id=product.product_import_run_id
             AND staging.source_record_id=product.stable_id
            JOIN product_import_runs import_run ON import_run.id=staging.import_run_id
-           WHERE product.id=$1 AND product.data_origin='verifiedCsv'
+           WHERE product.id=$1 AND product.data_origin IN ('verifiedCsv','feishu')
              AND staging.status IN ('validated','promoted') AND staging.expires_at > now()
            ORDER BY staging.created_at DESC LIMIT 1"#,
     )

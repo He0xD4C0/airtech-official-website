@@ -61,6 +61,27 @@ pub struct ProductMediaGalleryItem {
     pub alt_text: String,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ProductSourceAsset {
+    pub asset_id: Uuid,
+    pub usage: String,
+    pub original_name: String,
+    pub media_type: String,
+    pub byte_size: i64,
+    pub sha256: String,
+    pub download_url: String,
+    pub preview_url: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ProductSourceAssetDocument {
+    pub product_id: Uuid,
+    pub product_revision: i64,
+    pub items: Vec<ProductSourceAsset>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Product {

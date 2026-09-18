@@ -49,6 +49,35 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             }),
         ),
     );
+    s.insert(
+        "ProductSourceAsset".into(),
+        object(
+            &[
+                "assetId",
+                "usage",
+                "originalName",
+                "mediaType",
+                "byteSize",
+                "sha256",
+                "downloadUrl",
+                "previewUrl",
+            ],
+            json!({
+                "assetId": uuid(),
+                "usage": string_enum(&["curve", "drawing", "cad", "datasheet", "technicalDocument"]),
+                "originalName": {"type": "string", "minLength": 1, "maxLength": 180},
+                "mediaType": source_asset_media_type(),
+                "byteSize": {"type": "integer", "minimum": 1, "maximum": 104857600},
+                "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+                "downloadUrl": {"type": "string", "pattern": "^/api/public/v1/media/[0-9a-f-]+/download$"},
+                "previewUrl": nullable(json!({"type": "string", "pattern": "^/api/public/v1/media/[0-9a-f-]+$"}))
+            }),
+        ),
+    );
+    s.insert("ProductSourceAssetDocument".into(), object(
+        &["productId", "productRevision", "items"],
+        json!({"productId": uuid(), "productRevision": revision(), "items": array(r("ProductSourceAsset"))})
+    ));
     s.insert("Product".into(), object(
         &["id", "stableId", "model", "slug", "locale", "family", "subtype", "motorTechnology", "title", "summary", "seo", "sortOrder", "relatedContentIds", "mediaGallery", "specifications", "performanceCurves", "sourceSnapshotId", "sourceRevision", "currentRevision", "publishedRevision", "status", "indexable", "updatedAt"],
         json!({
@@ -149,4 +178,25 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         ]),
     );
     s.insert("SelectorResponse".into(), object(&["outcome", "candidates", "explanations"], json!({"outcome": r("SelectorOutcome"), "candidates": array(r("SelectorCandidate")), "explanations": array(json!({"type": "string"}))})));
+}
+
+fn source_asset_media_type() -> Value {
+    string_enum(&[
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "image/vnd.dxf",
+        "image/vnd.dwg",
+        "model/step",
+        "model/iges",
+        "model/stl",
+        "model/obj",
+        "application/x-3ds",
+        "application/octet-stream",
+    ])
 }

@@ -95,6 +95,7 @@ pub struct AppState {
     pub pool: PgPool,
     pub auth_hash_slots: Arc<Semaphore>,
     pub request_metrics: Arc<RequestMetrics>,
+    pub feishu_client: Arc<crate::services::feishu::FeishuClient>,
     idempotency_locks: Arc<Mutex<HashMap<String, Weak<Mutex<()>>>>>,
     idempotency_database_slots: Arc<Semaphore>,
     #[cfg(feature = "devtools")]
