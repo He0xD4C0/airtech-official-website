@@ -14,5 +14,6 @@ coverage/
 playwright-report/
 test-results/
 dogfood-output/
+/deliverables/
 *.log
 Internal-docs/

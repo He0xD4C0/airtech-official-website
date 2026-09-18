@@ -28,15 +28,14 @@ migration history.
 | `infra/` | Container, gateway, deployment, and object-storage configuration |
 | `tests/` | Cross-application browser contracts and their support code |
 | `docs/` | Source evidence and planning inputs; not generated runtime output |
-| `deliverables/` | Versioned working deliverables, kept separate from source evidence |
 | `reports/` | Dated QA and audit evidence intended for repository retention |
 | `scripts/` | Generation, validation, boundary checks, and local maintenance tools |
 
 Dependencies, build output, caches, browser reports, and temporary conversion
 files are local generated artifacts and remain Git-ignored. `pnpm clean:local`
 previews the cleanup whitelist; `pnpm clean:local:apply` explicitly removes it.
-Neither command deletes dependencies, environment files, deliverables, or
-arbitrary untracked files.
+Neither command deletes dependencies, environment files, or arbitrary
+untracked files.
 
 ## Local development
 
