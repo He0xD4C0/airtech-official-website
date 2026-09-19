@@ -40,9 +40,8 @@ beforeEach(() => {
   mocks.dashboardSummary.mockReset().mockResolvedValue({
     generatedAt: '2026-09-03T11:00:00Z',
     draftContent: { available: true, value: 4 },
-    openConflicts: { available: true, value: 2 },
     openRfqs: { available: true, value: 6 },
-    readinessItemCount: 6,
+    readinessItemCount: 4,
     recentActivity: [],
     analytics: {
       visits: 31,

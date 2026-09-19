@@ -219,7 +219,6 @@ impl AppState {
         .fetch_optional(&mut *connection)
         .await?;
 
-        let mut source_record_id = None;
         if let Some(row) = row {
             let connector_id: Option<Uuid> = row.try_get("connector_id")?;
             let connector_type: Option<String> = row.try_get("connector_type")?;
@@ -227,7 +226,6 @@ impl AppState {
             let snapshot_source_record_id: String = row.try_get("snapshot_source_record_id")?;
             let snapshot_source_revision: String = row.try_get("snapshot_source_revision")?;
             let snapshot_checksum: String = row.try_get("snapshot_checksum")?;
-            source_record_id = Some(snapshot_source_record_id.clone());
             if connector_id.is_none()
                 || connector_type.as_deref() != Some("feishu")
                 || snapshot_sync_run_id.is_none()
@@ -307,25 +305,6 @@ impl AppState {
                 "staging.validationStatus",
                 "stagingRecordNotFound",
                 "No accepted staging record exists for the exact source snapshot.",
-            ));
-        }
-
-        let open_conflict = sqlx::query_scalar::<_, bool>(
-            r#"SELECT EXISTS(
-                   SELECT 1 FROM sync_conflicts
-                   WHERE resolved_at IS NULL
-                     AND (product_id=$1 OR ($2::text IS NOT NULL AND source_record_id=$2))
-               )"#,
-        )
-        .bind(product.id)
-        .bind(source_record_id)
-        .fetch_one(&mut *connection)
-        .await?;
-        if open_conflict {
-            issues.push(workflow_error(
-                "conflicts",
-                "openConflict",
-                "All open three-way conflicts related to this Product must be resolved.",
             ));
         }
 

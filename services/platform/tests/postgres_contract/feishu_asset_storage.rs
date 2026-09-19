@@ -6,7 +6,8 @@ use std::sync::{
 use airtek_platform::{
     config::FeishuCredentials,
     services::feishu::{
-        compensate_source_assets, store_source_assets, token_hash, SourceAttachment,
+        compensate_source_assets, execute_object_cleanup, queue_orphan_object_cleanup,
+        store_source_assets, token_hash, FeishuClient, SourceAttachment,
     },
 };
 use axum::{
@@ -59,6 +60,8 @@ async fn mock_feishu() -> (String, Arc<AtomicUsize>, tokio::task::JoinHandle<()>
 fn attachment(token: String) -> SourceAttachment {
     SourceAttachment {
         file_token: token,
+        table_id: "tblJjxOgBFL0FD0N".into(),
+        source_record_id: "rec-asset".into(),
         original_name: "AX-200-drawing.pdf".into(),
         declared_size: Some(PDF.len() as u64),
         declared_media_type: Some("application/pdf".into()),
@@ -78,6 +81,76 @@ fn object_key(prefix: &str, token: &str) -> String {
         token_hash,
         checksum
     )
+}
+
+async fn insert_gallery_reference(pool: &sqlx::PgPool, asset_id: Uuid) -> Uuid {
+    let product_id = Uuid::new_v4();
+    let stable_id = format!("DEV-FIXTURE-{}", product_id.simple());
+    let slug = format!("gallery-fixture-{}", product_id.simple());
+    let payload = json!({"id": product_id, "stableId": stable_id, "slug": slug});
+    sqlx::query(
+        r#"INSERT INTO products
+           (id,stable_id,model,slug,locale,family,source_snapshot_id,source_revision,
+            status,current_revision,published_revision,indexable,payload,updated_at,data_origin)
+           VALUES ($1,$2,'Gallery fixture',$3,'en','axial',NULL,'fixture-1',
+                   'draft',1,NULL,false,$4,now(),'developmentFixture')"#,
+    )
+    .bind(product_id)
+    .bind(&stable_id)
+    .bind(&slug)
+    .bind(&payload)
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        r#"INSERT INTO product_revisions
+           (product_id,revision,source_snapshot_id,payload,created_at,data_origin)
+           VALUES ($1,1,NULL,$2,now(),'developmentFixture')"#,
+    )
+    .bind(product_id)
+    .bind(&payload)
+    .execute(pool)
+    .await
+    .unwrap();
+    let content = json!({
+        "sortOrder": 0,
+        "relatedContentIds": [],
+        "mediaGallery": [{"assetId": asset_id, "altText": "Shared drawing"}]
+    });
+    let seo = json!({
+        "title": null, "description": null, "canonicalPath": null, "indexable": false
+    });
+    sqlx::query(
+        r#"INSERT INTO product_presentation_revisions
+           (product_id,locale,revision,source_product_revision,slug,title,summary,
+            content,seo_metadata,translation_state,is_placeholder,indexable,data_origin,
+            created_by,created_at)
+           VALUES ($1,'en',1,1,$2,'Gallery fixture',NULL,$3,$4,'draft',true,false,
+                   'developmentFixture','integration-test',now())"#,
+    )
+    .bind(product_id)
+    .bind(&slug)
+    .bind(&content)
+    .bind(&seo)
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        r#"INSERT INTO product_presentation_working
+           (product_id,locale,current_revision,published_revision,slug,title,summary,
+            content,seo_metadata,translation_state,is_placeholder,indexable,data_origin,
+            updated_by,updated_at)
+           VALUES ($1,'en',1,NULL,$2,'Gallery fixture',NULL,$3,$4,'draft',true,false,
+                   'developmentFixture','integration-test',now())"#,
+    )
+    .bind(product_id)
+    .bind(&slug)
+    .bind(content)
+    .bind(seo)
+    .execute(pool)
+    .await
+    .unwrap();
+    product_id
 }
 
 #[tokio::test]
@@ -108,29 +181,59 @@ async fn feishu_assets_deduplicate_download_publicly_and_compensate_objects() {
     let (feishu_url, download_calls, server) = mock_feishu().await;
     let mut config = Config::for_test();
     config.database_url = Some(sandbox.connection_url().into());
-    config.feishu = Some(FeishuCredentials::new("app".into(), "secret".into()));
-    config.feishu_api_base_url = feishu_url;
     let state = AppState::new(config).unwrap();
+    let client = FeishuClient::new(
+        &feishu_url,
+        FeishuCredentials::new("app".into(), "secret".into()),
+    );
     let connector_id: Uuid =
         sqlx::query_scalar("SELECT connector_id FROM feishu_connector_settings LIMIT 1")
             .fetch_one(&state.pool)
             .await
             .unwrap();
+    let sync_run_id = Uuid::new_v4();
+    sqlx::query(
+        r#"INSERT INTO sync_runs
+           (id,connector_id,source,dry_run,mapping_version,status,started_at,payload)
+           VALUES ($1,$2,'feishu',false,'asset-test','validating',now(),'{}')"#,
+    )
+    .bind(sync_run_id)
+    .bind(connector_id)
+    .execute(&state.pool)
+    .await
+    .unwrap();
 
     let first_token = format!("first-{suffix}");
     let second_token = format!("second-{suffix}");
-    let first = store_source_assets(&state, connector_id, &[attachment(first_token.clone())])
-        .await
-        .unwrap();
+    let first = store_source_assets(
+        &state,
+        &client,
+        connector_id,
+        sync_run_id,
+        &[attachment(first_token.clone())],
+    )
+    .await
+    .unwrap();
     assert!(first[0].newly_created);
-    let replay = store_source_assets(&state, connector_id, &[attachment(first_token.clone())])
-        .await
-        .unwrap();
+    let replay = store_source_assets(
+        &state,
+        &client,
+        connector_id,
+        sync_run_id,
+        &[attachment(first_token.clone())],
+    )
+    .await
+    .unwrap();
     assert!(!replay[0].newly_created);
-    let checksum_reuse =
-        store_source_assets(&state, connector_id, &[attachment(second_token.clone())])
-            .await
-            .unwrap();
+    let checksum_reuse = store_source_assets(
+        &state,
+        &client,
+        connector_id,
+        sync_run_id,
+        &[attachment(second_token.clone())],
+    )
+    .await
+    .unwrap();
     assert_eq!(first[0].media_asset_id, replay[0].media_asset_id);
     assert_eq!(first[0].media_asset_id, checksum_reuse[0].media_asset_id);
     assert_eq!(download_calls.load(Ordering::SeqCst), 2);
@@ -144,6 +247,7 @@ async fn feishu_assets_deduplicate_download_publicly_and_compensate_objects() {
 
     let app = build_router(state.clone());
     let response = app
+        .clone()
         .oneshot(
             Request::get(format!(
                 "/api/public/v1/media/{}/download",
@@ -165,8 +269,31 @@ async fn feishu_assets_deduplicate_download_publicly_and_compensate_objects() {
         response.into_body().collect().await.unwrap().to_bytes(),
         PDF
     );
+    let preview = app
+        .oneshot(
+            Request::get(format!("/api/public/v1/media/{}", first[0].media_asset_id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(preview.status(), StatusCode::NOT_FOUND);
 
     let first_key = object_key(&prefix, &first_token);
+    let gallery_product = insert_gallery_reference(&state.pool, first[0].media_asset_id).await;
+    compensate_source_assets(&state, &first).await;
+    assert_eq!(
+        reqwest::get(format!("{public_base}/{first_key}"))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::OK
+    );
+    sqlx::query("DELETE FROM products WHERE id=$1")
+        .bind(gallery_product)
+        .execute(&state.pool)
+        .await
+        .unwrap();
     compensate_source_assets(&state, &first).await;
     assert_eq!(
         reqwest::get(format!("{public_base}/{first_key}"))
@@ -181,11 +308,57 @@ async fn feishu_assets_deduplicate_download_publicly_and_compensate_objects() {
         .unwrap();
     assert_eq!(remaining, 0);
 
+    let orphan_token = format!("orphan-{suffix}");
+    let orphan = store_source_assets(
+        &state,
+        &client,
+        connector_id,
+        sync_run_id,
+        &[attachment(orphan_token.clone())],
+    )
+    .await
+    .unwrap();
+    let orphan_key = object_key(&prefix, &orphan_token);
+    sqlx::query("DELETE FROM feishu_asset_bindings WHERE media_asset_id=$1")
+        .bind(orphan[0].media_asset_id)
+        .execute(&state.pool)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM media_assets WHERE id=$1")
+        .bind(orphan[0].media_asset_id)
+        .execute(&state.pool)
+        .await
+        .unwrap();
+    let compensation_id =
+        queue_orphan_object_cleanup(&state, &orphan_key, None, "integrationOrphan")
+            .await
+            .unwrap();
+    let intent: (Option<Uuid>, String) = sqlx::query_as(
+        "SELECT media_asset_id,storage_key FROM feishu_object_compensations WHERE id=$1",
+    )
+    .bind(compensation_id)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap();
+    assert_eq!(intent, (None, orphan_key.clone()));
+    execute_object_cleanup(&state, compensation_id)
+        .await
+        .unwrap();
+    assert_eq!(
+        reqwest::get(format!("{public_base}/{orphan_key}"))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::NOT_FOUND
+    );
+
     let third_token = format!("third-{suffix}");
     let bad_token = format!("bad-{suffix}");
     let failure = store_source_assets(
         &state,
+        &client,
         connector_id,
+        sync_run_id,
         &[attachment(third_token.clone()), attachment(bad_token)],
     )
     .await;

@@ -57,40 +57,6 @@ export interface PathsPart02 {
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/feishu/conflicts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List legacy manually created source conflicts */
-        get: operations["listFeishuConflicts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/feishu/conflicts/{id}/resolve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Resolve one legacy Feishu conflict */
-        post: operations["resolveFeishuConflict"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 "/api/admin/v1/feishu/connection-status": {
         parameters: {
             query?: never;
@@ -117,7 +83,7 @@ export interface PathsPart02 {
         };
         get?: never;
         put?: never;
-        /** Test credentials, all four tables, field mapping, and object storage */
+        /** Test credentials, enabled source tables, field mappings, and storage */
         post: operations["testFeishuConnection"];
         delete?: never;
         options?: never;
@@ -149,9 +115,9 @@ export interface PathsPart02 {
             path?: never;
             cookie?: never;
         };
-        /** Read non-secret Feishu sources and scheduling policy */
+        /** Read credential-safe Feishu connection, sources, and scheduling policy */
         get: operations["getFeishuSettings"];
-        /** Update Feishu enablement and automatic schedule */
+        /** Update GUI-managed Feishu credentials, sources, and automatic schedule */
         put: operations["updateFeishuSettings"];
         post?: never;
         delete?: never;
@@ -187,7 +153,7 @@ export interface PathsPart02 {
         /** List automatic Feishu synchronization runs */
         get: operations["listFeishuSyncRuns"];
         put?: never;
-        /** Queue an incremental or full Feishu synchronization */
+        /** Queue a full scan of every enabled Feishu source table */
         post: operations["startFeishuSyncRun"];
         delete?: never;
         options?: never;
@@ -206,23 +172,6 @@ export interface PathsPart02 {
         get: operations["getFeishuSyncRun"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/feishu/sync-runs/{id}/rollback": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Restore prior public revisions when no later run changed them */
-        post: operations["rollbackFeishuSyncRun"];
         delete?: never;
         options?: never;
         head?: never;
@@ -481,6 +430,57 @@ export interface PathsPart02 {
         get: operations["getProductImportRun"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/published-content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List company current published content */
+        get: operations["listCurrentPublishedContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/published-content/{contentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read company current published content */
+        get: operations["getCurrentPublishedContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/published-content/{contentId}/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy current published content to the user's new private draft */
+        post: operations["copyPublishedContentToPrivateDraft"];
         delete?: never;
         options?: never;
         head?: never;

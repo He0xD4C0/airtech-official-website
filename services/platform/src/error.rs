@@ -33,6 +33,8 @@ pub struct ProblemDetails {
     pub detail: String,
     pub instance: Option<String>,
     pub request_id: Uuid,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub active_run_id: Option<Uuid>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub errors: BTreeMap<String, Vec<String>>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -69,6 +71,7 @@ impl ApiError {
                 detail: detail.into(),
                 instance: None,
                 request_id: Uuid::new_v4(),
+                active_run_id: None,
                 errors: BTreeMap::new(),
                 issues: Vec::new(),
             }),
@@ -150,6 +153,11 @@ impl ApiError {
 
     pub fn with_issues(mut self, issues: Vec<Value>) -> Self {
         self.problem.issues = issues;
+        self
+    }
+
+    pub fn with_active_run_id(mut self, active_run_id: Uuid) -> Self {
+        self.problem.active_run_id = Some(active_run_id);
         self
     }
 

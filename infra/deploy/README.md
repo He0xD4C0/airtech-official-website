@@ -182,14 +182,22 @@ the target host and operational controls are ready.
 
 ## Deployment order
 
-The current schema target is V24. Deploy the migration artifact first, then the
+The current schema target is V27. Deploy the migration artifact first, then the
 API and ordinary Worker, and finally Admin and Public Web. V17 introduces
 private drafts and review, V18 removes persisted content history, and V19 adds
 current-state query indexes. V20 moves application-side object-storage settings
 into PostgreSQL and adds immutable public media URLs. These migrations are
 forward-only.
 
-V21 adds immutable media preview derivatives. V22-V24 add automatic Feishu product synchronization, source-asset bindings, and revision provenance. Before promotion, verify a fresh database migrates directly to V24 and a
+V21 adds immutable media preview derivatives. V22-V24 add the Feishu product
+synchronization foundation, source-asset bindings, and revision provenance.
+V25 stores the Admin-managed Feishu App ID and write-only App Secret as
+plaintext PostgreSQL columns; database operators and backups are therefore part
+of the trusted boundary. V26 adds dynamic selected sources, independent interval
+and daily schedules, connection-test revisions, and frozen run configuration.
+V27 adds explicit source ownership, per-table reconciliation, durable product
+purge/object compensation, and removes Feishu rollback/conflict state. Before
+promotion, verify both a fresh database and a V21 database migrate to V27, and a
 controlled legacy SQLx v1-v10 database passes
 `baseline -> migrate -> validate`.
 

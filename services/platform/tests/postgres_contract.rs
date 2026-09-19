@@ -135,6 +135,10 @@ mod cms_private_workflow;
 mod development_admin;
 #[path = "postgres_contract/feishu_asset_storage.rs"]
 mod feishu_asset_storage;
+#[path = "postgres_contract/feishu_reconciliation.rs"]
+mod feishu_reconciliation;
+#[path = "postgres_contract/feishu_settings.rs"]
+mod feishu_settings;
 #[path = "postgres_contract/feishu_sync.rs"]
 mod feishu_sync;
 #[path = "postgres_contract/identity_mutation_atomicity.rs"]

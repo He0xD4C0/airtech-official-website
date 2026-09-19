@@ -65,17 +65,6 @@ impl Config {
                 .as_deref()
                 .unwrap_or_default(),
         )?;
-        let feishu = match (
-            non_empty_env("FEISHU_APP_ID"),
-            non_empty_env("FEISHU_APP_SECRET"),
-        ) {
-            (Some(app_id), Some(app_secret)) => Some(FeishuCredentials::new(app_id, app_secret)),
-            (None, None) => None,
-            _ => return Err(ConfigError::IncompleteFeishuCredentials),
-        };
-        let feishu_api_base_url = env::var("AIRTEK_FEISHU_API_BASE_URL")
-            .unwrap_or_else(|_| "https://open.feishu.cn".into());
-        validate_origin("AIRTEK_FEISHU_API_BASE_URL", &feishu_api_base_url)?;
         let media = MediaSettings::disabled();
         if admin_bootstrap_token
             .as_ref()
@@ -114,8 +103,6 @@ impl Config {
             analytics_utm_campaign_allowlist,
             trusted_proxy_cidrs,
             media,
-            feishu,
-            feishu_api_base_url,
             production,
         })
     }
@@ -149,8 +136,6 @@ impl Config {
                 .collect(),
             trusted_proxy_cidrs: Vec::new(),
             media: MediaSettings::disabled(),
-            feishu: None,
-            feishu_api_base_url: "https://open.feishu.cn".into(),
             production: false,
         }
     }

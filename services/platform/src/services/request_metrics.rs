@@ -3,7 +3,7 @@ use std::{
     time::Instant,
 };
 
-const LEGACY_CURSOR_ENDPOINT_COUNT: usize = 15;
+const LEGACY_CURSOR_ENDPOINT_COUNT: usize = 14;
 
 #[derive(Clone, Copy, Debug)]
 #[repr(usize)]
@@ -19,7 +19,6 @@ pub enum LegacyCursorEndpoint {
     SyncRuns,
     FeishuMappings,
     FeishuStaging,
-    FeishuConflicts,
     ProductOverrides,
     PublicNews,
     PublicProducts,
@@ -38,7 +37,6 @@ impl LegacyCursorEndpoint {
         Self::SyncRuns,
         Self::FeishuMappings,
         Self::FeishuStaging,
-        Self::FeishuConflicts,
         Self::ProductOverrides,
         Self::PublicNews,
         Self::PublicProducts,
@@ -57,7 +55,6 @@ impl LegacyCursorEndpoint {
             Self::SyncRuns => "admin_sync_runs",
             Self::FeishuMappings => "admin_feishu_mappings",
             Self::FeishuStaging => "admin_feishu_staging",
-            Self::FeishuConflicts => "admin_feishu_conflicts",
             Self::ProductOverrides => "admin_product_overrides",
             Self::PublicNews => "public_news",
             Self::PublicProducts => "public_products",

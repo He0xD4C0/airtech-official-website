@@ -48,44 +48,66 @@ pub async fn ensure_scheduled_feishu_sync(state: &AppState) -> Result<Option<Uui
     if !settings.enabled {
         return Ok(None);
     }
-    let active: bool = sqlx::query_scalar(
-        r#"SELECT EXISTS(SELECT 1 FROM sync_runs WHERE connector_id=$1
-           AND status IN ('queued','fetching','validating','readyToPublish'))"#,
-    )
-    .bind(settings.connector_id)
-    .fetch_one(&state.pool)
-    .await?;
-    if active {
-        return Ok(None);
-    }
     let now = Utc::now();
     let shanghai =
         chrono::FixedOffset::east_opt(8 * 60 * 60).expect("Asia/Shanghai fixed offset is valid");
     let local_now = now.with_timezone(&shanghai);
-    let full_time = chrono::NaiveTime::parse_from_str(&settings.full_reconcile_local_time, "%H:%M")
-        .map_err(|_| ApiError::service_unavailable("Stored Feishu full-sync time is invalid."))?;
-    let full_due = settings.full_reconcile_enabled
-        && local_now.time() >= full_time
+    let daily_time = chrono::NaiveTime::parse_from_str(&settings.daily_local_time, "%H:%M")
+        .map_err(|_| ApiError::service_unavailable("Stored Feishu daily-sync time is invalid."))?;
+    let daily_due = settings.daily_enabled
+        && local_now.time() >= daily_time
         && settings
-            .last_full_at
+            .last_daily_at
             .map(|value| value.with_timezone(&shanghai).date_naive() < local_now.date_naive())
             .unwrap_or(true);
-    let last_automatic = match (settings.last_incremental_at, settings.last_full_at) {
-        (Some(left), Some(right)) => Some(left.max(right)),
-        (left, right) => left.or(right),
-    };
-    let incremental_due = last_automatic
-        .map(|value| value <= now - chrono::Duration::minutes(i64::from(settings.interval_minutes)))
-        .unwrap_or(true);
-    let run_kind = if full_due {
-        crate::models::SyncRunKind::Full
-    } else if incremental_due {
-        crate::models::SyncRunKind::Incremental
+    let interval_due = settings.interval_enabled
+        && settings
+            .last_interval_at
+            .map(|value| {
+                value <= now - chrono::Duration::minutes(i64::from(settings.interval_minutes))
+            })
+            .unwrap_or(true);
+    let trigger = if daily_due {
+        crate::models::FeishuSyncTrigger::Daily
+    } else if interval_due {
+        crate::models::FeishuSyncTrigger::Interval
     } else {
         return Ok(None);
     };
-    let run = crate::services::feishu::queue_sync_run(state, run_kind, "feishuScheduler").await?;
-    Ok(Some(run.id))
+    let run =
+        crate::services::feishu::try_queue_full_sync(state, trigger, "feishuScheduler").await?;
+    if run.is_none() {
+        tracing::info!(
+            trigger = trigger.label(),
+            "scheduled Feishu sync skipped; connector work is active"
+        );
+        sqlx::query(
+            r#"INSERT INTO audit_log
+               (id,actor,action,entity_type,entity_id,after_value,reason,request_id,occurred_at)
+               VALUES ($1,'feishuScheduler','feishu.sync.skip','feishuConnector',$2,$3,
+                       'Skip scheduled full scan because connector work is active',$4,$5)"#,
+        )
+        .bind(Uuid::new_v4())
+        .bind(settings.connector_id)
+        .bind(json!({"trigger": trigger.label(), "reason": "activeWork"}))
+        .bind(Uuid::new_v4())
+        .bind(now)
+        .execute(&state.pool)
+        .await?;
+    }
+    sqlx::query(
+        r#"UPDATE feishu_connector_settings SET
+             last_interval_at=CASE WHEN $2 THEN $4 ELSE last_interval_at END,
+             last_daily_at=CASE WHEN $3 THEN $4 ELSE last_daily_at END
+           WHERE connector_id=$1"#,
+    )
+    .bind(settings.connector_id)
+    .bind(interval_due)
+    .bind(daily_due)
+    .bind(now)
+    .execute(&state.pool)
+    .await?;
+    Ok(run.map(|run| run.id))
 }
 
 /// Ensure there is at most one daily retention operation across all worker

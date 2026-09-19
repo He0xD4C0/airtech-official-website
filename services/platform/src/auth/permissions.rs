@@ -128,7 +128,11 @@ pub fn required_permission(path: &str, method: &axum::http::Method) -> Option<&'
             "product.read"
         })
     } else if path.contains("/feishu/settings") {
-        Some("settings.manage")
+        Some(if write {
+            "settings.manage"
+        } else {
+            "integration.run"
+        })
     } else if path.contains("/feishu/") {
         Some("integration.run")
     } else if (path.contains("/rfqs/") || path.contains("/contacts/")) && path.ends_with("/pii") {

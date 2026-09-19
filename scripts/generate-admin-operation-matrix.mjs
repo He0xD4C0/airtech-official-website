@@ -103,6 +103,7 @@ function permissionFor(path, method) {
     if (path.endsWith('/publish')) return 'product.publish'
     return write ? 'product.write' : 'product.read'
   }
+  if (path.endsWith('/feishu/settings')) return write ? 'settings.manage' : 'integration.run'
   if (path.includes('/feishu/')) return 'integration.run'
   if ((path.includes('/rfqs/') || path.includes('/contacts/')) && path.endsWith('/pii')) return 'rfq.read_pii'
   if (path.includes('/rfqs') || path.includes('/contacts')) return write ? 'rfq.assign' : 'rfq.read'

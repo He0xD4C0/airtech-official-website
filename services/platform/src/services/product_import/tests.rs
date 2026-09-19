@@ -228,6 +228,43 @@ mod cases {
     }
 
     #[test]
+    pub(super) fn feishu_pricing_is_selected_by_saved_field_ids() {
+        let config = Config::for_test();
+        let key = config.product_staging_encryption_key.as_ref().unwrap();
+        let mapping_version = "feishu-product-v1-r4";
+        let checksum = "feishu-run:pricing-test";
+        let row_number = 2;
+        let stable_id = "fs.pricing-test";
+        let private = json!({
+            "schema": "feishu-private-v1",
+            "fieldsById": {
+                "fld-model": {"name": "型号", "value": "AX-100"},
+                "fld-price": {"name": "更新后的报价名称", "value": "125"}
+            },
+            "pricingFieldIds": ["fld-price"]
+        });
+        let aad = format!("{mapping_version}:{checksum}:{row_number}:{stable_id}");
+        let sealed = encrypt_confidential(key, aad.as_bytes(), private.to_string().as_bytes())
+            .expect("private Feishu payload encrypts");
+        let pricing = decrypt_private_pricing(
+            key,
+            PrivatePricingEnvelope {
+                mapping_version,
+                checksum,
+                source_row_number: row_number,
+                stable_id,
+                nonce: &sealed[..12],
+                ciphertext: &sealed[12..sealed.len() - 16],
+                authentication_tag: &sealed[sealed.len() - 16..],
+            },
+        )
+        .expect("saved pricing ids decrypt");
+        assert_eq!(pricing.len(), 1);
+        assert_eq!(pricing["更新后的报价名称"], "125");
+        assert!(!pricing.contains_key("型号"));
+    }
+
+    #[test]
     pub(super) fn csv_parser_supports_commas_quotes_and_newlines() {
         let rows =
             parse_csv("a,b\n1,\"two, three\"\n2,\"line one\nline two\"\n").expect("valid CSV");

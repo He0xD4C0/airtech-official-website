@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import type { AdminDashboardSummary, DashboardMetric } from '@airtek/contracts'
-import { ArrowRight, BookOpenText, Boxes, Cable, CheckCircle2, CircleAlert, Eye, Inbox, ListTodo, MousePointerClick, TrendingUp } from 'lucide-vue-next'
+import { ArrowRight, BookOpenText, CheckCircle2, Eye, Inbox, ListTodo, MousePointerClick, TrendingUp } from 'lucide-vue-next'
 import DataStatePanel from '@/components/DataStatePanel.vue'
 import MetricCard from '@/components/MetricCard.vue'
 import PageHeader from '@/components/PageHeader.vue'
@@ -25,7 +25,6 @@ const tasks = computed(() => {
   const value = summary.value
   if (!value) return []
   return [
-    value.openConflicts.available ? { title: '检查 Feishu 字段冲突', detail: `${value.openConflicts.value ?? 0} 个冲突等待处理`, icon: Cable, tone: 'danger', to: '/integrations/feishu' } : null,
     value.draftContent.available ? { title: '处理私人草稿', detail: `${value.draftContent.value ?? 0} 个草稿记录`, icon: BookOpenText, tone: 'warning', to: '/content/drafts' } : null,
     value.openRfqs.available ? { title: '查看 RFQ 收件箱', detail: `${value.openRfqs.value ?? 0} 条未关闭 RFQ`, icon: Inbox, tone: 'blue', to: '/rfqs' } : null,
   ].filter((task): task is NonNullable<typeof task> => task !== null)
@@ -62,7 +61,6 @@ onMounted(loadDashboard)
     <template v-else-if="summary">
       <section class="metric-grid" aria-label="关键指标">
         <MetricCard label="待发布内容" :value="metricValue(summary.draftContent)" :detail="summary.draftContent.unavailableReason || '全部草稿记录'" :icon="BookOpenText" tone="blue" />
-        <MetricCard label="产品数据冲突" :value="metricValue(summary.openConflicts)" :detail="summary.openConflicts.unavailableReason || '全部未解决冲突'" :icon="Boxes" tone="amber" />
         <MetricCard label="开放 RFQ" :value="metricValue(summary.openRfqs)" :detail="summary.openRfqs.unavailableReason || '不含 closed 与 spam'" :icon="Inbox" tone="green" />
       </section>
 
@@ -90,7 +88,7 @@ onMounted(loadDashboard)
         <article class="panel readiness-panel">
           <header class="panel__header"><div><p class="eyebrow">PUBLISHING READINESS</p><h2>发布工作项</h2></div><StatusBadge :label="summary.readinessItemCount ? '需要处理' : '无已知工作项'" :tone="summary.readinessItemCount ? 'warning' : 'success'" /></header>
           <div class="readiness-score"><strong>{{ summary.readinessItemCount }}</strong><span>项待处理</span></div>
-          <ul class="readiness-list"><li><CircleAlert :size="16" />{{ metricValue(summary.openConflicts) }} 个来源冲突</li><li><MousePointerClick :size="16" />{{ metricValue(summary.draftContent) }} 个内容草稿</li></ul>
+          <ul class="readiness-list"><li><MousePointerClick :size="16" />{{ metricValue(summary.draftContent) }} 个内容草稿</li></ul>
         </article>
       </section>
     </template>

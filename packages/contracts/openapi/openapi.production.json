@@ -67,9 +67,6 @@
             "format": "date-time",
             "type": "string"
           },
-          "openConflicts": {
-            "$ref": "#/components/schemas/DashboardMetric"
-          },
           "openRfqs": {
             "$ref": "#/components/schemas/DashboardMetric"
           },
@@ -87,7 +84,6 @@
         "required": [
           "generatedAt",
           "draftContent",
-          "openConflicts",
           "openRfqs",
           "analytics",
           "recentActivity",
@@ -4044,10 +4040,18 @@
             "format": "date-time",
             "type": "string"
           },
+          "connectionRevision": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
           "credentialsConfigured": {
             "type": "boolean"
           },
           "objectStorageReady": {
+            "type": "boolean"
+          },
+          "privateStagingReady": {
             "type": "boolean"
           },
           "runnable": {
@@ -4067,63 +4071,34 @@
           "credentialsConfigured",
           "tokenIssued",
           "objectStorageReady",
+          "privateStagingReady",
           "runnable",
+          "connectionRevision",
           "tables",
           "checkedAt"
         ],
         "type": "object"
       },
-      "FeishuRollbackReport": {
+      "FeishuRunTableResult": {
         "additionalProperties": false,
         "properties": {
+          "assetsCopied": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "assetsFailed": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "assetsReused": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "assetsSeen": {
+            "minimum": 0,
+            "type": "integer"
+          },
           "completedAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "restored": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "skipped": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "syncRunId": {
-            "format": "uuid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "syncRunId",
-          "restored",
-          "skipped",
-          "completedAt"
-        ],
-        "type": "object"
-      },
-      "FeishuSettings": {
-        "additionalProperties": false,
-        "properties": {
-          "connectorId": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "fullReconcileEnabled": {
-            "type": "boolean"
-          },
-          "fullReconcileLocalTime": {
-            "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$",
-            "type": "string"
-          },
-          "intervalMinutes": {
-            "maximum": 1440,
-            "minimum": 5,
-            "type": "integer"
-          },
-          "lastFullAt": {
             "anyOf": [
               {
                 "format": "date-time",
@@ -4134,7 +4109,138 @@
               }
             ]
           },
-          "lastIncrementalAt": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recordsApplied": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "recordsDeleted": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "recordsFailed": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "recordsSeen": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "sourceName": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "fetching",
+              "completed",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "syncRunId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "tableId": {
+            "type": "string"
+          },
+          "wikiToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "syncRunId",
+          "wikiToken",
+          "tableId",
+          "sourceName",
+          "status",
+          "recordsSeen",
+          "recordsApplied",
+          "recordsFailed",
+          "recordsDeleted",
+          "assetsSeen",
+          "assetsCopied",
+          "assetsReused",
+          "assetsFailed",
+          "error",
+          "completedAt"
+        ],
+        "type": "object"
+      },
+      "FeishuSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "appId": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "connectionRevision": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "connectorId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "dailyEnabled": {
+            "type": "boolean"
+          },
+          "dailyLocalTime": {
+            "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "intervalEnabled": {
+            "type": "boolean"
+          },
+          "intervalMinutes": {
+            "maximum": 1440,
+            "minimum": 5,
+            "type": "integer"
+          },
+          "lastConnectionTestAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastDailyAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastIntervalAt": {
             "anyOf": [
               {
                 "format": "date-time",
@@ -4146,7 +4252,9 @@
             ]
           },
           "mappingVersion": {
-            "const": "feishu-product-v1",
+            "maxLength": 100,
+            "minLength": 1,
+            "readOnly": true,
             "type": "string"
           },
           "revision": {
@@ -4154,11 +4262,27 @@
             "minimum": 1,
             "type": "integer"
           },
+          "secretConfigured": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "sources": {
             "items": {
               "$ref": "#/components/schemas/FeishuSource"
             },
             "type": "array"
+          },
+          "testedConnectionRevision": {
+            "anyOf": [
+              {
+                "format": "int64",
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "timezone": {
             "const": "Asia/Shanghai",
@@ -4174,16 +4298,22 @@
         },
         "required": [
           "connectorId",
+          "appId",
+          "secretConfigured",
           "enabled",
+          "intervalEnabled",
           "intervalMinutes",
-          "fullReconcileEnabled",
-          "fullReconcileLocalTime",
+          "dailyEnabled",
+          "dailyLocalTime",
           "timezone",
           "mappingVersion",
           "sources",
           "revision",
-          "lastIncrementalAt",
-          "lastFullAt",
+          "connectionRevision",
+          "testedConnectionRevision",
+          "lastConnectionTestAt",
+          "lastIntervalAt",
+          "lastDailyAt",
           "updatedAt",
           "updatedBy"
         ],
@@ -4195,6 +4325,8 @@
           "application": {
             "anyOf": [
               {
+                "maxLength": 100,
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -4202,20 +4334,30 @@
               }
             ]
           },
+          "enabled": {
+            "type": "boolean"
+          },
           "family": {
             "$ref": "#/components/schemas/ProductFamily"
           },
           "name": {
+            "maxLength": 120,
+            "minLength": 1,
             "type": "string"
           },
           "tableId": {
+            "maxLength": 100,
+            "minLength": 1,
             "type": "string"
           },
           "wikiToken": {
+            "maxLength": 200,
+            "minLength": 1,
             "type": "string"
           }
         },
         "required": [
+          "enabled",
           "wikiToken",
           "tableId",
           "name",
@@ -4247,6 +4389,13 @@
           "message": {
             "type": "string"
           },
+          "severity": {
+            "enum": [
+              "warning",
+              "error"
+            ],
+            "type": "string"
+          },
           "sourceRecordId": {
             "anyOf": [
               {
@@ -4260,6 +4409,7 @@
         },
         "required": [
           "sourceRecordId",
+          "severity",
           "code",
           "fieldPath",
           "message",
@@ -4278,13 +4428,29 @@
           },
           "run": {
             "$ref": "#/components/schemas/SyncRun"
+          },
+          "tables": {
+            "items": {
+              "$ref": "#/components/schemas/FeishuRunTableResult"
+            },
+            "type": "array"
           }
         },
         "required": [
           "run",
+          "tables",
           "errors"
         ],
         "type": "object"
+      },
+      "FeishuSyncTrigger": {
+        "enum": [
+          "manual",
+          "interval",
+          "daily",
+          "initial"
+        ],
+        "type": "string"
       },
       "FeishuTableCheck": {
         "additionalProperties": false,
@@ -4310,58 +4476,19 @@
           },
           "tableId": {
             "type": "string"
+          },
+          "wikiToken": {
+            "type": "string"
           }
         },
         "required": [
+          "wikiToken",
           "tableId",
           "name",
           "accessible",
           "fieldCount",
           "mappingValid",
           "errors"
-        ],
-        "type": "object"
-      },
-      "FieldDiff": {
-        "additionalProperties": false,
-        "properties": {
-          "baseValue": {
-            "anyOf": [
-              {},
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "fieldPath": {
-            "type": "string"
-          },
-          "incomingValue": {
-            "anyOf": [
-              {},
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "localValue": {
-            "anyOf": [
-              {},
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "sourceOwned": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "fieldPath",
-          "baseValue",
-          "localValue",
-          "incomingValue",
-          "sourceOwned"
         ],
         "type": "object"
       },
@@ -6194,6 +6321,17 @@
       "ProblemDetails": {
         "additionalProperties": false,
         "properties": {
+          "activeRunId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "detail": {
             "type": "string"
           },
@@ -7700,48 +7838,6 @@
         ],
         "type": "object"
       },
-      "ResolveSyncConflictRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "decision": {
-            "$ref": "#/components/schemas/SyncConflictDecision"
-          },
-          "evidenceReference": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "expiresAt": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "reason": {
-            "maxLength": 2000,
-            "minLength": 10,
-            "type": "string"
-          }
-        },
-        "required": [
-          "decision",
-          "evidenceReference",
-          "reason",
-          "expiresAt"
-        ],
-        "type": "object"
-      },
       "ResolvedLinkTarget": {
         "additionalProperties": false,
         "properties": {
@@ -8892,130 +8988,9 @@
         "enum": [
           "pending",
           "valid",
-          "invalid",
-          "conflicted"
+          "invalid"
         ],
         "type": "string"
-      },
-      "StartSyncRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "runKind": {
-            "$ref": "#/components/schemas/SyncRunKind"
-          }
-        },
-        "required": [
-          "runKind"
-        ],
-        "type": "object"
-      },
-      "SyncConflict": {
-        "additionalProperties": false,
-        "properties": {
-          "diffs": {
-            "items": {
-              "$ref": "#/components/schemas/FieldDiff"
-            },
-            "type": "array"
-          },
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "productId": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "resolution": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "resolvedAt": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "revision": {
-            "format": "int64",
-            "minimum": 1,
-            "type": "integer"
-          },
-          "sourceRecordId": {
-            "type": "string"
-          },
-          "syncRunId": {
-            "format": "uuid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "syncRunId",
-          "productId",
-          "sourceRecordId",
-          "diffs",
-          "resolvedAt",
-          "resolution",
-          "revision"
-        ],
-        "type": "object"
-      },
-      "SyncConflictDecision": {
-        "enum": [
-          "acceptIncoming",
-          "keepVerifiedLocal"
-        ],
-        "type": "string"
-      },
-      "SyncConflictPage": {
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/SyncConflict"
-            },
-            "type": "array"
-          },
-          "nextCursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "total": {
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "nextCursor",
-          "total"
-        ],
-        "type": "object"
       },
       "SyncMapping": {
         "additionalProperties": false,
@@ -9110,10 +9085,6 @@
               }
             ]
           },
-          "conflictCount": {
-            "minimum": 0,
-            "type": "integer"
-          },
           "connectorId": {
             "anyOf": [
               {
@@ -9126,6 +9097,7 @@
             ]
           },
           "dryRun": {
+            "const": false,
             "type": "boolean"
           },
           "error": {
@@ -9146,6 +9118,10 @@
             "type": "string"
           },
           "recordsApplied": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "recordsDeleted": {
             "minimum": 0,
             "type": "integer"
           },
@@ -9171,11 +9147,20 @@
               }
             ]
           },
-          "runKind": {
-            "$ref": "#/components/schemas/SyncRunKind"
+          "settingsRevision": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
           },
           "source": {
+            "const": "feishu",
             "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/FeishuSource"
+            },
+            "type": "array"
           },
           "startedAt": {
             "format": "date-time",
@@ -9183,21 +9168,26 @@
           },
           "status": {
             "$ref": "#/components/schemas/SyncRunStatus"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/FeishuSyncTrigger"
           }
         },
         "required": [
           "id",
           "source",
           "dryRun",
-          "runKind",
+          "trigger",
+          "settingsRevision",
+          "sources",
           "mappingVersion",
           "status",
           "resumeCursor",
           "recordsSeen",
           "recordsValid",
-          "conflictCount",
           "recordsApplied",
           "recordsFailed",
+          "recordsDeleted",
           "assetsSeen",
           "assetsCopied",
           "assetsReused",
@@ -9206,13 +9196,6 @@
           "completedAt"
         ],
         "type": "object"
-      },
-      "SyncRunKind": {
-        "enum": [
-          "incremental",
-          "full"
-        ],
-        "type": "string"
       },
       "SyncRunPage": {
         "additionalProperties": false,
@@ -9245,7 +9228,6 @@
           "queued",
           "fetching",
           "validating",
-          "awaitingResolution",
           "readyToPublish",
           "completed",
           "completedWithErrors",
@@ -9909,27 +9891,54 @@
       "UpdateFeishuSettings": {
         "additionalProperties": false,
         "properties": {
+          "appId": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "appSecret": {
+            "maxLength": 512,
+            "type": "string",
+            "writeOnly": true
+          },
+          "clearCredentials": {
+            "type": "boolean"
+          },
+          "dailyEnabled": {
+            "type": "boolean"
+          },
+          "dailyLocalTime": {
+            "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
           "enabled": {
             "type": "boolean"
           },
-          "fullReconcileEnabled": {
+          "intervalEnabled": {
             "type": "boolean"
-          },
-          "fullReconcileLocalTime": {
-            "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$",
-            "type": "string"
           },
           "intervalMinutes": {
             "maximum": 1440,
             "minimum": 5,
             "type": "integer"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/FeishuSource"
+            },
+            "maxItems": 100,
+            "type": "array"
           }
         },
         "required": [
+          "appId",
+          "appSecret",
+          "clearCredentials",
+          "sources",
           "enabled",
+          "intervalEnabled",
           "intervalMinutes",
-          "fullReconcileEnabled",
-          "fullReconcileLocalTime"
+          "dailyEnabled",
+          "dailyLocalTime"
         ],
         "type": "object"
       },
@@ -15121,344 +15130,6 @@
         ]
       }
     },
-    "/api/admin/v1/feishu/conflicts": {
-      "get": {
-        "operationId": "listFeishuConflicts",
-        "parameters": [
-          {
-            "description": "Opaque endpoint-scoped cursor returned by the previous page.",
-            "in": "query",
-            "name": "cursor",
-            "required": false,
-            "schema": {
-              "maxLength": 2048,
-              "minLength": 1,
-              "type": "string"
-            }
-          },
-          {
-            "description": "Page size; values outside 1 through 100 return Problem Details 400.",
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 50,
-              "maximum": 100,
-              "minimum": 1,
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "q",
-            "required": false,
-            "schema": {
-              "maxLength": 200,
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "openOnly",
-            "required": false,
-            "schema": {
-              "default": true,
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SyncConflictPage"
-                }
-              }
-            },
-            "description": "List legacy manually created source conflicts"
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": []
-          }
-        ],
-        "summary": "List legacy manually created source conflicts",
-        "tags": [
-          "adminFeishu"
-        ]
-      }
-    },
-    "/api/admin/v1/feishu/conflicts/{id}/resolve": {
-      "post": {
-        "operationId": "resolveFeishuConflict",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Current entity ETag, formatted as revision-N.",
-            "in": "header",
-            "name": "If-Match",
-            "required": true,
-            "schema": {
-              "pattern": "^\\\"revision-[0-9]+\\\"$",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
-            "in": "header",
-            "name": "Idempotency-Key",
-            "required": true,
-            "schema": {
-              "maxLength": 200,
-              "minLength": 8,
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResolveSyncConflictRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SyncConflict"
-                }
-              }
-            },
-            "description": "Resolved sync conflict"
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": [],
-            "csrfToken": []
-          }
-        ],
-        "summary": "Resolve one legacy Feishu conflict",
-        "tags": [
-          "adminFeishu"
-        ]
-      }
-    },
     "/api/admin/v1/feishu/connection-status": {
       "get": {
         "operationId": "getFeishuConnectionStatus",
@@ -15706,7 +15377,7 @@
             "csrfToken": []
           }
         ],
-        "summary": "Test credentials, all four tables, field mapping, and object storage",
+        "summary": "Test credentials, enabled source tables, field mappings, and storage",
         "tags": [
           "adminFeishu"
         ]
@@ -15991,7 +15662,7 @@
             "adminSession": []
           }
         ],
-        "summary": "Read non-secret Feishu sources and scheduling policy",
+        "summary": "Read credential-safe Feishu connection, sources, and scheduling policy",
         "tags": [
           "adminFeishu"
         ]
@@ -16146,7 +15817,7 @@
             "csrfToken": []
           }
         ],
-        "summary": "Update Feishu enablement and automatic schedule",
+        "summary": "Update GUI-managed Feishu credentials, sources, and automatic schedule",
         "tags": [
           "adminFeishu"
         ]
@@ -16481,16 +16152,6 @@
       },
       "post": {
         "operationId": "startFeishuSyncRun",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StartSyncRequest"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "202": {
             "content": {
@@ -16617,7 +16278,7 @@
             "csrfToken": []
           }
         ],
-        "summary": "Queue an incremental or full Feishu synchronization",
+        "summary": "Queue a full scan of every enabled Feishu source table",
         "tags": [
           "adminFeishu"
         ]
@@ -16755,144 +16416,6 @@
           }
         ],
         "summary": "Read counters and isolated errors for one synchronization run",
-        "tags": [
-          "adminFeishu"
-        ]
-      }
-    },
-    "/api/admin/v1/feishu/sync-runs/{id}/rollback": {
-      "post": {
-        "operationId": "rollbackFeishuSyncRun",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FeishuRollbackReport"
-                }
-              }
-            },
-            "description": "Rollback report"
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": [],
-            "csrfToken": []
-          }
-        ],
-        "summary": "Restore prior public revisions when no later run changed them",
         "tags": [
           "adminFeishu"
         ]

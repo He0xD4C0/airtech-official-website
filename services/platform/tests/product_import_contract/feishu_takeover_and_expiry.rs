@@ -169,8 +169,8 @@ async fn feishu_takes_over_verified_csv_stable_id_and_projects_all_facts_atomica
     sqlx::query(
         r#"INSERT INTO sync_runs
            (id,source,dry_run,mapping_version,status,records_seen,records_valid,
-            conflict_count,started_at,payload)
-           VALUES ($1,'feishu',false,'contract-v1','readyToPublish',1,1,0,$2,$3)"#,
+            started_at,payload)
+           VALUES ($1,'feishu',false,'contract-v1','readyToPublish',1,1,$2,$3)"#,
     )
     .bind(sync_run_id)
     .bind(now)

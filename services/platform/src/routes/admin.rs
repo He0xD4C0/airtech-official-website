@@ -1,4 +1,4 @@
-use std::{cmp::Reverse, collections::BTreeMap, convert::Infallible, time::Duration};
+use std::{cmp::Reverse, convert::Infallible, time::Duration};
 
 use axum::{
     extract::{rejection::JsonRejection, Extension, Multipart, Path, Query, State},
@@ -20,7 +20,7 @@ use crate::{
     models::{
         AnalyticsOverview, AuditEvent, BackgroundOperation, ContentDraftV2,
         CreateTemporaryOverride, CursorPage, ObjectStorageSettingsInput, OperationKind,
-        OperationStatus, Product, PublicationStatus, StartSyncRequest, SyncRun, TemporaryOverride,
+        OperationStatus, Product, PublicationStatus, SyncRun, TemporaryOverride,
         UpdateObjectStorageSettings, UpdatePlatformSettings,
     },
     pagination::CursorQuery,
@@ -99,10 +99,6 @@ pub fn router() -> Router<AppState> {
         )
         .route("/feishu/sync-runs/{id}", get(get_sync_run))
         .route(
-            "/feishu/sync-runs/{id}/rollback",
-            post(rollback_sync_run_route),
-        )
-        .route(
             "/feishu/settings",
             get(get_feishu_settings_route).put(update_feishu_settings_route),
         )
@@ -116,8 +112,6 @@ pub fn router() -> Router<AppState> {
         )
         .route("/feishu/mappings", get(list_feishu_mappings))
         .route("/feishu/staging", get(list_feishu_staging))
-        .route("/feishu/conflicts", get(list_conflicts))
-        .route("/feishu/conflicts/{id}/resolve", post(resolve_conflict))
         .route("/rfqs", get(list_rfqs))
         .route("/rfqs/{id}", get(get_rfq))
         .route("/rfqs/{id}/pii", get(get_rfq_pii))
@@ -163,9 +157,6 @@ use temporary_overrides::*;
 #[path = "admin/sync.rs"]
 mod sync;
 use sync::*;
-#[path = "admin/sync_conflicts.rs"]
-mod sync_conflicts;
-use sync_conflicts::*;
 #[path = "admin/submissions.rs"]
 mod submissions;
 use submissions::*;

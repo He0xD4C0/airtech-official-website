@@ -24,10 +24,16 @@ pub(super) async fn load_presentation(
     product_id: Uuid,
 ) -> Result<Option<Presentation>, ApiError> {
     sqlx::query(
-        r#"SELECT slug,title,summary,content,seo_metadata,
-                  is_placeholder,indexable,data_origin,updated_by
-           FROM product_presentation_working
-           WHERE product_id=$1 AND locale='en' FOR UPDATE"#,
+        r#"SELECT published.slug,published.title,published.summary,published.content,
+                  published.seo_metadata,published.is_placeholder,published.indexable,
+                  published.data_origin,published.created_by AS updated_by
+           FROM product_presentation_working working
+           JOIN product_presentation_revisions published
+             ON published.product_id=working.product_id
+            AND published.locale=working.locale
+            AND published.revision=working.published_revision
+           WHERE working.product_id=$1 AND working.locale='en'
+           FOR UPDATE OF working"#,
     )
     .bind(product_id)
     .fetch_optional(&mut **transaction)
@@ -233,7 +239,9 @@ pub(super) async fn persist_asset_references(
             r#"INSERT INTO asset_references
                (id,media_asset_id,product_id,product_revision,usage,sort_order,
                 source_field_id,source_field_name,source_record_id)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)"#,
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+               ON CONFLICT (product_id,product_revision,usage,media_asset_id)
+               WHERE product_id IS NOT NULL DO NOTHING"#,
         )
         .bind(Uuid::new_v4())
         .bind(asset.media_asset_id)
@@ -277,13 +285,6 @@ pub(super) async fn publish_localization_and_route(
     .bind(now)
     .execute(&mut **transaction)
     .await?;
-    sqlx::query(
-        r#"UPDATE product_presentation_working SET published_revision=current_revision,
-                  translation_state='verified' WHERE product_id=$1 AND locale='en'"#,
-    )
-    .bind(product_id)
-    .execute(&mut **transaction)
-    .await?;
     sqlx::query("DELETE FROM public_routes WHERE entity_type='product' AND entity_id=$1")
         .bind(product_id)
         .execute(&mut **transaction)
@@ -325,6 +326,19 @@ pub(super) async fn persist_staging(
         return Err(ApiError::internal("Encrypted Feishu staging is invalid."));
     }
     let snapshot_id = Uuid::new_v4();
+    // Warnings are persisted in product_import_errors below, but they must not
+    // populate validation_errors for a valid staging row. The database publish
+    // gate deliberately requires valid rows to carry an empty error array.
+    let validation_results = if validation_status == "valid" {
+        Vec::new()
+    } else {
+        record
+            .issues
+            .iter()
+            .chain(record.warnings.iter())
+            .cloned()
+            .collect::<Vec<_>>()
+    };
     sqlx::query(
         r#"INSERT INTO source_snapshots
            (id,connector_id,sync_run_id,source_record_id,source_revision,checksum,source_payload)
@@ -335,7 +349,7 @@ pub(super) async fn persist_staging(
     .bind(sync_run_id)
     .bind(&record.source_record_id)
     .bind(&record.source_revision)
-    .bind(&record.source_checksum)
+    .bind(&record.confidential_checksum)
     .bind(&record.snapshot_payload)
     .execute(&mut **transaction)
     .await?;
@@ -352,12 +366,13 @@ pub(super) async fn persist_staging(
     .bind(&record.source_record_id)
     .bind(validation_status)
     .bind(&record.normalized_payload)
-    .bind(json!(record.issues))
+    .bind(json!(validation_results))
     .execute(&mut **transaction)
     .await?;
     let nonce = &encrypted[..12];
     let tag = &encrypted[encrypted.len() - 16..];
     let ciphertext = &encrypted[12..encrypted.len() - 16];
+    let private_id = Uuid::new_v4();
     sqlx::query(
         r#"INSERT INTO product_import_private_staging
            (id,import_run_id,source_record_id,source_row_number,ciphertext,encryption_algorithm,
@@ -366,7 +381,7 @@ pub(super) async fn persist_staging(
            VALUES ($1,$2,$3,$4,$5,'AES-256-GCM','environment-v1',$6,$7,$8,
                    'validated',$9,now(),now()+interval '30 days')"#,
     )
-    .bind(Uuid::new_v4())
+    .bind(private_id)
     .bind(import_run_id)
     .bind(&record.source_record_id)
     .bind(source_row_number)
@@ -377,6 +392,23 @@ pub(super) async fn persist_staging(
     .bind(staging_id)
     .execute(&mut **transaction)
     .await?;
+    for warning in &record.warnings {
+        sqlx::query(
+            r#"INSERT INTO product_import_errors
+               (id,import_run_id,private_staging_id,source_record_id,severity,error_code,
+                field_path,message,details,created_at)
+               VALUES ($1,$2,$3,$4,'warning',$5,$6,$7,'{}'::jsonb,now())"#,
+        )
+        .bind(Uuid::new_v4())
+        .bind(import_run_id)
+        .bind(private_id)
+        .bind(&record.source_record_id)
+        .bind(&warning.code)
+        .bind(&warning.field_path)
+        .bind(&warning.detail)
+        .execute(&mut **transaction)
+        .await?;
+    }
     sqlx::query(
         r#"INSERT INTO product_import_normalized_records
            (id,import_run_id,source_record_id,normalized_payload,validation_status)

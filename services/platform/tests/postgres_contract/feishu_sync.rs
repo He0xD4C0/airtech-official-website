@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use airtek_platform::{
     models::{FeishuSource, ProductFamily, ValidationIssue},
     services::feishu::{
-        normalize_record, promote_record, rollback_sync_run, stage_invalid_record, FeishuRecord,
-        FeishuTableMapping, MappedFeishuField, PromotionOutcome, StoredSourceAsset,
+        normalize_record, promote_record, stage_invalid_record, FeishuRecord, FeishuTableMapping,
+        MappedFeishuField, PromotionOutcome, StoredSourceAsset,
     },
 };
 use serde_json::{json, Map};
@@ -24,6 +24,11 @@ fn mapping() -> FeishuTableMapping {
             },
         )]),
         attachments: vec![],
+        private_fields: vec![MappedFeishuField {
+            id: "fld-price".into(),
+            name: "报价".into(),
+            field_type: 1,
+        }],
     }
 }
 
@@ -31,8 +36,17 @@ fn record(
     model: &str,
     modified: &str,
 ) -> airtek_platform::services::feishu::NormalizedFeishuRecord {
+    record_with_price(model, modified, "100")
+}
+
+fn record_with_price(
+    model: &str,
+    modified: &str,
+    price: &str,
+) -> airtek_platform::services::feishu::NormalizedFeishuRecord {
     normalize_record(
         &FeishuSource {
+            enabled: true,
             wiki_token: "wiki".into(),
             table_id: "tblJjxOgBFL0FD0N".into(),
             name: "Axial Fans".into(),
@@ -42,7 +56,7 @@ fn record(
         &mapping(),
         &FeishuRecord {
             record_id: "rec-integration".into(),
-            fields: Map::from_iter([("型号".into(), json!(model))]),
+            fields: Map::from_iter([("型号".into(), json!(model)), ("报价".into(), json!(price))]),
             created_time: None,
             last_modified_time: Some(modified.into()),
         },
@@ -52,11 +66,11 @@ fn record(
 async fn insert_run(pool: &sqlx::PgPool, connector_id: Uuid, run_id: Uuid) {
     sqlx::query(
         r#"INSERT INTO sync_runs
-           (id,connector_id,source,dry_run,run_kind,mapping_version,status,resume_cursor,
-            records_seen,records_valid,conflict_count,records_applied,records_failed,
+           (id,connector_id,source,dry_run,mapping_version,status,resume_cursor,
+            records_seen,records_valid,records_applied,records_failed,
             assets_seen,assets_copied,assets_reused,assets_failed,started_at,payload)
-           VALUES ($1,$2,'feishu',false,'full','feishu-product-v1','validating',NULL,
-                   0,0,0,0,0,0,0,0,0,now(),'{}'::jsonb)"#,
+           VALUES ($1,$2,'feishu',false,'feishu-product-v1','validating',NULL,
+                   0,0,0,0,0,0,0,0,now(),'{}'::jsonb)"#,
     )
     .bind(run_id)
     .bind(connector_id)
@@ -95,7 +109,7 @@ async fn finish_run(pool: &sqlx::PgPool, run_id: Uuid, status: &str) {
 
 #[tokio::test]
 #[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
-async fn automatic_publish_is_idempotent_preserves_cms_and_supports_safe_rollback() {
+async fn automatic_publish_is_idempotent_and_does_not_publish_cms_drafts() {
     let _ = tracing_subscriber::fmt().with_test_writer().try_init();
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL")
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
@@ -193,6 +207,78 @@ async fn automatic_publish_is_idempotent_preserves_cms_and_supports_safe_rollbac
             .unwrap();
     assert_eq!(revision_count, 1);
     finish_run(&state.pool, repeat_run, "completed").await;
+
+    let price_run = Uuid::new_v4();
+    insert_run(&state.pool, connector_id, price_run).await;
+    let price_only = record_with_price("AX-100", "2.25", "125");
+    assert_eq!(
+        promote_record(
+            &state,
+            connector_id,
+            price_run,
+            price_run,
+            "feishu-product-v1",
+            &format!("feishu-run:{price_run}"),
+            2,
+            &price_only,
+            &[],
+        )
+        .await
+        .unwrap(),
+        PromotionOutcome::Unchanged
+    );
+    let private_refresh: (i64, Uuid, i64) = sqlx::query_as(
+        r#"SELECT product.current_revision,product.product_import_run_id,
+                  count(audit.id)
+           FROM products product LEFT JOIN audit_log audit
+             ON audit.entity_id=product.id AND audit.action='feishu.private.refresh'
+              AND audit.request_id=$2
+           WHERE product.id=$1 GROUP BY product.id"#,
+    )
+    .bind(product_id)
+    .bind(price_run)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap();
+    assert_eq!(private_refresh, (1, price_run, 1));
+    finish_run(&state.pool, price_run, "completed").await;
+
+    sqlx::query(
+        "UPDATE product_presentation_working SET published_revision=NULL WHERE product_id=$1",
+    )
+    .bind(product_id)
+    .execute(&state.pool)
+    .await
+    .unwrap();
+    let unpublished_presentation_run = Uuid::new_v4();
+    insert_run(&state.pool, connector_id, unpublished_presentation_run).await;
+    let blocked = promote_record(
+        &state,
+        connector_id,
+        unpublished_presentation_run,
+        unpublished_presentation_run,
+        "feishu-product-v1",
+        &format!("feishu-run:{unpublished_presentation_run}"),
+        2,
+        &record("AX-150", "2.5"),
+        &[],
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(blocked.status(), StatusCode::CONFLICT);
+    let revision_count: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM product_revisions WHERE product_id=$1")
+            .bind(product_id)
+            .fetch_one(&state.pool)
+            .await
+            .unwrap();
+    assert_eq!(revision_count, 1);
+    sqlx::query("UPDATE product_presentation_working SET published_revision=1 WHERE product_id=$1")
+        .bind(product_id)
+        .execute(&state.pool)
+        .await
+        .unwrap();
+    finish_run(&state.pool, unpublished_presentation_run, "failed").await;
 
     let content = json!({"sortOrder": 9, "relatedContentIds": [], "mediaGallery": []});
     let seo = json!({
@@ -296,20 +382,27 @@ async fn automatic_publish_is_idempotent_preserves_cms_and_supports_safe_rollbac
     );
     assert_eq!(
         published.try_get::<String, _>("slug").unwrap(),
-        "cms-axial-product"
+        initial_slug
     );
-    assert_eq!(
-        published.try_get::<String, _>("title").unwrap(),
-        "CMS curated title"
-    );
-    assert_eq!(published.try_get::<i32, _>("sort_order").unwrap(), 9);
+    assert_eq!(published.try_get::<String, _>("title").unwrap(), "AX-100");
+    assert_eq!(published.try_get::<i32, _>("sort_order").unwrap(), 0);
+    let presentation_revisions: (i64, Option<i64>) = sqlx::query_as(
+        "SELECT current_revision,published_revision FROM product_presentation_working WHERE product_id=$1 AND locale='en'",
+    )
+    .bind(product_id)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap();
+    assert_eq!(presentation_revisions, (2, Some(1)));
     let public = build_router(state.clone());
     let response = public
         .clone()
         .oneshot(
-            Request::get("/api/public/v1/products/cms-axial-product/assets?family=axial")
-                .body(Body::empty())
-                .unwrap(),
+            Request::get(format!(
+                "/api/public/v1/products/{initial_slug}/assets?family=axial"
+            ))
+            .body(Body::empty())
+            .unwrap(),
         )
         .await
         .unwrap();
@@ -355,28 +448,6 @@ async fn automatic_publish_is_idempotent_preserves_cms_and_supports_safe_rollbac
             .unwrap();
     assert_eq!(after_invalid, (2, Some(2)));
     finish_run(&state.pool, rejected_run, "completedWithErrors").await;
-    let rollback = rollback_sync_run(&state, update_run, "integration@example.test")
-        .await
-        .unwrap();
-    assert_eq!(rollback.restored, 1);
-    assert_eq!(rollback.skipped, 0);
-    let rolled_back: (i64, Option<i64>) =
-        sqlx::query_as("SELECT current_revision,published_revision FROM products WHERE id=$1")
-            .bind(product_id)
-            .fetch_one(&state.pool)
-            .await
-            .unwrap();
-    assert_eq!(rolled_back, (2, Some(1)));
-    let stale_route = public
-        .clone()
-        .oneshot(
-            Request::get("/api/public/v1/products/cms-axial-product/assets?family=axial")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(stale_route.status(), StatusCode::NOT_FOUND);
     let response = public
         .oneshot(
             Request::get(format!(
@@ -390,8 +461,8 @@ async fn automatic_publish_is_idempotent_preserves_cms_and_supports_safe_rollbac
     assert_eq!(response.status(), StatusCode::OK);
     let body: Value =
         serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes()).unwrap();
-    assert_eq!(body["productRevision"], 1);
-    assert_eq!(body["items"], json!([]));
+    assert_eq!(body["productRevision"], 2);
+    assert_eq!(body["items"][0]["assetId"], source_asset_id.to_string());
 
     sandbox.cleanup().await;
 }

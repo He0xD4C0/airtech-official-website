@@ -35,6 +35,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             "title": {"type": "string"},
             "status": {"type": "integer", "minimum": 400, "maximum": 599}, "detail": {"type": "string"},
             "instance": nullable(json!({"type": "string"})), "requestId": uuid(),
+            "activeRunId": nullable(uuid()),
             "errors": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
             "issues": array(r("DependencyProblemIssue"))
         }

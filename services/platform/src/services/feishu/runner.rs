@@ -1,19 +1,15 @@
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::{
-    error::ApiError,
-    models::{SyncRunKind, ValidationIssue},
-    state::AppState,
-};
+use crate::{error::ApiError, models::ValidationIssue, state::AppState};
 
 use super::runner_support::{
-    finalize_run, increment_table_failure, next_source_row_number, persist_cursor,
-    report_suspected_missing, runtime_table_mapping, staging_exists,
+    complete_table, fail_table, finalize_run, load_table_asset_counts, next_source_row_number,
+    persist_cursor, persist_table_asset_counts, runtime_table_mapping, staging_exists, start_table,
 };
 use super::{
-    compensate_source_assets, discover_sources, ensure_mapping, get_feishu_settings, load_mapping,
-    load_sync_run, normalize_record, open_cursor, promote_record, record_sync_error,
+    compensate_source_assets, discover_sources, load_client, load_mapping, load_sync_run,
+    normalize_record, open_cursor, promote_record, reconcile_missing_records, record_sync_error,
     stage_invalid_record, store_source_assets, FeishuResumeCursor, PromotionOutcome,
 };
 
@@ -28,7 +24,7 @@ async fn execute_sync_run_inner(state: &AppState, run_id: Uuid) -> Result<Value,
     let connector_id = run
         .connector_id
         .ok_or_else(|| ApiError::service_unavailable("Feishu run has no connector."))?;
-    let settings = get_feishu_settings(state).await?;
+    let client = load_client(state).await?;
     let key = state
         .config
         .product_staging_encryption_key
@@ -44,19 +40,13 @@ async fn execute_sync_run_inner(state: &AppState, run_id: Uuid) -> Result<Value,
         .execute(&state.pool)
         .await?;
 
-    let stored_mapping = load_mapping(state, connector_id, &settings.mapping_version).await?;
-    let initial_discovery = if stored_mapping.is_none() {
-        Some(discover_sources(&state.feishu_client, &settings.sources).await?)
-    } else {
-        None
-    };
-    let mapping = match (&stored_mapping, &initial_discovery) {
-        (Some(mapping), _) => mapping.clone(),
-        (None, Some(discovered)) => {
-            ensure_mapping(state, connector_id, &settings.mapping_version, discovered).await?
-        }
-        _ => unreachable!("one mapping source is always available"),
-    };
+    let mapping = load_mapping(state, connector_id, &run.mapping_version)
+        .await?
+        .ok_or_else(|| {
+            ApiError::conflict(
+                "The frozen Feishu mapping is unavailable; run the connection test again.",
+            )
+        })?;
     sqlx::query("UPDATE sync_runs SET status='validating' WHERE id=$1")
         .bind(run_id)
         .execute(&state.pool)
@@ -75,75 +65,50 @@ async fn execute_sync_run_inner(state: &AppState, run_id: Uuid) -> Result<Value,
     let mut assets_copied = run.assets_copied;
     let mut assets_reused = run.assets_reused;
     let mut assets_failed = run.assets_failed;
-    let mut processed_tables = Vec::new();
 
-    'tables: for (table_index, source) in settings.sources.iter().enumerate() {
+    'tables: for (table_index, source) in run.sources.iter().enumerate() {
         if table_index < cursor.table_index {
-            processed_tables.push(source.table_id.clone());
             continue;
         }
-        let discovered = if let Some(discovered) = &initial_discovery {
-            discovered
-                .iter()
-                .find(|value| value.source.table_id == source.table_id)
-                .cloned()
-                .ok_or_else(|| {
-                    ApiError::service_unavailable("Feishu table discovery is incomplete.")
-                })?
-        } else {
-            match discover_sources(&state.feishu_client, std::slice::from_ref(source)).await {
-                Ok(mut values) => values.remove(0),
-                Err(error) => {
-                    record_sync_error(
-                        state,
-                        run_id,
-                        None,
-                        "tableUnavailable",
-                        &format!("{}: {error}", source.table_id),
-                    )
-                    .await?;
-                    increment_table_failure(state, run_id).await?;
-                    cursor = FeishuResumeCursor {
-                        table_index: table_index + 1,
-                        page_token: None,
-                        record_index: 0,
-                    };
-                    persist_cursor(
-                        state,
-                        run_id,
-                        key,
-                        &cursor,
-                        assets_copied,
-                        assets_reused,
-                        assets_failed,
-                    )
-                    .await?;
-                    continue;
-                }
+        start_table(state, run_id, &source.wiki_token, &source.table_id).await?;
+        let mut table_assets =
+            load_table_asset_counts(state, run_id, &source.wiki_token, &source.table_id).await?;
+        let discovered = match discover_sources(&client, std::slice::from_ref(source)).await {
+            Ok(mut values) => values.remove(0),
+            Err(error) => {
+                fail_current_table(
+                    state,
+                    run_id,
+                    source,
+                    "tableUnavailable",
+                    &error.to_string(),
+                )
+                .await?;
+                advance_table_cursor(
+                    state,
+                    run_id,
+                    key,
+                    table_index,
+                    &mut cursor,
+                    assets_copied,
+                    assets_reused,
+                    assets_failed,
+                )
+                .await?;
+                continue;
             }
         };
         let table_mapping = match runtime_table_mapping(&mapping, &discovered) {
             Ok(value) => value,
             Err(error) => {
-                record_sync_error(
-                    state,
-                    run_id,
-                    None,
-                    "schemaDrift",
-                    &format!("{}: {error}", source.table_id),
-                )
-                .await?;
-                increment_table_failure(state, run_id).await?;
-                cursor = FeishuResumeCursor {
-                    table_index: table_index + 1,
-                    page_token: None,
-                    record_index: 0,
-                };
-                persist_cursor(
+                fail_current_table(state, run_id, source, "schemaDrift", &error.to_string())
+                    .await?;
+                advance_table_cursor(
                     state,
                     run_id,
                     key,
-                    &cursor,
+                    table_index,
+                    &mut cursor,
                     assets_copied,
                     assets_reused,
                     assets_failed,
@@ -161,8 +126,7 @@ async fn execute_sync_run_inner(state: &AppState, run_id: Uuid) -> Result<Value,
             0
         };
         loop {
-            let page = match state
-                .feishu_client
+            let page = match client
                 .list_records_page(
                     &discovered.app_token,
                     &source.table_id,
@@ -171,27 +135,21 @@ async fn execute_sync_run_inner(state: &AppState, run_id: Uuid) -> Result<Value,
                 .await
             {
                 Ok(page) => page,
-                Err(error) if error.status().is_server_error() => return Err(error),
                 Err(error) => {
-                    record_sync_error(
+                    fail_current_table(
                         state,
                         run_id,
-                        None,
+                        source,
                         "tableUnavailable",
-                        &format!("{}: {error}", source.table_id),
+                        &error.to_string(),
                     )
                     .await?;
-                    increment_table_failure(state, run_id).await?;
-                    cursor = FeishuResumeCursor {
-                        table_index: table_index + 1,
-                        page_token: None,
-                        record_index: 0,
-                    };
-                    persist_cursor(
+                    advance_table_cursor(
                         state,
                         run_id,
                         key,
-                        &cursor,
+                        table_index,
+                        &mut cursor,
                         assets_copied,
                         assets_reused,
                         assets_failed,
@@ -221,16 +179,27 @@ async fn execute_sync_run_inner(state: &AppState, run_id: Uuid) -> Result<Value,
                     continue;
                 }
                 let row_number = next_source_row_number(state, run_id).await?;
+                table_assets.seen = table_assets
+                    .seen
+                    .saturating_add(normalized.attachments.len() as u64);
                 if !normalized.issues.is_empty() {
                     stage_invalid_record(
                         state,
                         connector_id,
                         run_id,
                         run_id,
-                        &settings.mapping_version,
+                        &run.mapping_version,
                         &import_checksum,
                         row_number,
                         &normalized,
+                    )
+                    .await?;
+                    persist_table_asset_counts(
+                        state,
+                        run_id,
+                        &source.wiki_token,
+                        &source.table_id,
+                        table_assets,
                     )
                     .await?;
                     persist_cursor(
@@ -245,55 +214,72 @@ async fn execute_sync_run_inner(state: &AppState, run_id: Uuid) -> Result<Value,
                     .await?;
                     continue;
                 }
-                let assets =
-                    match store_source_assets(state, connector_id, &normalized.attachments).await {
-                        Ok(assets) => assets,
-                        Err(error) if error.status().is_server_error() => return Err(error),
-                        Err(error) => {
-                            assets_failed =
-                                assets_failed.saturating_add(normalized.attachments.len() as u64);
-                            let mut invalid = normalized.clone();
-                            invalid.issues.push(ValidationIssue {
-                                field_path: "attachments".into(),
-                                code: "attachmentSyncFailed".into(),
-                                detail: error.to_string(),
-                            });
-                            stage_invalid_record(
-                                state,
-                                connector_id,
-                                run_id,
-                                run_id,
-                                &settings.mapping_version,
-                                &import_checksum,
-                                row_number,
-                                &invalid,
-                            )
-                            .await?;
-                            persist_cursor(
-                                state,
-                                run_id,
-                                key,
-                                &cursor,
-                                assets_copied,
-                                assets_reused,
-                                assets_failed,
-                            )
-                            .await?;
-                            continue;
-                        }
-                    };
-                assets_copied = assets_copied.saturating_add(
-                    assets.iter().filter(|asset| asset.newly_created).count() as u64,
-                );
-                assets_reused = assets_reused.saturating_add(
-                    assets.iter().filter(|asset| !asset.newly_created).count() as u64,
-                );
+                let assets = match store_source_assets(
+                    state,
+                    &client,
+                    connector_id,
+                    run_id,
+                    &normalized.attachments,
+                )
+                .await
+                {
+                    Ok(assets) => assets,
+                    Err(error) => {
+                        assets_failed =
+                            assets_failed.saturating_add(normalized.attachments.len() as u64);
+                        table_assets.failed = table_assets
+                            .failed
+                            .saturating_add(normalized.attachments.len() as u64);
+                        let mut invalid = normalized.clone();
+                        invalid.issues.push(ValidationIssue {
+                            field_path: "attachments".into(),
+                            code: "attachmentSyncFailed".into(),
+                            detail: error.to_string(),
+                        });
+                        stage_invalid_record(
+                            state,
+                            connector_id,
+                            run_id,
+                            run_id,
+                            &run.mapping_version,
+                            &import_checksum,
+                            row_number,
+                            &invalid,
+                        )
+                        .await?;
+                        persist_table_asset_counts(
+                            state,
+                            run_id,
+                            &source.wiki_token,
+                            &source.table_id,
+                            table_assets,
+                        )
+                        .await?;
+                        persist_cursor(
+                            state,
+                            run_id,
+                            key,
+                            &cursor,
+                            assets_copied,
+                            assets_reused,
+                            assets_failed,
+                        )
+                        .await?;
+                        continue;
+                    }
+                };
+                let copied = assets.iter().filter(|asset| asset.newly_created).count() as u64;
+                let reused = assets.len() as u64 - copied;
+                assets_copied = assets_copied.saturating_add(copied);
+                assets_reused = assets_reused.saturating_add(reused);
+                table_assets.copied = table_assets.copied.saturating_add(copied);
+                table_assets.reused = table_assets.reused.saturating_add(reused);
                 match promote_record(
                     state,
                     connector_id,
                     run_id,
                     run_id,
-                    &settings.mapping_version,
+                    &run.mapping_version,
                     &import_checksum,
                     row_number,
                     &normalized,
@@ -307,7 +293,6 @@ async fn execute_sync_run_inner(state: &AppState, run_id: Uuid) -> Result<Value,
                         | PromotionOutcome::Archived
                         | PromotionOutcome::Unchanged,
                     ) => {}
-                    Err(error) if error.status().is_server_error() => return Err(error),
                     Err(error) => {
                         compensate_source_assets(state, &assets).await;
                         let mut invalid = normalized.clone();
@@ -321,7 +306,7 @@ async fn execute_sync_run_inner(state: &AppState, run_id: Uuid) -> Result<Value,
                             connector_id,
                             run_id,
                             run_id,
-                            &settings.mapping_version,
+                            &run.mapping_version,
                             &import_checksum,
                             row_number,
                             &invalid,
@@ -329,6 +314,14 @@ async fn execute_sync_run_inner(state: &AppState, run_id: Uuid) -> Result<Value,
                         .await?;
                     }
                 }
+                persist_table_asset_counts(
+                    state,
+                    run_id,
+                    &source.wiki_token,
+                    &source.table_id,
+                    table_assets,
+                )
+                .await?;
                 persist_cursor(
                     state,
                     run_id,
@@ -361,7 +354,15 @@ async fn execute_sync_run_inner(state: &AppState, run_id: Uuid) -> Result<Value,
             )
             .await?;
         }
-        processed_tables.push(source.table_id.clone());
+        let deleted = reconcile_missing_records(
+            state,
+            run_id,
+            connector_id,
+            &source.wiki_token,
+            &source.table_id,
+        )
+        .await?;
+        complete_table(state, run_id, &source.wiki_token, &source.table_id, deleted).await?;
         cursor = FeishuResumeCursor {
             table_index: table_index + 1,
             page_token: None,
@@ -379,19 +380,55 @@ async fn execute_sync_run_inner(state: &AppState, run_id: Uuid) -> Result<Value,
         .await?;
     }
 
-    if run.run_kind == SyncRunKind::Full {
-        report_suspected_missing(state, run_id, &processed_tables).await?;
-    }
-    finalize_run(
+    finalize_run(state, run_id, assets_copied, assets_reused, assets_failed).await?;
+    let completed = load_sync_run(state, run_id).await?;
+    serde_json::to_value(json!({"syncRun": completed}))
+        .map_err(|_| ApiError::internal("Feishu run result serialization failed."))
+}
+
+async fn fail_current_table(
+    state: &AppState,
+    run_id: Uuid,
+    source: &crate::models::FeishuSource,
+    code: &str,
+    detail: &str,
+) -> Result<(), ApiError> {
+    let message = format!("{}: {detail}", source.table_id);
+    record_sync_error(state, run_id, None, code, &message).await?;
+    fail_table(
         state,
         run_id,
-        run.run_kind,
+        &source.wiki_token,
+        &source.table_id,
+        &message,
+    )
+    .await
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn advance_table_cursor(
+    state: &AppState,
+    run_id: Uuid,
+    key: &crate::config::ProductStagingEncryptionKey,
+    table_index: usize,
+    cursor: &mut FeishuResumeCursor,
+    assets_copied: u64,
+    assets_reused: u64,
+    assets_failed: u64,
+) -> Result<(), ApiError> {
+    *cursor = FeishuResumeCursor {
+        table_index: table_index + 1,
+        page_token: None,
+        record_index: 0,
+    };
+    persist_cursor(
+        state,
+        run_id,
+        key,
+        cursor,
         assets_copied,
         assets_reused,
         assets_failed,
     )
-    .await?;
-    let completed = load_sync_run(state, run_id).await?;
-    serde_json::to_value(json!({"syncRun": completed}))
-        .map_err(|_| ApiError::internal("Feishu run result serialization failed."))
+    .await
 }

@@ -118,11 +118,12 @@ mod cases {
             Some("rfq.assign")
         );
         assert_eq!(
-            required_permission(
-                "/api/admin/v1/feishu/conflicts/00000000-0000-0000-0000-000000000001/resolve",
-                &axum::http::Method::POST
-            ),
+            required_permission("/api/admin/v1/feishu/settings", &axum::http::Method::GET),
             Some("integration.run")
+        );
+        assert_eq!(
+            required_permission("/api/admin/v1/feishu/settings", &axum::http::Method::PUT),
+            Some("settings.manage")
         );
     }
 

@@ -69,10 +69,13 @@ pub(super) async fn list_feishu_staging(
 pub(super) async fn start_sync_run(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Json(request): Json<StartSyncRequest>,
 ) -> Result<Response, ApiError> {
-    let run =
-        crate::services::feishu::queue_sync_run(&state, request.run_kind, &actor(&headers)).await?;
+    let run = crate::services::feishu::queue_full_sync(
+        &state,
+        crate::models::FeishuSyncTrigger::Manual,
+        &actor(&headers),
+    )
+    .await?;
     let mut response = (StatusCode::ACCEPTED, Json(run.clone())).into_response();
     response.headers_mut().insert(
         header::LOCATION,
@@ -130,46 +133,6 @@ pub(super) async fn get_sync_run(
 ) -> Result<Json<crate::models::FeishuSyncRunDetail>, ApiError> {
     Ok(Json(
         crate::services::feishu::load_sync_run_detail(&state, id).await?,
-    ))
-}
-
-pub(super) async fn rollback_sync_run_route(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-    headers: HeaderMap,
-) -> Result<Json<crate::models::FeishuRollbackReport>, ApiError> {
-    Ok(Json(
-        crate::services::feishu::rollback_sync_run(&state, id, &actor(&headers)).await?,
-    ))
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct ConflictListQuery {
-    pub(super) cursor: Option<String>,
-    pub(super) limit: Option<usize>,
-    pub(super) q: Option<String>,
-    pub(super) open_only: Option<bool>,
-}
-
-pub(super) async fn list_conflicts(
-    State(state): State<AppState>,
-    Query(query): Query<ConflictListQuery>,
-) -> Result<Json<crate::models::SyncConflictPage>, ApiError> {
-    let filter = crate::services::admin_sync::ConflictFilter {
-        search: parse_query_text(query.q)?,
-        open_only: query.open_only.unwrap_or(true),
-    };
-    Ok(Json(
-        crate::services::admin_sync::list_conflicts(
-            &state,
-            filter,
-            CursorQuery {
-                cursor: query.cursor,
-                limit: query.limit,
-            },
-        )
-        .await?,
     ))
 }
 

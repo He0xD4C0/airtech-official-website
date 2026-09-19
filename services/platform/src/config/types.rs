@@ -89,10 +89,6 @@ pub struct Config {
     /// unconfigured deployment keeps the catalogue readable and refuses
     /// uploads instead of writing objects it cannot serve.
     pub media: MediaSettings,
-    /// Server-side Feishu credentials. They are never serialized or persisted.
-    pub feishu: Option<FeishuCredentials>,
-    /// Overridable only to support an isolated mock server in integration tests.
-    pub feishu_api_base_url: String,
     pub production: bool,
 }
 
@@ -145,8 +141,6 @@ impl fmt::Debug for Config {
             )
             .field("trusted_proxy_cidrs", &self.trusted_proxy_cidrs)
             .field("media_storage", &self.media.storage_kind_label())
-            .field("feishu", &self.feishu.as_ref().map(|_| "[configured]"))
-            .field("feishu_api_base_url", &self.feishu_api_base_url)
             .field("production", &self.production)
             .finish()
     }

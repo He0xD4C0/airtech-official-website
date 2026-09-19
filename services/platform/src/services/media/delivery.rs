@@ -34,7 +34,16 @@ pub async fn deliver_media_asset(
         )
     })?;
     let preview_url: Option<String> = row.try_get("preview_public_url")?;
-    let public_url = preview_url.unwrap_or(original_url);
+    let media_type: String = row.try_get("media_type")?;
+    let public_url = match preview_url {
+        Some(url) => url,
+        None if is_raster_preview_type(&media_type) => original_url,
+        None => {
+            return Err(ApiError::not_found(
+                "This media asset has no public preview.",
+            ))
+        }
+    };
     if !(public_url.starts_with("http://") || public_url.starts_with("https://")) {
         tracing::error!(%asset_id, "stored media public URL is invalid");
         return Err(ApiError::service_unavailable(
@@ -44,6 +53,10 @@ pub async fn deliver_media_asset(
     let response = Redirect::permanent(&public_url).into_response();
     debug_assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
     Ok(response)
+}
+
+fn is_raster_preview_type(value: &str) -> bool {
+    matches!(value, "image/png" | "image/jpeg" | "image/webp")
 }
 
 async fn download_response(
@@ -99,7 +112,7 @@ fn safe_download_name(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::safe_download_name;
+    use super::{is_raster_preview_type, safe_download_name};
 
     #[test]
     fn download_names_cannot_inject_headers_or_paths() {
@@ -107,5 +120,12 @@ mod tests {
         assert!(name.ends_with(".xls"));
         assert!(!name.contains(['/', '\\', '\r', '\n', '"']));
         assert_eq!(safe_download_name(""), "download");
+    }
+
+    #[test]
+    fn cad_mime_types_are_not_treated_as_raster_previews() {
+        assert!(is_raster_preview_type("image/webp"));
+        assert!(!is_raster_preview_type("image/vnd.dwg"));
+        assert!(!is_raster_preview_type("image/vnd.dxf"));
     }
 }

@@ -1,22 +1,8 @@
 #[cfg(test)]
 mod cases {
-    use std::collections::BTreeSet;
-
     use serde_json::json;
 
-    use super::super::{conflicting_diffs, three_way_diff, validate_staging_payload};
-
-    #[test]
-    pub(super) fn detects_source_owned_three_way_conflict() {
-        let base = json!({"model": "A", "site": {"seoTitle": "Old"}});
-        let local = json!({"model": "LOCAL", "site": {"seoTitle": "New"}});
-        let incoming = json!({"model": "FEISHU", "site": {"seoTitle": "Old"}});
-        let owned = BTreeSet::from(["model".to_owned()]);
-        let diffs = three_way_diff(&base, &local, &incoming, &owned);
-        let conflicts = conflicting_diffs(&diffs);
-        assert_eq!(conflicts.len(), 1);
-        assert_eq!(conflicts[0].field_path, "model");
-    }
+    use super::super::validate_staging_payload;
 
     #[test]
     pub(super) fn verified_values_require_product_master_provenance() {

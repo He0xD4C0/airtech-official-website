@@ -93,46 +93,31 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             "queued",
             "fetching",
             "validating",
-            "awaitingResolution",
             "readyToPublish",
             "completed",
             "completedWithErrors",
             "failed",
         ]),
     );
-    s.insert("SyncRunKind".into(), string_enum(&["incremental", "full"]));
     s.insert(
-        "StartSyncRequest".into(),
-        json!({
-            "type": "object", "additionalProperties": false, "required": ["runKind"],
-            "properties": {"runKind": r("SyncRunKind")}
-        }),
+        "FeishuSyncTrigger".into(),
+        string_enum(&["manual", "interval", "daily", "initial"]),
     );
     s.insert("SyncRun".into(), object(
-        &["id", "source", "dryRun", "runKind", "mappingVersion", "status", "resumeCursor", "recordsSeen", "recordsValid", "conflictCount", "recordsApplied", "recordsFailed", "assetsSeen", "assetsCopied", "assetsReused", "assetsFailed", "startedAt", "completedAt"],
+        &["id", "source", "dryRun", "trigger", "settingsRevision", "sources", "mappingVersion", "status", "resumeCursor", "recordsSeen", "recordsValid", "recordsApplied", "recordsFailed", "recordsDeleted", "assetsSeen", "assetsCopied", "assetsReused", "assetsFailed", "startedAt", "completedAt"],
         json!({
-            "id": uuid(), "connectorId": nullable(uuid()), "source": {"type": "string"}, "dryRun": {"type": "boolean"}, "runKind": r("SyncRunKind"), "mappingVersion": {"type": "string"}, "status": r("SyncRunStatus"),
-            "resumeCursor": nullable(json!({"type": "string"})), "recordsSeen": counter(), "recordsValid": counter(), "conflictCount": counter(), "recordsApplied": counter(), "recordsFailed": counter(),
+            "id": uuid(), "connectorId": nullable(uuid()), "source": {"type": "string", "const": "feishu"}, "dryRun": {"type": "boolean", "const": false},
+            "trigger": r("FeishuSyncTrigger"), "settingsRevision": revision(), "sources": array(r("FeishuSource")),
+            "mappingVersion": {"type": "string"}, "status": r("SyncRunStatus"),
+            "resumeCursor": nullable(json!({"type": "string"})), "recordsSeen": counter(), "recordsValid": counter(), "recordsApplied": counter(), "recordsFailed": counter(), "recordsDeleted": counter(),
             "assetsSeen": counter(), "assetsCopied": counter(), "assetsReused": counter(), "assetsFailed": counter(),
             "startedAt": timestamp(), "completedAt": nullable(timestamp()), "error": nullable(json!({"type": "string"}))
         })
     ));
     s.insert("SyncRunPage".into(), page("SyncRun"));
-    s.insert("FieldDiff".into(), object(
-        &["fieldPath", "baseValue", "localValue", "incomingValue", "sourceOwned"],
-        json!({"fieldPath": {"type": "string"}, "baseValue": nullable(json!({})), "localValue": nullable(json!({})), "incomingValue": nullable(json!({})), "sourceOwned": {"type": "boolean"}})
-    ));
-    s.insert("SyncConflict".into(), object(
-        &["id", "syncRunId", "productId", "sourceRecordId", "diffs", "resolvedAt", "resolution", "revision"],
-        json!({"id": uuid(), "syncRunId": uuid(), "productId": nullable(uuid()), "sourceRecordId": {"type": "string"}, "diffs": array(r("FieldDiff")), "resolvedAt": nullable(timestamp()), "resolution": nullable(json!({"type": "string"})), "revision": revision()})
-    ));
-    s.insert("SyncConflictPage".into(), object(
-        &["items", "nextCursor", "total"],
-        json!({"items": array(r("SyncConflict")), "nextCursor": nullable(json!({"type": "string"})), "total": {"type": "integer", "minimum": 0}})
-    ));
     s.insert(
         "StagingValidationStatus".into(),
-        string_enum(&["pending", "valid", "invalid", "conflicted"]),
+        string_enum(&["pending", "valid", "invalid"]),
     );
     s.insert("StagingRecord".into(), object(
         &["id", "syncRunId", "sourceSnapshotId", "sourceRecordId", "validationStatus", "normalizedPayload", "validationErrors", "createdAt"],
@@ -147,59 +132,60 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         json!({"connectorId": nullable(uuid()), "displayName": nullable(json!({"type": "string"})), "configured": {"type": "boolean"}, "enabled": {"type": "boolean"}, "runnable": {"type": "boolean"}, "unavailableReason": nullable(json!({"type": "string"})), "updatedAt": nullable(timestamp()), "latestSync": nullable(r("SyncRun"))})
     ));
     s.insert("FeishuSource".into(), object(
-        &["wikiToken", "tableId", "name", "family", "application"],
-        json!({"wikiToken": {"type": "string"}, "tableId": {"type": "string"}, "name": {"type": "string"}, "family": r("ProductFamily"), "application": nullable(json!({"type": "string"}))})
+        &["enabled", "wikiToken", "tableId", "name", "family", "application"],
+        json!({"enabled": {"type": "boolean"}, "wikiToken": {"type": "string", "minLength": 1, "maxLength": 200}, "tableId": {"type": "string", "minLength": 1, "maxLength": 100}, "name": {"type": "string", "minLength": 1, "maxLength": 120}, "family": r("ProductFamily"), "application": nullable(json!({"type": "string", "minLength": 1, "maxLength": 100}))})
     ));
     s.insert("FeishuSettings".into(), object(
-        &["connectorId", "enabled", "intervalMinutes", "fullReconcileEnabled", "fullReconcileLocalTime", "timezone", "mappingVersion", "sources", "revision", "lastIncrementalAt", "lastFullAt", "updatedAt", "updatedBy"],
+        &["connectorId", "appId", "secretConfigured", "enabled", "intervalEnabled", "intervalMinutes", "dailyEnabled", "dailyLocalTime", "timezone", "mappingVersion", "sources", "revision", "connectionRevision", "testedConnectionRevision", "lastConnectionTestAt", "lastIntervalAt", "lastDailyAt", "updatedAt", "updatedBy"],
         json!({
-            "connectorId": uuid(), "enabled": {"type": "boolean"}, "intervalMinutes": {"type": "integer", "minimum": 5, "maximum": 1440},
-            "fullReconcileEnabled": {"type": "boolean"}, "fullReconcileLocalTime": {"type": "string", "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"},
-            "timezone": {"type": "string", "const": "Asia/Shanghai"}, "mappingVersion": {"type": "string", "const": "feishu-product-v1"},
-            "sources": array(r("FeishuSource")), "revision": revision(), "lastIncrementalAt": nullable(timestamp()), "lastFullAt": nullable(timestamp()),
+            "connectorId": uuid(), "appId": nullable(json!({"type": "string", "maxLength": 100})), "secretConfigured": {"type": "boolean", "readOnly": true},
+            "enabled": {"type": "boolean"}, "intervalEnabled": {"type": "boolean"}, "intervalMinutes": {"type": "integer", "minimum": 5, "maximum": 1440},
+            "dailyEnabled": {"type": "boolean"}, "dailyLocalTime": {"type": "string", "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"},
+            "timezone": {"type": "string", "const": "Asia/Shanghai"}, "mappingVersion": {"type": "string", "minLength": 1, "maxLength": 100, "readOnly": true},
+            "sources": array(r("FeishuSource")), "revision": revision(), "connectionRevision": revision(), "testedConnectionRevision": nullable(revision()),
+            "lastConnectionTestAt": nullable(timestamp()), "lastIntervalAt": nullable(timestamp()), "lastDailyAt": nullable(timestamp()),
             "updatedAt": timestamp(), "updatedBy": {"type": "string"}
         })
     ));
     s.insert("UpdateFeishuSettings".into(), object(
-        &["enabled", "intervalMinutes", "fullReconcileEnabled", "fullReconcileLocalTime"],
-        json!({"enabled": {"type": "boolean"}, "intervalMinutes": {"type": "integer", "minimum": 5, "maximum": 1440}, "fullReconcileEnabled": {"type": "boolean"}, "fullReconcileLocalTime": {"type": "string", "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"}})
+        &["appId", "appSecret", "clearCredentials", "sources", "enabled", "intervalEnabled", "intervalMinutes", "dailyEnabled", "dailyLocalTime"],
+        json!({
+            "appId": {"type": "string", "maxLength": 100},
+            "appSecret": {"type": "string", "maxLength": 512, "writeOnly": true},
+            "clearCredentials": {"type": "boolean"},
+            "sources": {"type": "array", "maxItems": 100, "items": r("FeishuSource")},
+            "enabled": {"type": "boolean"}, "intervalEnabled": {"type": "boolean"}, "intervalMinutes": {"type": "integer", "minimum": 5, "maximum": 1440},
+            "dailyEnabled": {"type": "boolean"}, "dailyLocalTime": {"type": "string", "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"}
+        })
     ));
     s.insert("FeishuTableCheck".into(), object(
-        &["tableId", "name", "accessible", "fieldCount", "mappingValid", "errors"],
-        json!({"tableId": {"type": "string"}, "name": {"type": "string"}, "accessible": {"type": "boolean"}, "fieldCount": counter(), "mappingValid": {"type": "boolean"}, "errors": array(json!({"type": "string"}))})
+        &["wikiToken", "tableId", "name", "accessible", "fieldCount", "mappingValid", "errors"],
+        json!({"wikiToken": {"type": "string"}, "tableId": {"type": "string"}, "name": {"type": "string"}, "accessible": {"type": "boolean"}, "fieldCount": counter(), "mappingValid": {"type": "boolean"}, "errors": array(json!({"type": "string"}))})
     ));
     s.insert("FeishuConnectionTest".into(), object(
-        &["credentialsConfigured", "tokenIssued", "objectStorageReady", "runnable", "tables", "checkedAt"],
-        json!({"credentialsConfigured": {"type": "boolean"}, "tokenIssued": {"type": "boolean"}, "objectStorageReady": {"type": "boolean"}, "runnable": {"type": "boolean"}, "tables": array(r("FeishuTableCheck")), "checkedAt": timestamp()})
+        &["credentialsConfigured", "tokenIssued", "objectStorageReady", "privateStagingReady", "runnable", "connectionRevision", "tables", "checkedAt"],
+        json!({"credentialsConfigured": {"type": "boolean"}, "tokenIssued": {"type": "boolean"}, "objectStorageReady": {"type": "boolean"}, "privateStagingReady": {"type": "boolean"}, "runnable": {"type": "boolean"}, "connectionRevision": revision(), "tables": array(r("FeishuTableCheck")), "checkedAt": timestamp()})
     ));
     s.insert("FeishuSyncError".into(), object(
-        &["sourceRecordId", "code", "fieldPath", "message", "createdAt"],
-        json!({"sourceRecordId": nullable(json!({"type": "string"})), "code": {"type": "string"}, "fieldPath": nullable(json!({"type": "string"})), "message": {"type": "string"}, "createdAt": timestamp()})
+        &["sourceRecordId", "severity", "code", "fieldPath", "message", "createdAt"],
+        json!({"sourceRecordId": nullable(json!({"type": "string"})), "severity": {"type": "string", "enum": ["warning", "error"]}, "code": {"type": "string"}, "fieldPath": nullable(json!({"type": "string"})), "message": {"type": "string"}, "createdAt": timestamp()})
+    ));
+    s.insert("FeishuRunTableResult".into(), object(
+        &["syncRunId", "wikiToken", "tableId", "sourceName", "status", "recordsSeen", "recordsApplied", "recordsFailed", "recordsDeleted", "assetsSeen", "assetsCopied", "assetsReused", "assetsFailed", "error", "completedAt"],
+        json!({"syncRunId": uuid(), "wikiToken": {"type": "string"}, "tableId": {"type": "string"}, "sourceName": {"type": "string"}, "status": {"type": "string", "enum": ["pending", "fetching", "completed", "failed"]}, "recordsSeen": counter(), "recordsApplied": counter(), "recordsFailed": counter(), "recordsDeleted": counter(), "assetsSeen": counter(), "assetsCopied": counter(), "assetsReused": counter(), "assetsFailed": counter(), "error": nullable(json!({"type": "string"})), "completedAt": nullable(timestamp())})
     ));
     s.insert(
         "FeishuSyncRunDetail".into(),
         object(
-            &["run", "errors"],
-            json!({"run": r("SyncRun"), "errors": array(r("FeishuSyncError"))}),
+            &["run", "tables", "errors"],
+            json!({"run": r("SyncRun"), "tables": array(r("FeishuRunTableResult")), "errors": array(r("FeishuSyncError"))}),
         ),
     );
-    s.insert("FeishuRollbackReport".into(), object(
-        &["syncRunId", "restored", "skipped", "completedAt"],
-        json!({"syncRunId": uuid(), "restored": counter(), "skipped": counter(), "completedAt": timestamp()})
-    ));
     s.insert("SyncMapping".into(), object(
         &["id", "connectorId", "version", "mapping", "schemaVersion", "active", "createdAt"],
         json!({"id": uuid(), "connectorId": uuid(), "version": {"type": "string"}, "mapping": {}, "schemaVersion": {"type": "integer"}, "active": {"type": "boolean"}, "createdAt": timestamp()})
     ));
     s.insert("SyncMappingPage".into(), page("SyncMapping"));
-    s.insert(
-        "SyncConflictDecision".into(),
-        string_enum(&["acceptIncoming", "keepVerifiedLocal"]),
-    );
-    s.insert("ResolveSyncConflictRequest".into(), object(
-        &["decision", "evidenceReference", "reason", "expiresAt"],
-        json!({"decision": r("SyncConflictDecision"), "evidenceReference": nullable(json!({"type": "string", "minLength": 1})), "reason": {"type": "string", "minLength": 10, "maxLength": 2000}, "expiresAt": nullable(timestamp())})
-    ));
     s.insert("CreateTemporaryOverride".into(), object(
         &["productId", "fieldPath", "value", "reason"],
         json!({"productId": uuid(), "fieldPath": {"type": "string", "minLength": 1}, "value": {}, "reason": {"type": "string", "minLength": 10}, "expiresAt": nullable(timestamp())})
@@ -305,10 +291,9 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         json!({"available": {"type": "boolean"}, "value": nullable(counter()), "unavailableReason": nullable(json!({"type": "string"}))})
     ));
     s.insert("AdminDashboardSummary".into(), object(
-        &["generatedAt", "draftContent", "openConflicts", "openRfqs", "analytics", "recentActivity", "readinessItemCount"],
+        &["generatedAt", "draftContent", "openRfqs", "analytics", "recentActivity", "readinessItemCount"],
         json!({
-            "generatedAt": timestamp(), "draftContent": r("DashboardMetric"), "openConflicts": r("DashboardMetric"),
-            "openRfqs": r("DashboardMetric"),
+            "generatedAt": timestamp(), "draftContent": r("DashboardMetric"), "openRfqs": r("DashboardMetric"),
             "analytics": nullable(r("AnalyticsConsentedMetrics")), "recentActivity": array(r("AuditEvent")),
             "readinessItemCount": counter()
         })

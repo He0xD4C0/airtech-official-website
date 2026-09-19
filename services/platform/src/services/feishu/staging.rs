@@ -39,6 +39,12 @@ pub async fn stage_invalid_record(
         return Err(ApiError::internal("Encrypted Feishu staging is invalid."));
     }
     let mut transaction = state.pool.begin().await?;
+    let validation_results = record
+        .issues
+        .iter()
+        .chain(record.warnings.iter())
+        .cloned()
+        .collect::<Vec<_>>();
     let snapshot_id = Uuid::new_v4();
     sqlx::query(
         r#"INSERT INTO source_snapshots
@@ -50,7 +56,7 @@ pub async fn stage_invalid_record(
     .bind(sync_run_id)
     .bind(&record.source_record_id)
     .bind(&record.source_revision)
-    .bind(&record.source_checksum)
+    .bind(&record.confidential_checksum)
     .bind(&record.snapshot_payload)
     .execute(&mut *transaction)
     .await?;
@@ -66,7 +72,7 @@ pub async fn stage_invalid_record(
     .bind(snapshot_id)
     .bind(&record.source_record_id)
     .bind(&record.normalized_payload)
-    .bind(json!(record.issues))
+    .bind(json!(validation_results))
     .execute(&mut *transaction)
     .await?;
     let nonce = &encrypted[..12];
@@ -117,6 +123,23 @@ pub async fn stage_invalid_record(
         .bind(&issue.code)
         .bind(&issue.field_path)
         .bind(&issue.detail)
+        .execute(&mut *transaction)
+        .await?;
+    }
+    for warning in &record.warnings {
+        sqlx::query(
+            r#"INSERT INTO product_import_errors
+               (id,import_run_id,private_staging_id,source_record_id,severity,error_code,
+                field_path,message,details,created_at)
+               VALUES ($1,$2,$3,$4,'warning',$5,$6,$7,'{}'::jsonb,now())"#,
+        )
+        .bind(Uuid::new_v4())
+        .bind(import_run_id)
+        .bind(private_id)
+        .bind(&record.source_record_id)
+        .bind(&warning.code)
+        .bind(&warning.field_path)
+        .bind(&warning.detail)
         .execute(&mut *transaction)
         .await?;
     }

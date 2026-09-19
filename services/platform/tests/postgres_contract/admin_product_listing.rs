@@ -30,7 +30,7 @@ async fn five_thousand_products_use_filtered_faceted_keyset_pages() {
            VALUES($1,'feishu',true,'test','completed',now(),
                   jsonb_build_object('id',$1::text,'source','feishu','dryRun',true,
                     'mappingVersion','test','status','completed','resumeCursor',NULL,
-                    'recordsSeen',0,'recordsValid',0,'conflictCount',0,
+                    'recordsSeen',0,'recordsValid',0,
                     'startedAt',now(),'completedAt',now(),'error',NULL))"#,
     )
     .bind(run_id)

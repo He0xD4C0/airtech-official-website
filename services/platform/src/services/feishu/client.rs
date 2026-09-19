@@ -5,10 +5,7 @@ use serde::{de::DeserializeOwned, Deserialize};
 use serde_json::{Map, Value};
 use tokio::sync::Mutex;
 
-use crate::{
-    config::{Config, FeishuCredentials},
-    error::ApiError,
-};
+use crate::{config::FeishuCredentials, error::ApiError};
 
 const MAX_ATTEMPTS: usize = 4;
 
@@ -22,7 +19,7 @@ pub use download::{AssetProbe, DownloadedAsset};
 pub struct FeishuClient {
     http: reqwest::Client,
     base_url: String,
-    credentials: Option<FeishuCredentials>,
+    credentials: FeishuCredentials,
     token: Arc<Mutex<Option<CachedToken>>>,
 }
 
@@ -113,23 +110,36 @@ struct RecordPage {
 }
 
 impl FeishuClient {
-    pub fn new(config: &Config) -> Self {
+    pub fn new(base_url: &str, credentials: FeishuCredentials) -> Self {
+        Self::with_timeout(base_url, credentials, Duration::from_secs(120))
+    }
+
+    fn with_timeout(
+        base_url: &str,
+        credentials: FeishuCredentials,
+        request_timeout: Duration,
+    ) -> Self {
         let http = reqwest::Client::builder()
             .connect_timeout(Duration::from_secs(15))
-            .timeout(Duration::from_secs(120))
+            .timeout(request_timeout)
             .user_agent("AIRTEKPOWER-Feishu-Sync/1")
             .build()
             .expect("static Feishu HTTP client configuration is valid");
         Self {
             http,
-            base_url: config.feishu_api_base_url.trim_end_matches('/').to_owned(),
-            credentials: config.feishu.clone(),
+            base_url: base_url.trim_end_matches('/').to_owned(),
+            credentials,
             token: Arc::new(Mutex::new(None)),
         }
     }
 
-    pub fn configured(&self) -> bool {
-        self.credentials.is_some()
+    #[cfg(test)]
+    pub(super) fn new_with_timeout(
+        base_url: &str,
+        credentials: FeishuCredentials,
+        request_timeout: Duration,
+    ) -> Self {
+        Self::with_timeout(base_url, credentials, request_timeout)
     }
 
     pub async fn test_token(&self) -> Result<(), ApiError> {
@@ -198,9 +208,23 @@ impl FeishuClient {
         })
     }
 
-    pub async fn download_asset(&self, file_token: &str) -> Result<DownloadedAsset, ApiError> {
+    pub async fn probe_records(&self, app_token: &str, table_id: &str) -> Result<(), ApiError> {
+        let path = format!("/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records");
+        self.get_json::<RecordPage>(&path, &[("page_size", "1")])
+            .await
+            .map(|_| ())
+    }
+
+    pub async fn download_asset(
+        &self,
+        file_token: &str,
+        permission_extra: Option<&str>,
+    ) -> Result<DownloadedAsset, ApiError> {
         let path = format!("/open-apis/drive/v1/medias/{file_token}/download");
-        let response = self.authorized_response(Method::GET, &path, &[]).await?;
+        let query = permission_extra
+            .map(|extra| vec![("extra", extra)])
+            .unwrap_or_default();
+        let response = self.authorized_response(Method::GET, &path, &query).await?;
         download::stage_asset(response).await
     }
 
@@ -209,21 +233,36 @@ impl FeishuClient {
         path: &str,
         query: &[(&str, &str)],
     ) -> Result<T, ApiError> {
-        let response = self.authorized_response(Method::GET, path, query).await?;
-        let envelope: Envelope<T> = response.json().await.map_err(|error| {
-            tracing::warn!(%error, "Feishu response JSON was invalid");
-            ApiError::service_unavailable("Feishu returned an invalid response.")
-        })?;
-        if envelope.code != 0 {
+        for attempt in 0..MAX_ATTEMPTS {
+            let response = self.authorized_response(Method::GET, path, query).await?;
+            let envelope: Envelope<T> = response.json().await.map_err(|error| {
+                tracing::warn!(%error, "Feishu response JSON was invalid");
+                ApiError::service_unavailable("Feishu returned an invalid response.")
+            })?;
+            if envelope.code == 0 {
+                return envelope.data.ok_or_else(|| {
+                    ApiError::service_unavailable("Feishu response data is missing.")
+                });
+            }
             tracing::warn!(code = envelope.code, "Feishu API rejected a request");
+            if transient_application_code(envelope.code) {
+                if attempt + 1 < MAX_ATTEMPTS {
+                    tokio::time::sleep(backoff(attempt)).await;
+                    continue;
+                }
+                return Err(ApiError::service_unavailable(format!(
+                    "Feishu retry budget was exhausted for code {}.",
+                    envelope.code
+                )));
+            }
             return Err(ApiError::conflict(format!(
                 "Feishu API rejected the request with code {}.",
                 envelope.code
             )));
         }
-        envelope
-            .data
-            .ok_or_else(|| ApiError::service_unavailable("Feishu response data is missing."))
+        Err(ApiError::service_unavailable(
+            "Feishu retry budget was exhausted.",
+        ))
     }
 
     async fn authorized_response(
@@ -287,10 +326,8 @@ impl FeishuClient {
                 }
             }
         }
-        let credentials = self.credentials.as_ref().ok_or_else(|| {
-            ApiError::service_unavailable("Feishu credentials are not configured.")
-        })?;
-        let response = self.request_token(credentials).await?;
+        let credentials = self.credentials.clone();
+        let response = self.request_token(&credentials).await?;
         if response.code != 0 {
             tracing::warn!(code = response.code, "Feishu token request was rejected");
             return Err(ApiError::service_unavailable(
@@ -382,6 +419,12 @@ fn retry_after(response: &reqwest::Response) -> Option<Duration> {
         .parse::<u64>()
         .ok()
         .map(Duration::from_secs)
+}
+
+fn transient_application_code(code: i32) -> bool {
+    code == 1_254_290
+        || (1_255_001..=1_255_005).contains(&code)
+        || matches!(code, 1_254_607 | 1_255_040)
 }
 
 fn network_error(error: reqwest::Error) -> ApiError {

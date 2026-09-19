@@ -2,8 +2,9 @@ use std::{
     collections::BTreeMap,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc,
+        Arc, Mutex,
     },
+    time::Duration,
 };
 
 use axum::{
@@ -15,7 +16,7 @@ use axum::{
 };
 use serde_json::json;
 
-use crate::config::{Config, FeishuCredentials};
+use crate::config::FeishuCredentials;
 
 use super::FeishuClient;
 
@@ -25,8 +26,11 @@ struct MockState {
     field_calls: Arc<AtomicUsize>,
     record_calls: Arc<AtomicUsize>,
     retry_fields: Arc<AtomicBool>,
+    retry_records: Arc<AtomicBool>,
+    slow_records: Arc<AtomicBool>,
     reject_records: Arc<AtomicBool>,
     fail_first_token: Arc<AtomicBool>,
+    download_extra: Arc<Mutex<Option<String>>>,
 }
 
 async fn token(State(state): State<MockState>) -> Response {
@@ -94,7 +98,13 @@ async fn records(
     State(state): State<MockState>,
     Query(query): Query<BTreeMap<String, String>>,
 ) -> Response {
-    state.record_calls.fetch_add(1, Ordering::SeqCst);
+    let call = state.record_calls.fetch_add(1, Ordering::SeqCst);
+    if state.slow_records.load(Ordering::SeqCst) {
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+    if state.retry_records.load(Ordering::SeqCst) && call == 0 {
+        return Json(json!({"code": 1254290, "msg": "rate limited"})).into_response();
+    }
     if state.reject_records.load(Ordering::SeqCst) {
         return Json(json!({"code": 1254302, "msg": "table unavailable"})).into_response();
     }
@@ -117,7 +127,12 @@ async fn records(
     .into_response()
 }
 
-async fn download(Path(token): Path<String>) -> Response {
+async fn download(
+    State(state): State<MockState>,
+    Path(token): Path<String>,
+    Query(query): Query<BTreeMap<String, String>>,
+) -> Response {
+    *state.download_extra.lock().expect("download query lock") = query.get("extra").cloned();
     if token == "missing" {
         return StatusCode::NOT_FOUND.into_response();
     }
@@ -129,6 +144,13 @@ async fn download(Path(token): Path<String>) -> Response {
 }
 
 async fn mock_client(state: MockState) -> (FeishuClient, tokio::task::JoinHandle<()>) {
+    mock_client_with_timeout(state, Duration::from_secs(120)).await
+}
+
+async fn mock_client_with_timeout(
+    state: MockState,
+    timeout: Duration,
+) -> (FeishuClient, tokio::task::JoinHandle<()>) {
     let app = Router::new()
         .route(
             "/open-apis/auth/v3/tenant_access_token/internal",
@@ -151,10 +173,14 @@ async fn mock_client(state: MockState) -> (FeishuClient, tokio::task::JoinHandle
     let handle = tokio::spawn(async move {
         axum::serve(listener, app).await.expect("mock server");
     });
-    let mut config = Config::for_test();
-    config.feishu = Some(FeishuCredentials::new("app".into(), "secret".into()));
-    config.feishu_api_base_url = format!("http://{address}");
-    (FeishuClient::new(&config), handle)
+    (
+        FeishuClient::new_with_timeout(
+            &format!("http://{address}"),
+            FeishuCredentials::new("app".into(), "secret".into()),
+            timeout,
+        ),
+        handle,
+    )
 }
 
 #[tokio::test]
@@ -223,10 +249,49 @@ async fn treats_application_rejections_as_non_retryable_table_errors() {
 }
 
 #[tokio::test]
-async fn downloads_and_hashes_attachments_but_rejects_oversized_content() {
-    let (client, server) = mock_client(MockState::default()).await;
+async fn retries_transient_application_rate_limits() {
+    let state = MockState::default();
+    state.retry_records.store(true, Ordering::SeqCst);
+    let counters = state.clone();
+    let (client, server) = mock_client(state).await;
 
-    let downloaded = client.download_asset("pdf").await.unwrap();
+    let page = client
+        .list_records_page("app", "table", None)
+        .await
+        .unwrap();
+    assert_eq!(page.items[0].record_id, "rec-1");
+    assert_eq!(counters.record_calls.load(Ordering::SeqCst), 2);
+    server.abort();
+}
+
+#[tokio::test]
+async fn bounded_request_timeouts_fail_without_exposing_transport_details() {
+    let state = MockState::default();
+    state.slow_records.store(true, Ordering::SeqCst);
+    let (client, server) = mock_client_with_timeout(state, Duration::from_millis(2)).await;
+
+    let error = client
+        .list_records_page("app", "table", None)
+        .await
+        .unwrap_err();
+    assert_eq!(error.status(), StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(
+        error.to_string(),
+        "Service unavailable: Feishu is temporarily unavailable."
+    );
+    server.abort();
+}
+
+#[tokio::test]
+async fn downloads_and_hashes_attachments_but_rejects_oversized_content() {
+    let state = MockState::default();
+    let observed = state.clone();
+    let (client, server) = mock_client(state).await;
+
+    let downloaded = client
+        .download_asset("pdf", Some("bitable-permission-extra"))
+        .await
+        .unwrap();
     assert_eq!(
         tokio::fs::read(downloaded.path()).await.unwrap(),
         b"%PDF-1.7\nmock"
@@ -234,6 +299,14 @@ async fn downloads_and_hashes_attachments_but_rejects_oversized_content() {
     assert_eq!(downloaded.byte_size, 13);
     assert_eq!(downloaded.content_type.as_deref(), Some("application/pdf"));
     assert_eq!(downloaded.sha256.len(), 64);
+    assert_eq!(
+        observed
+            .download_extra
+            .lock()
+            .expect("download query lock")
+            .as_deref(),
+        Some("bitable-permission-extra")
+    );
     let staged_path = downloaded.path().to_owned();
     drop(downloaded);
     assert!(!staged_path.exists());
@@ -243,7 +316,7 @@ async fn downloads_and_hashes_attachments_but_rejects_oversized_content() {
         .unwrap();
     assert_eq!(error.status(), StatusCode::PAYLOAD_TOO_LARGE);
 
-    let missing = client.download_asset("missing").await.err().unwrap();
+    let missing = client.download_asset("missing", None).await.err().unwrap();
     assert_eq!(missing.status(), StatusCode::CONFLICT);
     server.abort();
 }

@@ -52,11 +52,6 @@ async function loadNavigationBadges(): Promise<void> {
   const badges: Record<string, string> = {}
   const requests: Array<Promise<void>> = []
 
-  if (auth.hasPermission('integration.run')) {
-    requests.push(adminApi.listConflicts({ limit: 1 }).then((page) => {
-      if (page.total) badges['/integrations/feishu'] = String(page.total)
-    }))
-  }
   if (auth.hasPermission('rfq.read')) {
     requests.push(adminApi.listRfqs({ limit: 1 }).then((rfqs) => {
       if (rfqs.total) badges['/rfqs'] = String(rfqs.total)

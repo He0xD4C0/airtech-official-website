@@ -66,7 +66,8 @@ credentials there. The main configuration groups are:
 | Analytics vocabulary | `AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES`, `AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS`, `AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS` register the only UTM identifiers the API may store; unknown free text is rejected |
 | Direct media | Endpoint, bucket, credentials, key prefix and public base URL are database settings managed through Admin; uploads retain the fixed 25 MiB limit |
 | Development behavior | `VITE_ENABLE_DEVTOOLS`, cookie-banner test switch, `RUST_LOG` |
-| Reserved external adapters | Feishu and GA4 placeholders; blank values do not enable an adapter |
+| Feishu Product Master | App ID, write-only App Secret, selected source tables and schedules are PostgreSQL settings managed through Admin; no Feishu credential environment variables are accepted |
+| Reserved external adapters | GA4 placeholder only; a blank value does not enable the adapter |
 
 Application image builds use the official npm and crates.io sources by default.
 `AIRTEK_NPM_REGISTRY` optionally selects the Web/Admin npm registry;
@@ -479,12 +480,24 @@ repository does not provide a CDN or third-party malware scanner.
 
 ## Data and publication rules
 
-- A supplied, owner-approved Product Master CSV is authoritative only for its
-  registered environment, checksum, and mapping version. Future Feishu changes
-  still pass through staging, three-way diff, validation, and an explicit
-  publish action.
+- A supplied, owner-approved Product Master CSV remains authoritative only for
+  its registered environment, checksum, and mapping version.
+- For enabled Feishu sources, Feishu is the one-way authority for product facts
+  and source attachments. Every manual or scheduled run fully scans only the
+  selected tables, validates records independently, and automatically publishes
+  valid immutable product revisions. It never writes back to Feishu and never
+  creates XLSX, CSV, JSON, or another export artifact.
+- A failed record retains its previous public revision. A table access, schema,
+  pagination, or timeout failure prevents missing-record deletion for that table.
+  A successfully scanned missing record, or an explicitly disabled/removed
+  source, becomes immediately invisible and is then physically purged by a
+  durable cleanup task.
+- Feishu pricing remains encrypted in private Product Master staging and is
+  excluded from public revisions, ordinary logs, and public APIs. Feishu App
+  Secret is a separate GUI-managed plaintext PostgreSQL value that is never
+  returned by read APIs or copied to audit JSON.
 - The HTML demos under `docs/Plan & Solution/` are interaction references only. Their product specifications, curves, downloads, scores, and colors are not production data.
-- The public application reads only published projections. Drafts, source snapshots, conflicts, RFQ records, users, and audit data are admin-only.
+- The public application reads only published projections. Drafts, source snapshots, RFQ records, users, and audit data are admin-only.
 - Public RFQs never accept file uploads.
 - Placeholder pages are `noindex` and omitted from public sitemaps.
 - Development fixture ownership is one-way: clearing `isPlaceholder` in Admin
@@ -522,8 +535,12 @@ repository does not provide a CDN or third-party malware scanner.
   credentials, monitoring, off-host backup and an end-to-end smoke test; none
   is implied by checked-in configuration. Machine scanning is not part of the
   media workflow.
-- Feishu and GA4 values are still reserved configuration only; no live Feishu
-  synchronization or GA4 loading is implied.
+- The Feishu adapter, full-scan scheduler, dynamic source selection, automatic
+  publication, attachment ingestion, deletion reconciliation, and Admin run
+  diagnostics are implemented. A deployment is not a proven live integration
+  until an administrator configures object storage, saves the real Feishu
+  credentials and sources, passes the connection test, and completes a real
+  end-to-end run. GA4 remains an unconnected reserved adapter.
 - Consent-gated first-party analytics events are sanitized in the public client,
   accepted by the Rust API, and exposed through the admin aggregate. A GA4
   provider adapter is not connected, so no GA4 loading is implied.

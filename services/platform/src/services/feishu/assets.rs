@@ -1,6 +1,4 @@
-use std::path::Path;
-
-use serde_json::json;
+use serde_json::{json, Map, Value};
 use sqlx::Row;
 use uuid::Uuid;
 
@@ -10,7 +8,11 @@ use crate::{
     state::AppState,
 };
 
-use super::{client::AssetProbe, token_hash, SourceAttachment};
+use super::{client::AssetProbe, token_hash, FeishuClient, SourceAttachment};
+
+#[path = "asset_types.rs"]
+mod asset_types;
+use asset_types::{classify_asset, sanitize_name, staged_attachment_error, AssetType};
 
 #[derive(Clone, Debug)]
 pub struct StoredSourceAsset {
@@ -27,21 +29,16 @@ pub struct StoredSourceAsset {
     pub newly_created: bool,
 }
 
-#[derive(Clone, Copy)]
-struct AssetType {
-    mime: &'static str,
-    extension: &'static str,
-    image: bool,
-}
-
 pub async fn store_source_assets(
     state: &AppState,
+    client: &FeishuClient,
     connector_id: Uuid,
+    sync_run_id: Uuid,
     attachments: &[SourceAttachment],
 ) -> Result<Vec<StoredSourceAsset>, ApiError> {
     let mut stored = Vec::with_capacity(attachments.len());
     for attachment in attachments {
-        match store_source_asset(state, connector_id, attachment).await {
+        match store_source_asset(state, client, connector_id, sync_run_id, attachment).await {
             Ok(asset) => stored.push(asset),
             Err(error) => {
                 super::compensate_source_assets(state, &stored).await;
@@ -54,13 +51,16 @@ pub async fn store_source_assets(
 
 async fn store_source_asset(
     state: &AppState,
+    client: &FeishuClient,
     connector_id: Uuid,
+    sync_run_id: Uuid,
     attachment: &SourceAttachment,
 ) -> Result<StoredSourceAsset, ApiError> {
     let source_token_hash = token_hash(&attachment.file_token);
     if let Some(asset) = load_binding(
         state,
         connector_id,
+        sync_run_id,
         &source_token_hash,
         &attachment.source_revision,
         attachment,
@@ -69,9 +69,9 @@ async fn store_source_asset(
     {
         return Ok(asset);
     }
-    let downloaded = state
-        .feishu_client
-        .download_asset(&attachment.file_token)
+    let extra = attachment_permission_extra(attachment);
+    let downloaded = client
+        .download_asset(&attachment.file_token, Some(&extra))
         .await?;
     if attachment
         .declared_size
@@ -99,6 +99,7 @@ async fn store_source_asset(
     if let Some(asset) = load_checksum_asset(
         state,
         connector_id,
+        sync_run_id,
         &source_token_hash,
         &attachment.source_revision,
         &downloaded.sha256,
@@ -142,7 +143,14 @@ async fn store_source_asset(
         if let Err(error) =
             media::put_object(&settings, key, "image/webp", preview.bytes.clone()).await
         {
-            let _ = media::delete_object(&settings, &storage_key).await;
+            defer_or_delete_orphan(
+                state,
+                &settings,
+                &storage_key,
+                preview_key.as_deref(),
+                "previewUploadFailed",
+            )
+            .await;
             return Err(error);
         }
     }
@@ -153,6 +161,7 @@ async fn store_source_asset(
     let persisted = persist_new_asset(
         state,
         connector_id,
+        sync_run_id,
         attachment,
         &source_token_hash,
         asset_id,
@@ -182,19 +191,59 @@ async fn store_source_asset(
             newly_created: true,
         }),
         Err(error) => {
-            if let Some(key) = preview_key.as_deref() {
-                let _ = media::delete_object(&settings, key).await;
-            }
-            let _ = media::delete_object(&settings, &storage_key).await;
+            defer_or_delete_orphan(
+                state,
+                &settings,
+                &storage_key,
+                preview_key.as_deref(),
+                "catalogueCommitFailed",
+            )
+            .await;
             Err(error)
         }
     }
+}
+
+async fn defer_or_delete_orphan(
+    state: &AppState,
+    settings: &media::MediaStorageSettings,
+    storage_key: &str,
+    preview_key: Option<&str>,
+    reason: &str,
+) {
+    if let Err(error) =
+        super::queue_orphan_object_cleanup(state, storage_key, preview_key, reason).await
+    {
+        tracing::error!(%error, storage_key, "Feishu orphan cleanup could not be persisted");
+        if let Some(key) = preview_key {
+            let _ = media::delete_object(settings, key).await;
+        }
+        let _ = media::delete_object(settings, storage_key).await;
+    }
+}
+
+fn attachment_permission_extra(attachment: &SourceAttachment) -> String {
+    let mut records = Map::new();
+    records.insert(
+        attachment.source_record_id.clone(),
+        json!([attachment.file_token]),
+    );
+    let mut fields = Map::new();
+    fields.insert(attachment.source_field_id.clone(), Value::Object(records));
+    json!({
+        "bitablePerm": {
+            "tableId": attachment.table_id,
+            "attachments": Value::Object(fields)
+        }
+    })
+    .to_string()
 }
 
 #[allow(clippy::too_many_arguments)]
 async fn persist_new_asset(
     state: &AppState,
     connector_id: Uuid,
+    sync_run_id: Uuid,
     attachment: &SourceAttachment,
     source_token_hash: &str,
     asset_id: Uuid,
@@ -244,6 +293,7 @@ async fn persist_new_asset(
     insert_binding(
         &mut transaction,
         connector_id,
+        sync_run_id,
         source_token_hash,
         &attachment.source_revision,
         asset_id,
@@ -257,6 +307,7 @@ async fn persist_new_asset(
 async fn load_binding(
     state: &AppState,
     connector_id: Uuid,
+    _sync_run_id: Uuid,
     token_hash: &str,
     revision: &str,
     attachment: &SourceAttachment,
@@ -282,6 +333,7 @@ async fn load_binding(
 async fn load_checksum_asset(
     state: &AppState,
     connector_id: Uuid,
+    sync_run_id: Uuid,
     token_hash: &str,
     revision: &str,
     checksum: &str,
@@ -302,6 +354,7 @@ async fn load_checksum_asset(
     insert_binding(
         &mut transaction,
         connector_id,
+        sync_run_id,
         token_hash,
         revision,
         asset_id,
@@ -315,6 +368,7 @@ async fn load_checksum_asset(
 async fn insert_binding(
     transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     connector_id: Uuid,
+    sync_run_id: Uuid,
     token_hash: &str,
     revision: &str,
     asset_id: Uuid,
@@ -322,8 +376,9 @@ async fn insert_binding(
 ) -> Result<(), ApiError> {
     sqlx::query(
         r#"INSERT INTO feishu_asset_bindings
-           (id,connector_id,source_token_hash,source_revision,media_asset_id,checksum)
-           VALUES ($1,$2,$3,$4,$5,$6)
+           (id,connector_id,source_token_hash,source_revision,media_asset_id,checksum,
+            created_by_sync_run_id)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)
            ON CONFLICT (connector_id,source_token_hash,source_revision) DO NOTHING"#,
     )
     .bind(Uuid::new_v4())
@@ -332,6 +387,7 @@ async fn insert_binding(
     .bind(revision)
     .bind(asset_id)
     .bind(checksum)
+    .bind(sync_run_id)
     .execute(&mut **transaction)
     .await?;
     Ok(())
@@ -355,133 +411,6 @@ fn decode_stored(
         usage: attachment.usage.clone(),
         newly_created,
     })
-}
-
-fn classify_asset(
-    name: &str,
-    probe: &AssetProbe,
-    byte_size: u64,
-    response_type: Option<&str>,
-    declared_type: Option<&str>,
-) -> Result<AssetType, ApiError> {
-    if let Some(image) = media::sniff_media_type(probe.prefix()) {
-        return Ok(AssetType {
-            mime: image.mime,
-            extension: image.extension,
-            image: true,
-        });
-    }
-    let extension = Path::new(name)
-        .extension()
-        .and_then(|value| value.to_str())
-        .map(str::to_ascii_lowercase)
-        .ok_or_else(unsupported_asset)?;
-    let asset = document_type(&extension).ok_or_else(unsupported_asset)?;
-    if !valid_signature(asset.extension, probe, byte_size) {
-        return Err(ApiError::new(
-            axum::http::StatusCode::UNSUPPORTED_MEDIA_TYPE,
-            "Unsupported media type",
-            "The Feishu attachment content does not match its supported file type.",
-        ));
-    }
-    for supplied in [response_type, declared_type].into_iter().flatten() {
-        let supplied = supplied.split(';').next().unwrap_or(supplied).trim();
-        if supplied != "application/octet-stream"
-            && !supplied.eq_ignore_ascii_case(asset.mime)
-            && !compatible_office_type(asset.extension, supplied)
-        {
-            return Err(ApiError::conflict(
-                "Feishu attachment MIME metadata conflicts with its validated content.",
-            ));
-        }
-    }
-    Ok(asset)
-}
-
-fn document_type(extension: &str) -> Option<AssetType> {
-    let (mime, extension) = match extension {
-        "pdf" => ("application/pdf", "pdf"),
-        "doc" => ("application/msword", "doc"),
-        "docx" => (
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "docx",
-        ),
-        "xls" => ("application/vnd.ms-excel", "xls"),
-        "xlsx" => (
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "xlsx",
-        ),
-        "dxf" => ("image/vnd.dxf", "dxf"),
-        "dwg" => ("image/vnd.dwg", "dwg"),
-        "step" => ("model/step", "step"),
-        "stp" => ("model/step", "stp"),
-        "iges" => ("model/iges", "iges"),
-        "igs" => ("model/iges", "igs"),
-        "stl" => ("model/stl", "stl"),
-        "obj" => ("model/obj", "obj"),
-        "3ds" => ("application/x-3ds", "3ds"),
-        "sat" => ("application/octet-stream", "sat"),
-        "prt" => ("application/octet-stream", "prt"),
-        "sldprt" => ("application/octet-stream", "sldprt"),
-        "asm" => ("application/octet-stream", "asm"),
-        "sldasm" => ("application/octet-stream", "sldasm"),
-        _ => return None,
-    };
-    Some(AssetType {
-        mime,
-        extension,
-        image: false,
-    })
-}
-
-fn valid_signature(extension: &str, probe: &AssetProbe, byte_size: u64) -> bool {
-    let bytes = probe.prefix();
-    match extension {
-        "pdf" => bytes.starts_with(b"%PDF-"),
-        "doc" | "xls" => bytes.starts_with(&[0xd0, 0xcf, 0x11, 0xe0]),
-        "docx" => bytes.starts_with(b"PK\x03\x04") && probe.has_office_path(b"word/"),
-        "xlsx" => bytes.starts_with(b"PK\x03\x04") && probe.has_office_path(b"xl/"),
-        "dwg" => bytes.starts_with(b"AC10"),
-        "dxf" => bytes.starts_with(b"0\nSECTION") || bytes.starts_with(b"0\r\nSECTION"),
-        "step" | "stp" => bytes.starts_with(b"ISO-10303-21"),
-        "iges" | "igs" => byte_size >= 80,
-        "stl" => bytes.starts_with(b"solid") || byte_size >= 84,
-        "obj" => bytes.starts_with(b"#") || bytes.starts_with(b"v "),
-        _ => byte_size > 0,
-    }
-}
-
-fn staged_attachment_error(error: std::io::Error) -> ApiError {
-    tracing::error!(%error, "staged Feishu attachment could not be read");
-    ApiError::service_unavailable("Feishu attachment staging is unavailable.")
-}
-
-fn compatible_office_type(extension: &str, supplied: &str) -> bool {
-    matches!(extension, "docx" | "xlsx") && supplied == "application/zip"
-}
-
-fn unsupported_asset() -> ApiError {
-    ApiError::new(
-        axum::http::StatusCode::UNSUPPORTED_MEDIA_TYPE,
-        "Unsupported media type",
-        "Only PNG, JPEG, WebP, PDF, Word, Excel, and supported CAD originals are accepted.",
-    )
-}
-
-fn sanitize_name(value: &str) -> String {
-    let value = value
-        .rsplit(['/', '\\'])
-        .next()
-        .unwrap_or(value)
-        .chars()
-        .filter(|character| !character.is_control())
-        .take(180)
-        .collect::<String>();
-    if value.trim().is_empty() {
-        "feishu-attachment".into()
-    } else {
-        value
-    }
 }
 
 #[cfg(test)]

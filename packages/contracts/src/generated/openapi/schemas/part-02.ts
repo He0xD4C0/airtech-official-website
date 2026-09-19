@@ -332,34 +332,54 @@ FeishuConnectionStatus: {
 FeishuConnectionTest: {
             /** Format: date-time */
             checkedAt: string;
+            /** Format: int64 */
+            connectionRevision: number;
             credentialsConfigured: boolean;
             objectStorageReady: boolean;
+            privateStagingReady: boolean;
             runnable: boolean;
             tables: components["schemas"]["FeishuTableCheck"][];
             tokenIssued: boolean;
         };
-FeishuRollbackReport: {
-            /** Format: date-time */
-            completedAt: string;
-            restored: number;
-            skipped: number;
+FeishuRunTableResult: {
+            assetsCopied: number;
+            assetsFailed: number;
+            assetsReused: number;
+            assetsSeen: number;
+            completedAt: string | null;
+            error: string | null;
+            recordsApplied: number;
+            recordsDeleted: number;
+            recordsFailed: number;
+            recordsSeen: number;
+            sourceName: string;
+            /** @enum {string} */
+            status: "pending" | "fetching" | "completed" | "failed";
             /** Format: uuid */
             syncRunId: string;
+            tableId: string;
+            wikiToken: string;
         };
 FeishuSettings: {
+            appId: string | null;
+            /** Format: int64 */
+            connectionRevision: number;
             /** Format: uuid */
             connectorId: string;
+            dailyEnabled: boolean;
+            dailyLocalTime: string;
             enabled: boolean;
-            fullReconcileEnabled: boolean;
-            fullReconcileLocalTime: string;
+            intervalEnabled: boolean;
             intervalMinutes: number;
-            lastFullAt: string | null;
-            lastIncrementalAt: string | null;
-            /** @constant */
-            mappingVersion: "feishu-product-v1";
+            lastConnectionTestAt: string | null;
+            lastDailyAt: string | null;
+            lastIntervalAt: string | null;
+            readonly mappingVersion: string;
             /** Format: int64 */
             revision: number;
+            readonly secretConfigured: boolean;
             sources: components["schemas"]["FeishuSource"][];
+            testedConnectionRevision: number | null;
             /** @constant */
             timezone: "Asia/Shanghai";
             /** Format: date-time */
@@ -368,6 +388,7 @@ FeishuSettings: {
         };
 FeishuSource: {
             application: string | null;
+            enabled: boolean;
             family: components["schemas"]["ProductFamily"];
             name: string;
             tableId: string;
@@ -379,12 +400,17 @@ FeishuSyncError: {
             createdAt: string;
             fieldPath: string | null;
             message: string;
+            /** @enum {string} */
+            severity: "warning" | "error";
             sourceRecordId: string | null;
         };
 FeishuSyncRunDetail: {
             errors: components["schemas"]["FeishuSyncError"][];
             run: components["schemas"]["SyncRun"];
+            tables: components["schemas"]["FeishuRunTableResult"][];
         };
+/** @enum {string} */
+        FeishuSyncTrigger: "manual" | "interval" | "daily" | "initial";
 FeishuTableCheck: {
             accessible: boolean;
             errors: string[];
@@ -392,13 +418,7 @@ FeishuTableCheck: {
             mappingValid: boolean;
             name: string;
             tableId: string;
-        };
-FieldDiff: {
-            baseValue: unknown | null;
-            fieldPath: string;
-            incomingValue: unknown | null;
-            localValue: unknown | null;
-            sourceOwned: boolean;
+            wikiToken: string;
         };
 FooterColumn: {
             /** Format: uuid */
@@ -468,25 +488,4 @@ GeneralInformationTypeFields: {
             productCategories: components["schemas"]["ProductCategoryPresentationInput"][];
             socialLinks: components["schemas"]["SocialLinkInput"][];
         };
-GuestSourceDaily: {
-            /** Format: date */
-            bucketDate: string;
-            campaign: string | null;
-            landingPath: string;
-            locale: string;
-            medium: string | null;
-            pageViews: number;
-            referrerDomain: string | null;
-            rfqStarts: number;
-            rfqSubmissions: number;
-            source: string;
-            sourceName: string | null;
-            utmSource: string | null;
-            visits: number;
-        };
-GuestSourceDailyPage: {
-            items: components["schemas"]["GuestSourceDaily"][];
-            nextCursor: string | null;
-        };
-GuestSourceSummary: components["schemas"]["GuestSourceDaily"];
 }

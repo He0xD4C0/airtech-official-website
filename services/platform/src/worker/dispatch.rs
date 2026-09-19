@@ -118,14 +118,28 @@ pub(super) async fn claim_and_run(
     }
     let lease_owner = format!("worker:{}", Uuid::new_v4());
     let row = sqlx::query(
-        r#"SELECT id, job_type, payload, attempts, max_attempts
-           FROM jobs
-           WHERE (status = 'queued' AND available_at <= now() AND attempts < max_attempts)
-              OR (status = 'running' AND attempts < max_attempts AND (
-                    lease_expires_at < now()
-                    OR (lease_expires_at IS NULL AND updated_at < now() - interval '5 minutes')
-                 ))
-           ORDER BY created_at
+        r#"SELECT candidate.id, candidate.job_type, candidate.payload,
+                  candidate.attempts, candidate.max_attempts
+           FROM jobs candidate
+           WHERE (
+             (candidate.status='queued' AND candidate.available_at<=now()
+                AND candidate.attempts<candidate.max_attempts)
+             OR (candidate.status='running' AND candidate.attempts<candidate.max_attempts
+                AND (candidate.lease_expires_at<now()
+                  OR (candidate.lease_expires_at IS NULL
+                    AND candidate.updated_at<now()-interval '5 minutes')))
+           ) AND (
+             candidate.connector_id IS NULL
+             OR candidate.job_type NOT IN ('feishuSync','feishuSourcePurge')
+             OR NOT EXISTS(
+               SELECT 1 FROM jobs active
+               WHERE active.id<>candidate.id
+                 AND active.connector_id=candidate.connector_id
+                 AND active.job_type IN ('feishuSync','feishuSourcePurge')
+                 AND active.status='running'
+             )
+           )
+           ORDER BY candidate.created_at
            FOR UPDATE SKIP LOCKED
            LIMIT 1"#,
     )
@@ -296,6 +310,21 @@ pub(super) async fn execute_job(
         "feishuSync" => {
             let sync_run_id = feishu_sync_id_from_job_payload(&payload)?;
             crate::services::feishu::execute_sync_run(state, sync_run_id).await
+        }
+        "feishuSourcePurge" => {
+            let (connector_id, wiki_token, table_id) =
+                crate::services::feishu::parse_purge_payload(&payload)?;
+            crate::services::feishu::execute_source_purge(
+                state,
+                connector_id,
+                &wiki_token,
+                &table_id,
+            )
+            .await
+        }
+        "feishuObjectCleanup" => {
+            let asset_id = crate::services::feishu::parse_object_cleanup_payload(&payload)?;
+            crate::services::feishu::execute_object_cleanup(state, asset_id).await
         }
         _ => Err("This retired job type is no longer executable.".into()),
     }

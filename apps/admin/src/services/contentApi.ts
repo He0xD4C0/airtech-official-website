@@ -157,7 +157,7 @@ export const contentApi = {
 
   async searchProducts(value: ProductSearchQuery = {}): Promise<ProductSearchPage> {
     const result = await adminContractClient.get('/api/admin/v1/products', {
-      parameters: { query: query(value) },
+      parameters: { query: { ...query(value), status: 'published' } },
     })
     return { items: result.data.items, nextCursor: result.data.nextCursor }
   },

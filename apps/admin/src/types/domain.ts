@@ -48,15 +48,5 @@ export interface ProductSummary {
   overrideExpiresAt?: string
 }
 
-export interface SyncConflict {
-  id: string
-  field: string
-  entity: string
-  base: string
-  local: string
-  incoming: string
-  severity: 'blocking' | 'warning'
-}
-
 export type ApiProblem = ProblemDetails
 import type { ProblemDetails } from '@airtek/contracts'

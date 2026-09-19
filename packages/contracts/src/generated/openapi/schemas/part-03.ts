@@ -6,6 +6,27 @@
 import type { components } from '../components'
 
 export interface SchemasPart03 {
+GuestSourceDaily: {
+            /** Format: date */
+            bucketDate: string;
+            campaign: string | null;
+            landingPath: string;
+            locale: string;
+            medium: string | null;
+            pageViews: number;
+            referrerDomain: string | null;
+            rfqStarts: number;
+            rfqSubmissions: number;
+            source: string;
+            sourceName: string | null;
+            utmSource: string | null;
+            visits: number;
+        };
+GuestSourceDailyPage: {
+            items: components["schemas"]["GuestSourceDaily"][];
+            nextCursor: string | null;
+        };
+GuestSourceSummary: components["schemas"]["GuestSourceDaily"];
 GuestVisit: {
             /** Format: uuid */
             anonymousSessionId: string;
@@ -283,6 +304,7 @@ PlatformSettings: {
             temporaryOverrideDefaultDays: number;
         };
 ProblemDetails: {
+            activeRunId?: string | null;
             detail: string;
             errors?: {
                 [key: string]: string[];
@@ -469,20 +491,5 @@ ProductRfqProductContext: {
             /** Format: int64 */
             publishedRevision: number;
             stableId: string;
-        };
-ProductRfqRequest: {
-            /** @enum {boolean} */
-            consent: true;
-            contact: components["schemas"]["BusinessContact"];
-            context: components["schemas"]["ProductRfqContext"];
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            journey: "product";
-            /** @enum {string} */
-            locale: "en";
-            productContext: components["schemas"]["ProductRfqProductContext"];
-            sourcePath: string;
         };
 }

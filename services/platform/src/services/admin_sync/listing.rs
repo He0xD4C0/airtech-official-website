@@ -52,8 +52,11 @@ pub async fn list_sync_runs(
         Some(value) => match decode_scoped_cursor_compat::<Uuid, SyncRunCursor>(scope, value)? {
             DecodedCursor::Current(cursor) => Some(cursor),
             DecodedCursor::Legacy(id) => {
-                let started_at = sqlx::query_scalar("SELECT started_at FROM sync_runs WHERE id=$1")
+                let started_at = sqlx::query_scalar(
+                    "SELECT started_at FROM sync_runs WHERE id=$1 AND source='feishu' AND connector_id=$2",
+                )
                     .bind(id)
+                    .bind(crate::services::feishu::CONNECTOR_ID)
                     .fetch_optional(&state.pool)
                     .await?
                     .ok_or_else(|| ApiError::bad_request("cursor is invalid or has expired."))?;
@@ -65,17 +68,16 @@ pub async fn list_sync_runs(
         },
         None => None,
     };
-    let rows = sqlx::query(
-        r#"SELECT id,connector_id,source,dry_run,run_kind,mapping_version,status,
-                  resume_cursor,records_seen,records_valid,conflict_count,records_applied,
-                  records_failed,assets_seen,assets_copied,assets_reused,assets_failed,
-                  started_at,completed_at,payload FROM sync_runs
-           WHERE ($1::timestamptz IS NULL OR (started_at,id)<($1,$2))
-           ORDER BY started_at DESC,id DESC LIMIT $3"#,
-    )
+    let rows = sqlx::query(&format!(
+        "{} WHERE source='feishu' AND connector_id=$4
+         AND ($1::timestamptz IS NULL OR (started_at,id)<($1,$2))
+         ORDER BY started_at DESC,id DESC LIMIT $3",
+        crate::services::feishu::sync_run_select()
+    ))
     .bind(after.as_ref().map(|value| value.started_at))
     .bind(after.as_ref().map(|value| value.id))
     .bind(i64::try_from(limit + 1).unwrap_or(101))
+    .bind(crate::services::feishu::CONNECTOR_ID)
     .fetch_all(&state.pool)
     .await?;
     let mut items = rows
@@ -104,9 +106,18 @@ pub async fn connection_status(state: &AppState) -> Result<FeishuConnectionStatu
     let connector = sqlx::query(
         r#"SELECT connector.id,connector.display_name,connector.enabled,connector.updated_at,
                   EXISTS(SELECT 1 FROM object_storage_settings WHERE singleton=true) AS storage_ready,
+                  settings.app_id IS NOT NULL AND settings.app_secret IS NOT NULL
+                    AS credentials_ready,
+                  settings.connection_revision=settings.tested_connection_revision
+                    AS connection_test_ready,
+                  EXISTS(SELECT 1 FROM jsonb_array_elements(settings.sources) source
+                         WHERE COALESCE((source->>'enabled')::boolean,true)) AS source_ready,
                   EXISTS(SELECT 1 FROM sync_mappings mapping
-                         WHERE mapping.connector_id=connector.id AND mapping.active) AS mapping_ready
-           FROM source_connectors connector WHERE connector.connector_type='feishu'
+                         WHERE mapping.connector_id=connector.id AND mapping.active
+                           AND mapping.version=settings.mapping_version) AS mapping_ready
+           FROM source_connectors connector
+           JOIN feishu_connector_settings settings ON settings.connector_id=connector.id
+           WHERE connector.connector_type='feishu'
            ORDER BY connector.updated_at DESC LIMIT 1"#,
     )
     .fetch_optional(&state.pool)
@@ -114,18 +125,22 @@ pub async fn connection_status(state: &AppState) -> Result<FeishuConnectionStatu
     let latest_sync = latest_sync_run(state).await?;
     Ok(match connector {
         Some(row) => {
-            let credentials = state.feishu_client.configured();
+            let credentials: bool = row.try_get("credentials_ready")?;
             let enabled: bool = row.try_get("enabled")?;
             let storage_ready: bool = row.try_get("storage_ready")?;
             let mapping_ready: bool = row.try_get("mapping_ready")?;
+            let connection_test_ready: bool = row.try_get("connection_test_ready")?;
+            let source_ready: bool = row.try_get("source_ready")?;
             let encryption_ready = state.config.product_staging_encryption_key.is_some();
             let unavailable_reason = if !credentials {
-                Some("Feishu deployment credentials are not configured.".into())
+                Some("Configure Feishu application credentials in Admin.".into())
+            } else if !source_ready {
+                Some("Enable at least one Feishu product table in Admin.".into())
             } else if !storage_ready {
                 Some("Object storage is not configured.".into())
             } else if !encryption_ready {
                 Some("Product staging encryption is not configured.".into())
-            } else if !mapping_ready {
+            } else if !connection_test_ready || !mapping_ready {
                 Some("Run the connection test to discover and validate the field mapping.".into())
             } else if !enabled {
                 Some("Automatic synchronization is disabled.".into())
@@ -141,6 +156,8 @@ pub async fn connection_status(state: &AppState) -> Result<FeishuConnectionStatu
                     && enabled
                     && storage_ready
                     && mapping_ready
+                    && connection_test_ready
+                    && source_ready
                     && encryption_ready,
                 unavailable_reason,
                 updated_at: Some(row.try_get("updated_at")?),
@@ -161,13 +178,12 @@ pub async fn connection_status(state: &AppState) -> Result<FeishuConnectionStatu
 }
 
 async fn latest_sync_run(state: &AppState) -> Result<Option<SyncRun>, ApiError> {
-    sqlx::query(
-        r#"SELECT id,connector_id,source,dry_run,run_kind,mapping_version,status,
-                  resume_cursor,records_seen,records_valid,conflict_count,records_applied,
-                  records_failed,assets_seen,assets_copied,assets_reused,assets_failed,
-                  started_at,completed_at,payload
-           FROM sync_runs ORDER BY started_at DESC,id DESC LIMIT 1"#,
-    )
+    sqlx::query(&format!(
+        "{} WHERE source='feishu' AND connector_id=$1
+         ORDER BY started_at DESC,id DESC LIMIT 1",
+        crate::services::feishu::sync_run_select()
+    ))
+    .bind(crate::services::feishu::CONNECTOR_ID)
     .fetch_optional(&state.pool)
     .await?
     .as_ref()
@@ -184,7 +200,7 @@ pub async fn list_mappings(
     let after = resolve_mapping_cursor(state, scope, query.cursor.as_deref()).await?;
     let rows = sqlx::query(
         r#"SELECT id,connector_id,version,mapping,schema_version,active,created_at
-           FROM sync_mappings WHERE ($1::boolean IS NULL OR active<$1
+           FROM sync_mappings WHERE connector_id=$5 AND ($1::boolean IS NULL OR active<$1
              OR (active=$1 AND (created_at,id)<($2,$3)))
            ORDER BY active DESC,created_at DESC,id DESC LIMIT $4"#,
     )
@@ -192,6 +208,7 @@ pub async fn list_mappings(
     .bind(after.as_ref().map(|value| value.created_at))
     .bind(after.as_ref().map(|value| value.id))
     .bind(i64::try_from(limit + 1).unwrap_or(101))
+    .bind(crate::services::feishu::CONNECTOR_ID)
     .fetch_all(&state.pool)
     .await?;
     let mut items = rows
@@ -226,11 +243,14 @@ async fn resolve_mapping_cursor(
     match decode_scoped_cursor_compat::<Uuid, MappingCursor>(scope, value)? {
         DecodedCursor::Current(cursor) => Ok(Some(cursor)),
         DecodedCursor::Legacy(id) => {
-            let row = sqlx::query("SELECT active,created_at FROM sync_mappings WHERE id=$1")
-                .bind(id)
-                .fetch_optional(&state.pool)
-                .await?
-                .ok_or_else(|| ApiError::bad_request("cursor is invalid or has expired."))?;
+            let row = sqlx::query(
+                "SELECT active,created_at FROM sync_mappings WHERE id=$1 AND connector_id=$2",
+            )
+            .bind(id)
+            .bind(crate::services::feishu::CONNECTOR_ID)
+            .fetch_optional(&state.pool)
+            .await?
+            .ok_or_else(|| ApiError::bad_request("cursor is invalid or has expired."))?;
             state
                 .request_metrics
                 .record_legacy_cursor(LegacyCursorEndpoint::FeishuMappings);
@@ -256,13 +276,17 @@ pub async fn list_staging(
     let after = resolve_staging_cursor(state, &filter, &scope, query.cursor.as_deref()).await?;
     let total = staging_count(state, &filter).await?;
     let rows = sqlx::query(
-        r#"SELECT id,sync_run_id,source_snapshot_id,source_record_id,validation_status,
-                  normalized_payload,validation_errors,created_at FROM staging_records
-           WHERE ($1::uuid IS NULL OR sync_run_id=$1)
-             AND ($2::text IS NULL OR validation_status=$2)
-             AND ($3::text IS NULL OR source_record_id ILIKE '%' || $3 || '%')
-             AND ($4::timestamptz IS NULL OR (created_at,id)<($4,$5))
-           ORDER BY created_at DESC,id DESC LIMIT $6"#,
+        r#"SELECT staging.id,staging.sync_run_id,staging.source_snapshot_id,
+                  staging.source_record_id,staging.validation_status,
+                  staging.normalized_payload,staging.validation_errors,staging.created_at
+           FROM staging_records staging JOIN sync_runs run ON run.id=staging.sync_run_id
+           WHERE run.source='feishu' AND run.connector_id=$7
+             AND ($1::uuid IS NULL OR staging.sync_run_id=$1)
+             AND ($2::text IS NULL OR staging.validation_status=$2)
+             AND ($3::text IS NULL OR staging.source_record_id ILIKE '%' || $3 || '%')
+             AND ($4::timestamptz IS NULL
+                  OR (staging.created_at,staging.id)<($4,$5))
+           ORDER BY staging.created_at DESC,staging.id DESC LIMIT $6"#,
     )
     .bind(filter.sync_run_id)
     .bind(filter.status.as_deref())
@@ -270,6 +294,7 @@ pub async fn list_staging(
     .bind(after.as_ref().map(|value| value.created_at))
     .bind(after.as_ref().map(|value| value.id))
     .bind(i64::try_from(limit + 1).unwrap_or(101))
+    .bind(crate::services::feishu::CONNECTOR_ID)
     .fetch_all(&state.pool)
     .await?;
     let mut items = rows
@@ -309,15 +334,19 @@ async fn resolve_staging_cursor(
         DecodedCursor::Current(cursor) => Ok(Some(cursor)),
         DecodedCursor::Legacy(id) => {
             let created_at = sqlx::query_scalar(
-                r#"SELECT created_at FROM staging_records WHERE id=$1
-                   AND ($2::uuid IS NULL OR sync_run_id=$2)
-                   AND ($3::text IS NULL OR validation_status=$3)
-                   AND ($4::text IS NULL OR source_record_id ILIKE '%' || $4 || '%')"#,
+                r#"SELECT staging.created_at FROM staging_records staging
+                   JOIN sync_runs run ON run.id=staging.sync_run_id
+                   WHERE staging.id=$1 AND run.source='feishu' AND run.connector_id=$5
+                   AND ($2::uuid IS NULL OR staging.sync_run_id=$2)
+                   AND ($3::text IS NULL OR staging.validation_status=$3)
+                   AND ($4::text IS NULL
+                        OR staging.source_record_id ILIKE '%' || $4 || '%')"#,
             )
             .bind(id)
             .bind(filter.sync_run_id)
             .bind(filter.status.as_deref())
             .bind(filter.search.as_deref())
+            .bind(crate::services::feishu::CONNECTOR_ID)
             .fetch_optional(&state.pool)
             .await?
             .ok_or_else(|| ApiError::bad_request("cursor is invalid or has expired."))?;
@@ -331,14 +360,18 @@ async fn resolve_staging_cursor(
 
 async fn staging_count(state: &AppState, filter: &StagingFilter) -> Result<i64, ApiError> {
     Ok(sqlx::query_scalar(
-        r#"SELECT count(*) FROM staging_records
-           WHERE ($1::uuid IS NULL OR sync_run_id=$1)
-             AND ($2::text IS NULL OR validation_status=$2)
-             AND ($3::text IS NULL OR source_record_id ILIKE '%' || $3 || '%')"#,
+        r#"SELECT count(*) FROM staging_records staging
+           JOIN sync_runs run ON run.id=staging.sync_run_id
+           WHERE run.source='feishu' AND run.connector_id=$4
+             AND ($1::uuid IS NULL OR staging.sync_run_id=$1)
+             AND ($2::text IS NULL OR staging.validation_status=$2)
+             AND ($3::text IS NULL
+                  OR staging.source_record_id ILIKE '%' || $3 || '%')"#,
     )
     .bind(filter.sync_run_id)
     .bind(filter.status.as_deref())
     .bind(filter.search.as_deref())
+    .bind(crate::services::feishu::CONNECTOR_ID)
     .fetch_one(&state.pool)
     .await?)
 }

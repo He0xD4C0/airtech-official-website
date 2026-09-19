@@ -1,6 +1,6 @@
 {
   "generatedFrom": "packages/contracts/openapi/openapi.production.json",
-  "operationCount": 88,
+  "operationCount": 85,
   "operations": [
     {
       "method": "GET",
@@ -1292,93 +1292,6 @@
     },
     {
       "method": "GET",
-      "path": "/api/admin/v1/feishu/conflicts",
-      "operationId": "listFeishuConflicts",
-      "permission": "integration.run",
-      "request": {
-        "parameters": [
-          "cursor",
-          "limit",
-          "q",
-          "openOnly"
-        ],
-        "body": []
-      },
-      "response": [
-        {
-          "status": 200,
-          "types": [
-            {
-              "mediaType": "application/json",
-              "type": "SyncConflictPage"
-            }
-          ]
-        }
-      ],
-      "pagination": {
-        "strategy": "cursor",
-        "cursor": "cursor",
-        "limit": "limit"
-      },
-      "idempotency": {
-        "required": false
-      },
-      "concurrency": {
-        "required": false
-      },
-      "audit": {
-        "required": false
-      },
-      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/v1/feishu/conflicts/{id}/resolve",
-      "operationId": "resolveFeishuConflict",
-      "permission": "integration.run",
-      "request": {
-        "parameters": [
-          "id",
-          "If-Match",
-          "Idempotency-Key"
-        ],
-        "body": [
-          {
-            "mediaType": "application/json",
-            "type": "ResolveSyncConflictRequest"
-          }
-        ]
-      },
-      "response": [
-        {
-          "status": 200,
-          "types": [
-            {
-              "mediaType": "application/json",
-              "type": "SyncConflict"
-            }
-          ]
-        }
-      ],
-      "pagination": {
-        "strategy": "none"
-      },
-      "idempotency": {
-        "required": true,
-        "header": "Idempotency-Key"
-      },
-      "concurrency": {
-        "required": true,
-        "header": "If-Match"
-      },
-      "audit": {
-        "required": true,
-        "action": "resolveFeishuConflict"
-      },
-      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
-    },
-    {
-      "method": "GET",
       "path": "/api/admin/v1/feishu/connection-status",
       "operationId": "getFeishuConnectionStatus",
       "permission": "integration.run",
@@ -1523,7 +1436,7 @@
       "method": "PUT",
       "path": "/api/admin/v1/feishu/settings",
       "operationId": "updateFeishuSettings",
-      "permission": "integration.run",
+      "permission": "settings.manage",
       "request": {
         "parameters": [
           "If-Match"
@@ -1650,12 +1563,7 @@
       "permission": "integration.run",
       "request": {
         "parameters": [],
-        "body": [
-          {
-            "mediaType": "application/json",
-            "type": "StartSyncRequest"
-          }
-        ]
+        "body": []
       },
       "response": [
         {
@@ -1715,43 +1623,6 @@
       },
       "audit": {
         "required": false
-      },
-      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
-    },
-    {
-      "method": "POST",
-      "path": "/api/admin/v1/feishu/sync-runs/{id}/rollback",
-      "operationId": "rollbackFeishuSyncRun",
-      "permission": "integration.run",
-      "request": {
-        "parameters": [
-          "id"
-        ],
-        "body": []
-      },
-      "response": [
-        {
-          "status": 200,
-          "types": [
-            {
-              "mediaType": "application/json",
-              "type": "FeishuRollbackReport"
-            }
-          ]
-        }
-      ],
-      "pagination": {
-        "strategy": "none"
-      },
-      "idempotency": {
-        "required": false
-      },
-      "concurrency": {
-        "required": false
-      },
-      "audit": {
-        "required": true,
-        "action": "rollbackFeishuSyncRun"
       },
       "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
     },

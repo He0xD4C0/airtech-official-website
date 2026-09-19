@@ -6,18 +6,6 @@
 import type { components } from '../components'
 
 export interface SchemasPart05 {
-TiptapHeadingNode: {
-            attrs: components["schemas"]["TiptapHeadingAttrs"];
-            content?: components["schemas"]["TiptapNode"][];
-            marks?: components["schemas"]["TiptapMark"][];
-            /** @enum {string} */
-            type: "heading";
-        };
-TiptapLinkAttrs: {
-            href: string;
-            rel?: string | null;
-            target?: ("_self" | "_blank") | null;
-        };
 TiptapLinkMark: {
             attrs: components["schemas"]["TiptapLinkAttrs"];
             /** @constant */
@@ -97,10 +85,15 @@ UpdateBusinessStatusRequest: {
             status: components["schemas"]["BusinessInboxStatus"];
         };
 UpdateFeishuSettings: {
+            appId: string;
+            appSecret: string;
+            clearCredentials: boolean;
+            dailyEnabled: boolean;
+            dailyLocalTime: string;
             enabled: boolean;
-            fullReconcileEnabled: boolean;
-            fullReconcileLocalTime: string;
+            intervalEnabled: boolean;
             intervalMinutes: number;
+            sources: components["schemas"]["FeishuSource"][];
         };
 UpdateObjectStorageSettings: components["schemas"]["ObjectStorageSettingsInput"] & {
             adoptLegacyAssets: boolean;

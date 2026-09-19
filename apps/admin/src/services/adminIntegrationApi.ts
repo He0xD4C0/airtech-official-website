@@ -1,18 +1,13 @@
 import type {
   FeishuConnectionTest,
   FeishuConnectionStatus,
-  FeishuRollbackReport,
   FeishuSettings,
   FeishuSyncRunDetail,
-  ResolveSyncConflictRequest,
-  StartSyncRequest,
   StagingRecordPage,
-  SyncConflict,
-  SyncConflictPage,
   SyncMapping,
   UpdateFeishuSettings,
 } from '@airtek/contracts'
-import { adminContractClient, cursorQuery, randomRequestId, revisionEtag } from './adminApiTransport'
+import { adminContractClient, cursorQuery, revisionEtag } from './adminApiTransport'
 import type {
   BackendSyncRun,
   CursorPage,
@@ -23,13 +18,6 @@ export const adminIntegrationApi = {
   async listSyncRuns(pagination?: CursorPageRequest): Promise<CursorPage<BackendSyncRun>> {
     const result = await adminContractClient.get('/api/admin/v1/feishu/sync-runs', {
       parameters: { query: cursorQuery(pagination) },
-    })
-    return result.data
-  },
-
-  async listConflicts(pagination?: CursorPageRequest): Promise<SyncConflictPage> {
-    const result = await adminContractClient.get('/api/admin/v1/feishu/conflicts', {
-      parameters: { query: { ...cursorQuery(pagination), openOnly: true } },
     })
     return result.data
   },
@@ -60,20 +48,12 @@ export const adminIntegrationApi = {
     return (await adminContractClient.post('/api/admin/v1/feishu/connection-test', {})).data
   },
 
-  async startFeishuSync(request: StartSyncRequest): Promise<BackendSyncRun> {
-    return (await adminContractClient.post('/api/admin/v1/feishu/sync-runs', {
-      body: request,
-    })).data
+  async startFeishuSync(): Promise<BackendSyncRun> {
+    return (await adminContractClient.post('/api/admin/v1/feishu/sync-runs', {})).data
   },
 
   async getFeishuSyncRun(id: string): Promise<FeishuSyncRunDetail> {
     return (await adminContractClient.get('/api/admin/v1/feishu/sync-runs/{id}', {
-      parameters: { path: { id } },
-    })).data
-  },
-
-  async rollbackFeishuSyncRun(id: string): Promise<FeishuRollbackReport> {
-    return (await adminContractClient.post('/api/admin/v1/feishu/sync-runs/{id}/rollback', {
       parameters: { path: { id } },
     })).data
   },
@@ -87,20 +67,6 @@ export const adminIntegrationApi = {
   async listStaging(pagination?: CursorPageRequest): Promise<StagingRecordPage> {
     return (await adminContractClient.get('/api/admin/v1/feishu/staging', {
       parameters: { query: cursorQuery(pagination) },
-    })).data
-  },
-
-  async resolveConflict(
-    id: string,
-    revision: number,
-    request: ResolveSyncConflictRequest,
-  ): Promise<SyncConflict> {
-    return (await adminContractClient.post('/api/admin/v1/feishu/conflicts/{id}/resolve', {
-      parameters: {
-        path: { id },
-        header: { 'Idempotency-Key': randomRequestId(), 'If-Match': revisionEtag(revision) },
-      },
-      body: request,
     })).data
   },
 

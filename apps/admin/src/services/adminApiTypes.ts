@@ -23,7 +23,6 @@ import type {
   ProductPrivatePricing as ContractProductPrivatePricing,
   RecoveryCodeSet as ContractRecoveryCodeSet,
   SpecValue as ContractSpecValue,
-  SyncConflict as ContractSyncConflict,
   SyncRun as ContractSyncRun,
   TemporaryOverride as ContractTemporaryOverride,
   TotpEnrollment as ContractTotpEnrollment,
@@ -63,7 +62,6 @@ export type BackendPerformancePoint = ContractPerformancePoint
 export type BackendPerformanceCurve = ContractPerformanceCurve
 export type BackendTemporaryOverride = ContractTemporaryOverride
 export type BackendSyncRun = ContractSyncRun
-export type BackendSyncConflict = ContractSyncConflict
 export type BackendOperation = ContractBackgroundOperation
 export type BackendAuditEvent = ContractAuditEvent
 export type TotpEnrollment = ContractTotpEnrollment

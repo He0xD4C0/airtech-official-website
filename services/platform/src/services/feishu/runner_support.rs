@@ -1,11 +1,76 @@
 use sqlx::Row;
 use uuid::Uuid;
 
-use crate::{error::ApiError, models::SyncRunKind, state::AppState};
+use crate::{error::ApiError, state::AppState};
 
 use super::{
     seal_cursor, DiscoveredSource, FeishuResumeCursor, FeishuTableMapping, VersionedFeishuMapping,
 };
+
+#[derive(Clone, Copy, Debug, Default)]
+pub(super) struct TableAssetCounts {
+    pub(super) seen: u64,
+    pub(super) copied: u64,
+    pub(super) reused: u64,
+    pub(super) failed: u64,
+}
+
+pub(super) async fn load_table_asset_counts(
+    state: &AppState,
+    run_id: Uuid,
+    wiki_token: &str,
+    table_id: &str,
+) -> Result<TableAssetCounts, ApiError> {
+    let row = sqlx::query(
+        r#"SELECT assets_seen,assets_copied,assets_reused,assets_failed
+           FROM feishu_run_table_results
+           WHERE sync_run_id=$1 AND wiki_token=$2 AND table_id=$3"#,
+    )
+    .bind(run_id)
+    .bind(wiki_token)
+    .bind(table_id)
+    .fetch_one(&state.pool)
+    .await?;
+    Ok(TableAssetCounts {
+        seen: stored_count(&row, "assets_seen")?,
+        copied: stored_count(&row, "assets_copied")?,
+        reused: stored_count(&row, "assets_reused")?,
+        failed: stored_count(&row, "assets_failed")?,
+    })
+}
+
+pub(super) async fn persist_table_asset_counts(
+    state: &AppState,
+    run_id: Uuid,
+    wiki_token: &str,
+    table_id: &str,
+    counts: TableAssetCounts,
+) -> Result<(), ApiError> {
+    sqlx::query(
+        r#"UPDATE feishu_run_table_results SET
+             assets_seen=$4,assets_copied=$5,assets_reused=$6,assets_failed=$7
+           WHERE sync_run_id=$1 AND wiki_token=$2 AND table_id=$3"#,
+    )
+    .bind(run_id)
+    .bind(wiki_token)
+    .bind(table_id)
+    .bind(signed_count(counts.seen))
+    .bind(signed_count(counts.copied))
+    .bind(signed_count(counts.reused))
+    .bind(signed_count(counts.failed))
+    .execute(&state.pool)
+    .await?;
+    Ok(())
+}
+
+fn stored_count(row: &sqlx::postgres::PgRow, name: &str) -> Result<u64, ApiError> {
+    u64::try_from(row.try_get::<i64, _>(name)?)
+        .map_err(|_| ApiError::service_unavailable("Stored table asset count is invalid."))
+}
+
+fn signed_count(value: u64) -> i64 {
+    i64::try_from(value).unwrap_or(i64::MAX)
+}
 
 pub(super) fn runtime_table_mapping(
     mapping: &VersionedFeishuMapping,
@@ -14,7 +79,8 @@ pub(super) fn runtime_table_mapping(
     let validated = super::validate_mapping(mapping.clone(), std::slice::from_ref(source))?;
     validated
         .tables
-        .get(&source.source.table_id)
+        .get(&super::source_identity_key(&source.source))
+        .or_else(|| validated.tables.get(&source.source.table_id))
         .cloned()
         .ok_or_else(|| ApiError::conflict("The Feishu table is absent from this mapping version."))
 }
@@ -82,47 +148,110 @@ pub(super) async fn increment_table_failure(
     Ok(())
 }
 
-pub(super) async fn report_suspected_missing(
+pub(super) async fn start_table(
     state: &AppState,
     run_id: Uuid,
-    table_ids: &[String],
+    wiki_token: &str,
+    table_id: &str,
 ) -> Result<(), ApiError> {
-    for table_id in table_ids {
-        let prefix = format!("fs.{table_id}.%");
-        let missing = sqlx::query_scalar::<_, String>(
-            r#"SELECT product.stable_id FROM products product
-               WHERE product.data_origin='feishu' AND product.stable_id LIKE $1
-                 AND NOT EXISTS (
-                   SELECT 1 FROM staging_records staging
-                   WHERE staging.sync_run_id=$2 AND staging.source_record_id=product.stable_id
-                 )
-               ORDER BY product.stable_id"#,
-        )
-        .bind(prefix)
-        .bind(run_id)
-        .fetch_all(&state.pool)
-        .await?;
-        for stable_id in missing {
-            sqlx::query(
-                r#"INSERT INTO product_import_errors
-                   (id,import_run_id,source_record_id,severity,error_code,message,details,created_at)
-                   VALUES ($1,$2,$3,'warning','suspectedMissing',$4,'{}'::jsonb,now())"#,
-            )
-            .bind(Uuid::new_v4())
-            .bind(run_id)
-            .bind(&stable_id)
-            .bind("The record was absent from a full reconciliation; no automatic archive was applied.")
-            .execute(&state.pool)
-            .await?;
-        }
-    }
+    sqlx::query(
+        r#"UPDATE feishu_run_table_results SET status='fetching',error=NULL
+           WHERE sync_run_id=$1 AND wiki_token=$2 AND table_id=$3"#,
+    )
+    .bind(run_id)
+    .bind(wiki_token)
+    .bind(table_id)
+    .execute(&state.pool)
+    .await?;
+    Ok(())
+}
+
+pub(super) async fn fail_table(
+    state: &AppState,
+    run_id: Uuid,
+    wiki_token: &str,
+    table_id: &str,
+    detail: &str,
+) -> Result<(), ApiError> {
+    sqlx::query(
+        r#"UPDATE feishu_run_table_results result SET
+             status='failed',error=$4,
+             records_seen=(SELECT count(*) FROM staging_records staging
+                           JOIN source_snapshots snapshot
+                             ON snapshot.id=staging.source_snapshot_id
+                           WHERE staging.sync_run_id=$1
+                             AND snapshot.source_payload->>'wikiToken'=$2
+                             AND snapshot.source_payload->>'tableId'=$3),
+             records_applied=(SELECT count(*) FROM feishu_sync_changes changes
+                              JOIN feishu_product_ownership ownership
+                                ON ownership.product_id=changes.product_id
+                              WHERE changes.sync_run_id=$1
+                                AND ownership.wiki_token=$2
+                                AND ownership.table_id=$3),
+             records_failed=(SELECT count(*) FROM staging_records staging
+                             JOIN source_snapshots snapshot
+                               ON snapshot.id=staging.source_snapshot_id
+                             WHERE staging.sync_run_id=$1
+                               AND snapshot.source_payload->>'wikiToken'=$2
+                               AND snapshot.source_payload->>'tableId'=$3
+                               AND staging.validation_status='invalid'),
+             completed_at=now()
+           WHERE sync_run_id=$1 AND wiki_token=$2 AND table_id=$3"#,
+    )
+    .bind(run_id)
+    .bind(wiki_token)
+    .bind(table_id)
+    .bind(detail)
+    .execute(&state.pool)
+    .await?;
+    increment_table_failure(state, run_id).await
+}
+
+pub(super) async fn complete_table(
+    state: &AppState,
+    run_id: Uuid,
+    wiki_token: &str,
+    table_id: &str,
+    deleted: u64,
+) -> Result<(), ApiError> {
+    sqlx::query(
+        r#"UPDATE feishu_run_table_results result SET
+             status='completed',
+             records_seen=(SELECT count(*) FROM staging_records staging
+                           JOIN source_snapshots snapshot
+                             ON snapshot.id=staging.source_snapshot_id
+                           WHERE staging.sync_run_id=$1
+                             AND snapshot.source_payload->>'wikiToken'=$2
+                             AND snapshot.source_payload->>'tableId'=$3),
+             records_applied=(SELECT count(*) FROM feishu_sync_changes changes
+                              JOIN feishu_product_ownership ownership
+                                ON ownership.product_id=changes.product_id
+                              WHERE changes.sync_run_id=$1
+                                AND ownership.wiki_token=$2
+                                AND ownership.table_id=$3),
+             records_failed=(SELECT count(*) FROM staging_records staging
+                             JOIN source_snapshots snapshot
+                               ON snapshot.id=staging.source_snapshot_id
+                             WHERE staging.sync_run_id=$1
+                               AND snapshot.source_payload->>'wikiToken'=$2
+                               AND snapshot.source_payload->>'tableId'=$3
+                               AND staging.validation_status='invalid'),
+             records_deleted=$4,completed_at=now()
+           WHERE result.sync_run_id=$1 AND result.wiki_token=$2
+             AND result.table_id=$3"#,
+    )
+    .bind(run_id)
+    .bind(wiki_token)
+    .bind(table_id)
+    .bind(i64::try_from(deleted).unwrap_or(i64::MAX))
+    .execute(&state.pool)
+    .await?;
     Ok(())
 }
 
 pub(super) async fn finalize_run(
     state: &AppState,
     run_id: Uuid,
-    run_kind: SyncRunKind,
     assets_copied: u64,
     assets_reused: u64,
     assets_failed: u64,
@@ -153,6 +282,13 @@ pub(super) async fn finalize_run(
     .await?;
     let invalid: i64 = counts.try_get("invalid")?;
     let failed = invalid + run_level_errors;
+    let deleted: i64 = sqlx::query_scalar(
+        r#"SELECT COALESCE(sum(records_deleted),0)::bigint
+           FROM feishu_run_table_results WHERE sync_run_id=$1"#,
+    )
+    .bind(run_id)
+    .fetch_one(&state.pool)
+    .await?;
     let status = if failed > 0 || assets_failed > 0 {
         "completedWithErrors"
     } else {
@@ -160,8 +296,8 @@ pub(super) async fn finalize_run(
     };
     sqlx::query(
         r#"UPDATE sync_runs SET status=$2,resume_cursor=NULL,records_seen=$3,records_valid=$4,
-                  records_applied=$5,records_failed=$6,assets_seen=$7,assets_copied=$8,
-                  assets_reused=$9,assets_failed=$10,completed_at=now(),
+                  records_applied=$5,records_failed=$6,records_deleted=$7,
+                  assets_seen=$8,assets_copied=$9,assets_reused=$10,assets_failed=$11,completed_at=now(),
                   payload=jsonb_build_object('status',$2)
            WHERE id=$1"#,
     )
@@ -171,6 +307,7 @@ pub(super) async fn finalize_run(
     .bind(counts.try_get::<i64, _>("valid")?)
     .bind(applied)
     .bind(failed)
+    .bind(deleted)
     .bind(counts.try_get::<i64, _>("assets_seen")?)
     .bind(i64::try_from(assets_copied).unwrap_or(i64::MAX))
     .bind(i64::try_from(assets_reused).unwrap_or(i64::MAX))
@@ -187,16 +324,5 @@ pub(super) async fn finalize_run(
     .bind(failed)
     .execute(&state.pool)
     .await?;
-    let column = match run_kind {
-        SyncRunKind::Incremental => "last_incremental_at",
-        SyncRunKind::Full => "last_full_at",
-    };
-    let query = format!(
-        "UPDATE feishu_connector_settings SET {column}=now() WHERE connector_id=(SELECT connector_id FROM sync_runs WHERE id=$1)"
-    );
-    sqlx::query(&query)
-        .bind(run_id)
-        .execute(&state.pool)
-        .await?;
     Ok(())
 }

@@ -96,7 +96,6 @@ pub struct DashboardMetric {
 pub struct AdminDashboardSummary {
     pub generated_at: DateTime<Utc>,
     pub draft_content: DashboardMetric,
-    pub open_conflicts: DashboardMetric,
     pub open_rfqs: DashboardMetric,
     pub analytics: Option<AnalyticsConsentedMetrics>,
     pub recent_activity: Vec<AuditEvent>,

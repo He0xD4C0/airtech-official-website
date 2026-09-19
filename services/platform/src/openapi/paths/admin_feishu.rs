@@ -33,21 +33,18 @@ fn add_run_paths(paths: &mut Map<String, Value>) {
         "/api/admin/v1/feishu/sync-runs",
         "post",
         admin(
-            body(
-                op(
-                    "startFeishuSyncRun",
-                    "Queue an incremental or full Feishu synchronization",
-                    "adminFeishu",
-                    [(
-                        "202",
-                        response_header(
-                            json_response("Sync run accepted", r("SyncRun")),
-                            "Location",
-                            "Sync run detail URL",
-                        ),
-                    )],
-                ),
-                r("StartSyncRequest"),
+            op(
+                "startFeishuSyncRun",
+                "Queue a full scan of every enabled Feishu source table",
+                "adminFeishu",
+                [(
+                    "202",
+                    response_header(
+                        json_response("Sync run accepted", r("SyncRun")),
+                        "Location",
+                        "Sync run detail URL",
+                    ),
+                )],
             ),
             true,
         ),
@@ -72,26 +69,6 @@ fn add_run_paths(paths: &mut Map<String, Value>) {
             false,
         ),
     );
-    add(
-        paths,
-        "/api/admin/v1/feishu/sync-runs/{id}/rollback",
-        "post",
-        admin(
-            params(
-                op(
-                    "rollbackFeishuSyncRun",
-                    "Restore prior public revisions when no later run changed them",
-                    "adminFeishu",
-                    [(
-                        "200",
-                        json_response("Rollback report", r("FeishuRollbackReport")),
-                    )],
-                ),
-                vec![path_param("id", uuid())],
-            ),
-            true,
-        ),
-    );
 }
 
 fn add_settings_paths(paths: &mut Map<String, Value>) {
@@ -102,7 +79,7 @@ fn add_settings_paths(paths: &mut Map<String, Value>) {
         admin(
             op(
                 "getFeishuSettings",
-                "Read non-secret Feishu sources and scheduling policy",
+                "Read credential-safe Feishu connection, sources, and scheduling policy",
                 "adminFeishu",
                 [(
                     "200",
@@ -125,7 +102,7 @@ fn add_settings_paths(paths: &mut Map<String, Value>) {
                 body(
                     op(
                         "updateFeishuSettings",
-                        "Update Feishu enablement and automatic schedule",
+                        "Update GUI-managed Feishu credentials, sources, and automatic schedule",
                         "adminFeishu",
                         [(
                             "200",
@@ -150,7 +127,7 @@ fn add_settings_paths(paths: &mut Map<String, Value>) {
         admin(
             op(
                 "testFeishuConnection",
-                "Test credentials, all four tables, field mapping, and object storage",
+                "Test credentials, enabled source tables, field mappings, and storage",
                 "adminFeishu",
                 [(
                     "200",
@@ -203,48 +180,6 @@ fn add_diagnostic_paths(paths: &mut Map<String, Value>) {
                 serde_json::json!({"type": "string", "maxLength": 200}),
             ),
         ],
-    );
-    add_page_path(
-        paths,
-        "/api/admin/v1/feishu/conflicts",
-        "listFeishuConflicts",
-        "List legacy manually created source conflicts",
-        "SyncConflictPage",
-        vec![
-            query_param(
-                "q",
-                false,
-                serde_json::json!({"type": "string", "maxLength": 200}),
-            ),
-            query_param(
-                "openOnly",
-                false,
-                serde_json::json!({"type": "boolean", "default": true}),
-            ),
-        ],
-    );
-    add(
-        paths,
-        "/api/admin/v1/feishu/conflicts/{id}/resolve",
-        "post",
-        admin(
-            params(
-                body(
-                    op(
-                        "resolveFeishuConflict",
-                        "Resolve one legacy Feishu conflict",
-                        "adminFeishu",
-                        [(
-                            "200",
-                            json_response("Resolved sync conflict", r("SyncConflict")),
-                        )],
-                    ),
-                    r("ResolveSyncConflictRequest"),
-                ),
-                idempotent_entity_params(),
-            ),
-            true,
-        ),
     );
 }
 

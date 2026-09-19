@@ -62,8 +62,11 @@ fn process_image(bytes: &[u8]) -> Result<PreviewDerivative, ApiError> {
         oriented
     };
     let (width, height) = preview.dimensions();
-    let encoded = webp::Encoder::from_image(&preview)
-        .map_err(|_| processing_unavailable())?
+    // The WebP crate only accepts RGB8/RGBA8 DynamicImage variants. Feishu
+    // drawings also contain valid grayscale PNGs, so normalize every decoded
+    // image to RGBA before encoding while preserving any alpha channel.
+    let rgba = preview.to_rgba8();
+    let encoded = webp::Encoder::from_rgba(rgba.as_raw(), width, height)
         .encode(PREVIEW_QUALITY)
         .to_vec();
     if encoded.is_empty() {
@@ -133,7 +136,7 @@ fn processing_unavailable() -> ApiError {
 
 #[cfg(test)]
 mod tests {
-    use image::{DynamicImage, ImageBuffer, Rgba};
+    use image::{DynamicImage, ImageBuffer, Luma, Rgba};
 
     use super::*;
 
@@ -168,5 +171,17 @@ mod tests {
         assert_eq!(process_image(b"not an image").unwrap_err().status(), 422);
         assert!(validate_dimensions(16_385, 1).is_err());
         assert!(validate_dimensions(10_000, 5_000).is_err());
+    }
+
+    #[test]
+    fn creates_preview_for_grayscale_pngs() {
+        let image = DynamicImage::ImageLuma8(ImageBuffer::from_pixel(40, 20, Luma([80])));
+        let mut bytes = Vec::new();
+        image
+            .write_to(&mut Cursor::new(&mut bytes), image::ImageFormat::Png)
+            .unwrap();
+        let preview = process_image(&bytes).unwrap();
+        assert_eq!((preview.width, preview.height), (40, 20));
+        assert!(!preview.bytes.is_empty());
     }
 }

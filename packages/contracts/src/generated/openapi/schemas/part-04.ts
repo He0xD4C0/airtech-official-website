@@ -6,6 +6,21 @@
 import type { components } from '../components'
 
 export interface SchemasPart04 {
+ProductRfqRequest: {
+            /** @enum {boolean} */
+            consent: true;
+            contact: components["schemas"]["BusinessContact"];
+            context: components["schemas"]["ProductRfqContext"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            journey: "product";
+            /** @enum {string} */
+            locale: "en";
+            productContext: components["schemas"]["ProductRfqProductContext"];
+            sourcePath: string;
+        };
 ProductSourceAsset: {
             /** Format: uuid */
             assetId: string;
@@ -178,12 +193,6 @@ ResolvedRelationCard: {
             summary: string | null;
             tags: string[];
             title: string;
-        };
-ResolveSyncConflictRequest: {
-            decision: components["schemas"]["SyncConflictDecision"];
-            evidenceReference: string | null;
-            expiresAt: string | null;
-            reason: string;
         };
 RevisionRequest: {
             reason: string;
@@ -370,30 +379,7 @@ StagingRecordPage: {
             total: number;
         };
 /** @enum {string} */
-        StagingValidationStatus: "pending" | "valid" | "invalid" | "conflicted";
-StartSyncRequest: {
-            runKind: components["schemas"]["SyncRunKind"];
-        };
-SyncConflict: {
-            diffs: components["schemas"]["FieldDiff"][];
-            /** Format: uuid */
-            id: string;
-            productId: string | null;
-            resolution: string | null;
-            resolvedAt: string | null;
-            /** Format: int64 */
-            revision: number;
-            sourceRecordId: string;
-            /** Format: uuid */
-            syncRunId: string;
-        };
-/** @enum {string} */
-        SyncConflictDecision: "acceptIncoming" | "keepVerifiedLocal";
-SyncConflictPage: {
-            items: components["schemas"]["SyncConflict"][];
-            nextCursor: string | null;
-            total: number;
-        };
+        StagingValidationStatus: "pending" | "valid" | "invalid";
 SyncMapping: {
             active: boolean;
             /** Format: uuid */
@@ -416,32 +402,35 @@ SyncRun: {
             assetsReused: number;
             assetsSeen: number;
             completedAt: string | null;
-            conflictCount: number;
             connectorId?: string | null;
-            dryRun: boolean;
+            /** @constant */
+            dryRun: false;
             error?: string | null;
             /** Format: uuid */
             id: string;
             mappingVersion: string;
             recordsApplied: number;
+            recordsDeleted: number;
             recordsFailed: number;
             recordsSeen: number;
             recordsValid: number;
             resumeCursor: string | null;
-            runKind: components["schemas"]["SyncRunKind"];
-            source: string;
+            /** Format: int64 */
+            settingsRevision: number;
+            /** @constant */
+            source: "feishu";
+            sources: components["schemas"]["FeishuSource"][];
             /** Format: date-time */
             startedAt: string;
             status: components["schemas"]["SyncRunStatus"];
+            trigger: components["schemas"]["FeishuSyncTrigger"];
         };
-/** @enum {string} */
-        SyncRunKind: "incremental" | "full";
 SyncRunPage: {
             items: components["schemas"]["SyncRun"][];
             nextCursor: string | null;
         };
 /** @enum {string} */
-        SyncRunStatus: "queued" | "fetching" | "validating" | "awaitingResolution" | "readyToPublish" | "completed" | "completedWithErrors" | "failed";
+        SyncRunStatus: "queued" | "fetching" | "validating" | "readyToPublish" | "completed" | "completedWithErrors" | "failed";
 TaxonomyTypeFields: {
             key?: string | null;
         };
@@ -490,5 +479,17 @@ TiptapFormulaNode: {
         };
 TiptapHeadingAttrs: {
             level: number;
+        };
+TiptapHeadingNode: {
+            attrs: components["schemas"]["TiptapHeadingAttrs"];
+            content?: components["schemas"]["TiptapNode"][];
+            marks?: components["schemas"]["TiptapMark"][];
+            /** @enum {string} */
+            type: "heading";
+        };
+TiptapLinkAttrs: {
+            href: string;
+            rel?: string | null;
+            target?: ("_self" | "_blank") | null;
         };
 }

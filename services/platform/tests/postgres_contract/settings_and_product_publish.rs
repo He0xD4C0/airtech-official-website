@@ -140,15 +140,17 @@ async fn product_publish_requires_an_atomic_accepted_postgres_evidence_chain() {
         connector_id: None,
         source: "feishu".into(),
         dry_run: false,
-        run_kind: airtek_platform::models::SyncRunKind::Full,
+        trigger: airtek_platform::models::FeishuSyncTrigger::Manual,
+        settings_revision: 1,
+        sources: vec![],
         mapping_version: "test-publish-gate-v1".into(),
         status: SyncRunStatus::ReadyToPublish,
         resume_cursor: None,
         records_seen: 1,
         records_valid: 1,
-        conflict_count: 0,
         records_applied: 0,
         records_failed: 0,
+        records_deleted: 0,
         assets_seen: 0,
         assets_copied: 0,
         assets_reused: 0,
@@ -167,8 +169,8 @@ async fn product_publish_requires_an_atomic_accepted_postgres_evidence_chain() {
     sqlx::query(
         r#"INSERT INTO sync_runs
            (id,source,dry_run,mapping_version,status,records_seen,records_valid,
-            conflict_count,started_at,payload)
-           VALUES ($1,'feishu',false,$2,'readyToPublish',1,1,0,$3,$4)"#,
+            started_at,payload)
+           VALUES ($1,'feishu',false,$2,'readyToPublish',1,1,$3,$4)"#,
     )
     .bind(run_id)
     .bind(&run.mapping_version)
@@ -347,21 +349,9 @@ async fn product_publish_requires_an_atomic_accepted_postgres_evidence_chain() {
     .await
     .unwrap();
     sqlx::query(
-        "UPDATE staging_records SET validation_status='conflicted' WHERE source_snapshot_id=$1",
+        "UPDATE staging_records SET validation_status='invalid' WHERE source_snapshot_id=$1",
     )
     .bind(snapshot_id)
-    .execute(&pool)
-    .await
-    .unwrap();
-    sqlx::query(
-        r#"INSERT INTO sync_conflicts
-           (id,sync_run_id,product_id,source_record_id,field_diffs)
-           VALUES ($1,$2,$3,$4,'[]'::jsonb)"#,
-    )
-    .bind(Uuid::new_v4())
-    .bind(run_id)
-    .bind(product_id)
-    .bind(&stable_id)
     .execute(&pool)
     .await
     .unwrap();

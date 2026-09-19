@@ -27,6 +27,8 @@ pub struct VersionedFeishuMapping {
 pub struct FeishuTableMapping {
     pub fields: BTreeMap<String, MappedFeishuField>,
     pub attachments: Vec<MappedFeishuField>,
+    #[serde(default)]
+    pub private_fields: Vec<MappedFeishuField>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -130,7 +132,7 @@ pub fn discover_mapping(
     let mut tables = BTreeMap::new();
     for source in sources {
         let table = discover_table(&source.fields)?;
-        tables.insert(source.source.table_id.clone(), table);
+        tables.insert(source_identity_key(&source.source), table);
     }
     Ok(VersionedFeishuMapping {
         version: version.to_owned(),
@@ -143,9 +145,15 @@ pub fn validate_mapping(
     sources: &[DiscoveredSource],
 ) -> Result<VersionedFeishuMapping, ApiError> {
     for source in sources {
+        let identity_key = source_identity_key(&source.source);
+        let mapping_key = if mapping.tables.contains_key(&identity_key) {
+            identity_key
+        } else {
+            source.source.table_id.clone()
+        };
         let stored = mapping
             .tables
-            .get_mut(&source.source.table_id)
+            .get_mut(&mapping_key)
             .ok_or_else(|| drift_error(&source.source.table_id, "the mapped table is missing"))?;
         let by_id = source
             .fields
@@ -156,6 +164,7 @@ pub fn validate_mapping(
             .fields
             .values_mut()
             .chain(stored.attachments.iter_mut())
+            .chain(stored.private_fields.iter_mut())
         {
             let current = by_id.get(field.id.as_str()).ok_or_else(|| {
                 drift_error(
@@ -177,26 +186,49 @@ pub fn validate_mapping(
     Ok(mapping)
 }
 
+pub fn source_identity_key(source: &FeishuSource) -> String {
+    serde_json::to_string(&(source.wiki_token.trim(), source.table_id.trim()))
+        .expect("Feishu source identity is serializable")
+}
+
 fn discover_table(fields: &[FeishuField]) -> Result<FeishuTableMapping, ApiError> {
     let primary = fields.iter().find(|field| field.is_primary);
     let definitions = definitions();
     let mut candidates = HashMap::<&'static str, (usize, &FeishuField)>::new();
     for field in fields.iter().filter(|field| field.field_type != 17) {
-        let mut best: Option<(&Definition, usize)> = None;
+        let mut best = Vec::<(&Definition, usize)>::new();
         for definition in &definitions {
             let Some(score) = definition.match_score(&field.field_name) else {
                 continue;
             };
-            if best.is_none_or(|(_, best_score)| score > best_score) {
-                best = Some((definition, score));
+            match best.first().map(|(_, best_score)| *best_score) {
+                None => best.push((definition, score)),
+                Some(best_score) if score > best_score => {
+                    best.clear();
+                    best.push((definition, score));
+                }
+                Some(best_score) if score == best_score => best.push((definition, score)),
+                _ => {}
             }
         }
-        if let Some((definition, score)) = best {
-            let replace = candidates
-                .get(definition.key)
-                .is_none_or(|(current, _)| score > *current);
-            if replace {
-                candidates.insert(definition.key, (score, field));
+        if best.len() > 1 {
+            return Err(ApiError::conflict(format!(
+                "Feishu field `{}` ambiguously matches multiple product facts.",
+                field.field_name
+            )));
+        }
+        if let Some((definition, score)) = best.pop() {
+            match candidates.get(definition.key) {
+                Some((current, other)) if score == *current && other.field_id != field.field_id => {
+                    return Err(ApiError::conflict(format!(
+                        "Feishu product fact `{}` ambiguously matches fields `{}` and `{}`.",
+                        definition.key, other.field_name, field.field_name
+                    )));
+                }
+                Some((current, _)) if score <= *current => {}
+                _ => {
+                    candidates.insert(definition.key, (score, field));
+                }
             }
         }
     }
@@ -225,10 +257,35 @@ fn discover_table(fields: &[FeishuField]) -> Result<FeishuTableMapping, ApiError
         .filter(|field| field.field_type == 17)
         .map(mapped_field)
         .collect();
+    let private_fields = fields
+        .iter()
+        .filter(|field| field.field_type != 17 && is_pricing_field(&field.field_name))
+        .map(mapped_field)
+        .collect();
     Ok(FeishuTableMapping {
         fields: mapped,
         attachments,
+        private_fields,
     })
+}
+
+fn is_pricing_field(name: &str) -> bool {
+    let normalized = normalized_name(name);
+    matches!(
+        normalized.as_str(),
+        "样品报价sample"
+            | "样品报价"
+            | "报价"
+            | "单价"
+            | "199pcs"
+            | "100499pcs"
+            | "500999pcs"
+            | "10004999pcs"
+            | "5000pcs"
+            | "100500pcs"
+            | "5001000pcs"
+            | "10005000pcs"
+    )
 }
 
 fn mapped_field(field: &FeishuField) -> MappedFeishuField {
@@ -393,93 +450,5 @@ fn drift_error(table_id: &str, detail: &str) -> ApiError {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn maps_model_alias_and_every_attachment_by_stable_field_id() {
-        let fields = vec![
-            FeishuField {
-                field_id: "fld-model".into(),
-                field_name: "产品型号(Model）".into(),
-                field_type: 1,
-                is_primary: true,
-            },
-            FeishuField {
-                field_id: "fld-file".into(),
-                field_name: "PQ曲线源文件".into(),
-                field_type: 17,
-                is_primary: false,
-            },
-        ];
-        let table = discover_table(&fields).unwrap();
-        assert_eq!(table.fields["model"].id, "fld-model");
-        assert_eq!(table.attachments[0].id, "fld-file");
-    }
-
-    #[test]
-    fn type_change_is_schema_drift_even_when_the_display_name_is_unchanged() {
-        let mapping = VersionedFeishuMapping {
-            version: "v1".into(),
-            tables: BTreeMap::from([(
-                "tbl".into(),
-                FeishuTableMapping {
-                    fields: BTreeMap::from([(
-                        "model".into(),
-                        MappedFeishuField {
-                            id: "fld".into(),
-                            name: "型号".into(),
-                            field_type: 1,
-                        },
-                    )]),
-                    attachments: vec![],
-                },
-            )]),
-        };
-        let sources = vec![DiscoveredSource {
-            source: FeishuSource {
-                wiki_token: "wiki".into(),
-                table_id: "tbl".into(),
-                name: "Table".into(),
-                family: crate::models::ProductFamily::Axial,
-                application: None,
-            },
-            app_token: "app".into(),
-            fields: vec![FeishuField {
-                field_id: "fld".into(),
-                field_name: "型号".into(),
-                field_type: 2,
-                is_primary: true,
-            }],
-        }];
-        assert!(validate_mapping(mapping, &sources).is_err());
-    }
-
-    #[test]
-    fn assigns_each_source_field_to_its_most_specific_fact() {
-        let fields = vec![
-            FeishuField {
-                field_id: "fld-model".into(),
-                field_name: "型号".into(),
-                field_type: 1,
-                is_primary: true,
-            },
-            FeishuField {
-                field_id: "fld-package".into(),
-                field_name: "包装尺寸(mm)".into(),
-                field_type: 1,
-                is_primary: false,
-            },
-            FeishuField {
-                field_id: "fld-drawing".into(),
-                field_name: "产品尺寸图纸".into(),
-                field_type: 17,
-                is_primary: false,
-            },
-        ];
-        let table = discover_table(&fields).unwrap();
-        assert_eq!(table.fields["packageDimensions"].id, "fld-package");
-        assert!(!table.fields.contains_key("productDimensions"));
-        assert_eq!(table.attachments[0].id, "fld-drawing");
-    }
-}
+#[path = "mapping_tests.rs"]
+mod tests;

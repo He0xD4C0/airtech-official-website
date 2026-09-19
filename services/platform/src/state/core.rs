@@ -15,13 +15,11 @@ impl AppState {
     }
 
     pub fn with_pool(config: Config, pool: PgPool) -> Self {
-        let feishu_client = Arc::new(crate::services::feishu::FeishuClient::new(&config));
         Self {
             config: Arc::new(config),
             pool,
             auth_hash_slots: Arc::new(Semaphore::new(4)),
             request_metrics: Arc::new(RequestMetrics::default()),
-            feishu_client,
             idempotency_locks: Arc::new(Mutex::new(HashMap::new())),
             // A guard holds one PostgreSQL transaction while the business
             // mutation uses other pool connections. Keep ample pool headroom.

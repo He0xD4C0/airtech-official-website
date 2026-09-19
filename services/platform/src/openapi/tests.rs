@@ -41,8 +41,6 @@ fn documents_every_production_route() {
         "/api/admin/v1/content-reviews/{draftId}/approve",
         "/api/admin/v1/content-reviews/{draftId}/reject",
         "/api/admin/v1/dashboard/summary",
-        "/api/admin/v1/feishu/conflicts",
-        "/api/admin/v1/feishu/conflicts/{id}/resolve",
         "/api/admin/v1/feishu/connection-test",
         "/api/admin/v1/feishu/connection-status",
         "/api/admin/v1/feishu/mappings",
@@ -50,7 +48,6 @@ fn documents_every_production_route() {
         "/api/admin/v1/feishu/settings",
         "/api/admin/v1/feishu/sync-runs",
         "/api/admin/v1/feishu/sync-runs/{id}",
-        "/api/admin/v1/feishu/sync-runs/{id}/rollback",
         "/api/admin/v1/media/assets",
         "/api/admin/v1/media/assets/{id}",
         "/api/admin/v1/media/assets/{id}/references",
@@ -113,6 +110,41 @@ fn documents_every_production_route() {
     actual.sort_unstable();
     expected.sort_unstable();
     assert_eq!(actual, expected);
+}
+
+#[test]
+fn feishu_contract_is_full_scan_only_and_never_reads_secrets() {
+    let document = document();
+    let paths = &document["paths"];
+    let schemas = &document["components"]["schemas"];
+    let start = &paths["/api/admin/v1/feishu/sync-runs"]["post"];
+    assert!(start.get("requestBody").is_none());
+    for removed in [
+        "/api/admin/v1/feishu/conflicts",
+        "/api/admin/v1/feishu/conflicts/{id}/resolve",
+        "/api/admin/v1/feishu/sync-runs/{id}/rollback",
+    ] {
+        assert!(paths.get(removed).is_none(), "unexpected path {removed}");
+    }
+    assert!(schemas["FeishuSettings"]["properties"]
+        .get("appSecret")
+        .is_none());
+    assert_eq!(
+        schemas["UpdateFeishuSettings"]["properties"]["appSecret"]["writeOnly"],
+        true
+    );
+    for removed in [
+        "StartSyncRequest",
+        "SyncRunKind",
+        "SyncConflict",
+        "SyncConflictPage",
+        "FeishuRollbackReport",
+    ] {
+        assert!(
+            schemas.get(removed).is_none(),
+            "unexpected schema {removed}"
+        );
+    }
 }
 
 #[test]

@@ -112,6 +112,9 @@ pub fn decrypt_private_pricing(
         })?;
     let source = serde_json::from_slice::<Map<String, Value>>(plaintext)
         .map_err(|_| ApiError::service_unavailable("Private Product Master staging is invalid."))?;
+    if source.get("schema").and_then(Value::as_str) == Some("feishu-private-v1") {
+        return private_pricing_by_field_id(&source);
+    }
     Ok(source
         .into_iter()
         .filter_map(|(name, value)| {
@@ -124,6 +127,48 @@ pub fn decrypt_private_pricing(
             })
         })
         .collect())
+}
+
+fn private_pricing_by_field_id(
+    source: &Map<String, Value>,
+) -> Result<BTreeMap<String, String>, ApiError> {
+    let fields = source
+        .get("fieldsById")
+        .and_then(Value::as_object)
+        .ok_or_else(|| ApiError::service_unavailable("Private Feishu staging is invalid."))?;
+    let pricing_ids = source
+        .get("pricingFieldIds")
+        .and_then(Value::as_array)
+        .ok_or_else(|| ApiError::service_unavailable("Private Feishu staging is invalid."))?;
+    let mut pricing = BTreeMap::new();
+    for id in pricing_ids {
+        let id = id
+            .as_str()
+            .ok_or_else(|| ApiError::service_unavailable("Private Feishu staging is invalid."))?;
+        let field = fields
+            .get(id)
+            .and_then(Value::as_object)
+            .ok_or_else(|| ApiError::service_unavailable("Private Feishu staging is invalid."))?;
+        let name = field
+            .get("name")
+            .and_then(Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or(id);
+        let value = field
+            .get("value")
+            .ok_or_else(|| ApiError::service_unavailable("Private Feishu staging is invalid."))?;
+        let value = value
+            .as_str()
+            .map(str::to_owned)
+            .unwrap_or_else(|| value.to_string());
+        let key = if pricing.contains_key(name) {
+            format!("{name} [{id}]")
+        } else {
+            name.to_owned()
+        };
+        pricing.insert(key, value);
+    }
+    Ok(pricing)
 }
 
 pub(super) fn is_private_pricing_header(mapping_version: &str, name: &str) -> bool {

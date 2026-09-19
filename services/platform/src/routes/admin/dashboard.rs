@@ -11,13 +11,6 @@ pub(super) async fn admin_dashboard_summary(
         crate::services::admin_analytics::DashboardMetricKind::DraftContent,
     )
     .await?;
-    let open_conflicts = dashboard_count(
-        &state,
-        &principal,
-        "integration.run",
-        crate::services::admin_analytics::DashboardMetricKind::OpenConflicts,
-    )
-    .await?;
     let open_rfqs = dashboard_count(
         &state,
         &principal,
@@ -45,14 +38,10 @@ pub(super) async fn admin_dashboard_summary(
     } else {
         Vec::new()
     };
-    let readiness_item_count = [draft_content.value, open_conflicts.value]
-        .into_iter()
-        .flatten()
-        .sum();
+    let readiness_item_count = draft_content.value.unwrap_or_default();
     Ok(Json(crate::models::AdminDashboardSummary {
         generated_at: Utc::now(),
         draft_content,
-        open_conflicts,
         open_rfqs,
         analytics,
         recent_activity,

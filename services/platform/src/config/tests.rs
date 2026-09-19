@@ -61,7 +61,7 @@ mod cases {
     }
 
     #[test]
-    pub(super) fn product_analytics_and_invitation_replay_keys_are_independent_and_redacted() {
+    pub(super) fn application_keys_are_independent_and_redacted() {
         let encoded = general_purpose::STANDARD.encode([11_u8; 32]);
         let product = parse_product_staging_encryption_key(&encoded).expect("valid key");
         let analytics = parse_analytics_token_hmac_key(&encoded).expect("valid key");

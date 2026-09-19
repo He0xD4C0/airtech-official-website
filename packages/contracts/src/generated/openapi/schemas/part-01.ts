@@ -23,7 +23,6 @@ AdminDashboardSummary: {
             draftContent: components["schemas"]["DashboardMetric"];
             /** Format: date-time */
             generatedAt: string;
-            openConflicts: components["schemas"]["DashboardMetric"];
             openRfqs: components["schemas"]["DashboardMetric"];
             readinessItemCount: number;
             recentActivity: components["schemas"]["AuditEvent"][];

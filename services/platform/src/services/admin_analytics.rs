@@ -38,7 +38,6 @@ struct AnalyticsCursor {
 
 pub enum DashboardMetricKind {
     DraftContent,
-    OpenConflicts,
     OpenRfqs,
 }
 
@@ -191,9 +190,6 @@ pub async fn dashboard_metric(
 ) -> Result<DashboardMetric, ApiError> {
     let sql = match kind {
         DashboardMetricKind::DraftContent => "SELECT count(*)::bigint FROM cms_drafts",
-        DashboardMetricKind::OpenConflicts => {
-            "SELECT count(*)::bigint FROM sync_conflicts WHERE resolved_at IS NULL"
-        }
         DashboardMetricKind::OpenRfqs => {
             "SELECT count(*)::bigint FROM rfq_submissions WHERE status NOT IN ('closed','spam')"
         }

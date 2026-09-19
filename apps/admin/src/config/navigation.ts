@@ -91,7 +91,7 @@ export const navigation: NavGroup[] = [
 export const quickActions: Array<{ label: string; to: string; icon: Component; permission?: Permission }> = [
   { label: '新建私人草稿', to: '/content/drafts/new', icon: Newspaper, permission: 'content.write' },
   { label: '导入 Product Master', to: '/products/imports', icon: FileUp, permission: 'product.write' },
-  { label: '查看同步差异', to: '/integrations/feishu', icon: SlidersHorizontal, permission: 'integration.run' },
+  { label: '查看同步运行', to: '/integrations/feishu', icon: SlidersHorizontal, permission: 'integration.run' },
   { label: '处理新 RFQ', to: '/rfqs', icon: FolderKanban, permission: 'rfq.read' },
   { label: '安全设置', to: '/account/security', icon: ShieldCheck },
 ]

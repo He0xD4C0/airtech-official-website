@@ -162,19 +162,32 @@ The required product-master paths are:
 Owner-approved CSV -> checksum/idempotent staging -> schema/unit/reference validation
                    -> immutable source snapshot -> revision -> explicit publish
 
-Future Feishu snapshot -> staging -> schema/unit/reference validation -> three-way diff
-                       -> conflict resolution or accepted change -> revision -> publish
+Selected Feishu tables -> complete per-table scan -> staging and validation
+                       -> source attachments -> immutable fact revision -> automatic publish
+                       -> successful missing-set reconciliation -> unpublish -> durable purge
 ```
 
 The initial CSV snapshot is authoritative only for its registered environment,
 checksum and mapping version. Product facts and portal-owned localized
 presentation advance on independent immutable revision clocks; a publish binds
 the selected presentation to an exact fact revision. Private commercial columns
-remain encrypted outside public product revisions, and unresolved asset filenames do not become downloads. The
-Feishu transport adapter is not currently connected, so reserved credentials do
-not cause remote synchronization.
+remain encrypted outside public product revisions. The Feishu connector reads
+only enabled GUI-selected sources and never writes to Feishu. Its App ID and
+write-only App Secret are stored in PostgreSQL; the tenant token remains
+memory-only. A successful connection test binds field IDs to a versioned
+mapping, and later ID/type drift fails only that table instead of guessing.
 
-Temporary local overrides retain the Feishu source value, require a reason and expiry, do not write back to Feishu, and cannot be republished after expiry until resolved.
+Every Feishu run freezes the enabled source list, mapping version, and settings
+revision, then performs a full scan. Valid facts automatically publish while the
+last published CMS presentation revision is copied forward; an unpublished CMS
+working draft is never promoted. Record failures retain the prior public fact
+revision. Only a completely fetched and schema-valid table may reconcile
+missing records. There is no Feishu approval-conflict or rollback workflow.
+
+Source images receive WebP previews. Valid original images, documents, sheets,
+and supported CAD files remain downloadable; non-images have no preview route
+and download with `attachment` plus `nosniff`. SHA-256 deduplication and durable
+object compensation prevent one source purge from deleting a shared asset.
 
 ## Search-engine isolation
 
@@ -284,13 +297,12 @@ entrypoint. `production` and `devtools` are mutually exclusive build features.
 
 ## Adapter readiness
 
-PostgreSQL persistence, Flyway-managed schema versions, internal jobs, and
-durable outbox claiming are local platform capabilities. Local-file and
+PostgreSQL persistence, Flyway-managed schema versions, internal jobs, durable
+outbox claiming, and the one-way Feishu connector are platform capabilities.
 S3-compatible direct media transport is implemented. MinIO is the local/E2E
-reference service; production media remains unverified until an approved
-HTTPS endpoint and public origin, least-privilege API identity, monitoring, and
-a real endpoint smoke test are in place. Feishu network synchronization, GA4
-loading, CDN purge, external search providers, email/CRM/webhooks, backup
-executors, and isolated restore executors are not connected. Environment
-placeholders, passing local tests, or Admin screens must not be treated as proof
-of an active external integration.
+reference service; production media and Feishu remain unverified until approved
+endpoints, least-privilege application access, monitoring, and real connection
+and synchronization smoke tests are complete. GA4 loading, CDN purge, external
+search providers, email/CRM/webhooks, backup executors, and isolated restore
+executors are not connected. Passing local tests or displaying an Admin screen
+must not be treated as proof of an active external integration.
