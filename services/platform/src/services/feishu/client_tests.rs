@@ -227,9 +227,16 @@ async fn downloads_and_hashes_attachments_but_rejects_oversized_content() {
     let (client, server) = mock_client(MockState::default()).await;
 
     let downloaded = client.download_asset("pdf").await.unwrap();
-    assert_eq!(downloaded.bytes, b"%PDF-1.7\nmock");
+    assert_eq!(
+        tokio::fs::read(downloaded.path()).await.unwrap(),
+        b"%PDF-1.7\nmock"
+    );
+    assert_eq!(downloaded.byte_size, 13);
     assert_eq!(downloaded.content_type.as_deref(), Some("application/pdf"));
     assert_eq!(downloaded.sha256.len(), 64);
+    let staged_path = downloaded.path().to_owned();
+    drop(downloaded);
+    assert!(!staged_path.exists());
 
     let error = super::validate_attachment_length(Some(100_u64 * 1024 * 1024 + 1))
         .err()

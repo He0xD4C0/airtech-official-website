@@ -1,6 +1,7 @@
 use std::{
     io::{ErrorKind, Read, Write},
     net::{TcpStream, ToSocketAddrs},
+    path::Path,
     sync::{Arc, OnceLock},
     time::Duration,
 };
@@ -24,6 +25,8 @@ const HEADER_LIMIT: usize = 64 * 1024;
 #[allow(dead_code)]
 #[path = "s3_stream.rs"]
 mod get_stream;
+#[path = "s3_upload.rs"]
+mod upload_stream;
 
 pub(super) fn put(
     settings: &MediaStorageSettings,
@@ -43,6 +46,17 @@ pub(super) fn put(
         200 => Ok(()),
         status => Err(storage_failure("Media object could not be stored.", status)),
     }
+}
+
+pub(super) fn put_file(
+    settings: &MediaStorageSettings,
+    key: &str,
+    content_type: &str,
+    path: &Path,
+    byte_size: u64,
+    sha256: &str,
+) -> Result<(), ApiError> {
+    upload_stream::put(settings, key, content_type, path, byte_size, sha256)
 }
 
 pub(super) async fn get(
@@ -217,13 +231,53 @@ fn authorize_at(
     now: DateTime<Utc>,
 ) -> Result<Vec<(String, String)>, ApiError> {
     let payload_hash = HEXLOWER.encode(&Sha256::digest(body));
+    authorize_hash_at(
+        settings,
+        method,
+        path,
+        host_header,
+        extra_headers,
+        &payload_hash,
+        now,
+    )
+}
+
+fn authorize_hash(
+    settings: &MediaStorageSettings,
+    method: &str,
+    path: &str,
+    host_header: &str,
+    extra_headers: &[(String, String)],
+    payload_hash: &str,
+) -> Result<Vec<(String, String)>, ApiError> {
+    authorize_hash_at(
+        settings,
+        method,
+        path,
+        host_header,
+        extra_headers,
+        payload_hash,
+        Utc::now(),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn authorize_hash_at(
+    settings: &MediaStorageSettings,
+    method: &str,
+    path: &str,
+    host_header: &str,
+    extra_headers: &[(String, String)],
+    payload_hash: &str,
+    now: DateTime<Utc>,
+) -> Result<Vec<(String, String)>, ApiError> {
     let amz_date = now.format("%Y%m%dT%H%M%SZ").to_string();
     let date_stamp = now.format("%Y%m%d").to_string();
     let scope = format!("{date_stamp}/{}/s3/aws4_request", settings.region.trim());
 
     let mut headers = vec![
         ("host".to_owned(), host_header.to_owned()),
-        ("x-amz-content-sha256".to_owned(), payload_hash.clone()),
+        ("x-amz-content-sha256".to_owned(), payload_hash.to_owned()),
         ("x-amz-date".to_owned(), amz_date.clone()),
     ];
     headers.extend(

@@ -10,7 +10,7 @@ use crate::{
     state::AppState,
 };
 
-use super::{token_hash, SourceAttachment};
+use super::{client::AssetProbe, token_hash, SourceAttachment};
 
 #[derive(Clone, Debug)]
 pub struct StoredSourceAsset {
@@ -75,7 +75,7 @@ async fn store_source_asset(
         .await?;
     if attachment
         .declared_size
-        .is_some_and(|size| size != downloaded.bytes.len() as u64)
+        .is_some_and(|size| size != downloaded.byte_size)
     {
         return Err(ApiError::conflict(format!(
             "Feishu attachment `{}` length differs from its metadata.",
@@ -84,11 +84,12 @@ async fn store_source_asset(
     }
     let asset_type = classify_asset(
         &attachment.original_name,
-        &downloaded.bytes,
+        downloaded.probe(),
+        downloaded.byte_size,
         downloaded.content_type.as_deref(),
         attachment.declared_media_type.as_deref(),
     )?;
-    if asset_type.image && downloaded.bytes.len() > media::MAX_MEDIA_UPLOAD_BYTES {
+    if asset_type.image && downloaded.byte_size > media::MAX_MEDIA_UPLOAD_BYTES as u64 {
         return Err(ApiError::new(
             axum::http::StatusCode::PAYLOAD_TOO_LARGE,
             "Payload too large",
@@ -107,7 +108,7 @@ async fn store_source_asset(
     {
         return Ok(asset);
     }
-    let byte_size = downloaded.bytes.len() as i64;
+    let byte_size = downloaded.byte_size as i64;
 
     let settings = object_storage_settings::active_storage(state).await?;
     let asset_id = Uuid::new_v4();
@@ -121,11 +122,22 @@ async fn store_source_asset(
     let storage_key = format!("{key_base}.{}", asset_type.extension);
     let preview_key = asset_type.image.then(|| format!("{key_base}.preview.webp"));
     let preview = if asset_type.image {
-        Some(media::generate_preview(downloaded.bytes.clone()).await?)
+        let bytes = tokio::fs::read(downloaded.path())
+            .await
+            .map_err(staged_attachment_error)?;
+        Some(media::generate_preview(bytes).await?)
     } else {
         None
     };
-    media::put_object(&settings, &storage_key, asset_type.mime, downloaded.bytes).await?;
+    media::put_file(
+        &settings,
+        &storage_key,
+        asset_type.mime,
+        downloaded.path(),
+        downloaded.byte_size,
+        &downloaded.sha256,
+    )
+    .await?;
     if let (Some(key), Some(preview)) = (preview_key.as_deref(), preview.as_ref()) {
         if let Err(error) =
             media::put_object(&settings, key, "image/webp", preview.bytes.clone()).await
@@ -160,7 +172,7 @@ async fn store_source_asset(
             media_asset_id: asset_id,
             storage_key,
             preview_storage_key: preview_key,
-            checksum: downloaded.sha256,
+            checksum: downloaded.sha256.clone(),
             media_type: asset_type.mime.into(),
             byte_size,
             original_name: sanitize_name(&attachment.original_name),
@@ -347,11 +359,12 @@ fn decode_stored(
 
 fn classify_asset(
     name: &str,
-    bytes: &[u8],
+    probe: &AssetProbe,
+    byte_size: u64,
     response_type: Option<&str>,
     declared_type: Option<&str>,
 ) -> Result<AssetType, ApiError> {
-    if let Some(image) = media::sniff_media_type(bytes) {
+    if let Some(image) = media::sniff_media_type(probe.prefix()) {
         return Ok(AssetType {
             mime: image.mime,
             extension: image.extension,
@@ -364,7 +377,7 @@ fn classify_asset(
         .map(str::to_ascii_lowercase)
         .ok_or_else(unsupported_asset)?;
     let asset = document_type(&extension).ok_or_else(unsupported_asset)?;
-    if !valid_signature(asset.extension, bytes) {
+    if !valid_signature(asset.extension, probe, byte_size) {
         return Err(ApiError::new(
             axum::http::StatusCode::UNSUPPORTED_MEDIA_TYPE,
             "Unsupported media type",
@@ -421,24 +434,26 @@ fn document_type(extension: &str) -> Option<AssetType> {
     })
 }
 
-fn valid_signature(extension: &str, bytes: &[u8]) -> bool {
+fn valid_signature(extension: &str, probe: &AssetProbe, byte_size: u64) -> bool {
+    let bytes = probe.prefix();
     match extension {
         "pdf" => bytes.starts_with(b"%PDF-"),
         "doc" | "xls" => bytes.starts_with(&[0xd0, 0xcf, 0x11, 0xe0]),
-        "docx" => zip_contains(bytes, b"word/"),
-        "xlsx" => zip_contains(bytes, b"xl/"),
+        "docx" => bytes.starts_with(b"PK\x03\x04") && probe.has_office_path(b"word/"),
+        "xlsx" => bytes.starts_with(b"PK\x03\x04") && probe.has_office_path(b"xl/"),
         "dwg" => bytes.starts_with(b"AC10"),
         "dxf" => bytes.starts_with(b"0\nSECTION") || bytes.starts_with(b"0\r\nSECTION"),
         "step" | "stp" => bytes.starts_with(b"ISO-10303-21"),
-        "iges" | "igs" => bytes.len() >= 80,
-        "stl" => bytes.starts_with(b"solid") || bytes.len() >= 84,
+        "iges" | "igs" => byte_size >= 80,
+        "stl" => bytes.starts_with(b"solid") || byte_size >= 84,
         "obj" => bytes.starts_with(b"#") || bytes.starts_with(b"v "),
-        _ => !bytes.is_empty(),
+        _ => byte_size > 0,
     }
 }
 
-fn zip_contains(bytes: &[u8], path: &[u8]) -> bool {
-    bytes.starts_with(b"PK\x03\x04") && bytes.windows(path.len()).any(|window| window == path)
+fn staged_attachment_error(error: std::io::Error) -> ApiError {
+    tracing::error!(%error, "staged Feishu attachment could not be read");
+    ApiError::service_unavailable("Feishu attachment staging is unavailable.")
 }
 
 fn compatible_office_type(extension: &str, supplied: &str) -> bool {

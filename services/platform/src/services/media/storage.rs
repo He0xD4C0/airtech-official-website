@@ -66,6 +66,35 @@ pub async fn put_object(
         .map_err(|_| ApiError::service_unavailable("Media storage task failed."))?
 }
 
+pub async fn put_file(
+    settings: &MediaStorageSettings,
+    key: &str,
+    content_type: &str,
+    path: &std::path::Path,
+    byte_size: u64,
+    sha256: &str,
+) -> Result<(), ApiError> {
+    validate_storage_key(key)?;
+    if byte_size == 0 || byte_size > MAX_ATTACHMENT_BYTES as u64 {
+        return Err(ApiError::bad_request(
+            "Stored objects must be between 1 byte and 100 MiB.",
+        ));
+    }
+    if sha256.len() != 64 || !sha256.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(ApiError::internal("Stored object checksum is invalid."));
+    }
+    let settings = settings.clone();
+    let key = key.to_owned();
+    let content_type = content_type.to_owned();
+    let path = path.to_owned();
+    let sha256 = sha256.to_ascii_lowercase();
+    tokio::task::spawn_blocking(move || {
+        put_file_blocking(&settings, &key, &content_type, &path, byte_size, &sha256)
+    })
+    .await
+    .map_err(|_| ApiError::service_unavailable("Media storage task failed."))?
+}
+
 /// Deletes one object during upload compensation. Missing objects count as a
 /// successful delete so retrying cleanup is always safe.
 pub async fn delete_object(settings: &MediaStorageSettings, key: &str) -> Result<(), ApiError> {
@@ -106,6 +135,20 @@ fn put_blocking(
     }
 }
 
+fn put_file_blocking(
+    settings: &MediaStorageSettings,
+    key: &str,
+    content_type: &str,
+    path: &std::path::Path,
+    byte_size: u64,
+    sha256: &str,
+) -> Result<(), ApiError> {
+    match settings.kind {
+        MediaStorageKind::Local => write_local_file(settings, key, path, byte_size),
+        MediaStorageKind::S3 => s3::put_file(settings, key, content_type, path, byte_size, sha256),
+    }
+}
+
 fn delete_blocking(settings: &MediaStorageSettings, key: &str) -> Result<(), ApiError> {
     match settings.kind {
         MediaStorageKind::Local => delete_local(settings, key),
@@ -136,6 +179,42 @@ fn write_local(settings: &MediaStorageSettings, key: &str, bytes: &[u8]) -> Resu
         ));
     }
     Ok(())
+}
+
+fn write_local_file(
+    settings: &MediaStorageSettings,
+    key: &str,
+    source_path: &std::path::Path,
+    expected_size: u64,
+) -> Result<(), ApiError> {
+    let path = local_path(settings, key)?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(storage_write_error)?;
+    }
+    let temporary = path.with_extension(format!("{}.partial", Uuid::new_v4().simple()));
+    let result = (|| -> std::io::Result<()> {
+        let mut source = fs::File::open(source_path)?;
+        let mut destination = fs::File::create(&temporary)?;
+        let copied = std::io::copy(&mut source, &mut destination)?;
+        if copied != expected_size {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                "staged object length changed before storage",
+            ));
+        }
+        destination.sync_all()?;
+        fs::rename(&temporary, &path)
+    })();
+    if let Err(error) = result {
+        let _ = fs::remove_file(&temporary);
+        return Err(storage_write_error(error));
+    }
+    Ok(())
+}
+
+fn storage_write_error(error: std::io::Error) -> ApiError {
+    tracing::error!(%error, "media object write failed");
+    ApiError::service_unavailable("Media storage is unavailable.")
 }
 
 #[allow(dead_code)]

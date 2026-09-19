@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use futures_util::StreamExt;
+use sha2::Digest;
 
 use super::*;
 use crate::services::media::config::MediaStorageKind;
@@ -39,6 +40,36 @@ async fn local_object_delete_is_idempotent() {
         .expect("repeated delete is successful");
     assert!(!local_path(&settings, key).unwrap().exists());
 
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[tokio::test]
+async fn local_file_upload_streams_from_staging_without_consuming_it() {
+    let root = std::env::temp_dir().join(format!("airtek-media-file-{}", Uuid::new_v4()));
+    let source = std::env::temp_dir().join(format!("airtek-media-source-{}", Uuid::new_v4()));
+    let settings = local_settings(root.clone());
+    let key = "media/2026/09/document.pdf";
+    let expected = vec![0x5a; 3 * 64 * 1024 + 17];
+    std::fs::write(&source, &expected).expect("write staged fixture");
+    let checksum = format!("{:x}", sha2::Sha256::digest(&expected));
+
+    put_file(
+        &settings,
+        key,
+        "application/pdf",
+        &source,
+        expected.len() as u64,
+        &checksum,
+    )
+    .await
+    .expect("stream staged file");
+
+    assert_eq!(
+        std::fs::read(local_path(&settings, key).unwrap()).unwrap(),
+        expected
+    );
+    assert!(source.is_file());
+    let _ = std::fs::remove_file(source);
     let _ = std::fs::remove_dir_all(root);
 }
 

@@ -1,10 +1,8 @@
 use std::{sync::Arc, time::Duration};
 
-use futures_util::StreamExt;
 use reqwest::{header, Method, StatusCode};
 use serde::{de::DeserializeOwned, Deserialize};
 use serde_json::{Map, Value};
-use sha2::{Digest, Sha256};
 use tokio::sync::Mutex;
 
 use crate::{
@@ -12,8 +10,13 @@ use crate::{
     error::ApiError,
 };
 
-const MAX_ATTACHMENT_BYTES: usize = 100 * 1024 * 1024;
 const MAX_ATTEMPTS: usize = 4;
+
+#[path = "client_download.rs"]
+mod download;
+#[cfg(test)]
+use download::validate_attachment_length;
+pub use download::{AssetProbe, DownloadedAsset};
 
 #[derive(Clone)]
 pub struct FeishuClient {
@@ -62,12 +65,6 @@ pub struct FeishuRecordPage {
     pub items: Vec<FeishuRecord>,
     pub next_page_token: Option<String>,
     pub has_more: bool,
-}
-
-pub struct DownloadedAsset {
-    pub bytes: Vec<u8>,
-    pub sha256: String,
-    pub content_type: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -204,33 +201,7 @@ impl FeishuClient {
     pub async fn download_asset(&self, file_token: &str) -> Result<DownloadedAsset, ApiError> {
         let path = format!("/open-apis/drive/v1/medias/{file_token}/download");
         let response = self.authorized_response(Method::GET, &path, &[]).await?;
-        let content_type = response
-            .headers()
-            .get(header::CONTENT_TYPE)
-            .and_then(|value| value.to_str().ok())
-            .map(str::to_owned);
-        validate_attachment_length(response.content_length())?;
-        let mut stream = response.bytes_stream();
-        let mut bytes = Vec::new();
-        let mut digest = Sha256::new();
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk.map_err(network_error)?;
-            if bytes.len().saturating_add(chunk.len()) > MAX_ATTACHMENT_BYTES {
-                return Err(attachment_too_large());
-            }
-            digest.update(&chunk);
-            bytes.extend_from_slice(&chunk);
-        }
-        if bytes.is_empty() {
-            return Err(ApiError::service_unavailable(
-                "Feishu returned an empty attachment.",
-            ));
-        }
-        Ok(DownloadedAsset {
-            bytes,
-            sha256: format!("{:x}", digest.finalize()),
-            content_type,
-        })
+        download::stage_asset(response).await
     }
 
     async fn get_json<T: DeserializeOwned>(
@@ -428,22 +399,6 @@ fn feishu_http_error(status: StatusCode) -> ApiError {
         ApiError::service_unavailable(detail)
     } else {
         ApiError::conflict(detail)
-    }
-}
-
-fn attachment_too_large() -> ApiError {
-    ApiError::new(
-        axum::http::StatusCode::PAYLOAD_TOO_LARGE,
-        "Payload too large",
-        "The Feishu attachment exceeds the 100 MiB limit.",
-    )
-}
-
-fn validate_attachment_length(content_length: Option<u64>) -> Result<(), ApiError> {
-    if content_length.is_some_and(|length| length > MAX_ATTACHMENT_BYTES as u64) {
-        Err(attachment_too_large())
-    } else {
-        Ok(())
     }
 }
 
