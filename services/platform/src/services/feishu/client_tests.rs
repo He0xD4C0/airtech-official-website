@@ -25,6 +25,7 @@ struct MockState {
     field_calls: Arc<AtomicUsize>,
     record_calls: Arc<AtomicUsize>,
     retry_fields: Arc<AtomicBool>,
+    reject_records: Arc<AtomicBool>,
     fail_first_token: Arc<AtomicBool>,
 }
 
@@ -94,6 +95,9 @@ async fn records(
     Query(query): Query<BTreeMap<String, String>>,
 ) -> Response {
     state.record_calls.fetch_add(1, Ordering::SeqCst);
+    if state.reject_records.load(Ordering::SeqCst) {
+        return Json(json!({"code": 1254302, "msg": "table unavailable"})).into_response();
+    }
     let second = query
         .get("page_token")
         .is_some_and(|value| value == "records-2");
@@ -113,7 +117,10 @@ async fn records(
     .into_response()
 }
 
-async fn download(Path(_token): Path<String>) -> Response {
+async fn download(Path(token): Path<String>) -> Response {
+    if token == "missing" {
+        return StatusCode::NOT_FOUND.into_response();
+    }
     (
         [(header::CONTENT_TYPE, "application/pdf")],
         b"%PDF-1.7\nmock".to_vec(),
@@ -201,6 +208,21 @@ async fn retries_a_transient_token_endpoint_failure() {
 }
 
 #[tokio::test]
+async fn treats_application_rejections_as_non_retryable_table_errors() {
+    let state = MockState::default();
+    state.reject_records.store(true, Ordering::SeqCst);
+    let (client, server) = mock_client(state).await;
+
+    let error = client
+        .list_records_page("app", "table", None)
+        .await
+        .err()
+        .unwrap();
+    assert_eq!(error.status(), StatusCode::CONFLICT);
+    server.abort();
+}
+
+#[tokio::test]
 async fn downloads_and_hashes_attachments_but_rejects_oversized_content() {
     let (client, server) = mock_client(MockState::default()).await;
 
@@ -213,5 +235,8 @@ async fn downloads_and_hashes_attachments_but_rejects_oversized_content() {
         .err()
         .unwrap();
     assert_eq!(error.status(), StatusCode::PAYLOAD_TOO_LARGE);
+
+    let missing = client.download_asset("missing").await.err().unwrap();
+    assert_eq!(missing.status(), StatusCode::CONFLICT);
     server.abort();
 }

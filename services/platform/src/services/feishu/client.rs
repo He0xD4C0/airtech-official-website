@@ -245,7 +245,7 @@ impl FeishuClient {
         })?;
         if envelope.code != 0 {
             tracing::warn!(code = envelope.code, "Feishu API rejected a request");
-            return Err(ApiError::service_unavailable(format!(
+            return Err(ApiError::conflict(format!(
                 "Feishu API rejected the request with code {}.",
                 envelope.code
             )));
@@ -296,11 +296,9 @@ impl FeishuClient {
                 continue;
             }
             if !response.status().is_success() {
-                tracing::warn!(status = %response.status(), "Feishu HTTP request failed");
-                return Err(ApiError::service_unavailable(format!(
-                    "Feishu returned HTTP {}.",
-                    response.status().as_u16()
-                )));
+                let status = response.status();
+                tracing::warn!(%status, "Feishu HTTP request failed");
+                return Err(feishu_http_error(status));
             }
             return Ok(response);
         }
@@ -418,6 +416,19 @@ fn retry_after(response: &reqwest::Response) -> Option<Duration> {
 fn network_error(error: reqwest::Error) -> ApiError {
     tracing::warn!(%error, "Feishu transport failed");
     ApiError::service_unavailable("Feishu is temporarily unavailable.")
+}
+
+fn feishu_http_error(status: StatusCode) -> ApiError {
+    let detail = format!("Feishu returned HTTP {}.", status.as_u16());
+    if matches!(
+        status,
+        StatusCode::UNAUTHORIZED | StatusCode::REQUEST_TIMEOUT | StatusCode::TOO_MANY_REQUESTS
+    ) || status.is_server_error()
+    {
+        ApiError::service_unavailable(detail)
+    } else {
+        ApiError::conflict(detail)
+    }
 }
 
 fn attachment_too_large() -> ApiError {

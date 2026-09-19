@@ -77,7 +77,7 @@ async fn execute_sync_run_inner(state: &AppState, run_id: Uuid) -> Result<Value,
     let mut assets_failed = run.assets_failed;
     let mut processed_tables = Vec::new();
 
-    for (table_index, source) in settings.sources.iter().enumerate() {
+    'tables: for (table_index, source) in settings.sources.iter().enumerate() {
         if table_index < cursor.table_index {
             processed_tables.push(source.table_id.clone());
             continue;
@@ -152,7 +152,6 @@ async fn execute_sync_run_inner(state: &AppState, run_id: Uuid) -> Result<Value,
                 continue;
             }
         };
-        processed_tables.push(source.table_id.clone());
         let mut page_token = (table_index == cursor.table_index)
             .then(|| cursor.page_token.clone())
             .flatten();
@@ -162,14 +161,45 @@ async fn execute_sync_run_inner(state: &AppState, run_id: Uuid) -> Result<Value,
             0
         };
         loop {
-            let page = state
+            let page = match state
                 .feishu_client
                 .list_records_page(
                     &discovered.app_token,
                     &source.table_id,
                     page_token.as_deref(),
                 )
-                .await?;
+                .await
+            {
+                Ok(page) => page,
+                Err(error) if error.status().is_server_error() => return Err(error),
+                Err(error) => {
+                    record_sync_error(
+                        state,
+                        run_id,
+                        None,
+                        "tableUnavailable",
+                        &format!("{}: {error}", source.table_id),
+                    )
+                    .await?;
+                    increment_table_failure(state, run_id).await?;
+                    cursor = FeishuResumeCursor {
+                        table_index: table_index + 1,
+                        page_token: None,
+                        record_index: 0,
+                    };
+                    persist_cursor(
+                        state,
+                        run_id,
+                        key,
+                        &cursor,
+                        assets_copied,
+                        assets_reused,
+                        assets_failed,
+                    )
+                    .await?;
+                    continue 'tables;
+                }
+            };
             for (index, source_record) in page.items.iter().enumerate().skip(record_index) {
                 let normalized = normalize_record(source, &table_mapping, source_record);
                 cursor = FeishuResumeCursor {
@@ -331,6 +361,7 @@ async fn execute_sync_run_inner(state: &AppState, run_id: Uuid) -> Result<Value,
             )
             .await?;
         }
+        processed_tables.push(source.table_id.clone());
         cursor = FeishuResumeCursor {
             table_index: table_index + 1,
             page_token: None,

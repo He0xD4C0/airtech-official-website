@@ -107,6 +107,7 @@ async fn store_source_asset(
     {
         return Ok(asset);
     }
+    let byte_size = downloaded.bytes.len() as i64;
 
     let settings = object_storage_settings::active_storage(state).await?;
     let asset_id = Uuid::new_v4();
@@ -124,13 +125,7 @@ async fn store_source_asset(
     } else {
         None
     };
-    media::put_object(
-        &settings,
-        &storage_key,
-        asset_type.mime,
-        downloaded.bytes.clone(),
-    )
-    .await?;
+    media::put_object(&settings, &storage_key, asset_type.mime, downloaded.bytes).await?;
     if let (Some(key), Some(preview)) = (preview_key.as_deref(), preview.as_ref()) {
         if let Err(error) =
             media::put_object(&settings, key, "image/webp", preview.bytes.clone()).await
@@ -155,7 +150,7 @@ async fn store_source_asset(
         preview_url.as_deref(),
         asset_type,
         &downloaded.sha256,
-        downloaded.bytes.len() as i64,
+        byte_size,
         preview.as_ref(),
         settings.kind.label(),
     )
@@ -167,7 +162,7 @@ async fn store_source_asset(
             preview_storage_key: preview_key,
             checksum: downloaded.sha256,
             media_type: asset_type.mime.into(),
-            byte_size: downloaded.bytes.len() as i64,
+            byte_size,
             original_name: sanitize_name(&attachment.original_name),
             source_field_id: attachment.source_field_id.clone(),
             source_field_name: attachment.source_field_name.clone(),
