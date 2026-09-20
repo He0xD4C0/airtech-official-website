@@ -112,6 +112,12 @@ describe('database-driven public SSR page loading', () => {
       : json(route(content()))) as unknown as typeof fetch
     await expect(loadPublicPageData('/en', { baseUrl: 'http://api:8080/api/public/v1', fetchImpl: unavailableFetch }))
       .rejects.toMatchObject({ status: 503 })
+
+    const bothUnavailable = vi.fn(async (input: RequestInfo | URL) => String(input).includes('/site-bootstrap?')
+      ? json({ title: 'Unavailable' }, 503)
+      : json({ title: 'Not Found' }, 404)) as unknown as typeof fetch
+    await expect(loadPublicPageData('/en/missing', { baseUrl: 'http://api:8080/api/public/v1', fetchImpl: bothUnavailable }))
+      .rejects.toMatchObject({ status: 503 })
   })
 
   it('SSR-renders a complete development bootstrap but forces its pages noindex', async () => {

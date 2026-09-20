@@ -1,0 +1,139 @@
+[
+  {
+    "schemaVersion": 2, "kind": "home", "locale": "en", "templateKey": "home", "title": "AIRTEKPOWER Development Preview", "slug": "home",
+    "summary": "Database-backed public website development preview.", "isPlaceholder": true, "typeFields": { "type": "home" }, "body": null,
+    "composition": { "blocks": [{ "type": "hero", "id": "10000000-0000-4000-8000-000000000001", "eyebrow": "Development fixture", "heading": "AIRTEKPOWER Development Preview", "lead": "This placeholder verifies the published-content pipeline without introducing unreviewed product or business claims.", "media": null, "actions": [{ "label": "Request a Quote", "target": { "targetType": "route", "path": "/en/request-a-quote" } }], "variant": "standard" }] },
+    "seo": { "title": "AIRTEKPOWER | Development Preview", "description": "Database-backed development fixture for the AIRTEKPOWER public website.", "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  },
+  {
+    "schemaVersion": 2, "kind": "page", "locale": "en", "templateKey": "productIndex", "title": "Products Development Preview", "slug": "products",
+    "summary": "Product discovery renders only validated published records.", "isPlaceholder": true, "typeFields": { "type": "page" }, "body": null,
+    "composition": { "blocks": [{ "type": "hero", "id": "10000000-0000-4000-8000-000000000002", "eyebrow": "Development fixture", "heading": "Products Development Preview", "lead": "No product facts are created by this development fixture.", "media": null, "actions": [], "variant": "standard" }] },
+    "seo": { "title": "Products | Development Preview", "description": "Development fixture for published product discovery.", "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  },
+  {
+    "schemaVersion": 2, "kind": "page", "locale": "en", "templateKey": "selector", "title": "Fan Selector Development Preview", "slug": "selector",
+    "summary": "The selector returns only validated published product records.", "isPlaceholder": true, "typeFields": { "type": "page" }, "body": null,
+    "composition": { "blocks": [{ "type": "hero", "id": "10000000-0000-4000-8000-000000000003", "eyebrow": "Development fixture", "heading": "Fan Selector Development Preview", "lead": "Published data unavailable until validated product records are present.", "media": null, "actions": [], "variant": "standard" }] },
+    "seo": { "title": "Fan Selector | Development Preview", "description": "Development fixture for the selector workflow.", "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  },
+  {
+    "schemaVersion": 2, "kind": "page", "locale": "en", "templateKey": "compare", "title": "Product Comparison Development Preview", "slug": "compare",
+    "summary": "Comparison remains empty until published products are selected.", "isPlaceholder": true, "typeFields": { "type": "page" }, "body": null,
+    "composition": { "blocks": [{ "type": "hero", "id": "10000000-0000-4000-8000-000000000004", "eyebrow": "Development fixture", "heading": "Product Comparison Development Preview", "lead": "No fixed product rows or comparison values are included.", "media": null, "actions": [], "variant": "standard" }] },
+    "seo": { "title": "Compare Products | Development Preview", "description": "Development fixture for product comparison.", "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  },
+  {
+    "schemaVersion": 2, "kind": "page", "locale": "en", "templateKey": "search", "title": "Search Development Preview", "slug": "search",
+    "summary": "Search is limited to published records.", "isPlaceholder": true, "typeFields": { "type": "page" }, "body": null,
+    "composition": { "blocks": [{ "type": "hero", "id": "10000000-0000-4000-8000-000000000005", "eyebrow": "Development fixture", "heading": "Search Development Preview", "lead": "Only published records can appear in results.", "media": null, "actions": [], "variant": "standard" }] },
+    "seo": { "title": "Search | Development Preview", "description": "Development fixture for public search.", "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  },
+  {
+    "schemaVersion": 2, "kind": "company", "locale": "en", "templateKey": "about", "title": "About Development Preview", "slug": "about",
+    "summary": "Placeholder company page awaiting reviewed publication content.", "isPlaceholder": true, "typeFields": { "type": "company" },
+    "body": { "type": "doc", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Development fixture only. Replace this text with reviewed, source-backed company content before launch." }] }] },
+    "composition": { "blocks": [{ "type": "hero", "id": "10000000-0000-4000-8000-000000000006", "eyebrow": "Development fixture", "heading": "About Development Preview", "lead": "This page intentionally contains no unreviewed company metrics or claims.", "media": null, "actions": [], "variant": "standard" }, { "type": "body", "id": "10000000-0000-4000-8000-000000000007", "width": "standard" }] },
+    "seo": { "title": "About | Development Preview", "description": "Development fixture for the company page.", "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  },
+  {
+    "schemaVersion": 2, "kind": "company", "locale": "en", "templateKey": "contact", "title": "Contact Development Preview", "slug": "contact",
+    "summary": "Development fixture for the public contact workflow.", "isPlaceholder": true, "typeFields": { "type": "company" }, "body": null,
+    "composition": { "blocks": [{ "type": "hero", "id": "10000000-0000-4000-8000-000000000008", "eyebrow": "Development fixture", "heading": "Contact Development Preview", "lead": "Use this page to verify the local contact submission workflow.", "media": null, "actions": [], "variant": "standard" }, { "type": "contactBlock", "id": "10000000-0000-4000-8000-000000000009", "heading": "Contact workflow", "channels": [], "action": null }] },
+    "seo": { "title": "Contact | Development Preview", "description": "Development fixture for contact submissions.", "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  },
+  {
+    "schemaVersion": 2, "kind": "page", "locale": "en", "templateKey": "rfqRouter", "title": "Request a Quote Development Preview", "slug": "request-a-quote",
+    "summary": "Choose a structured inquiry journey.", "isPlaceholder": true, "typeFields": { "type": "page" }, "body": null,
+    "composition": { "blocks": [{ "type": "hero", "id": "10000000-0000-4000-8000-000000000010", "eyebrow": "Development fixture", "heading": "Request a Quote Development Preview", "lead": "Choose a journey to verify the local RFQ workflow.", "media": null, "actions": [], "variant": "standard" }] },
+    "seo": { "title": "Request a Quote | Development Preview", "description": "Development fixture for RFQ routing.", "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  },
+  {
+    "schemaVersion": 2, "kind": "page", "locale": "en", "templateKey": "rfqForm", "title": "Product RFQ Development Preview", "slug": "product",
+    "summary": "Development fixture for a product-context inquiry.", "isPlaceholder": true, "typeFields": { "type": "page" }, "body": null,
+    "composition": { "blocks": [{ "type": "hero", "id": "10000000-0000-4000-8000-000000000011", "eyebrow": "Development fixture", "heading": "Product RFQ Development Preview", "lead": "No product is preselected unless the user supplies published product context.", "media": null, "actions": [], "variant": "standard" }] },
+    "seo": { "title": "Product RFQ | Development Preview", "description": "Development fixture for product RFQs.", "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  },
+  {
+    "schemaVersion": 2, "kind": "page", "locale": "en", "templateKey": "rfqForm", "title": "Selection RFQ Development Preview", "slug": "selection",
+    "summary": "Development fixture for a selection inquiry.", "isPlaceholder": true, "typeFields": { "type": "page" }, "body": null,
+    "composition": { "blocks": [{ "type": "hero", "id": "10000000-0000-4000-8000-000000000012", "eyebrow": "Development fixture", "heading": "Selection RFQ Development Preview", "lead": "User-entered operating requirements remain visible and editable.", "media": null, "actions": [], "variant": "standard" }] },
+    "seo": { "title": "Selection RFQ | Development Preview", "description": "Development fixture for selection RFQs.", "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  },
+  {
+    "schemaVersion": 2, "kind": "page", "locale": "en", "templateKey": "rfqForm", "title": "Project RFQ Development Preview", "slug": "project",
+    "summary": "Development fixture for a project inquiry.", "isPlaceholder": true, "typeFields": { "type": "page" }, "body": null,
+    "composition": { "blocks": [{ "type": "hero", "id": "10000000-0000-4000-8000-000000000013", "eyebrow": "Development fixture", "heading": "Project RFQ Development Preview", "lead": "Use this route to verify project inquiry validation and submission.", "media": null, "actions": [], "variant": "standard" }] },
+    "seo": { "title": "Project RFQ | Development Preview", "description": "Development fixture for project RFQs.", "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  },
+  {
+    "schemaVersion": 2, "kind": "page", "locale": "en", "templateKey": "rfqForm", "title": "Replacement RFQ Development Preview", "slug": "replacement",
+    "summary": "Development fixture for a replacement inquiry.", "isPlaceholder": true, "typeFields": { "type": "page" }, "body": null,
+    "composition": { "blocks": [{ "type": "hero", "id": "10000000-0000-4000-8000-000000000014", "eyebrow": "Development fixture", "heading": "Replacement RFQ Development Preview", "lead": "No replacement suitability is inferred automatically.", "media": null, "actions": [], "variant": "standard" }] },
+    "seo": { "title": "Replacement RFQ | Development Preview", "description": "Development fixture for replacement RFQs.", "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  },
+  {
+    "schemaVersion": 2, "kind": "legal", "locale": "en", "templateKey": "legal", "title": "Privacy Development Placeholder", "slug": "privacy",
+    "summary": "Placeholder only; not approved legal text.", "isPlaceholder": true, "typeFields": { "type": "legal", "effectiveDate": null },
+    "body": { "type": "doc", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Development placeholder only. Replace with reviewed legal text before any production launch." }] }] },
+    "composition": { "blocks": [{ "type": "body", "id": "10000000-0000-4000-8000-000000000015", "width": "narrow" }] },
+    "seo": { "title": "Privacy | Development Placeholder", "description": "Unapproved development placeholder.", "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  },
+  {
+    "schemaVersion": 2, "kind": "legal", "locale": "en", "templateKey": "legal", "title": "Terms Development Placeholder", "slug": "terms",
+    "summary": "Placeholder only; not approved legal text.", "isPlaceholder": true, "typeFields": { "type": "legal", "effectiveDate": null },
+    "body": { "type": "doc", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Development placeholder only. Replace with reviewed legal text before any production launch." }] }] },
+    "composition": { "blocks": [{ "type": "body", "id": "10000000-0000-4000-8000-000000000016", "width": "narrow" }] },
+    "seo": { "title": "Terms | Development Placeholder", "description": "Unapproved development placeholder.", "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  },
+  {
+    "schemaVersion": 2, "kind": "legal", "locale": "en", "templateKey": "legal", "title": "Cookie Settings Development Placeholder", "slug": "cookie-settings",
+    "summary": "Placeholder only; not approved legal text.", "isPlaceholder": true, "typeFields": { "type": "legal", "effectiveDate": null },
+    "body": { "type": "doc", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Development placeholder only. Replace with reviewed cookie and consent text before any production launch." }] }] },
+    "composition": { "blocks": [{ "type": "body", "id": "10000000-0000-4000-8000-000000000017", "width": "narrow" }] },
+    "seo": { "title": "Cookie Settings | Development Placeholder", "description": "Unapproved development placeholder.", "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  },
+  {
+    "schemaVersion": 2, "kind": "navigation", "locale": "en", "templateKey": "navigation", "title": "Development Navigation", "slug": null,
+    "summary": null, "isPlaceholder": true,
+    "typeFields": { "type": "navigation", "items": [
+      { "id": "20000000-0000-4000-8000-000000000001", "label": "Home", "target": { "targetType": "route", "path": "/en" }, "children": [] },
+      { "id": "20000000-0000-4000-8000-000000000002", "label": "Products", "target": { "targetType": "route", "path": "/en/products" }, "children": [] },
+      { "id": "20000000-0000-4000-8000-000000000003", "label": "Fan Selector", "target": { "targetType": "route", "path": "/en/products/selector" }, "children": [] },
+      { "id": "20000000-0000-4000-8000-000000000004", "label": "About", "target": { "targetType": "route", "path": "/en/company/about" }, "children": [] },
+      { "id": "20000000-0000-4000-8000-000000000005", "label": "Contact", "target": { "targetType": "route", "path": "/en/company/contact" }, "children": [] }
+    ] },
+    "body": null, "composition": { "blocks": [] }, "seo": { "title": null, "description": null, "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  },
+  {
+    "schemaVersion": 2, "kind": "footer", "locale": "en", "templateKey": "footer", "title": "Development Footer", "slug": null,
+    "summary": null, "isPlaceholder": true,
+    "typeFields": { "type": "footer", "columns": [
+      { "id": "30000000-0000-4000-8000-000000000001", "title": "Explore", "links": [
+        { "id": "30000000-0000-4000-8000-000000000002", "label": "Products", "target": { "targetType": "route", "path": "/en/products" }, "children": [] },
+        { "id": "30000000-0000-4000-8000-000000000003", "label": "Compare", "target": { "targetType": "route", "path": "/en/products/compare" }, "children": [] }
+      ] },
+      { "id": "30000000-0000-4000-8000-000000000004", "title": "Company", "links": [
+        { "id": "30000000-0000-4000-8000-000000000005", "label": "About", "target": { "targetType": "route", "path": "/en/company/about" }, "children": [] },
+        { "id": "30000000-0000-4000-8000-000000000006", "label": "Contact", "target": { "targetType": "route", "path": "/en/company/contact" }, "children": [] },
+        { "id": "30000000-0000-4000-8000-000000000007", "label": "Request a Quote", "target": { "targetType": "route", "path": "/en/request-a-quote" }, "children": [] }
+      ] }
+    ], "legalLinks": [
+      { "id": "30000000-0000-4000-8000-000000000008", "label": "Privacy", "target": { "targetType": "route", "path": "/en/privacy" }, "children": [] },
+      { "id": "30000000-0000-4000-8000-000000000009", "label": "Terms", "target": { "targetType": "route", "path": "/en/terms" }, "children": [] },
+      { "id": "30000000-0000-4000-8000-000000000010", "label": "Cookie Settings", "target": { "targetType": "route", "path": "/en/cookie-settings" }, "children": [] }
+    ] },
+    "body": null, "composition": { "blocks": [] }, "seo": { "title": null, "description": null, "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  },
+  {
+    "schemaVersion": 2, "kind": "generalInformation", "locale": "en", "templateKey": "generalInformation", "title": "Development General Information", "slug": null,
+    "summary": null, "isPlaceholder": true,
+    "typeFields": { "type": "generalInformation", "organizationName": "AIRTEKPOWER", "brandLine": "Redefining Airflow with Smart, Green Technology", "homePath": "/en", "footerStatement": "Development fixture content. Replace all placeholders with reviewed publication data before launch.", "copyrightTemplate": "© {year} AIRTEKPOWER. Development fixture.",
+      "contact": { "email": null, "phone": null, "addressLines": [], "locality": null, "region": null, "postalCode": null, "countryCode": null },
+      "socialLinks": [], "defaultSeo": { "title": "AIRTEKPOWER | Development Preview", "description": "Database-backed development preview for the AIRTEKPOWER public website.", "indexable": false, "socialImage": null }, "productCategories": [],
+      "navigationCta": { "label": "Request a Quote", "target": { "targetType": "route", "path": "/en/request-a-quote" } }
+    },
+    "body": null, "composition": { "blocks": [] }, "seo": { "title": null, "description": null, "indexable": false, "socialImage": null }, "relations": [], "draftVersion": 1
+  }
+]
+

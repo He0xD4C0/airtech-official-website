@@ -11,6 +11,8 @@ pub mod cms_templates;
 pub mod cms_workflow;
 #[cfg(feature = "devtools")]
 pub mod development_admin;
+#[cfg(feature = "devtools")]
+pub mod development_public_site;
 pub mod feishu;
 pub mod identity;
 pub mod media;

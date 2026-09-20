@@ -24,8 +24,8 @@ services:
       MINIO_ROOT_USER: airtek
       MINIO_ROOT_PASSWORD: local-development-only
     ports:
-      - "127.0.0.1:19000:9000"
-      - "127.0.0.1:19001:9001"
+      - "127.0.0.1:${AIRTEK_OBJECT_STORE_HOST_PORT:-19000}:9000"
+      - "127.0.0.1:${AIRTEK_OBJECT_STORE_CONSOLE_HOST_PORT:-19001}:9001"
     volumes:
       - object-data:/data
     healthcheck:
@@ -114,6 +114,7 @@ services:
     environment:
       DATABASE_URL: ${AIRTEK_DATABASE_URL_INTERNAL:-postgres://airtek:airtek@postgres:5432/airtek}
       AIRTEK_DEV_ADMIN_SEED: ${AIRTEK_DEV_ADMIN_SEED:-true}
+      AIRTEK_DEV_PUBLIC_SEED: ${AIRTEK_DEV_PUBLIC_SEED:-true}
       AIRTEK_DEV_ADMIN_DISPLAY_NAME: AIRTEK Local Administrator
       AIRTEK_DEV_ADMIN_EMAIL: local-admin@airtek.invalid
       AIRTEK_DEV_ADMIN_PASSWORD: Airtek-Local-Admin-20260917!
@@ -136,8 +137,8 @@ services:
     environment:
       AIRTEK_API_HOST: ${AIRTEK_API_HOST:-0.0.0.0}
       DATABASE_URL: ${AIRTEK_DATABASE_URL_INTERNAL:-postgres://airtek:airtek@postgres:5432/airtek}
-      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:-http://localhost:3000}
-      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:-http://localhost:3100}
+      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.localhost:8088}
+      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_COMPOSE_ADMIN_ORIGIN:-http://admin.localhost:8088}
       AIRTEK_ADMIN_BOOTSTRAP_TOKEN: ${AIRTEK_ADMIN_BOOTSTRAP_TOKEN:-local-development-bootstrap-change-me}
       AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:-}
       AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: ${AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY:-}
@@ -186,8 +187,8 @@ services:
     environment:
       AIRTEK_API_HOST: ${AIRTEK_API_HOST:-0.0.0.0}
       DATABASE_URL: ${AIRTEK_DATABASE_URL_INTERNAL:-postgres://airtek:airtek@postgres:5432/airtek}
-      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:-http://localhost:3000}
-      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:-http://localhost:3100}
+      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.localhost:8088}
+      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_COMPOSE_ADMIN_ORIGIN:-http://admin.localhost:8088}
       AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:-}
       AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: ${AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY:-}
       AIRTEK_ANALYTICS_TOKEN_HMAC_KEY: ${AIRTEK_ANALYTICS_TOKEN_HMAC_KEY:-}
@@ -218,19 +219,19 @@ services:
         HTTP_PROXY: ${AIRTEK_BUILD_PROXY:-}
         HTTPS_PROXY: ${AIRTEK_BUILD_PROXY:-}
         NO_PROXY: ${NO_PROXY:-}
-        VITE_PUBLIC_API_BASE_URL: ${VITE_PUBLIC_API_BASE_URL:-http://localhost:8080/api/public/v1}
-        VITE_PUBLIC_ORIGIN: ${VITE_PUBLIC_ORIGIN:-http://localhost:3000}
+        VITE_PUBLIC_API_BASE_URL: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.localhost:8088}/api/public/v1
+        VITE_PUBLIC_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.localhost:8088}
     environment:
       PUBLIC_API_INTERNAL_URL: ${PUBLIC_API_INTERNAL_URL:-http://platform-api:8080/api/public/v1}
-      PUBLIC_API_BROWSER_ORIGIN: ${PUBLIC_API_BROWSER_ORIGIN:-http://localhost:8080}
-      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:3000}
+      PUBLIC_API_BROWSER_ORIGIN: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.localhost:8088}
+      PUBLIC_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.localhost:8088}
     ports:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_PUBLIC_HOST_PORT:-3000}:3000"
     depends_on:
       platform-api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/robots.txt').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/en').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -246,10 +247,10 @@ services:
         HTTP_PROXY: ${AIRTEK_BUILD_PROXY:-}
         HTTPS_PROXY: ${AIRTEK_BUILD_PROXY:-}
         NO_PROXY: ${NO_PROXY:-}
-        VITE_ADMIN_API_BASE_URL: ${VITE_ADMIN_API_BASE_URL:-http://localhost:8080/api/admin/v1}
+        VITE_ADMIN_API_BASE_URL: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.localhost:8088}/api/admin/v1
     environment:
-      ADMIN_API_ORIGIN: ${API_BROWSER_ORIGIN:-http://localhost:8080}
-      ADMIN_MEDIA_IMAGE_SOURCES: "https: http://media.localhost:19000 http://localhost:19000"
+      ADMIN_API_ORIGIN: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.localhost:8088}
+      ADMIN_MEDIA_IMAGE_SOURCES: "https: ${AIRTEK_COMPOSE_MEDIA_ORIGIN:-http://media.localhost:19000} http://localhost:${AIRTEK_OBJECT_STORE_HOST_PORT:-19000}"
     ports:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_ADMIN_HOST_PORT:-3100}:3100"
     depends_on:
@@ -271,8 +272,8 @@ services:
       PUBLIC_HOST: ${PUBLIC_HOST:-www.localhost}
       ADMIN_HOST: ${ADMIN_HOST:-admin.localhost}
       API_HOST: ${API_HOST:-api.localhost}
-      API_BROWSER_ORIGIN: ${API_BROWSER_ORIGIN:-http://api.localhost:8088}
-      MEDIA_IMAGE_SOURCES: "https: http://media.localhost:19000 http://localhost:19000"
+      API_BROWSER_ORIGIN: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.localhost:8088}
+      MEDIA_IMAGE_SOURCES: "https: ${AIRTEK_COMPOSE_MEDIA_ORIGIN:-http://media.localhost:19000} http://localhost:${AIRTEK_OBJECT_STORE_HOST_PORT:-19000}"
     ports:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_GATEWAY_HOST_PORT:-8088}:8088"
     depends_on:

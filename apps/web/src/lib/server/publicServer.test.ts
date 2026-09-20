@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import publicServer, { withPublicSecurityHeaders } from '../../../+server'
+
+afterEach(() => vi.unstubAllGlobals())
 
 describe('public server infrastructure routes', () => {
   it('uses a permanent 308 locale redirect with public security headers', async () => {
@@ -19,6 +21,7 @@ describe('public server infrastructure routes', () => {
   })
 
   it('owns public robots and sitemap responses', async () => {
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(async () => discoveryResponse()))
     const robots = await publicServer.fetch(new Request('http://localhost:3000/robots.txt'))
     expect(robots.status).toBe(200)
     expect(robots.headers.get('content-type')).toContain('text/plain')
@@ -28,6 +31,15 @@ describe('public server infrastructure routes', () => {
     expect(sitemap.status).toBe(200)
     expect(sitemap.headers.get('content-type')).toContain('application/xml')
     expect(await sitemap.text()).not.toContain('admin.')
+  })
+
+  it('fails closed when public discovery is unavailable', async () => {
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockRejectedValue(new Error('offline')))
+    const robots = await publicServer.fetch(new Request('http://localhost:3000/robots.txt'))
+    expect(await robots.text()).toBe('User-agent: *\nDisallow: /\n')
+
+    const sitemap = await publicServer.fetch(new Request('http://localhost:3000/sitemap.xml'))
+    expect(sitemap.status).toBe(503)
   })
 
   it('forces every preview response and error to stay private and unindexable', () => {
@@ -48,3 +60,10 @@ describe('public server infrastructure routes', () => {
   })
 
 })
+
+function discoveryResponse(): Response {
+  return new Response(JSON.stringify({
+    generatedAt: '2026-09-01T00:00:00Z',
+    entries: [],
+  }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+}

@@ -3,9 +3,18 @@ import { renderRobots, renderSitemapIndex, renderUrlSitemap } from './sitemaps'
 
 const origin = 'https://www.example.test'
 
+function discoveryResponse(entries: unknown[] = []): Response {
+  return new Response(JSON.stringify({ generatedAt: '2026-09-01T00:00:00Z', entries }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
 describe('published sitemap rendering', () => {
   it('keeps the sitemap index on the configured public origin', async () => {
-    const response = renderSitemapIndex(origin)
+    const response = await renderSitemapIndex(origin, {
+      fetchImpl: vi.fn<typeof fetch>().mockResolvedValue(discoveryResponse()),
+    })
     const xml = await response.text()
     expect(xml).toContain(`${origin}/sitemap-pages.xml`)
     expect(xml).not.toContain('admin.')
@@ -50,6 +59,14 @@ describe('published sitemap rendering', () => {
     expect(response.headers.get('x-robots-tag')).toContain('noindex')
   })
 
+  it('withholds the sitemap index when discovery is unavailable', async () => {
+    const response = await renderSitemapIndex(origin, {
+      fetchImpl: vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 503 })),
+    })
+    expect(response.status).toBe(503)
+    expect(await response.text()).not.toContain('<sitemapindex')
+  })
+
   it('emits only product and tool URLs explicitly present in discovery', async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({
       generatedAt: '2026-09-01T00:00:00Z',
@@ -79,6 +96,18 @@ describe('published sitemap rendering', () => {
   })
 
   it('generates robots from the same canonical origin', async () => {
-    expect(await renderRobots(origin).text()).toContain(`Sitemap: ${origin}/sitemap.xml`)
+    const response = await renderRobots(origin, {
+      fetchImpl: vi.fn<typeof fetch>().mockResolvedValue(discoveryResponse()),
+    })
+    expect(await response.text()).toContain(`Sitemap: ${origin}/sitemap.xml`)
+  })
+
+  it('disallows crawling and omits sitemap advertising while discovery is unavailable', async () => {
+    const response = await renderRobots(origin, {
+      fetchImpl: vi.fn<typeof fetch>().mockRejectedValue(new Error('offline')),
+    })
+    const body = await response.text()
+    expect(body).toContain('Disallow: /')
+    expect(body).not.toContain('Sitemap:')
   })
 })

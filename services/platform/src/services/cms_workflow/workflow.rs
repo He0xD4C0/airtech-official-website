@@ -15,7 +15,7 @@ use crate::{
     state::AppState,
 };
 
-enum PublishAttempt {
+pub(super) enum PublishAttempt {
     Published(CmsPublishResult),
     Stale,
 }
@@ -209,7 +209,7 @@ async fn lock_review_draft(
     .ok_or_else(|| ApiError::not_found("Pending review draft was not found."))
 }
 
-async fn publish_locked(
+pub(super) async fn publish_locked(
     transaction: &mut Transaction<'_, Postgres>,
     principal: &AdminPrincipal,
     draft: &CmsPrivateDraft,

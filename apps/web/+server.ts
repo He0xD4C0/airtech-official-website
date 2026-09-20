@@ -68,10 +68,10 @@ export default {
       }), url.pathname)
     }
     if (url.pathname === '/robots.txt') {
-      return withPublicSecurityHeaders(renderRobots(), url.pathname)
+      return withPublicSecurityHeaders(await renderRobots(), url.pathname)
     }
     if (url.pathname === '/sitemap.xml') {
-      return withPublicSecurityHeaders(renderSitemapIndex(), url.pathname)
+      return withPublicSecurityHeaders(await renderSitemapIndex(), url.pathname)
     }
     const sitemapName = url.pathname.slice(1)
     if (isSitemapName(sitemapName)) {

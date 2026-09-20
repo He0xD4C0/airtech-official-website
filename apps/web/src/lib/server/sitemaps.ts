@@ -99,7 +99,23 @@ function xmlResponse(body: string): Response {
   })
 }
 
-export function renderSitemapIndex(originValue = publicOrigin()): Response {
+function unavailableProjectionResponse(): Response {
+  return new Response('Sitemap projection temporarily unavailable.\n', {
+    status: 503,
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-store, max-age=0',
+      'Retry-After': '60',
+      'X-Robots-Tag': 'noindex, nofollow, noarchive',
+    },
+  })
+}
+
+export async function renderSitemapIndex(
+  originValue = publicOrigin(),
+  options: SitemapOptions = {},
+): Promise<Response> {
+  if (await discovery(options) === null) return unavailableProjectionResponse()
   const origin = normalizePublicOrigin(originValue)
   const items = sitemapNames.map((name) => `  <sitemap><loc>${escapeXml(`${origin}/${name}`)}</loc></sitemap>`).join('\n')
   return xmlResponse(`<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${items}\n</sitemapindex>\n`)
@@ -108,17 +124,7 @@ export function renderSitemapIndex(originValue = publicOrigin()): Response {
 export async function renderUrlSitemap(name: SitemapName, options: SitemapOptions = {}): Promise<Response> {
   const origin = normalizePublicOrigin(options.canonicalOrigin ?? publicOrigin())
   const discovered = await discovery(options)
-  if (discovered === null) {
-    return new Response('Sitemap projection temporarily unavailable.\n', {
-      status: 503,
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-store, max-age=0',
-        'Retry-After': '60',
-        'X-Robots-Tag': 'noindex, nofollow, noarchive',
-      },
-    })
-  }
+  if (discovered === null) return unavailableProjectionResponse()
   const urls = new Map<string, SitemapUrl>()
   for (const entry of discovered) {
     if (sitemapFor(entry.path) !== name) continue
@@ -136,9 +142,17 @@ export async function renderUrlSitemap(name: SitemapName, options: SitemapOption
   return xmlResponse(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${items}\n</urlset>\n`)
 }
 
-export function renderRobots(originValue = publicOrigin()): Response {
+export async function renderRobots(
+  originValue = publicOrigin(),
+  options: SitemapOptions = {},
+): Promise<Response> {
   const origin = normalizePublicOrigin(originValue)
-  return new Response([
+  const discovered = await discovery(options)
+  const body = discovered === null ? [
+    'User-agent: *',
+    'Disallow: /',
+    '',
+  ] : [
     'User-agent: *',
     'Allow: /',
     'Disallow: /en/search',
@@ -150,7 +164,8 @@ export function renderRobots(originValue = publicOrigin()): Response {
     '',
     `Sitemap: ${origin}/sitemap.xml`,
     '',
-  ].join('\n'), {
+  ]
+  return new Response(body.join('\n'), {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
       'Cache-Control': 'public, max-age=0, s-maxage=300, stale-while-revalidate=60',

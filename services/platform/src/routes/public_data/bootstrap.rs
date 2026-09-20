@@ -6,24 +6,27 @@ pub(super) async fn site_bootstrap(
 ) -> Result<Json<SiteBootstrap>, ApiError> {
     validate_locale(&query.locale)?;
     let general_information =
-        load_v2_singleton(&state, CmsContentKind::GeneralInformation, &query.locale).await?;
-    let navigation = load_v2_singleton(&state, CmsContentKind::Navigation, &query.locale).await?;
-    let footer = load_v2_singleton(&state, CmsContentKind::Footer, &query.locale).await?;
-    let categories = general_information
-        .as_ref()
-        .and_then(|projection| match &projection.type_fields {
-            ContentTypeFields::GeneralInformation(fields) => {
-                Some(fields.product_categories.as_slice())
-            }
-            _ => None,
-        })
-        .unwrap_or_default();
+        load_v2_singleton(&state, CmsContentKind::GeneralInformation, &query.locale)
+            .await?
+            .ok_or_else(incomplete_site_shell)?;
+    let navigation = load_v2_singleton(&state, CmsContentKind::Navigation, &query.locale)
+        .await?
+        .ok_or_else(incomplete_site_shell)?;
+    let footer = load_v2_singleton(&state, CmsContentKind::Footer, &query.locale)
+        .await?
+        .ok_or_else(incomplete_site_shell)?;
+    validate_site_shell(&general_information, &navigation, &footer, &query.locale)?;
+    let categories = match &general_information.type_fields {
+        ContentTypeFields::GeneralInformation(fields) => Some(fields.product_categories.as_slice()),
+        _ => None,
+    }
+    .unwrap_or_default();
     let product_families = product_family_presentations(categories);
     let motor_technologies = published_motor_technologies(&state, &query.locale).await?;
     Ok(Json(SiteBootstrap {
-        general_information,
-        navigation,
-        footer,
+        general_information: Some(general_information),
+        navigation: Some(navigation),
+        footer: Some(footer),
         product_families,
         motor_technologies,
         generated_at: Utc::now(),
@@ -44,18 +47,23 @@ pub(crate) async fn published_site_shell_has_placeholder(
         .await?
         .ok_or_else(incomplete_site_shell)?;
 
-    if information.is_placeholder || navigation.is_placeholder || footer.is_placeholder {
-        return Ok(true);
-    }
+    validate_site_shell(&information, &navigation, &footer, locale)
+}
 
-    if !valid_shell_information(&information, locale)
-        || !valid_shell_content(&navigation, CmsContentKind::Navigation, locale)
-        || !valid_shell_content(&footer, CmsContentKind::Footer, locale)
+fn validate_site_shell(
+    information: &PublicContentProjection,
+    navigation: &PublicContentProjection,
+    footer: &PublicContentProjection,
+    locale: &str,
+) -> Result<bool, ApiError> {
+    if !valid_shell_information(information, locale)
+        || !valid_shell_content(navigation, CmsContentKind::Navigation, locale)
+        || !valid_shell_content(footer, CmsContentKind::Footer, locale)
     {
         return Err(incomplete_site_shell());
     }
 
-    Ok(false)
+    Ok(information.is_placeholder || navigation.is_placeholder || footer.is_placeholder)
 }
 
 pub(super) fn valid_shell_information(information: &PublicContentProjection, locale: &str) -> bool {
@@ -110,4 +118,75 @@ pub(super) fn valid_site_home_path(path: &str, locale: &str) -> bool {
         && !path.contains(['?', '#', '\\'])
         && !path.contains("//")
         && !path.chars().any(char::is_control)
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::http::StatusCode;
+    use serde_json::{json, Value};
+    use uuid::Uuid;
+
+    use super::*;
+
+    fn projection(kind: &str, type_fields: Value) -> PublicContentProjection {
+        serde_json::from_value(json!({
+            "schemaVersion": 2,
+            "id": Uuid::new_v4(),
+            "kind": kind,
+            "locale": "en",
+            "templateKey": kind,
+            "title": kind,
+            "slug": null,
+            "summary": null,
+            "isPlaceholder": true,
+            "typeFields": type_fields,
+            "body": null,
+            "composition": { "blocks": [] },
+            "seo": { "title": null, "description": null, "indexable": false, "socialImage": null },
+            "publishedRevision": 1,
+            "updatedAt": "2026-09-18T00:00:00Z",
+            "resolvedRelations": [],
+            "resolvedLinks": [],
+            "resolvedMedia": []
+        }))
+        .unwrap()
+    }
+
+    fn information(organization_name: Value) -> PublicContentProjection {
+        projection(
+            "generalInformation",
+            json!({
+                "type": "generalInformation",
+                "organizationName": organization_name,
+                "brandLine": null,
+                "homePath": "/en",
+                "footerStatement": null,
+                "copyrightTemplate": null,
+                "contact": { "email": null, "phone": null, "addressLines": [], "locality": null, "region": null, "postalCode": null, "countryCode": null },
+                "socialLinks": [],
+                "defaultSeo": { "title": null, "description": null, "indexable": false, "socialImage": null },
+                "productCategories": [],
+                "navigationCta": null
+            }),
+        )
+    }
+
+    #[test]
+    fn complete_placeholder_shell_is_available_but_invalid_shell_is_not() {
+        let navigation = projection("navigation", json!({ "type": "navigation", "items": [] }));
+        let footer = projection(
+            "footer",
+            json!({ "type": "footer", "columns": [], "legalLinks": [] }),
+        );
+        assert!(validate_site_shell(
+            &information(json!("AIRTEKPOWER Development Preview")),
+            &navigation,
+            &footer,
+            "en"
+        )
+        .unwrap());
+        let error =
+            validate_site_shell(&information(Value::Null), &navigation, &footer, "en").unwrap_err();
+        assert_eq!(error.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
 }

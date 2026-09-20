@@ -289,7 +289,7 @@ for (const variable of ['AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY', 'AIRTEK_ANALYTI
 forbidMatch(serviceBlock(compose, 'postgres'), /^\s+ports:/mu, 'Base Compose must not publish PostgreSQL to the host.')
 requireMatch(serviceBlock(compose, 'minio'), /profiles:\s*\["minio"\]/u, 'Local MinIO must be controlled by the minio Compose profile.')
 requireMatch(serviceBlock(compose, 'minio-create-bucket'), /profiles:\s*\["minio"\]/u, 'Local bucket initialization must use the minio Compose profile.')
-requireMatch(serviceBlock(compose, 'minio'), /127\.0\.0\.1:19000:9000[\s\S]*127\.0\.0\.1:19001:9001/u, 'Profiled MinIO ports must remain fixed and loopback-only.')
+requireMatch(serviceBlock(compose, 'minio'), /127\.0\.0\.1:\$\{AIRTEK_OBJECT_STORE_HOST_PORT:-19000\}:9000[\s\S]*127\.0\.0\.1:\$\{AIRTEK_OBJECT_STORE_CONSOLE_HOST_PORT:-19001\}:9001/u, 'Profiled MinIO ports must be configurable and loopback-only.')
 requireMatch(serviceBlock(compose, 'minio-create-bucket'), /mc mb --ignore-existing/u, 'Local object storage must create its media bucket idempotently.')
 requireMatch(serviceBlock(compose, 'minio'), new RegExp(`image:\\s*${escapeRegExp(minioImage)}`, 'u'), 'Local MinIO must use the reviewed multi-architecture manifest digest.')
 requireMatch(serviceBlock(compose, 'minio'), /healthcheck:[\s\S]*\/minio\/health\/live/u, 'Local MinIO must expose a container healthcheck.')
@@ -329,7 +329,7 @@ for (const [variable, hostPort, containerPort] of [['AIRTEK_POSTGRES_DEBUG_PORT'
 const productionCompose = read('compose.production.yaml')
 const productionEnvironment = read('infra/deploy/production.env.example')
 for (const [body, label] of [[productionCompose, 'Production Compose'], [productionEnvironment, 'Production environment example'], [platformDockerfile, 'Platform Dockerfile']]) {
-  forbidMatch(body, /AIRTEK_DEV_ADMIN_|local-admin@airtek\.invalid|Airtek-Local-Admin-20260917!|prepare-development-runtime|reset-development-admin/u, `${label} must not contain development administrator provisioning or credentials.`)
+  forbidMatch(body, /AIRTEK_DEV_(?:ADMIN|PUBLIC)_|local-admin@airtek\.invalid|Airtek-Local-Admin-20260917!|prepare-development-runtime|reset-development-admin/u, `${label} must not contain development fixture provisioning or credentials.`)
 }
 requireMatch(serviceBlock(productionCompose, 'flyway-migrate'), new RegExp(`AIRTEK_FLYWAY_TARGET:\\s*\\$\\{AIRTEK_FLYWAY_TARGET:\\?set AIRTEK_FLYWAY_TARGET=${latestMigration}\\}`, 'u'), `Production Compose must target schema V${latestMigration}.`)
 forbidMatch(productionCompose, /e2e-test/u, 'Production Compose must never reference the isolated E2E feature.')

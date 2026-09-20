@@ -1,5 +1,7 @@
 #[cfg(feature = "devtools")]
 use airtek_platform::services::development_admin::{self, DevelopmentAdminInput};
+#[cfg(feature = "devtools")]
+use airtek_platform::services::development_public_site;
 use airtek_platform::services::runtime_preparation;
 use sqlx::postgres::PgPoolOptions;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -16,6 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     let command = std::env::args().nth(1);
+    reject_production_development_seed()?;
     validate_command(command.as_deref())?;
     let database_url = std::env::var("DATABASE_URL")
         .map_err(|_| "DATABASE_URL is required for runtime preparation")?;
@@ -35,9 +38,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 None
             };
+            let development_public_site = if development_public_seed_enabled()? {
+                Some(
+                    development_public_site::ensure(
+                        &pool,
+                        &required_env("AIRTEK_DEV_ADMIN_EMAIL")?,
+                    )
+                    .await?,
+                )
+            } else {
+                None
+            };
             serde_json::json!({
                 "runtime": runtime,
                 "developmentAdmin": development_admin,
+                "developmentPublicSite": development_public_site,
             })
         }
         #[cfg(feature = "devtools")]
@@ -74,6 +89,16 @@ fn usage() -> &'static str {
     }
 }
 
+fn reject_production_development_seed() -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(not(feature = "devtools"))]
+    for name in ["AIRTEK_DEV_ADMIN_SEED", "AIRTEK_DEV_PUBLIC_SEED"] {
+        if std::env::var_os(name).is_some() {
+            return Err(format!("{name} is forbidden in a production build").into());
+        }
+    }
+    Ok(())
+}
+
 #[cfg(feature = "devtools")]
 fn development_seed_enabled() -> Result<bool, Box<dyn std::error::Error>> {
     match std::env::var("AIRTEK_DEV_ADMIN_SEED")
@@ -83,6 +108,18 @@ fn development_seed_enabled() -> Result<bool, Box<dyn std::error::Error>> {
         "true" => Ok(true),
         "false" => Ok(false),
         _ => Err("AIRTEK_DEV_ADMIN_SEED must be true or false".into()),
+    }
+}
+
+#[cfg(feature = "devtools")]
+fn development_public_seed_enabled() -> Result<bool, Box<dyn std::error::Error>> {
+    match std::env::var("AIRTEK_DEV_PUBLIC_SEED")
+        .unwrap_or_else(|_| "false".into())
+        .as_str()
+    {
+        "true" => Ok(true),
+        "false" => Ok(false),
+        _ => Err("AIRTEK_DEV_PUBLIC_SEED must be true or false".into()),
     }
 }
 

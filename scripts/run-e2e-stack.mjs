@@ -2,15 +2,18 @@ import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 
 const project = process.env.E2E_COMPOSE_PROJECT_NAME ?? 'airtekpower-e2e'
-const gatewayPort = process.env.AIRTEK_E2E_GATEWAY_PORT ?? '8088'
+const gatewayPort = process.env.AIRTEK_E2E_GATEWAY_PORT ?? '18089'
 const publicPort = process.env.AIRTEK_E2E_PUBLIC_PORT ?? '3300'
 const adminPort = process.env.AIRTEK_E2E_ADMIN_PORT ?? '3310'
 const apiPort = process.env.AIRTEK_E2E_API_PORT ?? '8800'
-const publicOrigin = `http://localhost:${publicPort}`
-const adminOrigin = `http://localhost:${adminPort}`
-const apiOrigin = `http://localhost:${apiPort}`
-const apiControlOrigin = apiOrigin
+const minioPort = process.env.AIRTEK_E2E_MINIO_PORT ?? '19100'
+const minioConsolePort = process.env.AIRTEK_E2E_MINIO_CONSOLE_PORT ?? '19101'
+const publicOrigin = `http://www.localhost:${gatewayPort}`
+const adminOrigin = `http://admin.localhost:${gatewayPort}`
+const apiOrigin = `http://api.localhost:${gatewayPort}`
+const apiControlOrigin = `http://127.0.0.1:${apiPort}`
 const gatewayControlOrigin = `http://localhost:${gatewayPort}`
+const mediaOrigin = `http://media.localhost:${minioPort}`
 const e2eProductMasterCsv = [
   'stable_id,model,family,title,样品报价（sample）',
   'E2E-PRODUCT-001,E2E-MODEL-001,Axial,E2E imported product,100.00',
@@ -27,28 +30,26 @@ const composeBuildArgument = process.env.E2E_SKIP_BUILD === 'true' ? '--no-build
 const environment = {
   ...process.env,
   COMPOSE_PROJECT_NAME: project,
+  COMPOSE_FILE: process.env.E2E_COMPOSE_FILE ?? 'compose.yaml:compose.e2e.yaml',
   COMPOSE_PROFILES: 'minio',
   AIRTEK_PUBLIC_HOST_PORT: publicPort,
   AIRTEK_ADMIN_HOST_PORT: adminPort,
   AIRTEK_API_HOST_PORT: apiPort,
   AIRTEK_GATEWAY_HOST_PORT: gatewayPort,
-  AIRTEK_PUBLIC_ORIGIN: publicOrigin,
-  AIRTEK_ADMIN_ORIGIN: adminOrigin,
-  VITE_PUBLIC_ORIGIN: publicOrigin,
-  PUBLIC_ORIGIN: publicOrigin,
-  VITE_PUBLIC_API_BASE_URL: `${apiOrigin}/api/public/v1`,
-  PUBLIC_API_BROWSER_ORIGIN: apiOrigin,
-  VITE_ADMIN_API_BASE_URL: `${apiOrigin}/api/admin/v1`,
-  API_BROWSER_ORIGIN: apiOrigin,
-  PUBLIC_HOST: 'www.airtek.test',
-  ADMIN_HOST: 'admin.airtek.test',
-  API_HOST: 'api.airtek.test',
+  AIRTEK_OBJECT_STORE_HOST_PORT: minioPort,
+  AIRTEK_OBJECT_STORE_CONSOLE_HOST_PORT: minioConsolePort,
+  AIRTEK_COMPOSE_PUBLIC_ORIGIN: publicOrigin,
+  AIRTEK_COMPOSE_ADMIN_ORIGIN: adminOrigin,
+  AIRTEK_COMPOSE_API_ORIGIN: apiOrigin,
+  AIRTEK_COMPOSE_MEDIA_ORIGIN: mediaOrigin,
+  PUBLIC_HOST: 'www.localhost',
+  ADMIN_HOST: 'admin.localhost',
+  API_HOST: 'api.localhost',
   AIRTEK_COMPOSE_SUBNET: process.env.AIRTEK_E2E_COMPOSE_SUBNET ?? '172.29.0.0/24',
   AIRTEK_GATEWAY_INTERNAL_IP: process.env.AIRTEK_E2E_GATEWAY_INTERNAL_IP ?? '172.29.0.10',
   AIRTEK_TRUSTED_PROXY_CIDRS: process.env.AIRTEK_E2E_TRUSTED_PROXY_CIDRS ?? '172.29.0.10/32',
   AIRTEK_PLATFORM_FEATURES: 'production',
   AIRTEK_MAINTENANCE_COMMAND: 'prepare-runtime',
-  AIRTEK_DEV_ADMIN_SEED: 'false',
   AIRTEK_FLYWAY_TARGET: '27',
   AIRTEK_ADMIN_BOOTSTRAP_TOKEN: process.env.E2E_ADMIN_BOOTSTRAP_TOKEN
     ?? 'airtek-e2e-bootstrap-token-change-me',
@@ -74,8 +75,9 @@ const environment = {
   E2E_API_ORIGIN: apiOrigin,
   E2E_API_CONTROL_ORIGIN: apiControlOrigin,
   E2E_GATEWAY_CONTROL_ORIGIN: gatewayControlOrigin,
-  E2E_PUBLIC_GATEWAY_HOST: environmentHost('PUBLIC_HOST', 'www.airtek.test'),
-  E2E_ADMIN_GATEWAY_HOST: environmentHost('ADMIN_HOST', 'admin.airtek.test'),
+  E2E_MEDIA_PUBLIC_BASE_URL: `${mediaOrigin}/airtek-media`,
+  E2E_PUBLIC_GATEWAY_HOST: environmentHost('PUBLIC_HOST', 'www.localhost'),
+  E2E_ADMIN_GATEWAY_HOST: environmentHost('ADMIN_HOST', 'admin.localhost'),
   E2E_RUN_ADMIN_WORKFLOWS: 'true',
   E2E_ISOLATED_STACK: 'true',
 }
