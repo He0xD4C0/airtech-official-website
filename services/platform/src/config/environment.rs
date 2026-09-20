@@ -2,13 +2,33 @@ use super::*;
 
 pub fn reject_development_seed_configuration() -> Result<(), ConfigError> {
     if !cfg!(feature = "devtools") {
-        for name in ["AIRTEK_DEV_ADMIN_SEED", "AIRTEK_DEV_PUBLIC_SEED"] {
+        for name in [
+            "AIRTEK_DEV_ADMIN_SEED",
+            "AIRTEK_DEV_PUBLIC_SEED",
+            "AIRTEK_DEV_ADMIN_PASSWORD_ONLY",
+        ] {
             if env::var_os(name).is_some() {
                 return Err(ConfigError::DevelopmentSeedForbidden(name));
             }
         }
     }
     Ok(())
+}
+
+pub(super) fn development_admin_password_only() -> Result<bool, ConfigError> {
+    if !cfg!(feature = "devtools") {
+        return Ok(false);
+    }
+    match env::var("AIRTEK_DEV_ADMIN_PASSWORD_ONLY")
+        .unwrap_or_else(|_| "false".into())
+        .as_str()
+    {
+        "true" => Ok(true),
+        "false" => Ok(false),
+        _ => Err(ConfigError::InvalidBooleanSetting(
+            "AIRTEK_DEV_ADMIN_PASSWORD_ONLY",
+        )),
+    }
 }
 
 pub(super) fn parse_totp_encryption_key(value: &str) -> Result<TotpEncryptionKey, ConfigError> {

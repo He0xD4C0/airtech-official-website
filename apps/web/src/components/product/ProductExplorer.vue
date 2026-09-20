@@ -212,7 +212,7 @@ async function previousPage(): Promise<void> {
   <section class="section shell">
     <SectionHeading eyebrow="Published catalog" title="Products" />
     <div class="filter-panel product-filter-panel" aria-label="Product filters" :aria-busy="loading">
-      <label><span>Search the published catalog</span><input v-model="query" type="search" placeholder="Title, model, Stable ID, subtype or specification" @change="resetPagination('catalogSearch')"></label>
+      <label><span>Search the published catalog</span><input v-model="query" type="search" placeholder="Title, model, Stable ID, subtype or specification" @change="resetPagination('catalogSearch')" @keydown.enter.prevent="resetPagination('catalogSearch')"></label>
       <label><span>Fan form</span><select v-model="selectedFamily" :disabled="Boolean(lockedFamily)" @change="resetPagination('family')">
         <option v-if="!lockedFamily" value="all">All product families</option>
         <option v-for="family in families" :key="family.code" :value="family.code">{{ family.name }} ({{ familyCountMap.get(family.code) ?? 0 }})</option>

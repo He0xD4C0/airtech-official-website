@@ -30,6 +30,8 @@ pub enum ConfigError {
     MissingProductionDatabase,
     #[error("{0} must be an integer in the supported range")]
     InvalidIntegerSetting(&'static str),
+    #[error("{0} must be true or false")]
+    InvalidBooleanSetting(&'static str),
     #[error("AIRTEK_PRODUCT_IMPORT_MAPPING_VERSION must not be empty")]
     InvalidProductImportMappingVersion,
     #[error("all AIRTEK_APPROVED_PRODUCT_MASTER_* values must be configured together")]

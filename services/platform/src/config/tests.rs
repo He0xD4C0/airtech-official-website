@@ -161,4 +161,15 @@ mod cases {
             None
         );
     }
+
+    #[cfg(feature = "devtools")]
+    #[test]
+    pub(super) fn password_only_development_auth_is_limited_to_the_fixed_local_admin() {
+        let mut config = Config::for_test();
+        config.development_admin_password_only = true;
+        assert!(config.development_password_only_for(DEVELOPMENT_ADMIN_EMAIL));
+        assert!(config.development_password_only_for("LOCAL-ADMIN@AIRTEK.INVALID"));
+        assert!(!config.development_password_only_for("codex-qa@airtek.invalid"));
+        assert!(!config.development_password_only_for("admin@example.com"));
+    }
 }

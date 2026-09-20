@@ -217,6 +217,36 @@ describe('database-driven public SSR page loading', () => {
       .rejects.toMatchObject({ status: 404 })
   })
 
+  it('builds the RFQ router only from resolved published form routes', async () => {
+    const router = content({
+      kind: 'page', templateKey: 'rfqRouter', slug: 'request-a-quote',
+      typeFields: { type: 'page' },
+    })
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('/site-bootstrap?')) return json(bootstrap())
+      const resolvedPath = new URL(url).searchParams.get('path')
+      if (resolvedPath === '/en/request-a-quote') return json(route(router, { path: resolvedPath }))
+      if (resolvedPath === '/en/request-a-quote/replacement') return json({ title: 'Not Found' }, 404)
+      const slug = resolvedPath?.split('/').at(-1) ?? 'selection'
+      const form = content({
+        id: crypto.randomUUID(), kind: 'page', templateKey: 'rfqForm', slug,
+        title: `${slug} inquiry`, summary: `Start a ${slug} inquiry.`, typeFields: { type: 'page' },
+      })
+      return json(route(form, { path: resolvedPath }))
+    }) as unknown as typeof fetch
+
+    const result = await loadPublicPageData('/en/request-a-quote', {
+      baseUrl: 'http://api:8080/api/public/v1', fetchImpl,
+    })
+    expect(result.page.entries?.map((entry) => entry.href)).toEqual([
+      '/en/request-a-quote/product',
+      '/en/request-a-quote/selection',
+      '/en/request-a-quote/project',
+    ])
+    expect(result.page.entries?.[0]?.summary).toBe('Summary from content projection.')
+  })
+
   it('uses the exact published product localization for product SEO', async () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)

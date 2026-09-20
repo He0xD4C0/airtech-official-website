@@ -34,11 +34,16 @@ pub struct AdminPrincipal {
     pub session_token_hash: Vec<u8>,
     pub csrf_hash: Vec<u8>,
     pub totp_enabled: bool,
+    pub development_password_only: bool,
 }
 
 impl AdminPrincipal {
+    pub fn business_access_enabled(&self) -> bool {
+        self.totp_enabled || self.development_password_only
+    }
+
     pub fn has_permission(&self, permission: &str) -> bool {
-        self.totp_enabled && self.permissions.iter().any(|value| value == permission)
+        self.business_access_enabled() && self.permissions.iter().any(|value| value == permission)
     }
 
     pub fn session_user(&self, state: &AppState) -> SessionUser {
@@ -50,7 +55,7 @@ impl AdminPrincipal {
             // Password-only sessions exist solely to finish first-login TOTP
             // enrollment. Do not expose or authorize business permissions
             // until the second factor has been confirmed.
-            permissions: if self.totp_enabled {
+            permissions: if self.business_access_enabled() {
                 self.permissions.clone()
             } else {
                 Vec::new()

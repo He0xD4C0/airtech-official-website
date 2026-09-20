@@ -3,6 +3,28 @@ mod cases {
     use super::super::*;
     use std::collections::HashSet;
 
+    fn principal(totp_enabled: bool, development_password_only: bool) -> AdminPrincipal {
+        AdminPrincipal {
+            user_id: Uuid::nil(),
+            display_name: "Local administrator".into(),
+            email: crate::config::DEVELOPMENT_ADMIN_EMAIL.into(),
+            role: "Super Admin".into(),
+            permissions: vec!["content.write".into()],
+            session_id: Uuid::nil(),
+            session_token_hash: Vec::new(),
+            csrf_hash: Vec::new(),
+            totp_enabled,
+            development_password_only,
+        }
+    }
+
+    #[test]
+    pub(super) fn local_password_only_session_can_use_normal_permissions() {
+        assert!(principal(false, true).has_permission("content.write"));
+        assert!(!principal(false, false).has_permission("content.write"));
+        assert!(principal(true, false).has_permission("content.write"));
+    }
+
     #[test]
     pub(super) fn password_hashes_use_argon2id() {
         let hash = hash_password("a-long-password-123").unwrap();

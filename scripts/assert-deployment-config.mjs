@@ -318,7 +318,7 @@ for (const service of ['platform-maintenance', 'platform-api', 'platform-worker'
 forbidMatch(serviceBlock(compose, 'platform-api'), /AIRTEK_MEDIA_|S3_/u, 'The API must load S3 settings from PostgreSQL, not environment variables.')
 forbidMatch(serviceBlock(compose, 'platform-worker'), /AIRTEK_MEDIA_|S3_/u, 'The ordinary Worker must not receive media storage configuration.')
 for (const service of ['platform-api', 'platform-worker', 'admin-web', 'public-web']) {
-  forbidMatch(serviceBlock(compose, service), /AIRTEK_DEV_ADMIN_|local-admin@airtek\.invalid|Airtek-Local-Admin-20260917!/u, `${service} must not receive fixed development administrator credentials.`)
+  forbidMatch(serviceBlock(compose, service), /AIRTEK_DEV_ADMIN_(?:SEED|DISPLAY_NAME|EMAIL|PASSWORD):|local-admin@airtek\.invalid|Airtek-Local-Admin-20260917!/u, `${service} must not receive fixed development administrator credentials.`)
 }
 const debugCompose = read('compose.debug.yaml')
 for (const [variable, hostPort, containerPort] of [['AIRTEK_POSTGRES_DEBUG_PORT', 54320, 5432]]) {

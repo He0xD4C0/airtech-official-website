@@ -3,3 +3,6 @@ services:
     environment:
       AIRTEK_DEV_ADMIN_SEED: !reset null
       AIRTEK_DEV_PUBLIC_SEED: !reset null
+  platform-api:
+    environment:
+      AIRTEK_DEV_ADMIN_PASSWORD_ONLY: !reset null

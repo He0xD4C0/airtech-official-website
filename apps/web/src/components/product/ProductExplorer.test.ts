@@ -105,6 +105,19 @@ describe('published product explorer', () => {
     wrapper.unmount()
   })
 
+  it('runs a catalog search when the search field receives Enter', async () => {
+    vi.mocked(getPublishedProducts).mockReset().mockResolvedValue(productPage([], null, 0))
+    const wrapper = mount(ProductExplorer, { props: catalogProps, global: { plugins: [createPinia()] } })
+    const search = wrapper.get('input[type="search"]')
+    await search.setValue('T30D-24-D718N-02')
+    await search.trigger('keydown', { key: 'Enter' })
+    await flushPromises()
+
+    expect(getPublishedProducts).toHaveBeenCalledWith({ limit: 24, q: 'T30D-24-D718N-02' })
+    expect(new URL(window.location.href).searchParams.get('q')).toBe('T30D-24-D718N-02')
+    wrapper.unmount()
+  })
+
   it('tracks only structured filter state and never the catalog query text', async () => {
     vi.mocked(getPublishedProducts).mockResolvedValue(productPage([], null, 0))
     const wrapper = mount(ProductExplorer, { props: catalogProps, global: { plugins: [createPinia()] } })

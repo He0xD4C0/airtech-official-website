@@ -5,6 +5,7 @@ const environment = readFileSync(new URL('../.env.example', import.meta.url), 'u
 const e2eStack = readFileSync(new URL('./run-e2e-stack.mjs', import.meta.url), 'utf8')
 const isolation = readFileSync(new URL('./isolated-test-environment.mjs', import.meta.url), 'utf8')
 const e2eCompose = readFileSync(new URL('../compose.e2e.yaml', import.meta.url), 'utf8')
+const localProductionCompose = readFileSync(new URL('../compose.local-production.yaml', import.meta.url), 'utf8')
 const emptyProjection = readFileSync(new URL('./assert-empty-public-projection.mjs', import.meta.url), 'utf8')
 const failures = []
 
@@ -31,6 +32,10 @@ for (const expected of [
   'ADMIN_API_ORIGIN: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.airtek.localhost:8088}',
   'API_BROWSER_ORIGIN: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.airtek.localhost:8088}',
   'AIRTEK_DEV_PUBLIC_SEED: ${AIRTEK_DEV_PUBLIC_SEED:-false}',
+  'AIRTEK_DEV_ADMIN_PASSWORD_ONLY: ${AIRTEK_DEV_ADMIN_PASSWORD_ONLY:-true}',
+  'AIRTEK_API_ORIGIN: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.airtek.localhost:8088}',
+  'AIRTEK_READINESS_GATEWAY_ORIGIN: http://gateway:8088',
+  'AIRTEK_READINESS_ALLOW_HTTP: "true"',
   "fetch('http://127.0.0.1:3000/healthz')",
 ]) {
   requireText(compose, expected, `Local Compose origin contract is missing: ${expected}`)
@@ -52,6 +57,8 @@ requireText(e2eStack, '...isolation', 'The E2E runner must apply the database is
 requireText(e2eStack, "run('node', ['scripts/assert-empty-public-projection.mjs'])", 'The E2E runner must verify fail-closed behavior before publishing fixtures.')
 requireText(e2eStack, "'platform-maintenance', 'check-public-readiness'", 'The E2E runner must finish with the production-style readiness gate.')
 requireText(e2eCompose, 'AIRTEK_DEV_PUBLIC_SEED: !reset null', 'Production-image E2E must omit seed configuration.')
+requireText(e2eCompose, 'AIRTEK_DEV_ADMIN_PASSWORD_ONLY: !reset null', 'Production-image E2E must omit the local password-only authentication switch.')
+requireText(localProductionCompose, 'AIRTEK_DEV_ADMIN_PASSWORD_ONLY: !reset null', 'The local production overlay must omit the local password-only authentication switch.')
 for (const expected of ['/en', '/api/public/v1/site-bootstrap', 'Disallow: /', '/sitemap.xml', '/site-icon', '/site.webmanifest']) {
   requireText(emptyProjection, expected, `The empty-projection acceptance check is missing ${expected}.`)
 }

@@ -43,6 +43,17 @@ describe('public search analytics', () => {
     expect(JSON.stringify(vi.mocked(trackAnalyticsEvent).mock.calls)).not.toContain(privateQuery)
   })
 
+  it('searches and synchronizes the query when the user presses Enter', async () => {
+    const wrapper = mount(SearchPage, { props: { page: publicPageFixture('/en/search', { kind: 'search', indexable: false }) } })
+    const input = wrapper.get('input[type="search"]')
+    await input.setValue('T30D-24-D718N-02')
+    await input.trigger('keydown', { key: 'Enter' })
+    await flushPromises()
+
+    expect(searchPublishedSite).toHaveBeenCalledWith({ limit: 20, q: 'T30D-24-D718N-02' })
+    expect(new URL(window.location.href).searchParams.get('q')).toBe('T30D-24-D718N-02')
+  })
+
   it('reports the bounded content-type facet without search text', async () => {
     const page = {
       ...publicPageFixture('/en/search', { kind: 'search', indexable: false }),

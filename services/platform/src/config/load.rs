@@ -66,6 +66,7 @@ impl Config {
                 .as_deref()
                 .unwrap_or_default(),
         )?;
+        let development_admin_password_only = development_admin_password_only()?;
         let media = MediaSettings::disabled();
         if admin_bootstrap_token
             .as_ref()
@@ -105,6 +106,7 @@ impl Config {
             trusted_proxy_cidrs,
             media,
             production,
+            development_admin_password_only,
         })
     }
 
@@ -138,6 +140,7 @@ impl Config {
             trusted_proxy_cidrs: Vec::new(),
             media: MediaSettings::disabled(),
             production: false,
+            development_admin_password_only: false,
         }
     }
 

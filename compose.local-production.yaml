@@ -5,6 +5,8 @@ services:
     build:
       args:
         AIRTEK_PLATFORM_FEATURES: production
+    environment:
+      AIRTEK_DEV_ADMIN_PASSWORD_ONLY: !reset null
   platform-worker:
     build:
       args:

@@ -61,6 +61,38 @@ function discoveryCards(entries: PublicDiscoveryEntryResponse[], page: PublicPag
   })
 }
 
+async function rfqRouteCards(client: ReturnType<typeof createPublicApiClient>): Promise<CardEntry[]> {
+  const paths = [
+    '/en/request-a-quote/product',
+    '/en/request-a-quote/selection',
+    '/en/request-a-quote/project',
+    '/en/request-a-quote/replacement',
+  ]
+  const routes = await Promise.all(paths.map(async (path) => {
+    try {
+      return await client.resolveRoute(path, 'en')
+    } catch (cause) {
+      if (cause instanceof PublicApiError && cause.status === 404) return undefined
+      throw cause
+    }
+  }))
+  return routes.flatMap((route) => {
+    if (!route?.page
+      || !paths.includes(route.path)
+      || route.entityType !== 'content'
+      || route.templateKey !== 'rfqForm') return []
+    const title = pageTitle(route.page)
+    if (!title) return []
+    return [{
+      slug: route.path.split('/').at(-1) ?? 'inquiry',
+      title,
+      summary: pageDescription(route.page) ?? '',
+      eyebrow: 'Inquiry',
+      href: route.path,
+    }]
+  })
+}
+
 function productFamilyCode(page: PublicPageModel, path: string): ProductFamily | undefined {
   const match = path.match(/^\/en\/products\/([^/]+)$/u)
   if (!match || match[1] === 'selector' || match[1] === 'compare') return undefined
@@ -216,6 +248,8 @@ export async function enrichPage(
         q: options.searchQuery?.q ?? '',
         ...(options.searchQuery?.type ? { type: options.searchQuery.type } : {}),
       }
+    } else if (page.kind === 'rfq-router') {
+      page.entries = await rfqRouteCards(client)
     } else if (page.kind === 'collection' || page.kind === 'downloads') {
       const discovery = await client.getDiscovery()
       page.entries = discoveryCards(discovery.entries, page)

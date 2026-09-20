@@ -121,7 +121,7 @@ async function previousPage(): Promise<void> {
     />
     <section class="section shell search-layout">
       <div class="search-controls" :aria-busy="loading">
-        <label><span>Search the public site</span><input v-model="query" autofocus type="search" placeholder="Search published products and content" @change="reset('query')"></label>
+        <label><span>Search the public site</span><input v-model="query" autofocus type="search" placeholder="Search published products and content" @change="reset('query')" @keydown.enter.prevent="reset('query')"></label>
         <label><span>Content type</span><select v-model="type" @change="reset('type')">
           <option value="all">All published content</option>
           <option v-for="entryType in availableTypes" :key="entryType.value" :value="entryType.value">{{ entryType.label }} ({{ entryType.count }})</option>

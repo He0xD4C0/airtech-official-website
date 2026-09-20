@@ -120,6 +120,15 @@ services:
       AIRTEK_DEV_ADMIN_DISPLAY_NAME: AIRTEK Local Administrator
       AIRTEK_DEV_ADMIN_EMAIL: local-admin@airtek.invalid
       AIRTEK_DEV_ADMIN_PASSWORD: Airtek-Local-Admin-20260917!
+      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.airtek.localhost:8088}
+      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_COMPOSE_ADMIN_ORIGIN:-http://admin.airtek.localhost:8088}
+      AIRTEK_API_ORIGIN: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.airtek.localhost:8088}
+      AIRTEK_READINESS_GATEWAY_ORIGIN: http://gateway:8088
+      AIRTEK_READINESS_ALLOW_HTTP: "true"
+      AIRTEK_READINESS_EXTERNAL: "false"
+      PUBLIC_HOST: ${PUBLIC_HOST:-www.airtek.localhost}
+      ADMIN_HOST: ${ADMIN_HOST:-admin.airtek.localhost}
+      API_HOST: ${API_HOST:-api.airtek.localhost}
       RUST_LOG: ${RUST_LOG:-airtek_platform=info}
     depends_on:
       flyway-migrate:
@@ -141,6 +150,7 @@ services:
       DATABASE_URL: ${AIRTEK_DATABASE_URL_INTERNAL:-postgres://airtek:airtek@postgres:5432/airtek}
       AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.airtek.localhost:8088}
       AIRTEK_ADMIN_ORIGIN: ${AIRTEK_COMPOSE_ADMIN_ORIGIN:-http://admin.airtek.localhost:8088}
+      AIRTEK_DEV_ADMIN_PASSWORD_ONLY: ${AIRTEK_DEV_ADMIN_PASSWORD_ONLY:-true}
       AIRTEK_ADMIN_BOOTSTRAP_TOKEN: ${AIRTEK_ADMIN_BOOTSTRAP_TOKEN:-local-development-bootstrap-change-me}
       AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:-}
       AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: ${AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY:-}

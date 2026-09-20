@@ -32,7 +32,8 @@ pub(super) async fn login(
         return Err(ApiError::unauthorized("Email or password is incorrect."));
     }
     let user = user.expect("valid login has a user");
-    let second_factor = if user.totp_enabled {
+    let development_password_only = state.config.development_password_only_for(&user.email);
+    let second_factor = if user.totp_enabled && !development_password_only {
         let Some(code) = request
             .otp
             .as_deref()
@@ -60,7 +61,9 @@ pub(super) async fn login(
         &issue.principal.email,
         "auth.login",
         issue.principal.user_id,
-        json!({"secondFactor": second_factor.map(SecondFactorMethod::label).unwrap_or("none")}),
+        json!({"secondFactor": second_factor.map(SecondFactorMethod::label).unwrap_or(
+            if development_password_only { "developmentPasswordOnly" } else { "none" }
+        )}),
         &headers,
     )
     .await?;

@@ -1,6 +1,7 @@
 use super::*;
 
 pub const API_PORT: u16 = 8080;
+pub const DEVELOPMENT_ADMIN_EMAIL: &str = "local-admin@airtek.invalid";
 
 #[derive(Clone)]
 pub struct FeishuCredentials {
@@ -90,6 +91,17 @@ pub struct Config {
     /// uploads instead of writing objects it cannot serve.
     pub media: MediaSettings,
     pub production: bool,
+    /// Explicit local-only convenience for the fixed seeded administrator.
+    /// Production builds reject the corresponding environment variable.
+    pub development_admin_password_only: bool,
+}
+
+impl Config {
+    pub fn development_password_only_for(&self, email: &str) -> bool {
+        cfg!(feature = "devtools")
+            && self.development_admin_password_only
+            && email.eq_ignore_ascii_case(DEVELOPMENT_ADMIN_EMAIL)
+    }
 }
 
 impl fmt::Debug for Config {
@@ -142,6 +154,10 @@ impl fmt::Debug for Config {
             .field("trusted_proxy_cidrs", &self.trusted_proxy_cidrs)
             .field("media_storage", &self.media.storage_kind_label())
             .field("production", &self.production)
+            .field(
+                "development_admin_password_only",
+                &self.development_admin_password_only,
+            )
             .finish()
     }
 }

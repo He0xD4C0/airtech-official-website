@@ -80,6 +80,7 @@ fn fixture_principal(user_id: Uuid, email: &str) -> AdminPrincipal {
         session_token_hash: Vec::new(),
         csrf_hash: Vec::new(),
         totp_enabled: true,
+        development_password_only: false,
     }
 }
 
