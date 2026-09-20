@@ -382,6 +382,7 @@ async fn validate_published_media(
     connection: &mut PgConnection,
     draft: &ContentDraftV2,
 ) -> Result<()> {
+    super::site_icon::validate_site_icon(connection, draft).await?;
     for (label, reference) in collect_media_references(draft) {
         let row = sqlx::query("SELECT deleted_at FROM media_assets WHERE id=$1")
             .bind(reference.asset_id)
@@ -413,6 +414,11 @@ fn collect_media_references(draft: &ContentDraftV2) -> Vec<(String, AssetVersion
         ContentTypeFields::News(fields) | ContentTypeFields::Article(fields) => {
             if let Some(cover) = &fields.cover {
                 push_media(&mut references, "The cover image".to_owned(), cover);
+            }
+        }
+        ContentTypeFields::GeneralInformation(fields) => {
+            if let Some(site_icon) = &fields.site_icon {
+                references.push(("The site icon".to_owned(), site_icon.clone()));
             }
         }
         _ => {}

@@ -34,9 +34,12 @@ describe('TypeFieldsPanel', () => {
       productCategories: [],
       navigationCta: null,
       organizationName: null,
+      siteIcon: null,
     })
     expect(general).toContain('站点级配置不参与页面组成')
     expect(general).toContain('联系方式')
+    expect(general).toContain('站点图标')
+    expect(general).toContain('发布即确认')
 
     const navigation = await render({ type: 'navigation', items: [] })
     expect(navigation).toContain('主导航保存在站点配置中')

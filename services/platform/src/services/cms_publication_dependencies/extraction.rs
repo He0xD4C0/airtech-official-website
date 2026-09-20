@@ -260,7 +260,7 @@ fn scan_media_use(
     );
 }
 
-fn scan_asset(
+pub(super) fn scan_asset(
     value: Option<&Value>,
     path: &str,
     kind: PublicationDependencyKind,

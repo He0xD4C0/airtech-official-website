@@ -3,6 +3,7 @@ use sqlx::PgPool;
 use crate::{error::ApiError, state::AppState};
 
 mod publication;
+mod site_icon;
 
 pub use publication::{publish_current_route, resolve_content_links, resolve_relation_cards};
 

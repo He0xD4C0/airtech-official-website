@@ -125,6 +125,10 @@ fn contract_uses_rust_discriminators_and_single_source_fields() {
         schemas["GeneralInformationTypeFields"]["properties"]["homePath"]["anyOf"][0]["pattern"],
         r"^/(?![/\\])[^?#\s\\]*$"
     );
+    assert_eq!(
+        schemas["GeneralInformationTypeFields"]["properties"]["siteIcon"]["anyOf"][0]["$ref"],
+        "#/components/schemas/AssetVersionReference"
+    );
     assert!(schemas["ContentDraftV2"]["required"]
         .as_array()
         .expect("required")

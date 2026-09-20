@@ -1,9 +1,0 @@
-{
-  "name": "AIRTEKPOWER",
-  "short_name": "AIRTEKPOWER",
-  "start_url": "/en",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0c7497",
-  "description": "Industrial airflow product discovery and engineering resources."
-}

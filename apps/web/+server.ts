@@ -1,6 +1,7 @@
 import vike from 'vike/fetch'
 import type { Server } from 'vike/types'
 import { isSitemapName, renderRobots, renderSitemapIndex, renderUrlSitemap } from '@/lib/server/sitemaps'
+import { renderSiteIcon, renderWebManifest } from '@/lib/server/siteAssets'
 
 // Vike's universal middleware type includes optional adapter context arguments,
 // while the built-in server invokes the Fetch API shape used here.
@@ -69,6 +70,12 @@ export default {
     }
     if (url.pathname === '/robots.txt') {
       return withPublicSecurityHeaders(await renderRobots(), url.pathname)
+    }
+    if (url.pathname === '/site-icon' || url.pathname === '/favicon.ico') {
+      return withPublicSecurityHeaders(await renderSiteIcon(), url.pathname)
+    }
+    if (url.pathname === '/site.webmanifest') {
+      return withPublicSecurityHeaders(await renderWebManifest(), url.pathname)
     }
     if (url.pathname === '/sitemap.xml') {
       return withPublicSecurityHeaders(await renderSitemapIndex(), url.pathname)

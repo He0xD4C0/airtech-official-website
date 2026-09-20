@@ -3070,6 +3070,16 @@
                 },
                 "type": "array"
               },
+              "siteIcon": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/AssetVersionReference"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "socialLinks": {
                 "items": {
                   "$ref": "#/components/schemas/SocialLinkInput"
@@ -4812,6 +4822,16 @@
               "$ref": "#/components/schemas/ProductCategoryPresentationInput"
             },
             "type": "array"
+          },
+          "siteIcon": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssetVersionReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "socialLinks": {
             "items": {

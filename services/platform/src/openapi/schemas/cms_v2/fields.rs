@@ -143,6 +143,7 @@ fn add_general_information(s: &mut Map<String, Value>) {
             json!({
                 "organizationName": nullable(json!({"type": "string", "maxLength": 200})),
                 "brandLine": nullable(json!({"type": "string", "maxLength": 500})),
+                "siteIcon": nullable(r("AssetVersionReference")),
                 "homePath": nullable(json!({
                     "type": "string", "maxLength": 2048,
                     "pattern": "^/(?![/\\\\])[^?#\\s\\\\]*$"

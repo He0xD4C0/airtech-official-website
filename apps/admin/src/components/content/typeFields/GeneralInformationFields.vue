@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Plus, Trash2 } from 'lucide-vue-next'
 import type {
+  AssetVersionReference,
   ContactInformationInput,
   EditorialAction,
   GeneralInformationTypeFields,
@@ -110,6 +111,18 @@ function updateNavigationCta(action: EditorialAction | null): void {
         <span>品牌标语</span>
         <input :value="modelValue.brandLine ?? ''" maxlength="200" @input="patch({ brandLine: ($event.target as HTMLInputElement).value || null })" />
       </label>
+      <div class="field">
+        <span>站点图标<small>正方形 PNG、JPEG 或 WebP，至少 512 × 512 像素</small></span>
+        <MediaAssetField
+          :model-value="modelValue.siteIcon ?? null"
+          mode="asset"
+          label="站点图标"
+          site-icon
+          @update:model-value="patch({ siteIcon: $event as AssetVersionReference | null })"
+        />
+        <p v-if="!modelValue.siteIcon" class="site-fields__warning">尚未配置自定义站点图标；公开站将使用中性占位图标。</p>
+        <p class="site-fields__notice">发布即确认该文件具备合法权利、身份识别用途及小尺寸展示授权。系统不会自动采用、裁切或重绘旧站标识。</p>
+      </div>
       <label class="field">
         <span>首页路径<small>必须是站内绝对路径，例如 /en</small></span>
         <input :value="modelValue.homePath ?? ''" placeholder="/en" @input="patch({ homePath: ($event.target as HTMLInputElement).value || null })" />
@@ -220,5 +233,7 @@ function updateNavigationCta(action: EditorialAction | null): void {
 .site-fields__card { display: flex; flex-direction: column; gap: 0.45rem; padding: 0.6rem; border: 1px solid var(--border-default); border-radius: 9px; background: white; }
 .site-fields__repeat { display: flex; align-items: center; gap: 0.3rem; margin-bottom: 0.3rem; }
 .site-fields__repeat input { flex: 1; }
+.site-fields__warning { margin: 0; color: #9a6700; font-size: 0.75rem; }
+.site-fields__notice { margin: 0; color: var(--text-secondary); font-size: 0.75rem; line-height: 1.55; }
 }
 </style>

@@ -94,6 +94,7 @@ pub struct ProductCategoryPresentationInput {
 pub struct GeneralInformationTypeFields {
     pub organization_name: Option<String>,
     pub brand_line: Option<String>,
+    pub site_icon: Option<AssetVersionReference>,
     pub home_path: Option<String>,
     pub footer_statement: Option<String>,
     pub copyright_template: Option<String>,
