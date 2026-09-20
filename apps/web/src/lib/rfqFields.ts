@@ -1,0 +1,35 @@
+const paths: Record<string, string> = {
+  'context.airflow': 'context.dutyPoint.airflow', 'context.airflowUnit': 'context.dutyPoint.airflowUnit',
+  'context.pressure': 'context.dutyPoint.pressure', 'context.pressureUnit': 'context.dutyPoint.pressureUnit',
+  'context.voltage': 'context.electrical.voltage', 'context.frequency': 'context.electrical.frequencyHz',
+  'context.maximumDiameter': 'context.maximumDiameterMm', 'context.ambientTemperature': 'context.ambientTemperatureC',
+  'contact.contactName': 'contact.name', 'contact.businessEmail': 'contact.email',
+  'contact.country': 'contact.countryOrRegion', 'contact.message': 'context.additionalMessage', 'contact.consent': 'consent',
+}
+export function rfqFieldPath(model: string): string { return paths[model] ?? model }
+export function rfqFieldLabel(key: string): string {
+  const labels: Record<string, string> = {
+    ambientTemperature: 'Ambient temperature °C', maximumDiameter: 'Maximum diameter mm',
+    airflow: 'Required airflow', airflowUnit: 'Airflow unit', pressure: 'Required pressure', pressureUnit: 'Pressure unit',
+    frequency: 'Frequency Hz', voltage: 'Voltage', preferredFamily: 'Fan family', motorTechnology: 'Motor technology',
+    requiredCertifications: 'Required certifications', control: 'Control method', application: 'Application',
+    existingModel: 'Existing model', quantity: 'Quantity', environment: 'Environment', projectStage: 'Project stage',
+    priority: 'Priority', projectScale: 'Project scale', schedule: 'Schedule', engineeringNeeds: 'Engineering needs',
+    installationConstraints: 'Installation constraints', replacementGoal: 'Replacement goal',
+  }
+  return labels[key] ?? key
+}
+import type { RfqContextValues } from './submissions'
+import type { RfqType } from '@/types/content'
+
+export function rfqReviewFields(kind: RfqType, values: RfqContextValues) {
+  const common = ['application', 'quantity', 'voltage', 'frequency', 'environment', 'priority']
+  const duty = ['airflow', 'airflowUnit', 'pressure', 'pressureUnit']
+  const extra = {
+    product: [],
+    selection: [...duty, 'ambientTemperature', 'preferredFamily', 'motorTechnology', 'maximumDiameter', 'requiredCertifications', 'control'],
+    project: ['projectStage', 'projectScale', 'schedule', 'engineeringNeeds'],
+    replacement: [...duty, 'existingModel', 'installationConstraints', 'replacementGoal'],
+  }
+  return Object.entries(values).filter(([key, value]) => [...common, ...extra[kind]].includes(key) && value !== '' && value !== undefined)
+}

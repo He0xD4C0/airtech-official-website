@@ -19,6 +19,7 @@ describe('dynamic site assets', () => {
     expect(await icon.text()).not.toMatch(/AIRTEKPOWER|logo/iu)
 
     const manifest = await renderWebManifest({ fetchImpl })
+    expect(manifest.headers.get('Content-Type')).toContain('application/manifest+json')
     expect(await manifest.json()).toMatchObject({
       name: 'Published organization',
       icons: [{ src: '/site-icon', type: 'image/svg+xml', sizes: 'any' }],

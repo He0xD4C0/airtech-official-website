@@ -114,6 +114,9 @@ export async function renderWebManifest(options: SiteAssetOptions = {}): Promise
     } : { src: '/site-icon', type: 'image/svg+xml', sizes: 'any' }],
   }
   return Response.json(body, {
-    headers: { 'Cache-Control': 'public, max-age=0, s-maxage=60' },
+    headers: {
+      'Cache-Control': 'public, max-age=0, s-maxage=60',
+      'Content-Type': 'application/manifest+json; charset=utf-8',
+    },
   })
 }
