@@ -13,6 +13,7 @@ mod network;
 pub use network::IpCidr;
 #[path = "config/error.rs"]
 mod error;
+pub use environment::reject_development_seed_configuration;
 pub use error::ConfigError;
 #[path = "config/environment.rs"]
 mod environment;

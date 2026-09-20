@@ -2,6 +2,7 @@ use super::*;
 
 impl Config {
     pub fn from_env() -> Result<Self, ConfigError> {
+        reject_development_seed_configuration()?;
         let host_raw = env::var("AIRTEK_API_HOST").unwrap_or_else(|_| "0.0.0.0".into());
         let host =
             IpAddr::from_str(&host_raw).map_err(|_| ConfigError::InvalidHost(host_raw.clone()))?;

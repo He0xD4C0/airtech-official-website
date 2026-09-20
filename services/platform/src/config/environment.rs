@@ -1,5 +1,16 @@
 use super::*;
 
+pub fn reject_development_seed_configuration() -> Result<(), ConfigError> {
+    if !cfg!(feature = "devtools") {
+        for name in ["AIRTEK_DEV_ADMIN_SEED", "AIRTEK_DEV_PUBLIC_SEED"] {
+            if env::var_os(name).is_some() {
+                return Err(ConfigError::DevelopmentSeedForbidden(name));
+            }
+        }
+    }
+    Ok(())
+}
+
 pub(super) fn parse_totp_encryption_key(value: &str) -> Result<TotpEncryptionKey, ConfigError> {
     decode_32_byte_key(value)
         .map(TotpEncryptionKey)

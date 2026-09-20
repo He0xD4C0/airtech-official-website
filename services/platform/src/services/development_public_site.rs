@@ -64,6 +64,12 @@ pub async fn ensure(
     pool: &sqlx::PgPool,
     admin_email: &str,
 ) -> Result<DevelopmentPublicSiteReport, ApiError> {
+    let database: String = sqlx::query_scalar("SELECT current_database()")
+        .fetch_one(pool)
+        .await?;
+    if !database.starts_with("airtek_test_") {
+        return Err(ApiError::conflict("Public development seed is allowed only in explicitly disposable airtek_test_ databases."));
+    }
     let fixtures = fixtures()?;
     let mut transaction = pool.begin().await?;
     sqlx::query("SELECT pg_advisory_xact_lock($1)")

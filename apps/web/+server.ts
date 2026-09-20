@@ -20,6 +20,12 @@ function publicApiBrowserOrigin(): string {
 
 function publicMediaImageSources(): string {
   const publicOrigin = process.env.PUBLIC_ORIGIN || 'http://localhost:3000'
+  if (publicOrigin.startsWith('http:') && process.env.PUBLIC_MEDIA_ORIGIN) {
+    try {
+      const media = new URL(process.env.PUBLIC_MEDIA_ORIGIN)
+      if (['http:', 'https:'].includes(media.protocol)) return `https: ${media.origin}`
+    } catch { /* Invalid origins are not added to CSP. */ }
+  }
   return publicOrigin.startsWith('https:')
     ? 'https:'
     : 'https: http://media.localhost:19000 http://localhost:19000'
@@ -56,6 +62,11 @@ export function withPublicSecurityHeaders(response: Response, pathname = ''): Re
 export default {
   async fetch(request: Request) {
     const url = new URL(request.url)
+    if (url.pathname === '/healthz') {
+      return new Response('ok\n', {
+        headers: { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' },
+      })
+    }
     if (url.pathname === '/') {
       return withPublicSecurityHeaders(new Response(null, {
         status: 308,

@@ -1,0 +1,20 @@
+[
+  {"templateKey":"generalInformation","slug":null,"title":"General information"},
+  {"templateKey":"navigation","slug":null,"title":"Navigation"},
+  {"templateKey":"footer","slug":null,"title":"Footer"},
+  {"templateKey":"home","slug":"home","title":"Home"},
+  {"templateKey":"productIndex","slug":"products","title":"Products"},
+  {"templateKey":"selector","slug":"selector","title":"Product selector"},
+  {"templateKey":"compare","slug":"compare","title":"Compare products"},
+  {"templateKey":"search","slug":"search","title":"Search"},
+  {"templateKey":"about","slug":"about","title":"About"},
+  {"templateKey":"contact","slug":"contact","title":"Contact"},
+  {"templateKey":"rfqRouter","slug":"request-a-quote","title":"Request a quote"},
+  {"templateKey":"rfqForm","slug":"product","title":"Product inquiry"},
+  {"templateKey":"rfqForm","slug":"selection","title":"Selection inquiry"},
+  {"templateKey":"rfqForm","slug":"project","title":"Project inquiry"},
+  {"templateKey":"rfqForm","slug":"replacement","title":"Replacement inquiry"},
+  {"templateKey":"legal","slug":"privacy","title":"Privacy"},
+  {"templateKey":"legal","slug":"terms","title":"Terms"},
+  {"templateKey":"legal","slug":"cookie-settings","title":"Cookie settings"}
+]

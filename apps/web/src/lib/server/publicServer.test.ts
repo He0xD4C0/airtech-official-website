@@ -4,6 +4,13 @@ import publicServer, { withPublicSecurityHeaders } from '../../../+server'
 afterEach(() => vi.unstubAllGlobals())
 
 describe('public server infrastructure routes', () => {
+  it('keeps process liveness independent from missing CMS and API', async () => {
+    const fetch = vi.fn().mockRejectedValue(new Error('offline'))
+    vi.stubGlobal('fetch', fetch)
+    const response = await publicServer.fetch(new Request('http://localhost:3000/healthz'))
+    expect(response.status).toBe(200)
+    expect(fetch).not.toHaveBeenCalled()
+  })
   it('uses a permanent 308 locale redirect with public security headers', async () => {
     const response = await publicServer.fetch(new Request('http://localhost:3000/'))
     expect(response.status).toBe(308)

@@ -1,5 +1,6 @@
 FROM nginx:1.27-alpine
 ENV MEDIA_IMAGE_SOURCES=https:
+ENV PUBLIC_LEGACY_HOST=legacy-public.invalid PUBLIC_REDIRECT_ORIGIN=https://invalid.example
 
 RUN sed -i '/^user /d' /etc/nginx/nginx.conf \
     && rm -f /etc/nginx/conf.d/default.conf \
