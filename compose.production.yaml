@@ -105,7 +105,7 @@ services:
       platform-api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/en').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"]
       interval: 10s
       timeout: 3s
       retries: 12
@@ -157,6 +157,25 @@ services:
       default:
         ipv4_address: ${AIRTEK_GATEWAY_INTERNAL_IP:-172.29.0.10}
     restart: unless-stopped
+
+  public-readiness:
+    image: ${AIRTEK_PLATFORM_IMAGE:?set AIRTEK_PLATFORM_IMAGE to an immutable image reference}
+    entrypoint: ["/usr/local/bin/airtek-maintenance"]
+    command: ["check-public-readiness"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
+      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:?set AIRTEK_PUBLIC_ORIGIN}
+      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:?set AIRTEK_ADMIN_ORIGIN}
+      AIRTEK_API_ORIGIN: ${AIRTEK_API_ORIGIN:?set AIRTEK_API_ORIGIN}
+      AIRTEK_READINESS_GATEWAY_ORIGIN: http://gateway:8088
+      PUBLIC_HOST: ${PUBLIC_HOST:?set PUBLIC_HOST}
+      ADMIN_HOST: ${ADMIN_HOST:?set ADMIN_HOST}
+      API_HOST: ${API_HOST:?set API_HOST}
+      RUST_LOG: ${RUST_LOG:-airtek_platform=info}
+    depends_on:
+      gateway:
+        condition: service_healthy
+    restart: "no"
 
 networks:
   default:

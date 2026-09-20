@@ -184,6 +184,6 @@ async fn five_thousand_products_use_filtered_faceted_keyset_pages() {
         }
     }
     assert_eq!(ids.len(), 5000);
-    drop(state);
+    super::public_product_query::verify(state).await;
     sandbox.cleanup().await;
 }

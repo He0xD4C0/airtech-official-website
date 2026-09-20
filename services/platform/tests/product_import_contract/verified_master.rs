@@ -10,7 +10,7 @@ async fn verified_master_is_staged_queued_promoted_and_replayed_without_plaintex
     let csv = std::fs::read_to_string(csv_path).expect("Product Master CSV is readable");
     let pool = PgPoolOptions::new()
         .max_connections(4)
-        .connect(&database_url)
+        .connect(crate::support::disposable_database_url(&database_url))
         .await
         .expect("PostgreSQL connection");
     support::assert_flyway_schema_current(&pool).await;

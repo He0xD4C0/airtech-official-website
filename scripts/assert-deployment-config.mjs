@@ -348,7 +348,7 @@ for (const [service, port] of [['public-web', 3000], ['admin-web', 3100], ['plat
   forbidMatch(block, /^\s+ports:/mu, `Production ${service} must not publish its internal port.`)
 }
 forbidMatch(serviceBlock(productionCompose, 'platform-worker'), /^\s+(?:ports|expose):/mu, 'Production Worker must not expose or publish a listening port.')
-for (const service of ['flyway-migrate', 'platform-maintenance', 'platform-api', 'platform-worker', 'public-web', 'admin-web']) {
+for (const service of ['flyway-migrate', 'platform-maintenance', 'platform-api', 'platform-worker', 'public-web', 'admin-web', 'public-readiness']) {
   forbidMatch(serviceBlock(productionCompose, service), /^\s+ports:/mu, `Production ${service} must not publish an application port.`)
 }
 forbidMatch(serviceBlock(productionCompose, 'public-web'), /DATABASE_URL/u, 'Production Public SSR must not receive database credentials.')

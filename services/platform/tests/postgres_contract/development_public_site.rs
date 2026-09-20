@@ -19,6 +19,25 @@ async fn public_seed_is_transactional_idempotent_and_refuses_partial_state() {
     let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL").unwrap();
     let sandbox = support::DatabaseClone::create(&database_url).await;
     sandbox.apply_current().await;
+    let app = build_router(postgres_state(sandbox.connection_url()));
+    let response = app
+        .clone()
+        .oneshot(
+            Request::get("/api/public/v1/site-bootstrap")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let inventory = airtek_platform::services::public_site_inventory::inspect(sandbox.pool())
+        .await
+        .unwrap();
+    assert!(inventory["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|entry| entry["missing"] == true));
     development_admin::ensure(sandbox.pool(), &admin_input())
         .await
         .unwrap();
@@ -29,6 +48,17 @@ async fn public_seed_is_transactional_idempotent_and_refuses_partial_state() {
     assert_eq!(created.status, "created");
     assert_eq!(created.published_entries, 18);
     assert_eq!(created.editorial_replacements, 0);
+    let response = app
+        .clone()
+        .oneshot(
+            Request::get("/api/public/v1/search?limit=1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(response_json(response).await["total"], 0);
     assert_eq!(count(sandbox.pool(), "content_entries").await, 18);
     assert_eq!(count(sandbox.pool(), "public_routes").await, 15);
     assert_eq!(
@@ -102,6 +132,43 @@ async fn public_seed_is_transactional_idempotent_and_refuses_partial_state() {
         .unwrap();
     assert_eq!(adopted.status, "skippedComplete");
     assert_eq!(adopted.editorial_replacements, 1);
+    // Add a second editorial record so the first cursor is the bare /en homepage.
+    sqlx::raw_sql(
+        r#"UPDATE cms_published_content SET document=jsonb_set(jsonb_set(document,'{isPlaceholder}','false'),'{seo,indexable}','true')
+           WHERE document->>'templateKey'='productIndex';
+           UPDATE content_entries SET data_origin='editorial',is_placeholder=false WHERE template_key='productIndex';
+           UPDATE public_routes SET indexable=true WHERE canonical_path='/en/products'"#)
+        .execute(sandbox.pool()).await.unwrap();
+    let first = app
+        .clone()
+        .oneshot(
+            Request::get("/api/public/v1/search?limit=1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(first.status(), StatusCode::OK);
+    let first = response_json(first).await;
+    assert_eq!(first["total"], 2);
+    assert_eq!(first["items"][0]["canonicalPath"], "/en");
+    let second = app
+        .clone()
+        .oneshot(
+            Request::get(format!(
+                "/api/public/v1/search?limit=1&cursor={}",
+                first["nextCursor"].as_str().unwrap()
+            ))
+            .body(Body::empty())
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(second.status(), StatusCode::OK);
+    assert_eq!(
+        response_json(second).await["items"][0]["canonicalPath"],
+        "/en/products"
+    );
 
     sqlx::query("DELETE FROM public_routes WHERE canonical_path='/en/products/selector'")
         .execute(sandbox.pool())

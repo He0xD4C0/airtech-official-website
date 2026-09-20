@@ -7,7 +7,7 @@ async fn feishu_takes_over_verified_csv_stable_id_and_projects_all_facts_atomica
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
     let pool = PgPoolOptions::new()
         .max_connections(4)
-        .connect(&database_url)
+        .connect(crate::support::disposable_database_url(&database_url))
         .await
         .expect("PostgreSQL connection");
     support::assert_flyway_schema_current(&pool).await;
@@ -297,7 +297,7 @@ async fn expired_private_staging_requires_atomic_cryptographic_erasure() {
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
     let pool = PgPoolOptions::new()
         .max_connections(2)
-        .connect(&database_url)
+        .connect(crate::support::disposable_database_url(&database_url))
         .await
         .expect("PostgreSQL connection");
     support::assert_flyway_schema_current(&pool).await;

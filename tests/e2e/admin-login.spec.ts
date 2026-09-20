@@ -26,9 +26,16 @@ test.describe('Admin browser login', () => {
       await expect(page).toHaveURL(absolute(adminOrigin, '/'))
       await expect(page.getByRole('heading', { name: /开始今天的发布工作/u })).toBeVisible()
       await expect(page.getByRole('region', { name: '关键指标' })).toBeVisible()
+      const cookies = await context.cookies()
+      expect(cookies.filter((cookie) => cookie.httpOnly).length).toBeGreaterThan(0)
+      expect(cookies.filter((cookie) => cookie.httpOnly).every((cookie) => cookie.secure && cookie.sameSite === 'Strict')).toBe(true)
       await page.reload()
       await expect(page).toHaveURL(absolute(adminOrigin, '/'))
       await expect(page.getByRole('region', { name: '关键指标' })).toBeVisible()
+      await page.getByRole('button', { name: /退出登录/u }).click()
+      await expect(page).toHaveURL(absolute(adminOrigin, '/login'))
+      await page.reload()
+      await expect(page).toHaveURL(absolute(adminOrigin, '/login'))
     } finally {
       await context.close()
     }

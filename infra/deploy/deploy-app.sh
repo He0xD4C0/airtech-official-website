@@ -111,6 +111,8 @@ curl --fail --silent --show-error "http://127.0.0.1:$ingress_port/healthz" >/dev
 curl --fail --silent --show-error -H "Host: $API_HOST" "http://127.0.0.1:$ingress_port/readyz" >/dev/null
 curl --fail --silent --show-error -H "Host: $PUBLIC_HOST" "http://127.0.0.1:$ingress_port/en" >/dev/null
 curl --fail --silent --show-error -H "Host: $ADMIN_HOST" "http://127.0.0.1:$ingress_port/robots.txt" >/dev/null
+compose_release "$release_dir" run --rm --no-deps public-readiness
+compose_release "$release_dir" run --rm --no-deps -e AIRTEK_READINESS_EXTERNAL=true public-readiness
 
 ln -sfn "$release_dir" "$deploy_root/current"
 deployment_started=0

@@ -22,6 +22,8 @@ use sha2::{Digest, Sha256};
 use tower::ServiceExt;
 use uuid::Uuid;
 
+#[path = "postgres_contract/public_product_query.rs"]
+mod public_product_query;
 mod support;
 
 fn contact_request(index: usize, run_id: Uuid, peer: SocketAddr) -> Request<Body> {

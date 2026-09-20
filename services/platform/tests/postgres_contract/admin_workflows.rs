@@ -135,7 +135,12 @@ async fn rfq_workflow_separates_pii_enforces_revisions_and_exports_audit() {
             "contact": {"name": "Protected Buyer", "email": "buyer@example.com", "phone": null,
                 "company": "Example Industry", "countryOrRegion": "CN"},
             "productContext": null, "sourcePath": "/en/request-a-quote/selection",
-            "locale": "en", "consent": true, "context": {}
+            "locale": "en", "consent": true, "context": {
+                "application":"Private engineering requirement",
+                "dutyPoint":{"airflow":1200,"airflowUnit":"m3/h","pressure":300,"pressureUnit":"Pa"},
+                "ambientTemperatureC":0,"preferredFamily":"axial","motorTechnology":"EC",
+                "maximumDiameterMm":450,"requiredCertifications":["CE"],"control":"0-10 V"
+            }
         },
         "status": "new", "submittedAt": now, "retentionUntil": now + chrono::Duration::days(30)
     });
@@ -169,6 +174,10 @@ async fn rfq_workflow_separates_pii_enforces_revisions_and_exports_audit() {
     let listed = response_json(listed).await;
     assert_eq!(listed["total"], 1);
     assert!(listed["items"][0].get("email").is_none());
+    assert!(!listed
+        .to_string()
+        .contains("Private engineering requirement"));
+    assert!(!listed.to_string().contains("rfqContext"));
 
     let pii = app
         .clone()
@@ -185,7 +194,11 @@ async fn rfq_workflow_separates_pii_enforces_revisions_and_exports_audit() {
         .to_str()
         .unwrap()
         .contains("no-store"));
-    assert_eq!(response_json(pii).await["email"], "buyer@example.com");
+    let pii = response_json(pii).await;
+    assert_eq!(pii["email"], "buyer@example.com");
+    assert_eq!(pii["rfqContext"]["journey"], "selection");
+    assert_eq!(pii["rfqContext"]["context"]["ambientTemperatureC"], 0.0);
+    assert_eq!(pii["rfqContext"]["context"]["control"], "0-10 V");
 
     let assignment_key = format!("assign-{rfq_id}");
     let assignment_body = json!({"assignedTo": actor_id, "reason": "Assign to workflow owner"});
@@ -263,6 +276,52 @@ async fn rfq_workflow_separates_pii_enforces_revisions_and_exports_audit() {
         String::from_utf8(csv.into_body().collect().await.unwrap().to_bytes().to_vec()).unwrap();
     assert!(csv.contains("business.note.create"));
     assert!(!csv.contains("buyer@example.com"));
+
+    let mut restricted = workflow_principal(actor_id, "restricted@example.com".into());
+    restricted.role = "sales".into();
+    restricted.permissions = vec!["rfq.read".into()];
+    let restricted = airtek_platform::routes::admin::router()
+        .layer(Extension(restricted))
+        .with_state(postgres_state(sandbox.connection_url()));
+    let denied = restricted
+        .oneshot(
+            Request::get(format!("/rfqs/{rfq_id}/pii"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(denied.status(), StatusCode::FORBIDDEN);
+    sqlx::query("UPDATE rfq_submissions SET retention_until=now()-interval '400 days' WHERE id=$1")
+        .bind(rfq_id)
+        .execute(pool)
+        .await
+        .unwrap();
+    airtek_platform::worker::apply_retention(pool)
+        .await
+        .unwrap();
+    let removed: Value = sqlx::query_scalar("SELECT payload FROM rfq_submissions WHERE id=$1")
+        .bind(rfq_id)
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    assert_eq!(removed["status"], "piiCleared");
+    assert_eq!(removed["request"]["context"], json!({}));
+    assert!(!removed
+        .to_string()
+        .contains("Private engineering requirement"));
+    airtek_platform::worker::apply_retention(pool)
+        .await
+        .unwrap();
+    let cleared = app
+        .oneshot(
+            Request::get(format!("/rfqs/{rfq_id}/pii"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(cleared.status(), StatusCode::NOT_FOUND);
 
     sandbox.cleanup().await;
 }

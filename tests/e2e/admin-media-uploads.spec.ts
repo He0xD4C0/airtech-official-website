@@ -4,7 +4,10 @@ import {
   absolute,
   adminOrigin,
   adminStorageStatePath,
+  apiControlHeaders,
+  apiControlOrigin,
   apiOrigin,
+  mediaPublicBaseUrl,
   runAdminWorkflows,
 } from './support/environment'
 
@@ -16,6 +19,7 @@ const RASTER_PNG = Buffer.from(
 interface MediaAsset {
   id: string
   publicUrl: string
+  previewUrl?: string | null
   downloadUrl: string
   originalName: string
   mediaType: string
@@ -33,6 +37,10 @@ function hostReadableUrl(publicUrl: string): string {
   const url = new URL(publicUrl)
   if (url.hostname.toLowerCase() === 'media.localhost') url.hostname = '127.0.0.1'
   return url.toString()
+}
+
+function publicObjectPrefix(baseUrl = mediaPublicBaseUrl): string {
+  return `${baseUrl.replace(/\/$/u, '')}/media/`
 }
 
 async function uploadFromBrowser(
@@ -115,14 +123,23 @@ test.describe('direct public media upload', () => {
     expect(asset).toMatchObject({ originalName: fileName, mediaType: 'image/png', byteSize: RASTER_PNG.byteLength })
     expect(asset.sha256).toMatch(/^[a-f0-9]{64}$/u)
 
-    expect(asset.publicUrl).toMatch(/^http:\/\/media\.localhost:19000\/airtek-media\/media\//u)
+    expect(asset.publicUrl.startsWith(publicObjectPrefix())).toBe(true)
     const publicResponse = await page.request.get(hostReadableUrl(asset.publicUrl))
     expect(publicResponse.status()).toBe(200)
     expect(publicResponse.headers()['content-type']).toBe('image/png')
     expect((await publicResponse.body()).equals(RASTER_PNG)).toBe(true)
-    const downloadResponse = await page.request.get(absolute(apiOrigin, asset.downloadUrl), { maxRedirects: 0 })
-    expect(downloadResponse.status()).toBe(308)
-    expect(downloadResponse.headers().location).toBe(asset.publicUrl)
+    const downloadResponse = await page.request.get(absolute(apiControlOrigin, asset.downloadUrl), {
+      headers: apiControlHeaders(),
+      maxRedirects: 0,
+    })
+    expect(downloadResponse.status()).toBe(200)
+    expect(downloadResponse.headers()['content-disposition']).toContain('attachment;')
+    expect((await downloadResponse.body()).equals(RASTER_PNG)).toBe(true)
+    const previewResponse = await page.request.get(absolute(apiControlOrigin, `/api/public/v1/media/${asset.id}`), {
+      headers: apiControlHeaders(), maxRedirects: 0,
+    })
+    expect(previewResponse.status()).toBe(308)
+    expect(previewResponse.headers().location).toBe(asset.previewUrl ?? asset.publicUrl)
 
     const row = page.locator('table.data-table tbody tr', { hasText: fileName })
     await expect(row).toBeVisible()
@@ -145,13 +162,16 @@ test.describe('direct public media upload', () => {
     expect(first.status).toBe(201)
     const assetA = first.body as MediaAsset
 
-    await updatePublicBaseUrl(page, 'http://MEDIA.LOCALHOST:19000/airtek-media')
+    const configured = new URL(mediaPublicBaseUrl)
+    const updatedPublicBaseUrl = `${configured.protocol}//${configured.hostname.toUpperCase()}`
+      + `${configured.port ? `:${configured.port}` : ''}${configured.pathname.replace(/\/$/u, '')}`
+    await updatePublicBaseUrl(page, updatedPublicBaseUrl)
     const second = await uploadFromBrowser(page, `e2e-url-b-${suffix}`, `url-b-${suffix}.png`, RASTER_PNG)
     expect(second.status).toBe(201)
     const assetB = second.body as MediaAsset
 
-    expect(assetA.publicUrl).toMatch(/^http:\/\/media\.localhost:19000\/airtek-media\/media\//u)
-    expect(assetB.publicUrl).toMatch(/^http:\/\/MEDIA\.LOCALHOST:19000\/airtek-media\/media\//u)
+    expect(assetA.publicUrl.startsWith(publicObjectPrefix())).toBe(true)
+    expect(assetB.publicUrl.startsWith(publicObjectPrefix(updatedPublicBaseUrl))).toBe(true)
     expect(assetB.publicUrl).not.toBe(assetA.publicUrl)
     for (const publicUrl of [assetA.publicUrl, assetB.publicUrl]) {
       const response = await page.request.get(hostReadableUrl(publicUrl))

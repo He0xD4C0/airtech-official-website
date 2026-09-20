@@ -27,6 +27,7 @@ pub struct DatabaseClone {
 
 impl DatabaseClone {
     pub async fn create(source_url: &str) -> Self {
+        disposable_database_url(source_url);
         let slot = DATABASE_CLONE_SLOTS
             .get_or_init(|| Arc::new(tokio::sync::Semaphore::new(8)))
             .clone()
@@ -36,6 +37,10 @@ impl DatabaseClone {
         let template = std::env::var("AIRTEK_TEST_TEMPLATE_DATABASE")
             .unwrap_or_else(|_| "airtek_test_template".into());
         assert_identifier(&template);
+        assert!(
+            template.starts_with("airtek_test_"),
+            "test template must be disposable"
+        );
         let database = format!("airtek_test_{}", Uuid::new_v4().simple());
         let admin_url = replace_database(source_url, "postgres");
         let admin_pool = PgPoolOptions::new()
@@ -102,6 +107,31 @@ fn assert_identifier(value: &str) {
     );
 }
 
+pub fn disposable_database_url(value: &str) -> &str {
+    let url = reqwest::Url::parse(value).expect("test database URL");
+    assert!(matches!(url.scheme(), "postgres" | "postgresql"));
+    assert!(
+        url.path()
+            .trim_start_matches('/')
+            .starts_with("airtek_test_"),
+        "Refusing business database; use the isolated contract test runner"
+    );
+    assert!(
+        url.query().is_none()
+            || url.query_pairs().all(|(key, value)| {
+                key == "options"
+                    && value
+                        .strip_prefix("-csearch_path=migration_contract_")
+                        .and_then(|suffix| suffix.strip_suffix(",public"))
+                        .is_some_and(|id| {
+                            id.len() == 32 && id.bytes().all(|byte| byte.is_ascii_hexdigit())
+                        })
+            }),
+        "test connection cannot inherit a schema or connection override"
+    );
+    value
+}
+
 fn replace_database(url: &str, database: &str) -> String {
     assert_identifier(database);
     let scheme = url.find("://").expect("PostgreSQL URL scheme") + 3;
@@ -134,6 +164,7 @@ pub struct MigrationSandbox {
 
 impl MigrationSandbox {
     pub async fn create(database_url: &str) -> Self {
+        disposable_database_url(database_url);
         let _create_guard = MIGRATION_SANDBOX_CREATE_LOCK.lock().await;
         let admin_pool = PgPoolOptions::new()
             .max_connections(1)

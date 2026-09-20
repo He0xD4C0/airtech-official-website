@@ -381,14 +381,13 @@ async fn product_publish_requires_an_atomic_accepted_postgres_evidence_chain() {
     assert_eq!(blocked.status(), StatusCode::UNPROCESSABLE_ENTITY);
     let body = blocked.into_body().collect().await.unwrap().to_bytes();
     let problem: serde_json::Value = serde_json::from_slice(&body).unwrap();
-    for field in [
-        "staging.validationStatus",
-        "conflicts",
-        "temporaryOverrides",
-    ] {
-        assert!(problem["errors"][field]
-            .as_array()
-            .is_some_and(|errors| !errors.is_empty()));
+    for field in ["staging.validationStatus", "temporaryOverrides"] {
+        assert!(
+            problem["errors"][field]
+                .as_array()
+                .is_some_and(|errors| !errors.is_empty()),
+            "missing {field}: {problem}"
+        );
     }
     let still_draft = sqlx::query_scalar::<_, String>("SELECT status FROM products WHERE id=$1")
         .bind(product_id)

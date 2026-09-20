@@ -124,13 +124,13 @@ jobs:
           --health-retries 20
     env:
       DATABASE_URL: postgres://airtek:airtek@127.0.0.1:5432/airtek
-      AIRTEK_TEST_DATABASE_URL: postgres://airtek:airtek@127.0.0.1:5432/airtek
+      AIRTEK_TEST_DATABASE_URL: postgres://airtek:airtek@127.0.0.1:5432/airtek_test_contracts
       AIRTEK_TEST_TEMPLATE_DATABASE: airtek_test_template
       FLYWAY_URL: jdbc:postgresql://127.0.0.1:5432/airtek
       FLYWAY_USER: airtek
       FLYWAY_PASSWORD: airtek
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: airtek_runtime
-      AIRTEK_FLYWAY_TARGET: 19
+      AIRTEK_FLYWAY_TARGET: 27
     steps:
       - uses: actions/checkout@v4
       - name: Generate a temporary CI-only runtime database password
@@ -176,6 +176,9 @@ jobs:
           docker exec "${{ job.services.postgres.id }}" \
             psql --username airtek --dbname postgres --set ON_ERROR_STOP=1 \
             --command "CREATE DATABASE airtek_test_template TEMPLATE airtek"
+          docker exec "${{ job.services.postgres.id }}" \
+            psql --username airtek --dbname postgres --set ON_ERROR_STOP=1 \
+            --command "CREATE DATABASE airtek_test_contracts TEMPLATE airtek_test_template"
       - name: Exercise guarded legacy SQLx history adoption
         run: |
           set -euo pipefail

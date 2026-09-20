@@ -1,16 +1,21 @@
-import { spawnSync } from 'node:child_process'
+import { isolatedTestEnvironment } from './isolated-test-environment.mjs'
+import { testProcess } from './test-process.mjs'
 import { createHash } from 'node:crypto'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
-const project = process.env.E2E_COMPOSE_PROJECT_NAME ?? 'airtekpower-e2e'
+const isolation = isolatedTestEnvironment()
+const sessionDirectory = await mkdtemp(join(tmpdir(), 'airtek-e2e-session-'))
 const gatewayPort = process.env.AIRTEK_E2E_GATEWAY_PORT ?? '18089'
 const publicPort = process.env.AIRTEK_E2E_PUBLIC_PORT ?? '3300'
 const adminPort = process.env.AIRTEK_E2E_ADMIN_PORT ?? '3310'
 const apiPort = process.env.AIRTEK_E2E_API_PORT ?? '8800'
 const minioPort = process.env.AIRTEK_E2E_MINIO_PORT ?? '19100'
 const minioConsolePort = process.env.AIRTEK_E2E_MINIO_CONSOLE_PORT ?? '19101'
-const publicOrigin = `http://www.localhost:${gatewayPort}`
-const adminOrigin = `http://admin.localhost:${gatewayPort}`
-const apiOrigin = `http://api.localhost:${gatewayPort}`
+const publicOrigin = `http://www.airtek.localhost:${gatewayPort}`
+const adminOrigin = `http://admin.airtek.localhost:${gatewayPort}`
+const apiOrigin = `http://api.airtek.localhost:${gatewayPort}`
 const apiControlOrigin = `http://127.0.0.1:${apiPort}`
 const gatewayControlOrigin = `http://localhost:${gatewayPort}`
 const mediaOrigin = `http://media.localhost:${minioPort}`
@@ -29,8 +34,7 @@ const playwrightArgs = (process.env.E2E_PLAYWRIGHT_ARGS ?? '').trim()
 const composeBuildArgument = process.env.E2E_SKIP_BUILD === 'true' ? '--no-build' : '--build'
 const environment = {
   ...process.env,
-  COMPOSE_PROJECT_NAME: project,
-  COMPOSE_FILE: process.env.E2E_COMPOSE_FILE ?? 'compose.yaml:compose.e2e.yaml',
+  ...isolation,
   COMPOSE_PROFILES: 'minio',
   AIRTEK_PUBLIC_HOST_PORT: publicPort,
   AIRTEK_ADMIN_HOST_PORT: adminPort,
@@ -42,9 +46,9 @@ const environment = {
   AIRTEK_COMPOSE_ADMIN_ORIGIN: adminOrigin,
   AIRTEK_COMPOSE_API_ORIGIN: apiOrigin,
   AIRTEK_COMPOSE_MEDIA_ORIGIN: mediaOrigin,
-  PUBLIC_HOST: 'www.localhost',
-  ADMIN_HOST: 'admin.localhost',
-  API_HOST: 'api.localhost',
+  PUBLIC_HOST: 'www.airtek.localhost',
+  ADMIN_HOST: 'admin.airtek.localhost',
+  API_HOST: 'api.airtek.localhost',
   AIRTEK_COMPOSE_SUBNET: process.env.AIRTEK_E2E_COMPOSE_SUBNET ?? '172.29.0.0/24',
   AIRTEK_GATEWAY_INTERNAL_IP: process.env.AIRTEK_E2E_GATEWAY_INTERNAL_IP ?? '172.29.0.10',
   AIRTEK_TRUSTED_PROXY_CIDRS: process.env.AIRTEK_E2E_TRUSTED_PROXY_CIDRS ?? '172.29.0.10/32',
@@ -53,6 +57,12 @@ const environment = {
   AIRTEK_FLYWAY_TARGET: '27',
   AIRTEK_ADMIN_BOOTSTRAP_TOKEN: process.env.E2E_ADMIN_BOOTSTRAP_TOKEN
     ?? 'airtek-e2e-bootstrap-token-change-me',
+  AIRTEK_TOTP_ENCRYPTION_KEY: process.env.AIRTEK_TOTP_ENCRYPTION_KEY
+    ?? Buffer.alloc(32, 0x42).toString('base64'),
+  AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: process.env.AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY
+    ?? Buffer.alloc(32, 0x54).toString('base64'),
+  AIRTEK_ANALYTICS_TOKEN_HMAC_KEY: process.env.AIRTEK_ANALYTICS_TOKEN_HMAC_KEY
+    ?? Buffer.alloc(32, 0x64).toString('base64'),
   AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY: process.env.AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY
     ?? Buffer.alloc(32, 0x45).toString('base64'),
   AIRTEK_PRODUCT_IMPORT_MAPPING_VERSION: e2eProductMasterMapping,
@@ -76,44 +86,29 @@ const environment = {
   E2E_API_CONTROL_ORIGIN: apiControlOrigin,
   E2E_GATEWAY_CONTROL_ORIGIN: gatewayControlOrigin,
   E2E_MEDIA_PUBLIC_BASE_URL: `${mediaOrigin}/airtek-media`,
-  E2E_PUBLIC_GATEWAY_HOST: environmentHost('PUBLIC_HOST', 'www.localhost'),
-  E2E_ADMIN_GATEWAY_HOST: environmentHost('ADMIN_HOST', 'admin.localhost'),
+  E2E_PUBLIC_GATEWAY_HOST: 'www.airtek.localhost',
+  E2E_ADMIN_GATEWAY_HOST: 'admin.airtek.localhost',
+  E2E_API_GATEWAY_HOST: 'api.airtek.localhost',
+  E2E_HOST_RESOLVER_RULES: process.env.E2E_HOST_RESOLVER_RULES
+    ?? 'MAP *.airtek.localhost 127.0.0.1',
   E2E_RUN_ADMIN_WORKFLOWS: 'true',
   E2E_ISOLATED_STACK: 'true',
+  E2E_ADMIN_STORAGE_STATE: join(sessionDirectory, 'admin.json'),
+  E2E_ADMIN_SECONDARY_STORAGE_STATE: join(sessionDirectory, 'secondary.json'),
+  E2E_ADMIN_TOTP_SECRET: join(sessionDirectory, 'totp.txt'),
 }
 
-function environmentHost(name, fallback) {
-  return process.env[name] || fallback
-}
+const { run, capture } = testProcess(environment)
 
-function run(command, args, options = {}) {
-  const result = spawnSync(command, args, {
-    cwd: process.cwd(),
-    env: environment,
-    stdio: 'inherit',
-    ...options,
-  })
-  return result.status ?? 1
-}
-
-function capture(command, args) {
-  return spawnSync(command, args, {
-    cwd: process.cwd(),
-    env: environment,
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
-}
-
-function waitForSuccessfulJobs(services, timeoutMs = 300_000) {
+async function waitForSuccessfulJobs(services, timeoutMs = 300_000) {
   const deadline = Date.now() + timeoutMs
   const pending = new Set(services)
   while (pending.size > 0 && Date.now() < deadline) {
     for (const service of pending) {
-      const listed = capture('docker', ['compose', 'ps', '--all', '--quiet', service])
+      const listed = await capture('docker', ['compose', 'ps', '--all', '--quiet', service])
       const containerId = listed.stdout.trim()
       if (listed.status !== 0 || !containerId) continue
-      const inspected = capture('docker', [
+      const inspected = await capture('docker', [
         'inspect', '--format', '{{.State.Status}} {{.State.ExitCode}}', containerId,
       ])
       const [status, exitCode] = inspected.stdout.trim().split(/\s+/)
@@ -124,7 +119,7 @@ function waitForSuccessfulJobs(services, timeoutMs = 300_000) {
       }
       pending.delete(service)
     }
-    if (pending.size > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500)
+    if (pending.size > 0) await new Promise((resolve) => setTimeout(resolve, 500))
   }
   if (pending.size > 0) {
     console.error(`Timed out waiting for one-shot services: ${[...pending].join(', ')}`)
@@ -134,30 +129,55 @@ function waitForSuccessfulJobs(services, timeoutMs = 300_000) {
 }
 
 let testStatus = 1
+let owned = false
 try {
-  run('docker', ['compose', 'down', '--volumes', '--remove-orphans'])
-  const launchStatus = run('docker', [
+  const existing = await capture('docker', ['compose', 'ps', '--all', '--quiet'])
+  if (existing.status !== 0 || existing.stdout.trim()) throw new Error('Test project is not empty; refusing to use it.')
+  owned = true
+  const launchStatus = await run('docker', [
     'compose', 'up', composeBuildArgument, '--detach',
   ])
   const initStatus = launchStatus === 0
-    ? waitForSuccessfulJobs(['flyway-migrate', 'platform-maintenance', 'minio-create-bucket'])
+    ? await waitForSuccessfulJobs(['flyway-migrate', 'platform-maintenance', 'minio-create-bucket'])
     : launchStatus
   const readyStatus = initStatus === 0
-    ? run('docker', [
+    ? await run('docker', [
         'compose', 'up', '--detach', '--wait', '--wait-timeout', '300', '--no-deps',
         'postgres', 'minio', 'platform-api', 'platform-worker', 'public-web', 'admin-web', 'gateway',
       ])
     : initStatus
   if (readyStatus !== 0) {
-    run('docker', ['compose', 'logs', '--no-color'])
+    await run('docker', ['compose', 'logs', '--no-color'])
     process.exitCode = readyStatus
   }
   else {
-    testStatus = run('pnpm', ['exec', 'playwright', 'test', ...playwrightArgs])
-    if (testStatus !== 0) run('docker', ['compose', 'logs', '--no-color'])
+    const emptyProjectionStatus = await run('node', ['scripts/assert-empty-public-projection.mjs'])
+    testStatus = emptyProjectionStatus === 0
+      ? await run('pnpm', ['exec', 'playwright', 'test', ...playwrightArgs])
+      : emptyProjectionStatus
+    if (testStatus === 0) {
+      testStatus = await run('docker', [
+        'compose', 'run', '--rm', '--no-deps',
+        '-e', `AIRTEK_PUBLIC_ORIGIN=${publicOrigin}`,
+        '-e', `AIRTEK_ADMIN_ORIGIN=${adminOrigin}`,
+        '-e', `AIRTEK_API_ORIGIN=${apiOrigin}`,
+        '-e', 'AIRTEK_READINESS_GATEWAY_ORIGIN=http://gateway:8088',
+        '-e', 'AIRTEK_READINESS_ALLOW_HTTP=true',
+        '-e', `PUBLIC_HOST=${environment.E2E_PUBLIC_GATEWAY_HOST}`,
+        '-e', `ADMIN_HOST=${environment.E2E_ADMIN_GATEWAY_HOST}`,
+        '-e', `API_HOST=${environment.E2E_API_GATEWAY_HOST}`,
+        'platform-maintenance', 'check-public-readiness',
+      ])
+    }
+    if (testStatus !== 0) await run('docker', ['compose', 'logs', '--no-color'])
     process.exitCode = testStatus
   }
+} catch (error) {
+  console.error(error.message)
+  process.exitCode = 1
 } finally {
-  const downStatus = run('docker', ['compose', 'down', '--volumes', '--remove-orphans'])
+  const downStatus = owned ? await run('docker', ['compose', 'down', '--volumes', '--remove-orphans'], { cleanup: true }) : 0
   if (downStatus !== 0 && (process.exitCode ?? 0) === 0) process.exitCode = downStatus
+  // Generated authentication files belong only to this run, including interrupted runs.
+  await rm(sessionDirectory, { recursive: true, force: true })
 }
