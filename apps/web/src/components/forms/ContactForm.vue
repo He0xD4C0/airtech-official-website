@@ -6,7 +6,7 @@ import { buildContactRequest } from '@/lib/submissions'
 const state = ref<'idle' | 'submitting' | 'success' | 'error'>('idle')
 const error = ref('')
 const receipt = ref('')
-const form = reactive({ topic: 'general', company: '', contactName: '', businessEmail: '', message: '', consent: false, website: '' })
+const form = reactive({ topic: 'general', company: '', contactName: '', businessEmail: '', phone: '', message: '', consent: false, website: '' })
 
 async function submit() {
   if (form.website) return
@@ -34,6 +34,7 @@ async function submit() {
       <label><span>Company <small>(optional)</small></span><input v-model.trim="form.company" autocomplete="organization"></label>
       <label><span>Your name</span><input v-model.trim="form.contactName" autocomplete="name" required></label>
       <label><span>Business email</span><input v-model.trim="form.businessEmail" type="email" autocomplete="email" required></label>
+      <label><span>Phone <small>(optional)</small></span><input v-model.trim="form.phone" type="tel" autocomplete="tel"></label>
       <label class="wide"><span>How can we help?</span><textarea v-model.trim="form.message" rows="6" required></textarea></label>
       <label class="honeypot" aria-hidden="true"><span>Website</span><input v-model="form.website" tabindex="-1" autocomplete="off"></label>
       <label class="checkbox wide"><input v-model="form.consent" type="checkbox" required><span>I agree that AIRTEKPOWER may use these details to respond to this inquiry. See <a href="/en/privacy">Privacy</a>.</span></label>

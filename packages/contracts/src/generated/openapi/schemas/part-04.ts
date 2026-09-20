@@ -95,6 +95,25 @@ PublicContentProjection: {
             /** Format: date-time */
             updatedAt: string;
         };
+/** @enum {string} */
+        PublicSearchEntityType: "content" | "product";
+PublicSearchItem: {
+            canonicalPath: string;
+            displayType: components["schemas"]["PublicSearchType"];
+            /** Format: uuid */
+            entityId: string;
+            entityType: components["schemas"]["PublicSearchEntityType"];
+            summary: string | null;
+            title: string;
+        };
+PublicSearchPage: {
+            items: components["schemas"]["PublicSearchItem"][];
+            nextCursor: string | null;
+            total: number;
+            typeCounts: components["schemas"]["ProductFacetCount"][];
+        };
+/** @enum {string} */
+        PublicSearchType: "product" | "solution" | "technology" | "article" | "news" | "faq" | "caseStudy" | "download" | "company" | "page";
 ReasonRequest: {
             reason: string;
         };
@@ -258,12 +277,15 @@ SelectionRfqRequest: {
             sourcePath: string;
         };
 SelectorCandidate: {
+            canonicalPath: string;
+            family: components["schemas"]["ProductFamily"];
             matchedConstraints: string[];
             /** Format: uuid */
             productId: string;
             /** Format: int64 */
             productRevision: number;
             rank: number;
+            slug: string;
             title: string;
             warnings: string[];
         };
@@ -469,27 +491,5 @@ TiptapDocument: {
         };
 TiptapFormulaAttrs: {
             latex: string;
-        };
-TiptapFormulaNode: {
-            attrs: components["schemas"]["TiptapFormulaAttrs"];
-            content?: components["schemas"]["TiptapNode"][];
-            marks?: components["schemas"]["TiptapMark"][];
-            /** @enum {string} */
-            type: "formula";
-        };
-TiptapHeadingAttrs: {
-            level: number;
-        };
-TiptapHeadingNode: {
-            attrs: components["schemas"]["TiptapHeadingAttrs"];
-            content?: components["schemas"]["TiptapNode"][];
-            marks?: components["schemas"]["TiptapMark"][];
-            /** @enum {string} */
-            type: "heading";
-        };
-TiptapLinkAttrs: {
-            href: string;
-            rel?: string | null;
-            target?: ("_self" | "_blank") | null;
         };
 }

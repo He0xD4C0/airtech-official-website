@@ -139,6 +139,20 @@ pub fn evaluate(request: &SelectorRequest, products: &[Product]) -> SelectorResp
             ));
     }
 
+    if matches.iter().any(|matched| {
+        matched.product.slug.trim().is_empty()
+            || matched
+                .product
+                .seo
+                .canonical_path
+                .as_deref()
+                .is_none_or(|path| !path.starts_with("/en/products/"))
+    }) {
+        return engineering_review(
+            "A duty-point candidate is missing its canonical published product identity.".into(),
+        );
+    }
+
     matches.sort_by(|left, right| {
         let order = if priority.prefers_higher() {
             right.ranking_value.partial_cmp(&left.ranking_value)
@@ -201,6 +215,14 @@ pub fn evaluate(request: &SelectorRequest, products: &[Product]) -> SelectorResp
                     .product
                     .published_revision
                     .expect("eligible published product has a revision"),
+                slug: matched.product.slug.clone(),
+                family: matched.product.family,
+                canonical_path: matched
+                    .product
+                    .seo
+                    .canonical_path
+                    .clone()
+                    .expect("candidate canonical identity was validated"),
                 title: matched.product.title.clone(),
                 matched_constraints,
                 warnings,

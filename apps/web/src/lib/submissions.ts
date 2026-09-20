@@ -14,6 +14,7 @@ export interface ContactFormValues {
   company: string
   contactName: string
   businessEmail: string
+  phone: string
   message: string
   consent: boolean
 }
@@ -31,12 +32,21 @@ export interface RfqContextValues {
   environment: string
   projectStage: string
   priority: string
+  maximumDiameter: string
+  requiredCertifications: string
+  control: string
+  projectScale: string
+  schedule: string
+  engineeringNeeds: string
+  installationConstraints: string
+  replacementGoal: string
 }
 
 export interface RfqContactValues {
   company: string
   contactName: string
   businessEmail: string
+  phone: string
   country: string
   message: string
   consent: boolean
@@ -56,6 +66,7 @@ export function buildContactRequest(values: ContactFormValues): CreateContactReq
     contact: {
       name: values.contactName,
       email: values.businessEmail,
+      ...(values.phone ? { phone: values.phone } : {}),
       ...(values.company ? { company: values.company } : {}),
     },
     topic: values.topic,
@@ -125,6 +136,7 @@ export function buildRfqRequest(
     contact: {
       name: contact.contactName,
       email: contact.businessEmail,
+      ...(contact.phone ? { phone: contact.phone } : {}),
       ...(contact.company ? { company: contact.company } : {}),
       ...(contact.country ? { countryOrRegion: contact.country } : {}),
     },
@@ -161,7 +173,19 @@ export function buildRfqRequest(
     }
   }
   if (journey === 'selection') {
-    return { ...commonRequest, journey, context: { ...commonContext, dutyPoint: dutyPoint() } }
+    const requiredCertifications = values.requiredCertifications
+      .split(/[\n,]/u).map((value) => value.trim()).filter(Boolean).slice(0, 20)
+    return {
+      ...commonRequest,
+      journey,
+      context: {
+        ...commonContext,
+        dutyPoint: dutyPoint(),
+        ...(values.maximumDiameter ? { maximumDiameterMm: Number(values.maximumDiameter) } : {}),
+        ...(requiredCertifications.length ? { requiredCertifications } : {}),
+        ...(values.control ? { control: values.control } : {}),
+      },
+    }
   }
   if (journey === 'project') {
     if (!['Concept', 'Engineering', 'Prototype', 'Production planning'].includes(values.projectStage)) {
@@ -173,6 +197,9 @@ export function buildRfqRequest(
       context: {
         ...commonContext,
         projectStage: values.projectStage as 'Concept' | 'Engineering' | 'Prototype' | 'Production planning',
+        ...(values.projectScale ? { projectScale: values.projectScale } : {}),
+        ...(values.schedule ? { schedule: values.schedule } : {}),
+        ...(values.engineeringNeeds ? { engineeringNeeds: values.engineeringNeeds } : {}),
       },
     }
   }
@@ -180,6 +207,42 @@ export function buildRfqRequest(
   return {
     ...commonRequest,
     journey,
-    context: { ...commonContext, existingModel: values.existingModel, dutyPoint: dutyPoint() },
+    context: {
+      ...commonContext,
+      existingModel: values.existingModel,
+      dutyPoint: dutyPoint(),
+      ...(values.installationConstraints ? { installationConstraints: values.installationConstraints } : {}),
+      ...(values.replacementGoal ? { replacementGoal: values.replacementGoal } : {}),
+    },
+  }
+}
+
+const rfqContextKeys: Array<keyof RfqContextValues> = [
+  'application', 'existingModel', 'quantity', 'airflow', 'airflowUnit', 'pressure', 'pressureUnit',
+  'voltage', 'frequency', 'environment', 'projectStage', 'priority', 'maximumDiameter',
+  'requiredCertifications', 'control', 'projectScale', 'schedule', 'engineeringNeeds',
+  'installationConstraints', 'replacementGoal',
+]
+
+export function serializeRfqSession(values: RfqContextValues): string {
+  return JSON.stringify({ version: 2, context: values })
+}
+
+export function parseRfqSession(value: string | null): Partial<RfqContextValues> | undefined {
+  if (!value) return undefined
+  try {
+    const parsed: unknown = JSON.parse(value)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)
+      || !('version' in parsed) || parsed.version !== 2
+      || !('context' in parsed) || typeof parsed.context !== 'object'
+      || parsed.context === null || Array.isArray(parsed.context)) return undefined
+    const context = parsed.context as Record<string, unknown>
+    const restored: Partial<RfqContextValues> = {}
+    for (const key of rfqContextKeys) {
+      if (typeof context[key] === 'string') restored[key] = context[key]
+    }
+    return restored
+  } catch {
+    return undefined
   }
 }

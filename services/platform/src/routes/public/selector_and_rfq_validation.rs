@@ -28,14 +28,38 @@ pub(super) fn validate_selector(request: &SelectorRequest) -> Result<(), ApiErro
     }
     if request.motor_technology.as_ref().is_some_and(|value| {
         value.trim().is_empty()
-            || value.len() > 80
+            || value.len() > 120
             || value.chars().any(|character| character.is_control())
     }) {
         errors.insert(
             "motorTechnology".into(),
-            vec!["Must contain 1 to 80 printable characters.".into()],
+            vec!["Must contain 1 to 120 printable characters.".into()],
         );
     }
+    if request
+        .ambient_temperature_c
+        .is_some_and(|value| !value.is_finite() || !(-100.0..=300.0).contains(&value))
+    {
+        errors.insert(
+            "ambientTemperatureC".into(),
+            vec!["Must be a finite value between -100 and 300 °C.".into()],
+        );
+    }
+    validate_optional_finite_positive(
+        "maximumDiameterMm",
+        request.maximum_diameter_mm,
+        100_000.0,
+        &mut errors,
+    );
+    validate_optional_text("voltage", request.voltage.as_deref(), 120, &mut errors);
+    validate_optional_finite_positive("frequencyHz", request.frequency_hz, 1_000.0, &mut errors);
+    validate_string_list(
+        "requiredCertifications",
+        &request.required_certifications,
+        20,
+        120,
+        &mut errors,
+    );
     if errors.is_empty() {
         Ok(())
     } else {

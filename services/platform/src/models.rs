@@ -13,6 +13,9 @@ pub use editorial::*;
 #[path = "models/product.rs"]
 mod product;
 pub use product::*;
+#[path = "models/public_search.rs"]
+mod public_search;
+pub use public_search::*;
 #[path = "models/sync.rs"]
 mod sync;
 pub use sync::*;

@@ -1,75 +1,49 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { Product, ProductFamily as ProductFamilyValue } from '@airtek/contracts'
+import type { Product, ProductFacetCount, ProductFamily as ProductFamilyValue } from '@airtek/contracts'
 import SectionHeading from '@/components/common/SectionHeading.vue'
 import { trackAnalyticsEvent } from '@/lib/analytics'
 import { getPublishedProducts } from '@/lib/api'
 import { PUBLIC_PRODUCT_PAGE_SIZE } from '@/lib/productPagination'
 import { useCompareStore } from '@/stores/compare'
-import type { ProductFamilyProjection } from '@/types/content'
+import type { ProductFamilyProjection, PublicPageModel } from '@/types/content'
 
-const props = withDefaults(defineProps<{ category?: string; families: ProductFamilyProjection[]; products: Product[]; nextCursor?: string | null }>(), {
+type CatalogState = NonNullable<PublicPageModel['catalogState']>
+
+const props = withDefaults(defineProps<{
+  category?: string
+  families: ProductFamilyProjection[]
+  products: Product[]
+  nextCursor?: string | null
+  total?: number
+  familyCounts?: ProductFacetCount[]
+  motorTechnologyCounts?: ProductFacetCount[]
+  initialState?: CatalogState
+}>(), {
   nextCursor: null,
+  total: 0,
+  familyCounts: () => [],
+  motorTechnologyCounts: () => [],
+  initialState: () => ({ q: '', view: 'cards' }),
 })
-const query = ref('')
-const selectedForm = ref(props.category ?? 'all')
-const selectedMotor = ref('all')
-const view = ref<'cards' | 'table'>('cards')
+
+const familiesByCode = computed(() => new Map(props.families.map((family) => [family.code, family])))
+const lockedFamily = computed(() => props.families.find((family) => family.slug === props.category)?.code)
+const query = ref(props.initialState.q)
+const selectedFamily = ref<ProductFamilyValue | 'all'>(lockedFamily.value ?? props.initialState.family ?? 'all')
+const selectedMotor = ref(props.initialState.motorTechnology ?? 'all')
+const view = ref<'cards' | 'table'>(props.initialState.view)
 const pageProducts = ref<Product[]>([...props.products])
 const pageNextCursor = ref<string | null>(props.nextCursor ?? null)
+const resultTotal = ref(props.total)
+const familyCounts = ref([...props.familyCounts])
+const motorTechnologyCounts = ref([...props.motorTechnologyCounts])
 const cursorHistory = ref<Array<string | null>>([null])
 const pageIndex = ref(0)
 const loading = ref(false)
 const pageError = ref('')
-const observedMotorTechnologies = ref(new Set(
-  props.products.flatMap((product) => product.motorTechnology?.trim() ? [product.motorTechnology.trim()] : []),
-))
 let requestGeneration = 0
 const compare = useCompareStore()
-
-const familiesByCode = computed(() => new Map(props.families.map((family) => [family.code, family])))
-const familyValues = computed(() => Object.fromEntries(
-  props.families.map((family) => [family.slug, family.code]),
-) as Record<string, ProductFamilyValue>)
-const motorTechnologies = computed(() => [...observedMotorTechnologies.value].sort())
-
-watch(
-  [() => props.products, () => props.nextCursor, () => props.category],
-  () => {
-    requestGeneration += 1
-    pageProducts.value = [...props.products]
-    pageNextCursor.value = props.nextCursor ?? null
-    cursorHistory.value = [null]
-    pageIndex.value = 0
-    selectedForm.value = props.category ?? 'all'
-    selectedMotor.value = 'all'
-    query.value = ''
-    loading.value = false
-    pageError.value = ''
-    rememberMotorTechnologies(props.products, true)
-  },
-)
-
-function rememberMotorTechnologies(products: Product[], replace = false): void {
-  const values = replace ? new Set<string>() : new Set(observedMotorTechnologies.value)
-  for (const product of products) {
-    const technology = product.motorTechnology?.trim()
-    if (technology) values.add(technology)
-  }
-  observedMotorTechnologies.value = values
-}
-
-function familySlug(product: Product): string {
-  return familiesByCode.value.get(product.family)?.slug ?? ''
-}
-
-function familyName(product: Product): string {
-  return familiesByCode.value.get(product.family)?.name ?? ''
-}
-
-function productHref(product: Product): string {
-  return `/en/products/${familySlug(product)}/${product.slug}`
-}
 
 const publishedProducts = computed(() => pageProducts.value.filter((product) => (
   product.status === 'published'
@@ -77,17 +51,43 @@ const publishedProducts = computed(() => pageProducts.value.filter((product) => 
   && product.locale === 'en'
   && familiesByCode.value.has(product.family)
 )))
+const familyCountMap = computed(() => new Map(familyCounts.value.map((facet) => [facet.value, facet.count])))
+const motorTechnologies = computed(() => motorTechnologyCounts.value.map((facet) => facet.value))
 
-const results = computed(() => publishedProducts.value.filter((product) => {
-  const form = familySlug(product)
-  const matchesForm = selectedForm.value === 'all' || form === selectedForm.value
-  const matchesMotor = selectedMotor.value === 'all' || product.motorTechnology === selectedMotor.value
-  const haystack = [product.title, product.model, product.stableId, product.subtype, product.motorTechnology, product.summary]
-    .filter((value): value is string => typeof value === 'string')
-    .join(' ')
-    .toLowerCase()
-  return matchesForm && matchesMotor && haystack.includes(query.value.trim().toLowerCase())
-}))
+watch(
+  () => [props.products, props.nextCursor, props.total, props.familyCounts, props.motorTechnologyCounts, props.initialState, props.category] as const,
+  () => {
+    requestGeneration += 1
+    pageProducts.value = [...props.products]
+    pageNextCursor.value = props.nextCursor ?? null
+    resultTotal.value = props.total
+    familyCounts.value = [...props.familyCounts]
+    motorTechnologyCounts.value = [...props.motorTechnologyCounts]
+    cursorHistory.value = [null]
+    pageIndex.value = 0
+    query.value = props.initialState.q
+    selectedFamily.value = lockedFamily.value ?? props.initialState.family ?? 'all'
+    selectedMotor.value = props.initialState.motorTechnology ?? 'all'
+    view.value = props.initialState.view
+    loading.value = false
+    pageError.value = ''
+  },
+)
+
+function familyName(product: Product): string {
+  return familiesByCode.value.get(product.family)?.name ?? product.family
+}
+
+function productHref(product: Product): string {
+  const family = familiesByCode.value.get(product.family)
+  return product.seo.canonicalPath || `/en/products/${family?.slug ?? product.family}/${product.slug}`
+}
+
+function verifiedSpec(product: Product, key: string): string | undefined {
+  const spec = product.specifications.find((entry) => entry.key === key && entry.state === 'verified')
+  if (!spec || !['string', 'number', 'boolean'].includes(typeof spec.value)) return undefined
+  return [String(spec.value), spec.unit].filter(Boolean).join(' ')
+}
 
 function isCompared(product: Product): boolean {
   return compare.items.some((item) => item.id === product.id)
@@ -95,21 +95,35 @@ function isCompared(product: Product): boolean {
 
 function addToCompare(product: Product): void {
   compare.hydrate()
-  compare.add({ id: product.id, slug: product.slug, label: product.title, family: familyName(product), familyCode: product.family, dataState: 'published', publishedRevision: product.publishedRevision ?? undefined })
-}
-
-function trackFilter(filterName: 'catalogSearch' | 'family' | 'motorTechnology' | 'catalogFilters'): void {
-  void trackAnalyticsEvent('filterApplied', {
-    filterName,
-    resultCount: results.value.length,
+  compare.add({
+    id: product.id, slug: product.slug, label: product.title, family: familyName(product),
+    familyCode: product.family, dataState: 'published', publishedRevision: product.publishedRevision ?? undefined,
   })
 }
 
+function syncUrl(): void {
+  if (typeof window === 'undefined') return
+  const url = new URL(window.location.href)
+  const normalizedQuery = query.value.trim()
+  if (normalizedQuery) url.searchParams.set('q', normalizedQuery)
+  else url.searchParams.delete('q')
+  if (selectedFamily.value !== 'all') url.searchParams.set('family', selectedFamily.value)
+  else url.searchParams.delete('family')
+  if (selectedMotor.value !== 'all') url.searchParams.set('motorTechnology', selectedMotor.value)
+  else url.searchParams.delete('motorTechnology')
+  url.searchParams.set('view', view.value)
+  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+}
+
+function trackFilter(filterName: 'catalogSearch' | 'family' | 'motorTechnology' | 'catalogFilters'): void {
+  void trackAnalyticsEvent('filterApplied', { filterName, resultCount: resultTotal.value })
+}
+
 function productListQuery(cursor: string | null) {
-  const family = selectedForm.value === 'all' ? undefined : familyValues.value[selectedForm.value]
   return {
     limit: PUBLIC_PRODUCT_PAGE_SIZE,
-    ...(family ? { family } : {}),
+    ...(query.value.trim() ? { q: query.value.trim() } : {}),
+    ...(selectedFamily.value !== 'all' ? { family: selectedFamily.value } : {}),
     ...(selectedMotor.value !== 'all' ? { motorTechnology: selectedMotor.value } : {}),
     ...(cursor ? { cursor } : {}),
   }
@@ -124,11 +138,13 @@ async function loadPage(cursor: string | null): Promise<boolean> {
     if (generation !== requestGeneration) return false
     pageProducts.value = page.items
     pageNextCursor.value = page.nextCursor
-    rememberMotorTechnologies(page.items)
+    resultTotal.value = page.total
+    familyCounts.value = page.familyCounts
+    motorTechnologyCounts.value = page.motorTechnologyCounts
     return true
   } catch (cause) {
     if (generation === requestGeneration) {
-      pageError.value = cause instanceof Error ? cause.message : 'The next catalog page could not be loaded.'
+      pageError.value = cause instanceof Error ? cause.message : 'The catalog page could not be loaded.'
     }
     return false
   } finally {
@@ -136,44 +152,29 @@ async function loadPage(cursor: string | null): Promise<boolean> {
   }
 }
 
-async function resetPagination(): Promise<void> {
-  // A cursor is bound to its filters, so no previous or next cursor may survive
-  // a filter change even when the replacement request fails.
+async function resetPagination(filterName?: Parameters<typeof trackFilter>[0]): Promise<void> {
   cursorHistory.value = [null]
   pageIndex.value = 0
   pageNextCursor.value = null
+  syncUrl()
   await loadPage(null)
-}
-
-async function trackQueryFilter(): Promise<void> {
-  await resetPagination()
-  trackFilter('catalogSearch')
-}
-
-async function trackFamilyFilter(): Promise<void> {
-  await resetPagination()
-  trackFilter('family')
-}
-
-async function trackMotorFilter(): Promise<void> {
-  await resetPagination()
-  // Product Master labels are rendered in the UI, but their source text is not copied into analytics.
-  trackFilter('motorTechnology')
+  if (filterName) trackFilter(filterName)
 }
 
 async function clearFilters(): Promise<void> {
   query.value = ''
-  selectedForm.value = props.category ?? 'all'
+  selectedFamily.value = lockedFamily.value ?? 'all'
   selectedMotor.value = 'all'
-  await resetPagination()
-  trackFilter('catalogFilters')
+  await resetPagination('catalogFilters')
+}
+
+function setView(value: 'cards' | 'table'): void {
+  view.value = value
+  syncUrl()
 }
 
 function trackPageChange(): void {
-  void trackAnalyticsEvent('filterApplied', {
-    filterName: 'catalogPagination',
-    resultCount: pageProducts.value.length,
-  })
+  void trackAnalyticsEvent('filterApplied', { filterName: 'catalogPagination', resultCount: pageProducts.value.length })
 }
 
 async function nextPage(): Promise<void> {
@@ -195,63 +196,52 @@ async function previousPage(): Promise<void> {
     trackPageChange()
   }
 }
-
 </script>
 
 <template>
   <section class="section shell">
-    <SectionHeading
-      eyebrow="Published catalog"
-      title="Products"
-    />
+    <SectionHeading eyebrow="Published catalog" title="Products" />
     <div class="filter-panel product-filter-panel" aria-label="Product filters" :aria-busy="loading">
-      <label>
-        <span>Search this product page</span>
-        <input v-model="query" type="search" placeholder="Search this page by title, model or stable ID" @change="trackQueryFilter">
-      </label>
-      <label>
-        <span>Fan form</span>
-        <select v-model="selectedForm" @change="trackFamilyFilter">
-          <option value="all">All product families</option>
-          <option v-for="family in families" :key="family.code" :value="family.slug">{{ family.name }}</option>
-        </select>
-      </label>
-      <label>
-        <span>Motor technology</span>
-        <select v-model="selectedMotor" @change="trackMotorFilter">
-          <option value="all">All published technologies</option>
-          <option v-for="technology in motorTechnologies" :key="technology" :value="technology">{{ technology }}</option>
-        </select>
-      </label>
-      <p class="result-count" role="status">{{ results.length }} matching {{ results.length === 1 ? 'record' : 'records' }} on page {{ pageIndex + 1 }}</p>
-      <p class="pagination-scope">Counts describe the current API page, not the total catalog.</p>
+      <label><span>Search the published catalog</span><input v-model="query" type="search" placeholder="Title, model, Stable ID, subtype or specification" @change="resetPagination('catalogSearch')"></label>
+      <label><span>Fan form</span><select v-model="selectedFamily" :disabled="Boolean(lockedFamily)" @change="resetPagination('family')">
+        <option v-if="!lockedFamily" value="all">All product families</option>
+        <option v-for="family in families" :key="family.code" :value="family.code">{{ family.name }} ({{ familyCountMap.get(family.code) ?? 0 }})</option>
+      </select></label>
+      <label><span>Motor technology</span><select v-model="selectedMotor" @change="resetPagination('motorTechnology')">
+        <option value="all">All published technologies</option>
+        <option v-for="technology in motorTechnologies" :key="technology" :value="technology">{{ technology }}</option>
+      </select></label>
+      <p class="result-count" role="status">{{ resultTotal }} matching {{ resultTotal === 1 ? 'record' : 'records' }}</p>
+      <p class="pagination-scope">Showing {{ publishedProducts.length }} records on page {{ pageIndex + 1 }}.</p>
     </div>
 
     <div v-if="pageError" class="data-notice catalog-page-error" role="alert">
       <div><strong>Catalog page unavailable</strong><p>{{ pageError }}</p></div>
-      <button class="button secondary" type="button" :disabled="loading" @click="resetPagination">Reload first page</button>
+      <button class="button secondary" type="button" :disabled="loading" @click="resetPagination()">Reload first page</button>
     </div>
 
     <div v-if="publishedProducts.length" class="catalog-toolbar" aria-label="Catalog view">
       <span>View</span>
-      <button type="button" :aria-pressed="view === 'cards'" @click="view = 'cards'">Cards</button>
-      <button type="button" :aria-pressed="view === 'table'" @click="view = 'table'">Table</button>
+      <button type="button" :aria-pressed="view === 'cards'" @click="setView('cards')">Cards</button>
+      <button type="button" :aria-pressed="view === 'table'" @click="setView('table')">Table</button>
     </div>
 
-    <div v-if="results.length && view === 'cards'" class="card-grid product-grid">
-      <article v-for="product in results" :key="product.id" class="card product-card">
+    <div v-if="publishedProducts.length && view === 'cards'" class="card-grid product-grid">
+      <article v-for="product in publishedProducts" :key="product.id" class="card product-card">
         <div class="product-card-body">
           <p class="eyebrow">{{ familyName(product) }}</p>
-          <h2><a :href="productHref(product)">{{ product.title }}</a></h2>
+          <h2><a :href="productHref(product)">{{ product.model || product.title }}</a></h2>
           <dl class="product-card-meta">
-            <div v-if="product.model"><dt>Model</dt><dd>{{ product.model }}</dd></div>
-            <div><dt>Stable ID</dt><dd>{{ product.stableId }}</dd></div>
-            <div><dt>Revision</dt><dd>{{ product.publishedRevision }}</dd></div>
+            <div><dt>Model</dt><dd>{{ product.model || 'Not published' }}</dd></div>
+            <div><dt>Diameter</dt><dd>{{ verifiedSpec(product, 'diameter') || 'Not published' }}</dd></div>
+            <div><dt>Rated voltage</dt><dd>{{ verifiedSpec(product, 'voltage') || 'Not published' }}</dd></div>
+            <div><dt>Protection</dt><dd>{{ verifiedSpec(product, 'protection') || 'Not published' }}</dd></div>
           </dl>
-          <p v-if="product.summary">{{ product.summary }}</p>
-          <ul v-if="product.subtype || product.motorTechnology" class="tag-list" aria-label="Published facets">
+          <p>{{ product.summary || 'Product summary not published.' }}</p>
+          <ul class="tag-list" aria-label="Published facets">
             <li v-if="product.subtype">{{ product.subtype }}</li>
             <li v-if="product.motorTechnology">{{ product.motorTechnology }}</li>
+            <li v-else>Motor technology not published</li>
           </ul>
           <div class="product-card-actions">
             <a class="text-link" :href="productHref(product)">View product <span aria-hidden="true">→</span></a>
@@ -261,36 +251,26 @@ async function previousPage(): Promise<void> {
       </article>
     </div>
 
-    <div v-else-if="results.length" class="table-scroll published-products-table">
+    <div v-else-if="publishedProducts.length" class="table-scroll published-products-table">
       <table>
-        <caption>{{ results.length }} published product records</caption>
-        <thead><tr><th scope="col">Product</th><th scope="col">Model</th><th scope="col">Family</th><th scope="col">Motor technology</th><th scope="col">Revision</th></tr></thead>
-        <tbody>
-          <tr v-for="product in results" :key="product.id">
-            <th scope="row"><a :href="productHref(product)">{{ product.title }}</a><small>{{ product.stableId }}</small></th>
-            <td>{{ product.model || '—' }}</td>
-            <td>{{ familyName(product) }}</td>
-            <td>{{ product.motorTechnology || '—' }}</td>
-            <td>{{ product.publishedRevision }}</td>
-          </tr>
-        </tbody>
+        <caption>{{ resultTotal }} matching published product records</caption>
+        <thead><tr><th scope="col">Product</th><th scope="col">Family</th><th scope="col">Diameter</th><th scope="col">Voltage</th><th scope="col">Protection</th><th scope="col">Motor technology</th></tr></thead>
+        <tbody><tr v-for="product in publishedProducts" :key="product.id">
+          <th scope="row"><a :href="productHref(product)">{{ product.model || product.title }}</a><small>{{ product.stableId }}</small></th>
+          <td>{{ familyName(product) }}</td><td>{{ verifiedSpec(product, 'diameter') || 'Not published' }}</td><td>{{ verifiedSpec(product, 'voltage') || 'Not published' }}</td><td>{{ verifiedSpec(product, 'protection') || 'Not published' }}</td><td>{{ product.motorTechnology || 'Not published' }}</td>
+        </tr></tbody>
       </table>
     </div>
 
-    <div v-else-if="!publishedProducts.length" class="empty-state large">
-      <p class="eyebrow">No published records</p>
-      <h2>No validated products are available in this catalog view.</h2>
+    <div v-else class="empty-state large">
+      <p class="eyebrow">No matching published records</p><h2>No validated products are available for these filters.</h2>
       <p>No model, performance value or compatibility claim has been inferred.</p>
-    </div>
-    <div v-else class="empty-state">
-      <h2>No matching published product</h2>
-      <p>Try a broader term or remove a selected facet.</p>
-      <button class="button secondary" type="button" @click="clearFilters">Clear filters</button>
+      <button v-if="query || selectedMotor !== 'all' || (!lockedFamily && selectedFamily !== 'all')" class="button secondary" type="button" @click="clearFilters">Clear filters</button>
     </div>
 
     <nav v-if="pageIndex > 0 || pageNextCursor" class="catalog-pagination" aria-label="Product catalog pages">
       <button class="button secondary" type="button" :disabled="pageIndex === 0 || loading" @click="previousPage">Previous page</button>
-      <span aria-live="polite">Page {{ pageIndex + 1 }}<small>Current page only</small></span>
+      <span aria-live="polite">Page {{ pageIndex + 1 }}<small>{{ publishedProducts.length }} of {{ resultTotal }}</small></span>
       <button class="button secondary" type="button" :disabled="!pageNextCursor || loading" @click="nextPage">Next page</button>
     </nav>
     <p v-if="loading" class="catalog-loading" role="status">Loading published product records…</p>

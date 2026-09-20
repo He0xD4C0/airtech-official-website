@@ -42,20 +42,37 @@ const families = [
   { code: 'centrifugal' as const, slug: 'centrifugal', name: 'Centrifugal', description: 'Published family', sortOrder: 2 },
 ]
 
+function productPage(items: Product[] = [product], nextCursor: string | null = null, total = items.length) {
+  return {
+    items,
+    nextCursor,
+    total,
+    familyCounts: total ? [{ value: 'axial', count: total }] : [],
+    motorTechnologyCounts: total ? [{ value: 'EC', count: total }] : [],
+  }
+}
+
+const catalogProps = {
+  products: [product],
+  families,
+  total: 1,
+  familyCounts: [{ value: 'axial', count: 1 }],
+  motorTechnologyCounts: [{ value: 'EC', count: 1 }],
+}
+
 describe('published product explorer', () => {
   beforeEach(() => {
+    window.history.replaceState({}, '', '/en/products')
     vi.mocked(trackAnalyticsEvent).mockClear()
     vi.mocked(getPublishedProducts).mockReset()
-    vi.mocked(getPublishedProducts).mockResolvedValue({ items: [product], nextCursor: null })
+    vi.mocked(getPublishedProducts).mockResolvedValue(productPage())
   })
 
   it('SSR-renders only provided published Product Master records', async () => {
-    const app = createSSRApp({ render: () => h(ProductExplorer, { products: [product], families }) })
+    const app = createSSRApp({ render: () => h(ProductExplorer, catalogProps) })
     app.use(createPinia())
     const html = await renderToString(app)
-    expect(html).toContain('Published axial product')
     expect(html).toContain('Published model')
-    expect(html).toContain('AT-VERIFIED-001')
     expect(html).toContain('/en/products/axial/published-axial-product')
   })
 
@@ -67,16 +84,22 @@ describe('published product explorer', () => {
     expect(html).toContain('No model, performance value or compatibility claim has been inferred.')
   })
 
-  it('filters the published projection on the client', async () => {
-    const wrapper = mount(ProductExplorer, { props: { products: [product], families }, global: { plugins: [createPinia()] } })
-    expect(wrapper.text()).toContain('Published axial product')
-    await wrapper.get('input[type="search"]').setValue('not-present')
-    expect(wrapper.text()).toContain('No matching published product')
+  it('queries the published projection on the server', async () => {
+    vi.mocked(getPublishedProducts).mockReset().mockResolvedValue(productPage([], null, 0))
+    const wrapper = mount(ProductExplorer, { props: catalogProps, global: { plugins: [createPinia()] } })
+    expect(wrapper.text()).toContain('Published model')
+    const search = wrapper.get('input[type="search"]')
+    await search.setValue('not-present')
+    await search.trigger('change')
+    await flushPromises()
+    expect(getPublishedProducts).toHaveBeenCalledWith({ limit: 24, q: 'not-present' })
+    expect(wrapper.text()).toContain('No matching published records')
     expect(wrapper.text()).not.toContain('Summary from the published Product Master projection.')
   })
 
   it('tracks only structured filter state and never the catalog query text', async () => {
-    const wrapper = mount(ProductExplorer, { props: { products: [product], families }, global: { plugins: [createPinia()] } })
+    vi.mocked(getPublishedProducts).mockResolvedValue(productPage([], null, 0))
+    const wrapper = mount(ProductExplorer, { props: catalogProps, global: { plugins: [createPinia()] } })
     const privateQuery = 'buyer@example.com confidential requirement'
     const search = wrapper.get('input[type="search"]')
     await search.setValue(privateQuery)
@@ -98,31 +121,32 @@ describe('published product explorer', () => {
     })
   })
 
-  it('uses opaque next cursors, retains previous-page history and labels counts as page-scoped', async () => {
+  it('uses opaque next cursors, retains previous-page history and shows total counts', async () => {
     const secondProduct: Product = {
       ...product,
       id: 'f4abdf14-c27b-4d71-a22b-45cc3f7aa64d',
       stableId: 'AT-VERIFIED-002',
       slug: 'published-second-product',
       title: 'Published second product',
+      model: 'Published second model',
     }
     vi.mocked(getPublishedProducts)
-      .mockResolvedValueOnce({ items: [secondProduct], nextCursor: null })
-      .mockResolvedValueOnce({ items: [product], nextCursor: 'cGFnZS0y' })
+      .mockResolvedValueOnce(productPage([secondProduct], null, 2))
+      .mockResolvedValueOnce(productPage([product], 'cGFnZS0y', 2))
 
     const wrapper = mount(ProductExplorer, {
-      props: { products: [product], families, nextCursor: 'cGFnZS0y' },
+      props: { ...catalogProps, total: 2, nextCursor: 'cGFnZS0y' },
       global: { plugins: [createPinia()] },
     })
-    expect(wrapper.text()).toContain('1 matching record on page 1')
-    expect(wrapper.text()).toContain('not the total catalog')
+    expect(wrapper.text()).toContain('2 matching records')
+    expect(wrapper.text()).toContain('Showing 1 records on page 1')
 
     const next = wrapper.findAll('button').find((button) => button.text() === 'Next page')
     expect(next).toBeDefined()
     await next!.trigger('click')
     await flushPromises()
     expect(getPublishedProducts).toHaveBeenNthCalledWith(1, { limit: 24, cursor: 'cGFnZS0y' })
-    expect(wrapper.text()).toContain('Published second product')
+    expect(wrapper.text()).toContain('Published second model')
     expect(wrapper.text()).toContain('Page 2')
     expect(trackAnalyticsEvent).toHaveBeenCalledWith('filterApplied', {
       filterName: 'catalogPagination', resultCount: 1,
@@ -132,17 +156,17 @@ describe('published product explorer', () => {
     await previous!.trigger('click')
     await flushPromises()
     expect(getPublishedProducts).toHaveBeenNthCalledWith(2, { limit: 24 })
-    expect(wrapper.text()).toContain('Published axial product')
+    expect(wrapper.text()).toContain('Published model')
     expect(wrapper.text()).toContain('page 1')
   })
 
   it('resets cursor history when a filter changes and keeps a recoverable failure state', async () => {
     vi.mocked(getPublishedProducts)
-      .mockResolvedValueOnce({ items: [{ ...product, id: crypto.randomUUID(), slug: 'page-two-product' }], nextCursor: null })
+      .mockResolvedValueOnce(productPage([{ ...product, id: crypto.randomUUID(), slug: 'page-two-product' }], null, 2))
       .mockRejectedValueOnce(new Error('Published catalog temporarily unavailable.'))
 
     const wrapper = mount(ProductExplorer, {
-      props: { products: [product], families, nextCursor: 'cGFnZS0y' },
+      props: { ...catalogProps, total: 2, nextCursor: 'cGFnZS0y' },
       global: { plugins: [createPinia()] },
     })
     const next = wrapper.findAll('button').find((button) => button.text() === 'Next page')
@@ -158,7 +182,7 @@ describe('published product explorer', () => {
     expect(wrapper.text()).toContain('page 1')
     expect(wrapper.text()).not.toContain('Previous page')
 
-    vi.mocked(getPublishedProducts).mockResolvedValueOnce({ items: [product], nextCursor: null })
+    vi.mocked(getPublishedProducts).mockResolvedValueOnce(productPage())
     const reload = wrapper.findAll('button').find((button) => button.text() === 'Reload first page')
     await reload!.trigger('click')
     await flushPromises()

@@ -49,9 +49,26 @@ function textValue(value: unknown): string {
 
 function specificationValue(product: Product, key: string): string {
   const spec = product.specifications.find((candidate) => candidate.key === key)
-  if (!spec) return '—'
-  const value = spec.value === undefined || spec.value === null ? spec.state : textValue(spec.value)
-  return [value, spec.unit, spec.operatingCondition].filter(Boolean).join(' · ')
+  if (!spec) return 'Not published'
+  const state = ({
+    verified: 'Verified', missing: 'Not published', notApplicable: 'Not applicable',
+    notTested: 'Not tested', confidential: 'Confidential', pendingVerification: 'Pending verification',
+  })[spec.state]
+  const value = spec.value === undefined || spec.value === null ? state : textValue(spec.value)
+  return [value, spec.unit, state, spec.operatingCondition].filter(Boolean).join(' · ')
+}
+
+function curveSummary(product: Product): string {
+  const curves = product.performanceCurves.filter((candidate) => candidate.state === 'verified')
+  if (!curves.length) return 'No verified curve'
+  const conditions = curves.map((curve, index) => {
+    const published = [
+      curve.speedRpm ? `${curve.speedRpm} rpm` : '', curve.densityKgM3 ? `${curve.densityKgM3} kg/m³` : '',
+      curve.voltage || '', curve.testMethod || '',
+    ].filter(Boolean).join(' / ') || 'conditions not published'
+    return `Curve ${index + 1}: ${curve.points.length} points; ${published}`
+  })
+  return `${curves.length} verified ${curves.length === 1 ? 'curve' : 'curves'} · ${conditions.join(' | ')}`
 }
 
 function row(key: string, label: string, values: string[]): ComparisonRow {
@@ -66,10 +83,7 @@ const rows = computed<ComparisonRow[]>(() => {
     row('family', 'Fan form', selected.map((product) => familyLabel(product.family))),
     row('motorTechnology', 'Motor technology', selected.map((product) => product.motorTechnology || 'Not published')),
     row('revision', 'Published revision', selected.map((product) => String(product.publishedRevision))),
-    row('curve', 'Verified PQ curve', selected.map((product) => {
-      const curve = product.performanceCurves.find((candidate) => candidate.state === 'verified')
-      return curve ? `${curve.points.length} published points` : 'No verified curve'
-    })),
+    row('curve', 'Verified PQ curves', selected.map(curveSummary)),
   ]
   const specificationLabels = new Map<string, string>()
   for (const product of selected) {

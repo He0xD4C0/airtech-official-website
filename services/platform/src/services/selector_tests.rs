@@ -70,7 +70,11 @@ fn product(state: FactState, points: Vec<CurvePoint>) -> Product {
         motor_technology: None,
         title: "Published verified product".into(),
         summary: None,
-        seo: Default::default(),
+        seo: crate::models::SeoMetadata {
+            canonical_path: Some("/en/products/axial/verified-model".into()),
+            indexable: true,
+            ..Default::default()
+        },
         sort_order: 0,
         related_content_ids: Vec::new(),
         media_gallery: Vec::new(),
@@ -117,6 +121,12 @@ fn interpolates_only_verified_published_curves() {
     assert_eq!(response.outcome, SelectorOutcome::Matched);
     assert_eq!(response.candidates.len(), 1);
     assert_eq!(response.candidates[0].rank, 1);
+    assert_eq!(response.candidates[0].slug, "verified-model");
+    assert_eq!(response.candidates[0].family, ProductFamily::Axial);
+    assert_eq!(
+        response.candidates[0].canonical_path,
+        "/en/products/axial/verified-model"
+    );
 }
 
 #[test]

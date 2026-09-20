@@ -62,12 +62,11 @@ pub(super) async fn validate_product_rfq_context(
         .expect("structural RFQ validation requires product context");
     let published = load_published_product_rows(
         &state.pool,
-        None,
-        None,
-        None,
-        Some(context.product_id),
-        None,
-        Some(1),
+        PublishedProductFilter {
+            product_id: Some(context.product_id),
+            limit: Some(1),
+            ..Default::default()
+        },
     )
     .await?
     .into_iter()

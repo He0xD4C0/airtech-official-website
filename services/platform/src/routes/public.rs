@@ -13,14 +13,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::services::public_content::load_published_product_rows;
+use crate::services::public_content::{load_published_product_rows, PublishedProductFilter};
 use crate::{
     error::ApiError,
     idempotency::{begin as begin_idempotency, IdempotencyOutcome},
     models::{
         AcceptedResponse, AnalyticsConsentReceipt, AnalyticsEventReceipt, CmsContentKind,
         ContactRequest, CreateAnalyticsConsent, CreateAnalyticsEvent, CreateContactRequest,
-        CreateRfqRequest, CursorPage, Product, ProductFamily, ProductQuery, RfqJourney,
+        CreateRfqRequest, Product, ProductFamily, ProductQuery, PublishedProductPage, RfqJourney,
         RfqSubmission, SelectorRequest, SelectorResponse,
     },
     rate_limit::{
@@ -37,6 +37,7 @@ pub fn router() -> Router<AppState> {
         .route("/products", get(list_products))
         .route("/products/{slug}/assets", get(get_product_assets))
         .route("/products/{slug}", get(get_product))
+        .route("/search", get(search_public_site))
         .route("/discovery", get(discovery))
         .route("/media/{assetId}", get(get_public_media))
         .route("/media/{assetId}/download", get(download_public_media))
@@ -54,6 +55,9 @@ const ANALYTICS_CONSENT_LIFETIME_DAYS: i64 = 180;
 #[path = "public/discovery.rs"]
 mod discovery;
 use discovery::*;
+#[path = "public/search.rs"]
+mod search;
+use search::*;
 #[path = "public/content_and_products.rs"]
 mod content_and_products;
 use content_and_products::*;

@@ -161,12 +161,17 @@ describe('public API client', () => {
       sourceSnapshotId: 'c44656ad-fc7a-41c0-909e-930466096b37', sourceRevision: '8', currentRevision: 8,
       publishedRevision: 7, status: 'published', indexable: true, updatedAt: '2026-09-01T08:00:00Z',
     }
-    const fetchImpl = vi.fn(async () => jsonResponse({ items: [product], nextCursor: 'eyJ2IjoxfQ' })) as unknown as typeof fetch
+    const fetchImpl = vi.fn(async () => jsonResponse({
+      items: [product], nextCursor: 'eyJ2IjoxfQ', total: 1,
+      familyCounts: [{ value: 'axial', count: 1 }],
+      motorTechnologyCounts: [{ value: 'EC', count: 1 }],
+    })) as unknown as typeof fetch
     const page = await createPublicApiClient({ baseUrl: 'http://api:8080/api/public/v1', fetchImpl }).listProducts({
       family: 'axial', motorTechnology: 'EC', cursor: 'cGFnZS0y', limit: 24,
     })
     expect(page.items[0]?.stableId).toBe('AT-P-001')
     expect(page.nextCursor).toBe('eyJ2IjoxfQ')
+    expect(page.total).toBe(1)
     expect(fetchImpl).toHaveBeenCalledWith(
       'http://api:8080/api/public/v1/products?limit=24&family=axial&motorTechnology=EC&cursor=cGFnZS0y',
       expect.objectContaining({ credentials: 'omit' }),

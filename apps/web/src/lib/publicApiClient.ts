@@ -25,6 +25,8 @@ import {
   publicDiscoveryResponse,
   routeProjectionResponse,
   selectorResponse,
+  searchPageResponse,
+  searchQuery,
   siteBootstrapResponse,
   validProblemErrors,
 } from './publicApiDecoders'
@@ -33,6 +35,7 @@ import type {
   PublicApiClientOptions,
   PublishedNewsListQuery,
   PublishedProductListQuery,
+  PublishedSearchQuery,
 } from './publicApiTypes'
 
 async function publicContractRequest<Data>(
@@ -160,6 +163,14 @@ export function createPublicApiClient(options: PublicApiClientOptions) {
         parameters: { query: productListQuery(query) },
       }))
       return productPageResponse(result.data)
+    },
+
+    async search(query: PublishedSearchQuery = {}) {
+      const result = await publicContractRequest(client.get('/api/public/v1/search', {
+        credentials: 'omit',
+        parameters: { query: searchQuery(query) },
+      }))
+      return searchPageResponse(result.data)
     },
 
     async getDiscovery() {

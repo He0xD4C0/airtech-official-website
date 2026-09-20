@@ -152,10 +152,21 @@ pub struct AdminProductPage {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProductQuery {
+    pub q: Option<String>,
     pub family: Option<ProductFamily>,
     pub motor_technology: Option<String>,
     pub cursor: Option<String>,
     pub limit: Option<usize>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PublishedProductPage {
+    pub items: Vec<Product>,
+    pub next_cursor: Option<String>,
+    pub total: usize,
+    pub family_counts: Vec<ProductFacetCount>,
+    pub motor_technology_counts: Vec<ProductFacetCount>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -189,6 +200,9 @@ pub enum SelectorPriority {
 pub struct SelectorCandidate {
     pub product_id: Uuid,
     pub product_revision: i64,
+    pub slug: String,
+    pub family: ProductFamily,
+    pub canonical_path: String,
     pub title: String,
     pub matched_constraints: Vec<String>,
     pub warnings: Vec<String>,

@@ -117,13 +117,13 @@ describe('specialized V2 public pages', () => {
         name: 'catalog',
         component: CatalogPage,
         page: pageWithProjection('/en/products', 'catalog', 'productIndex'),
-        workspace: 'No validated products are available in this catalog view.',
+        workspace: 'No validated products are available for these filters.',
       },
       {
         name: 'selector',
         component: SelectorPage,
         page: pageWithProjection('/en/products/selector', 'selector', 'selector'),
-        workspace: 'Define the operating context',
+        workspace: 'Define the duty point',
       },
       {
         name: 'collection',
@@ -180,6 +180,6 @@ describe('specialized V2 public pages', () => {
     expect(html).not.toContain('Legacy hero must not render')
     expect(html).not.toContain('Legacy slot must not render')
     expect(html).not.toContain('Legacy CTA must not render')
-    expect(html).toContain('No validated products are available in this catalog view.')
+    expect(html).toContain('No validated products are available for these filters.')
   })
 })

@@ -8,6 +8,7 @@ mod content;
 mod management;
 mod media;
 mod product;
+mod search;
 mod site;
 mod submissions;
 
@@ -19,6 +20,7 @@ pub(super) fn build() -> Value {
     content::add(&mut schemas);
     cms_v2::add(&mut schemas);
     product::add(&mut schemas);
+    search::add(&mut schemas);
     submissions::add(&mut schemas);
     site::add(&mut schemas);
     analytics::add(&mut schemas);
