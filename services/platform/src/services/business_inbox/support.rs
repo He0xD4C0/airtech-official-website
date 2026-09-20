@@ -17,6 +17,7 @@ pub(super) fn item_from_row(
     row: sqlx::postgres::PgRow,
 ) -> Result<BusinessInboxItem, ApiError> {
     let payload: Value = row.try_get("payload")?;
+    let cleared = payload.get("status").and_then(Value::as_str) == Some("piiCleared");
     let (journey, topic, contact, product_context, consent) = match entity_type {
         BusinessEntityType::Rfq => {
             let request = decode_rfq(payload)?.request;
@@ -51,7 +52,11 @@ pub(super) fn item_from_row(
         source_path: row.try_get("source_path")?,
         locale: row.try_get("locale")?,
         consent,
-        status: parse_status(row.try_get("status")?)?,
+        status: if cleared {
+            BusinessInboxStatus::PiiCleared
+        } else {
+            parse_status(row.try_get("status")?)?
+        },
         revision: row.try_get("revision")?,
         assigned_to: row.try_get("assigned_to")?,
         submitted_at: row.try_get("submitted_at")?,
@@ -134,6 +139,7 @@ pub(super) fn status_history_from_row(
 
 pub(super) fn pii_from_contact(contact: BusinessContact, message: Option<String>) -> BusinessPii {
     BusinessPii {
+        rfq_context: None,
         name: contact.name,
         email: contact.email,
         phone: contact.phone,
@@ -186,6 +192,11 @@ pub(super) fn validate_reason(reason: &str) -> Result<(), ApiError> {
 }
 
 pub(super) fn ensure_revision(item: &BusinessInboxItem, expected: i64) -> Result<(), ApiError> {
+    if item.status == BusinessInboxStatus::PiiCleared {
+        return Err(ApiError::conflict(
+            "Personal information has been cleared; this record is read-only.",
+        ));
+    }
     if item.revision == expected {
         Ok(())
     } else {

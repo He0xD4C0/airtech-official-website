@@ -29,16 +29,9 @@ function validDetailPath(path: string, prefix: string): boolean {
 }
 
 function discoveryEntryType(entry: PublicDiscoveryEntryResponse): string {
-  if (entry.entityType === 'product') return 'Product'
-  if (entry.path.startsWith('/en/solutions/')) return 'Solution'
-  if (entry.path.startsWith('/en/technology/')) return 'Technology'
-  if (entry.path.startsWith('/en/resources/articles/')) return 'Article'
-  if (entry.path.startsWith('/en/resources/news/')) return 'News'
-  if (entry.path.startsWith('/en/resources/faqs/')) return 'FAQ'
-  if (entry.path.startsWith('/en/resources/case-studies/')) return 'Case study'
-  if (entry.path.startsWith('/en/resources/downloads/')) return 'Download'
-  if (entry.path.startsWith('/en/company/')) return 'Company'
-  return 'Page'
+  const labels = { product: 'Product', solution: 'Solution', technology: 'Technology', article: 'Article',
+    news: 'News', faq: 'FAQ', caseStudy: 'Case study', download: 'Download', company: 'Company', page: 'Page' }
+  return labels[entry.displayType ?? (entry.entityType === 'product' ? 'product' : 'page')]
 }
 
 function discoveryCards(entries: PublicDiscoveryEntryResponse[], page: PublicPageModel): CardEntry[] {
@@ -98,6 +91,7 @@ export async function enrichPage(
       const routeFamily = productFamilyCode(page, route.path)
       const family = routeFamily ?? options.catalogQuery?.family
       const products = await client.listProducts({
+        ...(options.catalogQuery?.cursor ? { cursor: options.catalogQuery.cursor } : {}),
         limit: PUBLIC_PRODUCT_PAGE_SIZE,
         ...(options.catalogQuery?.q ? { q: options.catalogQuery.q } : {}),
         ...(family ? { family } : {}),
@@ -111,6 +105,7 @@ export async function enrichPage(
       page.productFamilyCounts = products.familyCounts
       page.productMotorTechnologyCounts = products.motorTechnologyCounts
       page.catalogState = {
+        ...(options.catalogQuery?.cursor ? { cursor: options.catalogQuery.cursor } : {}),
         q: options.catalogQuery?.q ?? '',
         ...(family ? { family } : {}),
         ...(options.catalogQuery?.motorTechnology
@@ -207,6 +202,7 @@ export async function enrichPage(
       }
     } else if (page.kind === 'search') {
       const results = await client.search({
+        ...(options.searchQuery?.cursor ? { cursor: options.searchQuery.cursor } : {}),
         limit: 20,
         ...(options.searchQuery?.q ? { q: options.searchQuery.q } : {}),
         ...(options.searchQuery?.type ? { type: options.searchQuery.type } : {}),
@@ -216,6 +212,7 @@ export async function enrichPage(
       page.searchTotal = results.total
       page.searchTypeCounts = results.typeCounts
       page.searchState = {
+        ...(options.searchQuery?.cursor ? { cursor: options.searchQuery.cursor } : {}),
         q: options.searchQuery?.q ?? '',
         ...(options.searchQuery?.type ? { type: options.searchQuery.type } : {}),
       }

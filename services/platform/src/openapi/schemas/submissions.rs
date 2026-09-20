@@ -69,6 +69,9 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             &["application", "dutyPoint"],
             Value::Object(rfq_context_properties([
                 ("dutyPoint", r("RfqDutyPoint")),
+                ("ambientTemperatureC", json!({"type": "number", "minimum": -273.15, "maximum": 1000})),
+                ("preferredFamily", r("ProductFamily")),
+                ("motorTechnology", json!({"type": "string", "minLength": 1, "maxLength": 120})),
                 ("maximumDiameterMm", json!({"type": "number", "exclusiveMinimum": 0, "maximum": 100000})),
                 ("requiredCertifications", json!({"type": "array", "maxItems": 20, "items": {"type": "string", "minLength": 1, "maxLength": 120}})),
                 ("control", json!({"type": "string", "minLength": 1, "maxLength": 120})),
@@ -242,6 +245,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         &["entityType", "entityId", "path", "locale", "title", "summary", "updatedAt"],
         json!({
             "entityType": string_enum(&["content", "product"]), "entityId": uuid(), "path": {"type": "string", "pattern": "^/en(?:/|$)"},
+            "displayType": r("PublicSearchType"),
             "locale": {"type": "string"}, "title": {"type": "string"}, "summary": nullable(json!({"type": "string"})), "updatedAt": timestamp()
         })
     ));
@@ -261,7 +265,15 @@ fn add_business_inbox_schemas(s: &mut Map<String, Value>) {
     );
     s.insert(
         "BusinessInboxStatus".into(),
-        string_enum(&["new", "triaged", "assigned", "qualified", "closed", "spam"]),
+        string_enum(&[
+            "new",
+            "triaged",
+            "assigned",
+            "qualified",
+            "closed",
+            "spam",
+            "piiCleared",
+        ]),
     );
     s.insert("BusinessInboxItem".into(), object(
         &["id", "entityType", "reference", "journey", "topic", "organization", "countryOrRegion", "productContext", "sourcePath", "locale", "consent", "status", "revision", "assignedTo", "submittedAt", "updatedAt", "retentionUntil"],
@@ -285,10 +297,16 @@ fn add_business_inbox_schemas(s: &mut Map<String, Value>) {
             }),
         ),
     );
+    s.insert("RfqContextSnapshot".into(), json!({"oneOf": [
+        object(&["journey","context"],json!({"journey": {"const":"product","type":"string"}, "context":r("ProductRfqContext")})),
+        object(&["journey","context"],json!({"journey": {"const":"selection","type":"string"}, "context":r("SelectionRfqContext")})),
+        object(&["journey","context"],json!({"journey": {"const":"project","type":"string"}, "context":r("ProjectRfqContext")})),
+        object(&["journey","context"],json!({"journey": {"const":"replacement","type":"string"}, "context":r("ReplacementRfqContext")}))
+    ]}));
     s.insert("BusinessPii".into(), object(
         &["name", "email", "phone", "company", "countryOrRegion", "message"],
         json!({
-            "name": {"type": "string"}, "email": {"type": "string", "format": "email"},
+            "rfqContext": nullable(r("RfqContextSnapshot")), "name": {"type": "string"}, "email": {"type": "string", "format": "email"},
             "phone": nullable(json!({"type": "string"})), "company": nullable(json!({"type": "string"})),
             "countryOrRegion": nullable(json!({"type": "string"})), "message": nullable(json!({"type": "string"}))
         })

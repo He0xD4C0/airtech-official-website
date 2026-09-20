@@ -224,6 +224,7 @@ DiscoveryDocument: {
             generatedAt: string;
         };
 DiscoveryEntry: {
+            displayType?: components["schemas"]["PublicSearchType"];
             /** Format: uuid */
             entityId: string;
             /** @enum {string} */

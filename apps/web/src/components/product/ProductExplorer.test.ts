@@ -85,6 +85,12 @@ describe('published product explorer', () => {
   })
 
   it('queries the published projection on the server', async () => {
+    const nativePush = window.history.pushState.bind(window.history)
+    const history = vi.spyOn(window.history, 'pushState').mockImplementation((state, title, url) => {
+      // jsdom omits the real browser's DataCloneError check.
+      structuredClone(state)
+      nativePush(state, title, url)
+    })
     vi.mocked(getPublishedProducts).mockReset().mockResolvedValue(productPage([], null, 0))
     const wrapper = mount(ProductExplorer, { props: catalogProps, global: { plugins: [createPinia()] } })
     expect(wrapper.text()).toContain('Published model')
@@ -95,6 +101,8 @@ describe('published product explorer', () => {
     expect(getPublishedProducts).toHaveBeenCalledWith({ limit: 24, q: 'not-present' })
     expect(wrapper.text()).toContain('No matching published records')
     expect(wrapper.text()).not.toContain('Summary from the published Product Master projection.')
+    history.mockRestore()
+    wrapper.unmount()
   })
 
   it('tracks only structured filter state and never the catalog query text', async () => {
@@ -148,6 +156,7 @@ describe('published product explorer', () => {
     expect(getPublishedProducts).toHaveBeenNthCalledWith(1, { limit: 24, cursor: 'cGFnZS0y' })
     expect(wrapper.text()).toContain('Published second model')
     expect(wrapper.text()).toContain('Page 2')
+    expect(new URL(window.location.href).searchParams.get('cursor')).toBe('cGFnZS0y')
     expect(trackAnalyticsEvent).toHaveBeenCalledWith('filterApplied', {
       filterName: 'catalogPagination', resultCount: 1,
     })
@@ -158,6 +167,23 @@ describe('published product explorer', () => {
     expect(getPublishedProducts).toHaveBeenNthCalledWith(2, { limit: 24 })
     expect(wrapper.text()).toContain('Published model')
     expect(wrapper.text()).toContain('page 1')
+    expect(new URL(window.location.href).searchParams.has('cursor')).toBe(false)
+  })
+
+  it('restores filters, cursor and view on browser history changes without erasing router state', async () => {
+    window.history.replaceState({ routerMarker: 'preserved' }, '', '/en/products')
+    const wrapper = mount(ProductExplorer, { props: catalogProps, global: { plugins: [createPinia()] } })
+    await wrapper.get('input[type="search"]').setValue('model')
+    await wrapper.get('input[type="search"]').trigger('change')
+    await flushPromises()
+    expect(window.history.state.routerMarker).toBe('preserved')
+    window.history.replaceState({ publicQueryCursors: [null, 'opaque'] }, '', '/en/products?q=restored&family=axial&motorTechnology=EC&view=table&cursor=opaque')
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    await flushPromises()
+    expect(getPublishedProducts).toHaveBeenLastCalledWith({ limit: 24, q: 'restored', family: 'axial', motorTechnology: 'EC', cursor: 'opaque' })
+    expect(wrapper.get<HTMLInputElement>('input[type="search"]').element.value).toBe('restored')
+    expect(wrapper.find('table').exists()).toBe(true)
+    wrapper.unmount()
   })
 
   it('resets cursor history when a filter changes and keeps a recoverable failure state', async () => {

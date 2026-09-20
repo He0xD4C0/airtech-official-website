@@ -289,7 +289,7 @@ pub(super) async fn apply_retention_with_deployment_defaults(
     .map_err(|error| error.to_string())?;
     let rfqs = sqlx::query(
         r#"UPDATE rfq_submissions
-           SET status='piiCleared',
+           SET status='closed',revision=revision+1,updated_at=now(),
                payload=jsonb_set(
                    jsonb_set(
                        jsonb_set(payload, '{request,contact}',
@@ -297,7 +297,7 @@ pub(super) async fn apply_retention_with_deployment_defaults(
                        '{request,context}', '{}'::jsonb, true),
                    '{status}', '"piiCleared"'::jsonb, true)
            WHERE retention_until < now() - make_interval(days => $1)
-             AND status <> 'piiCleared'"#,
+             AND payload->>'status' IS DISTINCT FROM 'piiCleared'"#,
     )
     .bind(grace_days as i32)
     .execute(&mut *transaction)
@@ -306,7 +306,7 @@ pub(super) async fn apply_retention_with_deployment_defaults(
     .rows_affected();
     let contacts = sqlx::query(
         r#"UPDATE contact_requests
-           SET status='piiCleared',
+           SET status='closed',revision=revision+1,updated_at=now(),
                payload=jsonb_set(
                    jsonb_set(
                        jsonb_set(payload, '{request,contact}',
@@ -314,7 +314,7 @@ pub(super) async fn apply_retention_with_deployment_defaults(
                        '{request,message}', '"[retention-cleared]"'::jsonb, true),
                    '{status}', '"piiCleared"'::jsonb, true)
            WHERE retention_until < now() - make_interval(days => $1)
-             AND status <> 'piiCleared'"#,
+             AND payload->>'status' IS DISTINCT FROM 'piiCleared'"#,
     )
     .bind(grace_days as i32)
     .execute(&mut *transaction)

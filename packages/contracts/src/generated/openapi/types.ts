@@ -203,6 +203,7 @@ export type ResolvedLinkTarget = components['schemas']['ResolvedLinkTarget'];
 export type ResolvedMedia = components['schemas']['ResolvedMedia'];
 export type ResolvedRelationCard = components['schemas']['ResolvedRelationCard'];
 export type RevisionRequest = components['schemas']['RevisionRequest'];
+export type RfqContextSnapshot = components['schemas']['RfqContextSnapshot'];
 export type RfqDutyPoint = components['schemas']['RfqDutyPoint'];
 export type RfqElectricalContext = components['schemas']['RfqElectricalContext'];
 export type RfqJourney = components['schemas']['RfqJourney'];

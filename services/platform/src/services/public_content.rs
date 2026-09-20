@@ -14,6 +14,9 @@ use crate::{
 
 #[path = "public_content/discovery.rs"]
 mod discovery;
+#[path = "public_content/search.rs"]
+mod search;
+pub(crate) use search::search_public_site;
 #[path = "public_content/products.rs"]
 mod products;
 #[path = "public_content/projection.rs"]

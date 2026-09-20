@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import type { PublicSearchItem, PublicSearchType } from '@airtek/contracts'
 import PublicBlockRenderer from '@/components/blocks/PublicBlockRenderer.vue'
+import { useQueryHistory } from '@/lib/queryHistory'
 import { trackAnalyticsEvent } from '@/lib/analytics'
 import { searchPublishedSite } from '@/lib/api'
 import type { PublicPageModel } from '@/types/content'
@@ -13,7 +14,7 @@ const items = ref<PublicSearchItem[]>([...(props.page.searchResults ?? [])])
 const nextCursor = ref<string | null>(props.page.searchNextCursor ?? null)
 const total = ref(props.page.searchTotal ?? 0)
 const typeCounts = ref([...(props.page.searchTypeCounts ?? [])])
-const cursorHistory = ref<Array<string | null>>([null])
+const cursorHistory = ref<Array<string | null>>([props.page.searchState?.cursor ?? null])
 const pageIndex = ref(0)
 const loading = ref(false)
 const error = ref('')
@@ -29,14 +30,21 @@ const availableTypes = computed(() => typeCounts.value.map((facet) => ({
   count: facet.count,
 })))
 
+const writeQuery = useQueryHistory((params, cursors) => {
+  query.value = params.get('q') ?? ''
+  const requestedType = params.get('type')
+  type.value = requestedType && requestedType in typeLabels ? requestedType as PublicSearchType : 'all'
+  cursorHistory.value = cursors
+  pageIndex.value = Math.max(0, cursors.indexOf(params.get('cursor')))
+  void loadPage(params.get('cursor'))
+})
+
 function syncUrl(): void {
-  const url = new URL(window.location.href)
-  const normalizedQuery = query.value.trim()
-  if (normalizedQuery) url.searchParams.set('q', normalizedQuery)
-  else url.searchParams.delete('q')
-  if (type.value === 'all') url.searchParams.delete('type')
-  else url.searchParams.set('type', type.value)
-  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+  writeQuery({
+    q: query.value.trim(),
+    type: type.value === 'all' ? undefined : type.value,
+    cursor: cursorHistory.value[pageIndex.value] ?? undefined,
+  }, cursorHistory.value)
 }
 
 function requestQuery(cursor: string | null) {
@@ -89,13 +97,17 @@ async function nextPage(): Promise<void> {
   if (await loadPage(cursor)) {
     cursorHistory.value = [...cursorHistory.value.slice(0, pageIndex.value + 1), cursor]
     pageIndex.value += 1
+    syncUrl()
   }
 }
 
 async function previousPage(): Promise<void> {
   if (!pageIndex.value || loading.value) return
   const target = pageIndex.value - 1
-  if (await loadPage(cursorHistory.value[target] ?? null)) pageIndex.value = target
+  if (await loadPage(cursorHistory.value[target] ?? null)) {
+    pageIndex.value = target
+    syncUrl()
+  }
 }
 </script>
 

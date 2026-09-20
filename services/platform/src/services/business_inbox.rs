@@ -55,7 +55,7 @@ pub async fn list(
     };
     let count_sql = format!(
         r#"SELECT count(*) FROM {table}
-           WHERE ($1::text IS NULL OR status=$1)
+           WHERE ($1::text IS NULL OR (CASE WHEN payload->>'status'='piiCleared' THEN 'piiCleared' ELSE status END)=$1)
              AND ($2::uuid IS NULL OR assigned_to=$2)
              AND ($3::text IS NULL OR reference ILIKE '%' || $3 || '%' OR payload::text ILIKE '%' || $3 || '%')"#,
     );
@@ -69,7 +69,7 @@ pub async fn list(
         r#"SELECT id,reference,status,revision,assigned_to,submitted_at,updated_at,
                   retention_until,source_path,locale,payload
            FROM {table}
-           WHERE ($1::text IS NULL OR status=$1)
+           WHERE ($1::text IS NULL OR (CASE WHEN payload->>'status'='piiCleared' THEN 'piiCleared' ELSE status END)=$1)
              AND ($2::uuid IS NULL OR assigned_to=$2)
              AND ($3::text IS NULL OR reference ILIKE '%' || $3 || '%' OR payload::text ILIKE '%' || $3 || '%')
              AND ($4::timestamptz IS NULL OR (updated_at,id)<($4,$5))
@@ -125,7 +125,7 @@ async fn resolve_cursor(
         DecodedCursor::Legacy(id) => {
             let sql = format!(
                 r#"SELECT updated_at FROM {} WHERE id=$1
-                   AND ($2::text IS NULL OR status=$2)
+                   AND ($2::text IS NULL OR (CASE WHEN payload->>'status'='piiCleared' THEN 'piiCleared' ELSE status END)=$2)
                    AND ($3::uuid IS NULL OR assigned_to=$3)
                    AND ($4::text IS NULL OR reference ILIKE '%' || $4 || '%' OR payload::text ILIKE '%' || $4 || '%')"#,
                 table(entity_type),
@@ -210,7 +210,10 @@ pub async fn pii(
     id: Uuid,
 ) -> Result<BusinessPii, ApiError> {
     let pool = require_pool(state)?;
-    let sql = format!("SELECT payload FROM {} WHERE id=$1", table(entity_type));
+    let sql = format!(
+        "SELECT payload FROM {} WHERE id=$1 AND payload->>'status' IS DISTINCT FROM 'piiCleared'",
+        table(entity_type)
+    );
     let payload = sqlx::query_scalar::<_, Value>(&sql)
         .bind(id)
         .fetch_optional(pool)
@@ -219,7 +222,16 @@ pub async fn pii(
     match entity_type {
         BusinessEntityType::Rfq => {
             let request = decode_rfq(payload)?.request;
-            Ok(pii_from_contact(request.contact, None))
+            let mut detail = pii_from_contact(request.contact, None);
+            if !request.context.is_empty() {
+                detail.rfq_context = Some(
+                    serde_json::from_value(serde_json::json!({
+                        "journey": request.journey, "context": request.context
+                    }))
+                    .map_err(|_| ApiError::service_unavailable("Stored RFQ context is invalid."))?,
+                );
+            }
+            Ok(detail)
         }
         BusinessEntityType::Contact => {
             let request = decode_contact(payload)?.request;

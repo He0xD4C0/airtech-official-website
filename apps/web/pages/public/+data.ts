@@ -13,18 +13,21 @@ export async function data(pageContext: PageContextServer) {
       'product', 'solution', 'technology', 'article', 'news', 'faq', 'caseStudy', 'download', 'company', 'page',
     ]
     const q = pageContext.urlParsed.search.q?.slice(0, 200)
+    const cursor = pageContext.urlParsed.search.cursor?.slice(0, 4096)
     const motorTechnology = pageContext.urlParsed.search.motorTechnology?.slice(0, 120)
     const view = pageContext.urlParsed.search.view === 'table' ? 'table' : 'cards'
     const projection = await loadPublicPageData(pageContext.urlPathname, {
       productSlug: pageContext.urlParsed.search.product,
       productFamily: supportedFamilies.find((family) => family === productFamily),
       catalogQuery: {
+        ...(cursor ? { cursor } : {}),
         ...(q ? { q } : {}),
         ...(supportedFamilies.includes(productFamily as ProductFamily) ? { family: productFamily as ProductFamily } : {}),
         ...(motorTechnology ? { motorTechnology } : {}),
         view,
       },
       searchQuery: {
+        ...(cursor ? { cursor } : {}),
         ...(q ? { q } : {}),
         ...(supportedSearchTypes.includes(searchType as PublicSearchType) ? { type: searchType as PublicSearchType } : {}),
       },

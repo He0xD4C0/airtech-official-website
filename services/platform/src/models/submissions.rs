@@ -99,6 +99,7 @@ pub enum BusinessInboxStatus {
     Qualified,
     Closed,
     Spam,
+    PiiCleared,
 }
 
 impl BusinessInboxStatus {
@@ -110,6 +111,7 @@ impl BusinessInboxStatus {
             Self::Qualified => "qualified",
             Self::Closed => "closed",
             Self::Spam => "spam",
+            Self::PiiCleared => "piiCleared",
         }
     }
 }
@@ -147,6 +149,8 @@ pub struct BusinessInboxPage {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BusinessPii {
+    #[serde(default)]
+    pub rfq_context: Option<RfqContextSnapshot>,
     pub name: String,
     pub email: String,
     pub phone: Option<String>,

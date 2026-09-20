@@ -138,6 +138,7 @@ export interface PublicPageModel {
   productFamilyCounts?: ProductFacetCount[]
   productMotorTechnologyCounts?: ProductFacetCount[]
   catalogState?: {
+    cursor?: string
     q: string
     family?: Product['family']
     motorTechnology?: string
@@ -147,7 +148,7 @@ export interface PublicPageModel {
   searchNextCursor?: string | null
   searchTotal?: number
   searchTypeCounts?: ProductFacetCount[]
-  searchState?: { q: string; type?: PublicSearchType }
+  searchState?: { q: string; type?: PublicSearchType; cursor?: string }
   newsNextCursor?: string | null
   publishedProduct?: Product
   productAssets?: ProductSourceAsset[]

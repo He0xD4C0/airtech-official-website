@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import type { Product, ProductFacetCount, ProductFamily as ProductFamilyValue } from '@airtek/contracts'
 import SectionHeading from '@/components/common/SectionHeading.vue'
+import { useQueryHistory } from '@/lib/queryHistory'
 import { trackAnalyticsEvent } from '@/lib/analytics'
 import { getPublishedProducts } from '@/lib/api'
 import { PUBLIC_PRODUCT_PAGE_SIZE } from '@/lib/productPagination'
@@ -38,7 +39,7 @@ const pageNextCursor = ref<string | null>(props.nextCursor ?? null)
 const resultTotal = ref(props.total)
 const familyCounts = ref([...props.familyCounts])
 const motorTechnologyCounts = ref([...props.motorTechnologyCounts])
-const cursorHistory = ref<Array<string | null>>([null])
+const cursorHistory = ref<Array<string | null>>([props.initialState.cursor ?? null])
 const pageIndex = ref(0)
 const loading = ref(false)
 const pageError = ref('')
@@ -63,7 +64,7 @@ watch(
     resultTotal.value = props.total
     familyCounts.value = [...props.familyCounts]
     motorTechnologyCounts.value = [...props.motorTechnologyCounts]
-    cursorHistory.value = [null]
+    cursorHistory.value = [props.initialState.cursor ?? null]
     pageIndex.value = 0
     query.value = props.initialState.q
     selectedFamily.value = lockedFamily.value ?? props.initialState.family ?? 'all'
@@ -101,18 +102,25 @@ function addToCompare(product: Product): void {
   })
 }
 
+const writeQuery = useQueryHistory((params, cursors) => {
+  query.value = params.get('q') ?? ''
+  selectedFamily.value = lockedFamily.value ?? props.families.find((family) => family.code === params.get('family'))?.code ?? 'all'
+  selectedMotor.value = params.get('motorTechnology') ?? 'all'
+  view.value = params.get('view') === 'table' ? 'table' : 'cards'
+  cursorHistory.value = cursors
+  pageIndex.value = Math.max(0, cursors.indexOf(params.get('cursor')))
+  void loadPage(params.get('cursor'))
+})
+
 function syncUrl(): void {
   if (typeof window === 'undefined') return
-  const url = new URL(window.location.href)
-  const normalizedQuery = query.value.trim()
-  if (normalizedQuery) url.searchParams.set('q', normalizedQuery)
-  else url.searchParams.delete('q')
-  if (selectedFamily.value !== 'all') url.searchParams.set('family', selectedFamily.value)
-  else url.searchParams.delete('family')
-  if (selectedMotor.value !== 'all') url.searchParams.set('motorTechnology', selectedMotor.value)
-  else url.searchParams.delete('motorTechnology')
-  url.searchParams.set('view', view.value)
-  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+  writeQuery({
+    q: query.value.trim(),
+    family: selectedFamily.value === 'all' ? undefined : selectedFamily.value,
+    motorTechnology: selectedMotor.value === 'all' ? undefined : selectedMotor.value,
+    view: view.value,
+    cursor: cursorHistory.value[pageIndex.value] ?? undefined,
+  }, cursorHistory.value)
 }
 
 function trackFilter(filterName: 'catalogSearch' | 'family' | 'motorTechnology' | 'catalogFilters'): void {
@@ -183,6 +191,7 @@ async function nextPage(): Promise<void> {
   if (await loadPage(cursor)) {
     cursorHistory.value = [...cursorHistory.value.slice(0, pageIndex.value + 1), cursor]
     pageIndex.value += 1
+    syncUrl()
     trackPageChange()
   }
 }
@@ -193,6 +202,7 @@ async function previousPage(): Promise<void> {
   const cursor = cursorHistory.value[targetIndex] ?? null
   if (await loadPage(cursor)) {
     pageIndex.value = targetIndex
+    syncUrl()
     trackPageChange()
   }
 }

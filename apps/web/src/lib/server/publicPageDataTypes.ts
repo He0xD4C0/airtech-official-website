@@ -7,12 +7,14 @@ export interface PublicPageDataOptions {
   productSlug?: string
   productFamily?: ProductFamily
   catalogQuery?: {
+    cursor?: string
     q?: string
     family?: ProductFamily
     motorTechnology?: string
     view?: 'cards' | 'table'
   }
   searchQuery?: {
+    cursor?: string
     q?: string
     type?: PublicSearchType
   }

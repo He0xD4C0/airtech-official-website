@@ -243,7 +243,8 @@ onMounted(() => { void initialize() })
           <tr>
             <th scope="col">Field</th>
             <th v-for="product in displayedProducts" :key="product.id" scope="col">
-              <a :href="`/en/products/${product.family === 'crossFlow' ? 'cross-flow' : product.family === 'inlineDuct' ? 'inline-duct' : product.family}/${product.slug}`">{{ product.title }}</a>
+              <a v-if="product.seo.canonicalPath" :href="product.seo.canonicalPath">{{ product.title }}</a>
+              <span v-else>{{ product.title }}</span>
               <small>{{ product.stableId }}</small>
               <button class="table-remove" type="button" @click="compare.remove(product.id)">Remove</button>
             </th>

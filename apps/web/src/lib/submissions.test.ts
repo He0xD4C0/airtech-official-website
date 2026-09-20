@@ -90,12 +90,26 @@ describe('public submission contract builders', () => {
     })
   })
 
-  it('restores only version 2 string fields and safely ignores old session data', () => {
+  it('restores version 3 scalar fields and safely ignores old session data', () => {
     expect(parseRfqSession(serializeRfqSession(rfqContext))).toEqual(rfqContext)
     expect(parseRfqSession(JSON.stringify({ version: 1, context: rfqContext }))).toBeUndefined()
     expect(parseRfqSession('{invalid')).toBeUndefined()
     expect(parseRfqSession(JSON.stringify({
-      version: 2, context: { application: 'Ventilation', quantity: 4, unknown: 'ignored' },
-    }))).toEqual({ application: 'Ventilation' })
+      version: 3, context: { application: 'Ventilation', quantity: 4, unknown: 'ignored' },
+    }))).toEqual({ application: 'Ventilation', quantity: '4' })
+    expect(parseRfqSession(JSON.stringify({ version: 2, context: rfqContext }))).toBeUndefined()
+  })
+
+  it('preserves numeric selector inputs including zero temperature and rejects invalid constraints', () => {
+    const context = { ...rfqContext, airflow: 1200, pressure: 320, ambientTemperature: 0, frequency: 50, maximumDiameter: 450, preferredFamily: 'axial', motorTechnology: 'EC' }
+    expect(buildRfqRequest('selection', context, rfqContact).context).toMatchObject({
+      ambientTemperatureC: 0, preferredFamily: 'axial', motorTechnology: 'EC', maximumDiameterMm: 450,
+    })
+    expect(parseRfqSession(serializeRfqSession(context))).toMatchObject({ ambientTemperature: '0', maximumDiameter: '450' })
+    for (const field of ['frequency', 'maximumDiameter', 'airflow', 'pressure']) {
+      expect(() => buildRfqRequest('selection', { ...context, [field]: 0 }, rfqContact)).toThrow(/positive/)
+      expect(() => buildRfqRequest('selection', { ...context, [field]: 'not a number' }, rfqContact)).toThrow(/number/)
+    }
+    expect(() => buildRfqRequest('selection', { ...context, ambientTemperature: -274 }, rfqContact)).toThrow()
   })
 })

@@ -36,27 +36,20 @@ pub(super) async fn list_products(
         .as_deref()
         .map(|value| decode_product_cursor(&state, value, &scope))
         .transpose()?;
-    let (mut products, facets) = tokio::try_join!(
-        load_published_product_rows(
-            &state.pool,
-            PublishedProductFilter {
-                family: scope.family,
-                motor_technology: scope.motor_technology.as_deref(),
-                search: scope.q.as_deref(),
-                after: after
-                    .as_ref()
-                    .map(|value| (value.stable_id.as_str(), value.id.unwrap_or(Uuid::nil()))),
-                limit: Some(limit + 1),
-                ..Default::default()
-            },
-        ),
-        crate::services::public_content::load_published_product_facets(
-            &state.pool,
-            scope.family,
-            scope.motor_technology.as_deref(),
-            scope.q.as_deref(),
-        )
-    )?;
+    let (mut products, facets) = crate::services::public_content::load_catalog_page(
+        &state.pool,
+        PublishedProductFilter {
+            family: scope.family,
+            motor_technology: scope.motor_technology.as_deref(),
+            search: scope.q.as_deref(),
+            after: after
+                .as_ref()
+                .map(|value| (value.stable_id.as_str(), value.id.unwrap_or(Uuid::nil()))),
+            limit: Some(limit + 1),
+            ..Default::default()
+        },
+    )
+    .await?;
     let has_more = products.len() > limit;
     products.truncate(limit);
     let next_cursor = has_more

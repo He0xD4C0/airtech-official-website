@@ -12,52 +12,29 @@ pub(crate) struct PublishedProductFilter<'a> {
     pub(crate) limit: Option<usize>,
 }
 
-pub(crate) async fn load_published_product_rows(
-    pool: &sqlx::PgPool,
+pub(crate) async fn load_published_product_rows<
+    'e,
+    E: sqlx::Executor<'e, Database = sqlx::Postgres>,
+>(
+    pool: E,
     filter: PublishedProductFilter<'_>,
 ) -> Result<Vec<Product>, ApiError> {
     let family = filter.family.map(family_label);
-    let rows = sqlx::query(
+    let rows = sqlx::query(&format!(
         r#"SELECT published.payload,published.published_revision,
                   localization.slug AS localized_slug,localization.title AS localized_title,
                   localization.summary AS localized_summary,
                   localization.content AS localized_content,
                   localization.seo_metadata AS localized_seo,
                   localization.indexable AS localized_indexable
-           FROM published_products published
-           JOIN product_localizations localization
-             ON localization.product_id=published.id
-            AND localization.product_revision=published.published_revision
-            AND localization.locale=published.locale
-           JOIN public_routes route
-             ON route.entity_type='product'
-            AND route.entity_id=published.id
-            AND route.locale=published.locale
-            AND route.canonical_path=localization.seo_metadata->>'canonicalPath'
-           WHERE localization.translation_state='verified'
+           {PRODUCT_MATCHES_SQL}
              AND ($1::text IS NULL OR published.family=$1)
-             AND ($2::text IS NULL OR published.payload->>'motorTechnology'=$2)
-             AND ($3::text IS NULL OR NOT EXISTS (
-                   SELECT 1 FROM unnest(string_to_array($3,' ')) AS search_term
-                   WHERE NOT (
-                     strpos(lower(localization.title),search_term)>0
-                     OR strpos(lower(published.stable_id),search_term)>0
-                     OR strpos(lower(coalesce(published.payload->>'model','')),search_term)>0
-                     OR strpos(lower(coalesce(published.payload->>'subtype','')),search_term)>0
-                     OR EXISTS (
-                       SELECT 1
-                       FROM jsonb_array_elements(coalesce(published.payload->'specifications','[]'::jsonb)) specification
-                       WHERE specification->>'state'='verified'
-                         AND jsonb_typeof(specification->'value') IN ('string','number','boolean')
-                         AND strpos(lower(specification->>'value'),search_term)>0
-                     )
-                   )
-                 ))
+             AND ($2::text IS NULL OR nullif(trim(published.payload->>'motorTechnology'),'')=$2)
              AND ($4::text IS NULL OR localization.slug=$4)
              AND ($5::uuid IS NULL OR published.id=$5)
              AND ($6::text IS NULL OR (published.stable_id,published.id)>($6,$7))
-           ORDER BY published.stable_id,published.id LIMIT $8"#,
-    )
+           ORDER BY published.stable_id,published.id LIMIT $8"#
+    ))
     .bind(family)
     .bind(filter.motor_technology)
     .bind(filter.search)
@@ -123,42 +100,20 @@ pub(crate) async fn load_published_product_rows(
         .collect()
 }
 
-pub(crate) async fn load_published_product_facets(
-    pool: &sqlx::PgPool,
+pub(crate) async fn load_published_product_facets<
+    'e,
+    E: sqlx::Executor<'e, Database = sqlx::Postgres>,
+>(
+    pool: E,
     family: Option<ProductFamily>,
     motor_technology: Option<&str>,
     search: Option<&str>,
 ) -> Result<(usize, Vec<ProductFacetCount>, Vec<ProductFacetCount>), ApiError> {
-    let rows = sqlx::query(
+    let rows = sqlx::query(&format!(
         r#"WITH matched AS (
              SELECT published.family,
                     nullif(trim(published.payload->>'motorTechnology'),'') AS motor_technology
-             FROM published_products published
-             JOIN product_localizations localization
-               ON localization.product_id=published.id
-              AND localization.product_revision=published.published_revision
-              AND localization.locale=published.locale
-             JOIN public_routes route
-               ON route.entity_type='product' AND route.entity_id=published.id
-              AND route.locale=published.locale
-              AND route.canonical_path=localization.seo_metadata->>'canonicalPath'
-             WHERE localization.translation_state='verified'
-               AND ($3::text IS NULL OR NOT EXISTS (
-                 SELECT 1 FROM unnest(string_to_array($3,' ')) AS search_term
-                 WHERE NOT (
-                   strpos(lower(localization.title),search_term)>0
-                   OR strpos(lower(published.stable_id),search_term)>0
-                   OR strpos(lower(coalesce(published.payload->>'model','')),search_term)>0
-                   OR strpos(lower(coalesce(published.payload->>'subtype','')),search_term)>0
-                   OR EXISTS (
-                     SELECT 1
-                     FROM jsonb_array_elements(coalesce(published.payload->'specifications','[]'::jsonb)) specification
-                     WHERE specification->>'state'='verified'
-                       AND jsonb_typeof(specification->'value') IN ('string','number','boolean')
-                       AND strpos(lower(specification->>'value'),search_term)>0
-                   )
-                 )
-               ))
+             {PRODUCT_MATCHES_SQL}
            ), facets AS (
              SELECT 'total' AS dimension,'' AS value,count(*) AS count
              FROM matched
@@ -173,8 +128,8 @@ pub(crate) async fn load_published_product_facets(
              WHERE motor_technology IS NOT NULL AND ($1::text IS NULL OR family=$1)
              GROUP BY motor_technology
            )
-           SELECT dimension,value,count FROM facets ORDER BY dimension,value"#,
-    )
+           SELECT dimension,value,count FROM facets ORDER BY dimension,value"#
+    ))
     .bind(family.map(family_label))
     .bind(motor_technology)
     .bind(search)
@@ -318,4 +273,59 @@ pub(crate) async fn load_published_product_assets(
         product_revision,
         items,
     })
+}
+
+const PRODUCT_MATCHES_SQL: &str = r#"FROM published_products published
+           JOIN product_localizations localization
+             ON localization.product_id=published.id
+            AND localization.product_revision=published.published_revision
+            AND localization.locale=published.locale
+           JOIN public_routes route
+             ON route.entity_type='product'
+            AND route.entity_id=published.id
+            AND route.locale=published.locale
+            AND route.canonical_path=localization.seo_metadata->>'canonicalPath'
+           WHERE localization.translation_state='verified' AND published.locale='en'
+             AND ($3::text IS NULL OR NOT EXISTS (
+                   SELECT 1 FROM unnest(string_to_array($3,' ')) AS search_term
+                   WHERE NOT (
+                     strpos(lower(localization.title),search_term)>0
+                     OR strpos(lower(published.stable_id),search_term)>0
+                     OR strpos(lower(coalesce(published.payload->>'model','')),search_term)>0
+                     OR strpos(lower(coalesce(published.payload->>'subtype','')),search_term)>0
+                     OR EXISTS (
+                       SELECT 1
+                       FROM jsonb_array_elements(coalesce(published.payload->'specifications','[]'::jsonb)) specification
+                       WHERE specification->>'state'='verified'
+                         AND jsonb_typeof(specification->'value') IN ('string','number','boolean')
+                         AND strpos(lower(specification->>'value'),search_term)>0
+                     )
+                   )
+                 ))
+"#;
+
+pub(crate) async fn load_catalog_page(
+    pool: &sqlx::PgPool,
+    filter: PublishedProductFilter<'_>,
+) -> Result<
+    (
+        Vec<Product>,
+        (usize, Vec<ProductFacetCount>, Vec<ProductFacetCount>),
+    ),
+    ApiError,
+> {
+    let mut transaction = pool.begin().await?;
+    sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+        .execute(&mut *transaction)
+        .await?;
+    let facets = load_published_product_facets(
+        &mut *transaction,
+        filter.family,
+        filter.motor_technology,
+        filter.search,
+    )
+    .await?;
+    let products = load_published_product_rows(&mut *transaction, filter).await?;
+    transaction.commit().await?;
+    Ok((products, facets))
 }

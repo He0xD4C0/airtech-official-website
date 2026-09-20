@@ -193,7 +193,30 @@ fn does_not_use_pending_curves() {
             ],
         )],
     );
-    assert_eq!(response.outcome, SelectorOutcome::NoValidatedCandidates);
+    assert_eq!(response.outcome, SelectorOutcome::EngineeringReviewRequired);
+}
+
+#[test]
+fn filters_hard_limits_before_requesting_missing_evidence_or_ranking() {
+    let mut value = ranked_product("A", 80.0, 40.0, 300.0);
+    value.performance_curves.clear();
+    let mut query = request();
+    assert_eq!(
+        evaluate(&query, &[value.clone()]).outcome,
+        SelectorOutcome::EngineeringReviewRequired
+    );
+    query.maximum_diameter_mm = Some(200.0);
+    query.priority = Some(SelectorPriority::Noise);
+    assert_eq!(
+        evaluate(&query, &[value]).outcome,
+        SelectorOutcome::NoValidatedCandidates
+    );
+    let value = ranked_product("A", 80.0, 40.0, 100.0);
+    query.motor_technology = Some("EC".into());
+    assert_eq!(
+        evaluate(&query, &[value]).outcome,
+        SelectorOutcome::EngineeringReviewRequired
+    );
 }
 
 #[test]

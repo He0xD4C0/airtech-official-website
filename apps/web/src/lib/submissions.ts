@@ -1,3 +1,5 @@
+import { certificationInput, inputText, numericInput, type NumericInput } from './formValues'
+import type { ProductFamily } from '@airtek/contracts'
 import type {
   CreateContactRequest,
   CreateRfqRequest,
@@ -20,19 +22,22 @@ export interface ContactFormValues {
 }
 
 export interface RfqContextValues {
+  ambientTemperature?: NumericInput
+  preferredFamily?: string
+  motorTechnology?: string
   application: string
   existingModel: string
   quantity: string
-  airflow: string
+  airflow: NumericInput
   airflowUnit: string
-  pressure: string
+  pressure: NumericInput
   pressureUnit: string
   voltage: string
-  frequency: string
+  frequency: NumericInput
   environment: string
   projectStage: string
   priority: string
-  maximumDiameter: string
+  maximumDiameter: NumericInput
   requiredCertifications: string
   control: string
   projectScale: string
@@ -121,12 +126,13 @@ export function buildRfqRequest(
   const priority = ['efficiency', 'noise', 'size', 'headroom'].includes(values.priority)
     ? values.priority as 'efficiency' | 'noise' | 'size' | 'headroom'
     : undefined
+  const frequency = numericInput(values.frequency, 'context.electrical.frequencyHz', { positive: true, maximum: 1000 })
   const commonContext = {
     application: values.application,
     ...(values.quantity ? { quantity: values.quantity } : {}),
-    ...(values.voltage || values.frequency ? { electrical: {
+    ...(values.voltage || frequency !== undefined ? { electrical: {
       ...(values.voltage ? { voltage: values.voltage } : {}),
-      ...(values.frequency ? { frequencyHz: Number(values.frequency) } : {}),
+      ...(frequency !== undefined ? { frequencyHz: frequency } : {}),
     } } : {}),
     ...(values.environment ? { environment: values.environment } : {}),
     ...(priority ? { priority } : {}),
@@ -160,28 +166,31 @@ export function buildRfqRequest(
     }
   }
   const dutyPoint = () => {
-    if (!values.airflow || !values.pressure) throw new Error('A positive airflow and pressure duty point is required.')
     if (!['m3/h', 'm³/h', 'CFM', 'cfm'].includes(values.airflowUnit)
       || !['Pa', 'pa', 'kPa', 'kpa', 'inH2O', 'inh2o'].includes(values.pressureUnit)) {
       throw new Error('The selected duty-point units are not supported.')
     }
     return {
-      airflow: Number(values.airflow),
+      airflow: numericInput(values.airflow, 'context.dutyPoint.airflow', { required: true, positive: true, maximum: 1e9 })!,
       airflowUnit: values.airflowUnit as 'm3/h' | 'm³/h' | 'CFM' | 'cfm',
-      pressure: Number(values.pressure),
+      pressure: numericInput(values.pressure, 'context.dutyPoint.pressure', { required: true, positive: true, maximum: 1e8 })!,
       pressureUnit: values.pressureUnit as 'Pa' | 'pa' | 'kPa' | 'kpa' | 'inH2O' | 'inh2o',
     }
   }
   if (journey === 'selection') {
-    const requiredCertifications = values.requiredCertifications
-      .split(/[\n,]/u).map((value) => value.trim()).filter(Boolean).slice(0, 20)
+    const requiredCertifications = certificationInput(values.requiredCertifications)
+    const ambientTemperatureC = numericInput(values.ambientTemperature, 'context.ambientTemperatureC', { minimum: -273.15, maximum: 1000 })
+    const maximumDiameterMm = numericInput(values.maximumDiameter, 'context.maximumDiameterMm', { positive: true, maximum: 100000 })
     return {
       ...commonRequest,
       journey,
       context: {
         ...commonContext,
         dutyPoint: dutyPoint(),
-        ...(values.maximumDiameter ? { maximumDiameterMm: Number(values.maximumDiameter) } : {}),
+        ...(ambientTemperatureC !== undefined ? { ambientTemperatureC } : {}),
+        ...(values.preferredFamily && ['axial', 'centrifugal', 'crossFlow', 'inlineDuct', 'motors'].includes(values.preferredFamily) ? { preferredFamily: values.preferredFamily as ProductFamily } : {}),
+        ...(values.motorTechnology ? { motorTechnology: values.motorTechnology } : {}),
+        ...(maximumDiameterMm !== undefined ? { maximumDiameterMm } : {}),
         ...(requiredCertifications.length ? { requiredCertifications } : {}),
         ...(values.control ? { control: values.control } : {}),
       },
@@ -221,11 +230,11 @@ const rfqContextKeys: Array<keyof RfqContextValues> = [
   'application', 'existingModel', 'quantity', 'airflow', 'airflowUnit', 'pressure', 'pressureUnit',
   'voltage', 'frequency', 'environment', 'projectStage', 'priority', 'maximumDiameter',
   'requiredCertifications', 'control', 'projectScale', 'schedule', 'engineeringNeeds',
-  'installationConstraints', 'replacementGoal',
+  'installationConstraints', 'replacementGoal', 'ambientTemperature', 'preferredFamily', 'motorTechnology',
 ]
 
 export function serializeRfqSession(values: RfqContextValues): string {
-  return JSON.stringify({ version: 2, context: values })
+  return JSON.stringify({ version: 3, context: Object.fromEntries(rfqContextKeys.filter((key) => values[key] !== undefined).map((key) => [key, inputText(values[key])])) })
 }
 
 export function parseRfqSession(value: string | null): Partial<RfqContextValues> | undefined {
@@ -233,13 +242,13 @@ export function parseRfqSession(value: string | null): Partial<RfqContextValues>
   try {
     const parsed: unknown = JSON.parse(value)
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)
-      || !('version' in parsed) || parsed.version !== 2
+      || !('version' in parsed) || parsed.version !== 3
       || !('context' in parsed) || typeof parsed.context !== 'object'
       || parsed.context === null || Array.isArray(parsed.context)) return undefined
     const context = parsed.context as Record<string, unknown>
     const restored: Partial<RfqContextValues> = {}
     for (const key of rfqContextKeys) {
-      if (typeof context[key] === 'string') restored[key] = context[key]
+      if (typeof context[key] === 'string' || (typeof context[key] === 'number' && Number.isFinite(context[key]))) restored[key] = inputText(context[key])
     }
     return restored
   } catch {

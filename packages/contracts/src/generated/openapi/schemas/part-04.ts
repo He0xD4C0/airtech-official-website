@@ -218,6 +218,23 @@ RevisionRequest: {
             /** Format: int64 */
             revision: number;
         };
+RfqContextSnapshot: {
+            context: components["schemas"]["ProductRfqContext"];
+            /** @constant */
+            journey: "product";
+        } | {
+            context: components["schemas"]["SelectionRfqContext"];
+            /** @constant */
+            journey: "selection";
+        } | {
+            context: components["schemas"]["ProjectRfqContext"];
+            /** @constant */
+            journey: "project";
+        } | {
+            context: components["schemas"]["ReplacementRfqContext"];
+            /** @constant */
+            journey: "replacement";
+        };
 RfqDutyPoint: {
             airflow: number;
             /** @enum {string} */
@@ -251,12 +268,15 @@ RouteResolution: {
         };
 SelectionRfqContext: {
             additionalMessage?: string;
+            ambientTemperatureC?: number;
             application: string;
             control?: string;
             dutyPoint: components["schemas"]["RfqDutyPoint"];
             electrical?: components["schemas"]["RfqElectricalContext"];
             environment?: string;
             maximumDiameterMm?: number;
+            motorTechnology?: string;
+            preferredFamily?: components["schemas"]["ProductFamily"];
             /** @enum {string} */
             priority?: "efficiency" | "noise" | "size" | "headroom";
             quantity?: components["schemas"]["RfqQuantity"];
@@ -473,23 +493,5 @@ TemporaryOverride: {
 TemporaryOverridePage: {
             items: components["schemas"]["TemporaryOverride"][];
             nextCursor: string | null;
-        };
-TiptapCodeBlockAttrs: {
-            language?: string;
-        };
-TiptapCodeBlockNode: {
-            attrs?: components["schemas"]["TiptapCodeBlockAttrs"];
-            content?: components["schemas"]["TiptapNode"][];
-            marks?: components["schemas"]["TiptapMark"][];
-            /** @enum {string} */
-            type: "codeBlock";
-        };
-TiptapDocument: {
-            content: components["schemas"]["TiptapNode"][];
-            /** @constant */
-            type: "doc";
-        };
-TiptapFormulaAttrs: {
-            latex: string;
         };
 }

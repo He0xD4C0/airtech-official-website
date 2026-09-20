@@ -1396,7 +1396,8 @@
           "assigned",
           "qualified",
           "closed",
-          "spam"
+          "spam",
+          "piiCleared"
         ],
         "type": "string"
       },
@@ -1480,6 +1481,16 @@
             "anyOf": [
               {
                 "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rfqContext": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RfqContextSnapshot"
               },
               {
                 "type": "null"
@@ -3547,6 +3558,9 @@
       "DiscoveryEntry": {
         "additionalProperties": false,
         "properties": {
+          "displayType": {
+            "$ref": "#/components/schemas/PublicSearchType"
+          },
           "entityId": {
             "format": "uuid",
             "type": "string"
@@ -8211,6 +8225,78 @@
         ],
         "type": "object"
       },
+      "RfqContextSnapshot": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "context": {
+                "$ref": "#/components/schemas/ProductRfqContext"
+              },
+              "journey": {
+                "const": "product",
+                "type": "string"
+              }
+            },
+            "required": [
+              "journey",
+              "context"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "context": {
+                "$ref": "#/components/schemas/SelectionRfqContext"
+              },
+              "journey": {
+                "const": "selection",
+                "type": "string"
+              }
+            },
+            "required": [
+              "journey",
+              "context"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "context": {
+                "$ref": "#/components/schemas/ProjectRfqContext"
+              },
+              "journey": {
+                "const": "project",
+                "type": "string"
+              }
+            },
+            "required": [
+              "journey",
+              "context"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "context": {
+                "$ref": "#/components/schemas/ReplacementRfqContext"
+              },
+              "journey": {
+                "const": "replacement",
+                "type": "string"
+              }
+            },
+            "required": [
+              "journey",
+              "context"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "RfqDutyPoint": {
         "additionalProperties": false,
         "properties": {
@@ -8390,6 +8476,11 @@
             "minLength": 1,
             "type": "string"
           },
+          "ambientTemperatureC": {
+            "maximum": 1000,
+            "minimum": -273.15,
+            "type": "number"
+          },
           "application": {
             "maxLength": 500,
             "minLength": 1,
@@ -8415,6 +8506,14 @@
             "exclusiveMinimum": 0,
             "maximum": 100000,
             "type": "number"
+          },
+          "motorTechnology": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "preferredFamily": {
+            "$ref": "#/components/schemas/ProductFamily"
           },
           "priority": {
             "enum": [

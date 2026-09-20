@@ -22,6 +22,9 @@ pub use sync::*;
 #[path = "models/submissions.rs"]
 mod submissions;
 pub use submissions::*;
+#[path = "models/rfq_context.rs"]
+mod rfq_context;
+pub use rfq_context::*;
 #[path = "models/analytics.rs"]
 mod analytics;
 pub use analytics::*;

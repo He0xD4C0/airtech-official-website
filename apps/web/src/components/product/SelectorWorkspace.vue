@@ -6,6 +6,9 @@ import { selectProducts } from '@/lib/api'
 import { trackAnalyticsEvent } from '@/lib/analytics'
 import { useCompareStore } from '@/stores/compare'
 
+import { certificationInput, inputText, numericInput, type NumericInput } from '@/lib/formValues'
+import { serializeRfqSession } from '@/lib/submissions'
+
 const props = defineProps<{ productFamilies: ProductFamilyProjection[]; motorTechnologies: string[] }>()
 const step = ref<1 | 2 | 3 | 4>(1)
 const touched = ref(false)
@@ -14,13 +17,13 @@ const error = ref('')
 const result = ref<SelectorResponse>()
 const compare = useCompareStore()
 const form = reactive({
-  airflow: '', airflowUnit: 'm3/h', pressure: '', pressureUnit: 'Pa',
-  ambientTemperature: '', maximumDiameter: '', voltage: '', frequency: '', certifications: '',
+  airflow: '' as NumericInput, airflowUnit: 'm3/h', pressure: '' as NumericInput, pressureUnit: 'Pa',
+  ambientTemperature: '' as NumericInput, maximumDiameter: '' as NumericInput, voltage: '', frequency: '' as NumericInput, certifications: '',
   family: '', motorTechnology: '', environment: '', control: '',
   priority: 'efficiency' as NonNullable<SelectorRequest['priority']>,
 })
 
-const dutyPointValid = computed(() => Number(form.airflow) > 0 && Number(form.pressure) > 0)
+const dutyPointValid = computed(() => [form.airflow, form.pressure].every((value) => Number.isFinite(Number(value)) && Number(value) > 0))
 const familyMap = computed(() => Object.fromEntries(
   props.productFamilies.map((family) => [family.slug, family.code]),
 ) as Record<string, ProductFamily>)
@@ -29,32 +32,30 @@ const resultTitle = computed(() => ({
   engineeringReviewRequired: 'Engineering review required',
 })[result.value?.outcome ?? 'engineeringReviewRequired'])
 
-function optionalPositive(value: string): number | undefined {
-  if (!value.trim()) return undefined
-  const number = Number(value)
-  return Number.isFinite(number) && number > 0 ? number : undefined
-}
-
-function optionalFinite(value: string): number | undefined {
-  if (!value.trim()) return undefined
-  const number = Number(value)
-  return Number.isFinite(number) ? number : undefined
-}
-
-function certificationValues(): string[] {
-  return form.certifications.split(/[\n,]/u).map((value) => value.trim()).filter(Boolean).slice(0, 20)
+function constraints() {
+  return {
+    ambientTemperatureC: numericInput(form.ambientTemperature, 'ambientTemperatureC', { minimum: -100, maximum: 300 }),
+    maximumDiameterMm: numericInput(form.maximumDiameter, 'maximumDiameterMm', { positive: true, maximum: 100000 }),
+    frequencyHz: numericInput(form.frequency, 'frequencyHz', { positive: true, maximum: 1000 }),
+    requiredCertifications: certificationInput(form.certifications),
+  }
 }
 
 function constraintCount(): number {
   return 2 + [
     form.ambientTemperature, form.maximumDiameter, form.voltage, form.frequency,
     form.certifications, form.family, form.motorTechnology,
-  ].filter((value) => value.trim()).length
+  ].filter((value) => inputText(value)).length
 }
 
 function next(): void {
   touched.value = true
   if (step.value === 1 && !dutyPointValid.value) return
+  try { constraints() } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : 'Check your constraints.'
+    return
+  }
+  error.value = ''
   if (step.value < 3) {
     void trackAnalyticsEvent('selectorStepCompleted', { step: step.value, constraintCount: constraintCount() })
     step.value = (step.value + 1) as 2 | 3
@@ -68,6 +69,8 @@ function previous(): void {
 
 function rfqContext() {
   return {
+    ambientTemperature: form.ambientTemperature, preferredFamily: form.family ? familyMap.value[form.family] : '',
+    motorTechnology: form.motorTechnology,
     application: '', existingModel: '', quantity: '', airflow: form.airflow,
     airflowUnit: form.airflowUnit, pressure: form.pressure, pressureUnit: form.pressureUnit,
     voltage: form.voltage, frequency: form.frequency, environment: form.environment,
@@ -87,21 +90,15 @@ async function evaluate(): Promise<void> {
   })
   try {
     result.value = await selectProducts({
-      airflow: Number(form.airflow), airflowUnit: form.airflowUnit,
-      pressure: Number(form.pressure), pressureUnit: form.pressureUnit,
-      requiredCertifications: certificationValues(),
-      ...(optionalFinite(form.ambientTemperature) !== undefined ? { ambientTemperatureC: Number(form.ambientTemperature) } : {}),
-      ...(optionalPositive(form.maximumDiameter) ? { maximumDiameterMm: Number(form.maximumDiameter) } : {}),
+      airflow: numericInput(form.airflow, 'airflow', { required: true, positive: true })!, airflowUnit: form.airflowUnit,
+      pressure: numericInput(form.pressure, 'pressure', { required: true, positive: true })!, pressureUnit: form.pressureUnit,
+      ...constraints(),
       ...(form.voltage.trim() ? { voltage: form.voltage.trim() } : {}),
-      ...(optionalPositive(form.frequency) ? { frequencyHz: Number(form.frequency) } : {}),
       ...(form.family ? { preferredFamily: familyMap.value[form.family] } : {}),
       ...(form.motorTechnology ? { motorTechnology: form.motorTechnology } : {}),
       priority: form.priority,
     })
-    window.sessionStorage.setItem('airtek.public.rfq-context.selection.v2', JSON.stringify({
-      version: 2,
-      context: rfqContext(),
-    }))
+    try { window.sessionStorage.setItem('airtek.public.rfq-context.selection.v3', serializeRfqSession(rfqContext())) } catch { /* Optional draft persistence. */ }
     step.value = 4
     void trackAnalyticsEvent('selectorStepCompleted', { step: 3, constraintCount: constraintCount() })
     void trackAnalyticsEvent('selectorResult', {
