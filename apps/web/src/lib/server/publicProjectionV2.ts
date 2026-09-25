@@ -15,6 +15,7 @@ import type {
 } from '@/types/content'
 import {
   linkTargetHref,
+  publicMediaHref,
   type PublicContentProjection,
   type ResolvedRelationCard,
 } from '@/types/projection'
@@ -269,6 +270,7 @@ export interface GeneralInformationProjection {
   copyrightText?: string
   defaultSeo: { title?: string; description?: string }
   organization: { name: string; url?: string; logoUrl?: string }
+  siteIcon?: { url: string; mediaType: string; width: number; height: number }
   navigationCta?: PublicLink
   socialLinks: Array<{ service: string; url: string }>
 }
@@ -279,6 +281,9 @@ export function generalInformationFrom(projection: PublicContentProjection): Gen
   const brandName = safeText(fields.organizationName, 200)
   const homePath = safeText(fields.homePath, 200)
   if (!brandName || !homePath || (homePath !== '/en' && !homePath.startsWith('/en/'))) return undefined
+  const siteIcon = fields.siteIcon
+    ? projection.resolvedMedia.find((entry) => entry.assetId === fields.siteIcon?.assetId)
+    : undefined
   return {
     brandName,
     brandLine: safeText(fields.brandLine, 300),
@@ -290,6 +295,14 @@ export function generalInformationFrom(projection: PublicContentProjection): Gen
       description: safeText(fields.defaultSeo.description, 1_000),
     },
     organization: { name: brandName },
+    siteIcon: siteIcon?.originalWidth && siteIcon.originalHeight
+      ? {
+          url: publicMediaHref(siteIcon.publicUrl),
+          mediaType: siteIcon.mediaType,
+          width: siteIcon.originalWidth,
+          height: siteIcon.originalHeight,
+        }
+      : undefined,
     navigationCta: fields.navigationCta
       ? linkFromTarget(fields.navigationCta.label, fields.navigationCta.target, projection)
       : undefined,

@@ -260,6 +260,17 @@ fn scan_media_use(
     );
 }
 
+pub(super) fn scan_optional_asset(
+    value: Option<&Value>,
+    path: &str,
+    kind: PublicationDependencyKind,
+    output: &mut ExtractedPublicationDependencies,
+) {
+    if value.is_some_and(|asset| !asset.is_null()) {
+        scan_asset(value, path, kind, output);
+    }
+}
+
 fn scan_asset(
     value: Option<&Value>,
     path: &str,

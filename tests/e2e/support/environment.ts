@@ -12,6 +12,8 @@ export const apiOrigin = process.env.E2E_API_ORIGIN
   ?? `http://api.airtek.test:${gatewayPort}`
 export const apiControlOrigin = process.env.E2E_API_CONTROL_ORIGIN ?? apiOrigin
 export const gatewayControlOrigin = process.env.E2E_GATEWAY_CONTROL_ORIGIN ?? publicOrigin
+export const mediaPublicBaseUrl = process.env.E2E_MEDIA_PUBLIC_BASE_URL
+  ?? 'http://media.localhost:19000/airtek-media'
 export const adminStorageStatePath = process.env.E2E_ADMIN_STORAGE_STATE
   ?? path.resolve('test-results/playwright/e2e-admin-storage-state.json')
 export const adminSecondaryStorageStatePath = process.env.E2E_ADMIN_SECONDARY_STORAGE_STATE

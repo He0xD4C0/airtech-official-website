@@ -62,9 +62,9 @@ test.describe('Public SSR contract', () => {
       await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/en$/u)
       await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible()
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('AIRTEKPOWER Development Preview')
-      await expect(page.locator('main#main-content article.rich-content')).toHaveText(
-        'This development fixture verifies database-backed rendering. Replace it with reviewed editorial content before launch.',
-      )
+      await expect(page.getByText(
+        'This placeholder verifies the published-content pipeline without introducing unreviewed product or business claims.',
+      )).toBeVisible()
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/iu)
       await expect(page.locator('main#main-content a[href="/en/request-a-quote"]').first()).toBeVisible()
     } finally {

@@ -24,6 +24,7 @@ FROM dependencies AS build
 
 COPY apps/web apps/web
 COPY packages packages
+COPY scripts/check-public-readiness.mjs scripts/check-public-readiness.mjs
 ARG VITE_PUBLIC_API_BASE_URL=http://api.localhost:8088/api/public/v1
 ARG VITE_PUBLIC_ORIGIN=http://www.localhost:8088
 ENV VITE_PUBLIC_API_BASE_URL=$VITE_PUBLIC_API_BASE_URL
@@ -40,6 +41,7 @@ WORKDIR /app
 COPY --from=build --chown=node:node /runtime/package.json ./package.json
 COPY --from=build --chown=node:node /runtime/node_modules ./node_modules
 COPY --from=build --chown=node:node /runtime/dist ./dist
+COPY --from=build --chown=node:node /workspace/scripts/check-public-readiness.mjs ./scripts/check-public-readiness.mjs
 
 ENV NODE_ENV=production
 ENV PORT=3000

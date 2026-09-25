@@ -132,6 +132,7 @@ ContentTypeFields: {
             navigationCta?: components["schemas"]["EditorialAction"] | null;
             organizationName?: string | null;
             productCategories: components["schemas"]["ProductCategoryPresentationInput"][];
+            siteIcon?: components["schemas"]["AssetVersionReference"] | null;
             socialLinks: components["schemas"]["SocialLinkInput"][];
             /** @constant */
             type: "generalInformation";
@@ -486,6 +487,7 @@ GeneralInformationTypeFields: {
             navigationCta?: components["schemas"]["EditorialAction"] | null;
             organizationName?: string | null;
             productCategories: components["schemas"]["ProductCategoryPresentationInput"][];
+            siteIcon?: components["schemas"]["AssetVersionReference"] | null;
             socialLinks: components["schemas"]["SocialLinkInput"][];
         };
 }

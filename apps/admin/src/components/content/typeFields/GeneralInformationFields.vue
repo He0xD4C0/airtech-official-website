@@ -4,6 +4,7 @@ import type {
   ContactInformationInput,
   EditorialAction,
   GeneralInformationTypeFields,
+  AssetVersionReference,
   MediaUseReference,
   ProductCategoryPresentationInput,
   ProductFamily,
@@ -92,6 +93,10 @@ function updateDefaultSeo(values: Partial<GeneralInformationTypeFields['defaultS
 function updateNavigationCta(action: EditorialAction | null): void {
   patch({ navigationCta: action })
 }
+
+function updateSiteIcon(value: AssetVersionReference | null): void {
+  patch({ siteIcon: value })
+}
 </script>
 
 <template>
@@ -110,6 +115,20 @@ function updateNavigationCta(action: EditorialAction | null): void {
         <span>品牌标语</span>
         <input :value="modelValue.brandLine ?? ''" maxlength="200" @input="patch({ brandLine: ($event.target as HTMLInputElement).value || null })" />
       </label>
+      <div class="field">
+        <span>站点图标<small>须为至少 512 × 512 的正方形图片，并在发布前完成公开使用审核</small></span>
+        <MediaAssetField
+          :model-value="modelValue.siteIcon ?? null"
+          mode="asset"
+          usage="siteIcon"
+          label="站点图标"
+          @update:model-value="updateSiteIcon($event as AssetVersionReference | null)"
+        />
+        <small>发布此配置表示确认所选精确文件及版本拥有小尺寸公开使用授权；未设置时公开站使用中性占位图标。</small>
+        <p v-if="!modelValue.siteIcon" class="empty-mini" role="status">
+          发布就绪警告：尚未配置自定义站点图标；这不会阻断发布，但公开站将继续使用中性占位图标。
+        </p>
+      </div>
       <label class="field">
         <span>首页路径<small>必须是站内绝对路径，例如 /en</small></span>
         <input :value="modelValue.homePath ?? ''" placeholder="/en" @input="patch({ homePath: ($event.target as HTMLInputElement).value || null })" />

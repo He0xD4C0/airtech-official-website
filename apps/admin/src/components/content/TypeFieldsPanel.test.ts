@@ -37,6 +37,10 @@ describe('TypeFieldsPanel', () => {
     })
     expect(general).toContain('站点级配置不参与页面组成')
     expect(general).toContain('联系方式')
+    expect(general).toContain('站点图标')
+    expect(general).toContain('发布就绪警告')
+    expect(general).toContain('至少 512 × 512')
+    expect(general).toContain('中性占位图标')
 
     const navigation = await render({ type: 'navigation', items: [] })
     expect(navigation).toContain('主导航保存在站点配置中')

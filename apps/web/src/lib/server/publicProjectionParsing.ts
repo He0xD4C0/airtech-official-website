@@ -51,6 +51,7 @@ export function parseSiteBootstrap(value: SiteBootstrapResponse): PublicSiteBoot
     copyrightText: information.copyrightText,
     defaultSeo: information.defaultSeo,
     organization: information.organization,
+    siteIcon: information.siteIcon,
     navigation: navigationLinksFrom(navigationProjection),
     navigationCta: information.navigationCta,
     footerColumns: footerColumnsFrom(footerProjection),

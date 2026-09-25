@@ -4,6 +4,7 @@ import { ImageIcon, LoaderCircle, RefreshCcw, Search, Trash2, Upload } from 'luc
 import type { AssetVersionReference, MediaAsset, MediaUseReference } from '@airtek/contracts'
 import { contentApi } from '@/services/contentApi'
 import { apiErrorMessage } from '@/services/cursorPagination'
+import { siteIconIssue as validateSiteIcon } from '@/services/siteIconValidation'
 import { PENDING_MEDIA_PREFIX, useDeferredMediaUploads } from '@/stores/deferredMediaUploads'
 
 type MediaFieldValue = MediaUseReference | AssetVersionReference | null
@@ -11,10 +12,12 @@ type MediaFieldValue = MediaUseReference | AssetVersionReference | null
 const props = withDefaults(defineProps<{
   modelValue: MediaFieldValue
   mode?: 'media' | 'asset'
+  usage?: 'general' | 'siteIcon'
   label?: string
   disabled?: boolean
 }>(), {
   mode: 'media',
+  usage: 'general',
   label: '媒体资产',
   disabled: false,
 })
@@ -71,6 +74,10 @@ function selectAsset(option: MediaAsset): void {
     ? { assetId: option.id }
     : mediaValue(option.id))
   closeDialog()
+}
+
+function siteIconIssue(option: MediaAsset): string | undefined {
+  return props.usage === 'siteIcon' ? validateSiteIcon(option) : undefined
 }
 
 function updateAltText(value: string): void {
@@ -244,7 +251,11 @@ defineExpose({ loadOptions })
           aria-describedby="media-asset-hint"
         >
           <h2 id="media-asset-title">选择{{ label }}</h2>
-          <p id="media-asset-hint" class="dialog-note">所有上传成功的图片都可立即选择；内容发布状态只控制网站是否展示。</p>
+          <p id="media-asset-hint" class="dialog-note">
+            {{ usage === 'siteIcon'
+              ? '站点图标必须为至少 512 × 512 的正方形图片；发布还要求资产已审核为 clean 且允许公开访问。'
+              : '所有上传成功的图片都可立即选择；发布时仍会检查媒体状态与公开权限。' }}
+          </p>
           <label class="search-field media-dialog__search">
             <Search :size="16" />
             <span class="sr-only">搜索媒体资产</span>
@@ -264,13 +275,14 @@ defineExpose({ loadOptions })
                 <button
                   class="media-dialog__option"
                   type="button"
+                  :disabled="Boolean(siteIconIssue(option))"
                   @click="selectAsset(option)"
                 >
                   <span>
                     <strong>{{ option.originalName }}</strong>
-                    <small>{{ option.mediaType }} · {{ Math.max(1, Math.round(option.byteSize / 1024)) }} KB</small>
+                    <small>{{ option.mediaType }} · {{ option.originalWidth ?? '?' }} × {{ option.originalHeight ?? '?' }} · {{ Math.max(1, Math.round(option.byteSize / 1024)) }} KB</small>
                   </span>
-                  <em>可公开使用</em>
+                  <em>{{ siteIconIssue(option) ?? '可选择' }}</em>
                 </button>
               </li>
             </ul>

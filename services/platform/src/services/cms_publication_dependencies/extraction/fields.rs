@@ -1,11 +1,12 @@
 use serde_json::Value;
 
+use super::super::PublicationDependencyKind;
 use super::super::{
     DependencyBlockingIssue, DependencyGate, DependencyIssueCode, ExtractedPublicationDependencies,
 };
 use super::{
     invalid_target_type, invalid_type, object, required_array, required_object, scan_action,
-    scan_link_target, scan_optional_media, scan_seo,
+    scan_link_target, scan_optional_asset, scan_optional_media, scan_seo,
 };
 
 const MAX_NAVIGATION_DEPTH: usize = 32;
@@ -22,6 +23,12 @@ pub(super) fn scan_type_fields(
             scan_optional_media(fields.get("cover"), "/typeFields/cover", output)
         }
         Some("generalInformation") => {
+            scan_optional_asset(
+                fields.get("siteIcon"),
+                "/typeFields/siteIcon",
+                PublicationDependencyKind::MediaInline,
+                output,
+            );
             if fields
                 .get("navigationCta")
                 .is_some_and(|action| !action.is_null())

@@ -28,14 +28,14 @@ export async function loadPublicPageData(
     client.getSiteBootstrap('en'),
     client.resolveRoute(path, 'en'),
   ])
+  if (bootstrapResult.status === 'rejected') {
+    throw new PublicPageDataError('The public site bootstrap is temporarily unavailable.', 503)
+  }
   if (routeResult.status === 'rejected') {
     if (routeResult.reason instanceof PublicApiError && routeResult.reason.status === 404) {
       throw new PublicPageDataError('The requested public page does not exist.', 404)
     }
     throw new PublicPageDataError('The public route projection is temporarily unavailable.', 503)
-  }
-  if (bootstrapResult.status === 'rejected') {
-    throw new PublicPageDataError('The public site bootstrap is temporarily unavailable.', 503)
   }
   if (routeResult.value.path !== path || routeResult.value.locale !== 'en') {
     throw new PublicPageDataError('The public route projection did not match the request.', 503)

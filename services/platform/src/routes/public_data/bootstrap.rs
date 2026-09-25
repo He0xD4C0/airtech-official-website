@@ -5,6 +5,7 @@ pub(super) async fn site_bootstrap(
     Query(query): Query<LocaleQuery>,
 ) -> Result<Json<SiteBootstrap>, ApiError> {
     validate_locale(&query.locale)?;
+    published_site_shell_has_placeholder(&state, &query.locale).await?;
     let general_information =
         load_v2_singleton(&state, CmsContentKind::GeneralInformation, &query.locale).await?;
     let navigation = load_v2_singleton(&state, CmsContentKind::Navigation, &query.locale).await?;
@@ -44,18 +45,23 @@ pub(crate) async fn published_site_shell_has_placeholder(
         .await?
         .ok_or_else(incomplete_site_shell)?;
 
-    if information.is_placeholder || navigation.is_placeholder || footer.is_placeholder {
-        return Ok(true);
-    }
+    validate_site_shell(&information, &navigation, &footer, locale)
+}
 
-    if !valid_shell_information(&information, locale)
-        || !valid_shell_content(&navigation, CmsContentKind::Navigation, locale)
-        || !valid_shell_content(&footer, CmsContentKind::Footer, locale)
+fn validate_site_shell(
+    information: &PublicContentProjection,
+    navigation: &PublicContentProjection,
+    footer: &PublicContentProjection,
+    locale: &str,
+) -> Result<bool, ApiError> {
+    if !valid_shell_information(information, locale)
+        || !valid_shell_content(navigation, CmsContentKind::Navigation, locale)
+        || !valid_shell_content(footer, CmsContentKind::Footer, locale)
     {
         return Err(incomplete_site_shell());
     }
 
-    Ok(false)
+    Ok(information.is_placeholder || navigation.is_placeholder || footer.is_placeholder)
 }
 
 pub(super) fn valid_shell_information(information: &PublicContentProjection, locale: &str) -> bool {
@@ -110,4 +116,80 @@ pub(super) fn valid_site_home_path(path: &str, locale: &str) -> bool {
         && !path.contains(['?', '#', '\\'])
         && !path.contains("//")
         && !path.chars().any(char::is_control)
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::http::StatusCode;
+    use serde_json::json;
+
+    use super::*;
+
+    fn projection(kind: &str, type_fields: serde_json::Value) -> PublicContentProjection {
+        serde_json::from_value(json!({
+            "schemaVersion": 2,
+            "id": Uuid::new_v4(),
+            "kind": kind,
+            "locale": "en",
+            "templateKey": kind,
+            "title": kind,
+            "slug": null,
+            "summary": null,
+            "isPlaceholder": true,
+            "typeFields": type_fields,
+            "body": null,
+            "composition": { "blocks": [] },
+            "seo": { "title": null, "description": null, "indexable": false, "socialImage": null },
+            "publishedRevision": 1,
+            "updatedAt": "2026-09-18T00:00:00Z",
+            "resolvedRelations": [],
+            "resolvedLinks": [],
+            "resolvedMedia": []
+        }))
+        .unwrap()
+    }
+
+    fn shell_information(organization_name: serde_json::Value) -> PublicContentProjection {
+        projection(
+            "generalInformation",
+            json!({
+                "type": "generalInformation",
+                "organizationName": organization_name,
+                "brandLine": null,
+                "siteIcon": null,
+                "homePath": "/en",
+                "footerStatement": null,
+                "copyrightTemplate": null,
+                "contact": { "email": null, "phone": null, "addressLines": [], "locality": null, "region": null, "postalCode": null, "countryCode": null },
+                "socialLinks": [],
+                "defaultSeo": { "title": null, "description": null, "indexable": false, "socialImage": null },
+                "productCategories": [],
+                "navigationCta": null
+            }),
+        )
+    }
+
+    #[test]
+    fn complete_placeholder_shell_is_available_but_invalid_placeholder_shell_is_not() {
+        let navigation = projection("navigation", json!({ "type": "navigation", "items": [] }));
+        let footer = projection(
+            "footer",
+            json!({ "type": "footer", "columns": [], "legalLinks": [] }),
+        );
+        assert!(validate_site_shell(
+            &shell_information(json!("AIRTEKPOWER Development Preview")),
+            &navigation,
+            &footer,
+            "en"
+        )
+        .unwrap());
+        let error = validate_site_shell(
+            &shell_information(serde_json::Value::Null),
+            &navigation,
+            &footer,
+            "en",
+        )
+        .unwrap_err();
+        assert_eq!(error.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
 }

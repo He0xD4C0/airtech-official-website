@@ -7,21 +7,24 @@
 use std::collections::BTreeSet;
 
 use axum::http::StatusCode;
-use chrono::{DateTime, Utc};
 use sqlx::{postgres::PgConnection, Postgres, Row, Transaction};
 use uuid::Uuid;
 
 use crate::{
     error::ApiError,
     models::{
-        AssetVersionReference, ContentBlock, ContentDraftV2, ContentTypeFields,
-        LinkTargetReference, NavigationItem, RelationTargetReference, ResolvedLinkTarget,
-        ResolvedRelationCard, ResolvedRelationEntityType,
+        ContentBlock, ContentDraftV2, ContentTypeFields, LinkTargetReference, NavigationItem,
+        RelationTargetReference, ResolvedLinkTarget, ResolvedRelationCard,
+        ResolvedRelationEntityType,
     },
     services::cms_templates::{canonical_path, template_definition},
 };
 
 type Result<T> = std::result::Result<T, ApiError>;
+
+#[path = "publication/media.rs"]
+mod media;
+use media::validate_published_media;
 
 fn publication_blocked(detail: String) -> ApiError {
     ApiError::new(
@@ -376,83 +379,6 @@ async fn validate_published_relations(
         }
     }
     Ok(())
-}
-
-async fn validate_published_media(
-    connection: &mut PgConnection,
-    draft: &ContentDraftV2,
-) -> Result<()> {
-    for (label, reference) in collect_media_references(draft) {
-        let row = sqlx::query("SELECT deleted_at FROM media_assets WHERE id=$1")
-            .bind(reference.asset_id)
-            .fetch_optional(&mut *connection)
-            .await?;
-        let Some(row) = row else {
-            return Err(publication_blocked(format!(
-                "{label} references media asset {}, which does not exist.",
-                reference.asset_id
-            )));
-        };
-        let deleted: Option<DateTime<Utc>> = row.try_get("deleted_at")?;
-        if deleted.is_some() {
-            return Err(publication_blocked(format!(
-                "{label} references media asset {} that was deleted.",
-                reference.asset_id
-            )));
-        }
-    }
-    Ok(())
-}
-
-fn collect_media_references(draft: &ContentDraftV2) -> Vec<(String, AssetVersionReference)> {
-    let mut references = Vec::new();
-    if let Some(media) = &draft.seo.social_image {
-        push_media(&mut references, "The SEO social image".to_owned(), media);
-    }
-    match &draft.type_fields {
-        ContentTypeFields::News(fields) | ContentTypeFields::Article(fields) => {
-            if let Some(cover) = &fields.cover {
-                push_media(&mut references, "The cover image".to_owned(), cover);
-            }
-        }
-        _ => {}
-    }
-    for block in &draft.composition.blocks {
-        match block {
-            ContentBlock::Hero(hero) => {
-                if let Some(media) = &hero.media {
-                    push_media(&mut references, format!("Hero block {}", hero.id), media);
-                }
-            }
-            ContentBlock::Media(media) => {
-                push_media(
-                    &mut references,
-                    format!("Media block {}", media.id),
-                    &media.media,
-                );
-            }
-            ContentBlock::FeatureGrid(grid) => {
-                for item in &grid.items {
-                    if let Some(icon) = &item.icon {
-                        push_media(&mut references, format!("Feature item {}", item.id), icon);
-                    }
-                }
-            }
-            ContentBlock::DownloadAsset(block) => {
-                references.push((format!("Download block {}", block.id), block.asset.clone()));
-            }
-            _ => {}
-        }
-    }
-    references
-}
-
-fn push_media(
-    references: &mut Vec<(String, AssetVersionReference)>,
-    label: String,
-    media: &crate::models::MediaUseReference,
-) {
-    references.push((label, media.asset.clone()));
 }
 
 fn target_label(target: &RelationTargetReference) -> &'static str {

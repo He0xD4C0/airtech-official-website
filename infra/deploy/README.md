@@ -137,6 +137,12 @@ pnpm check:production
 pnpm check:contracts
 ```
 
+After the candidate containers are healthy, `deploy-app.sh` runs the same
+read-only public readiness gate from the Public Web image. The release is not
+activated when a core route, CMS shell, CORS preflight, canonical URL,
+sitemap, manifest, icon, or origin contract fails, or when published
+development placeholders are present. A missing custom icon is warning-only.
+
 ## GitHub application release
 
 `.github/workflows/release-production.yml` publishes after every successful

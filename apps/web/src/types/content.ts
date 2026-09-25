@@ -87,6 +87,7 @@ export interface PublicSiteBootstrap {
     url?: string
     logoUrl?: string
   }
+  siteIcon?: { url: string; mediaType: string; width: number; height: number }
   navigation: PublicLink[]
   navigationCta?: PublicLink
   footerColumns: Array<{ title: string; links: PublicLink[] }>
