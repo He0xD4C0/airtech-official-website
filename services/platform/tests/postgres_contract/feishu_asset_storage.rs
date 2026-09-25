@@ -258,16 +258,10 @@ async fn feishu_assets_deduplicate_download_publicly_and_compensate_objects() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-    assert_eq!(response.headers()[header::CONTENT_TYPE], "application/pdf");
+    assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
     assert_eq!(
-        response.headers()[header::CONTENT_DISPOSITION],
-        "attachment; filename=\"AX-200-drawing.pdf\""
-    );
-    assert_eq!(response.headers()["x-content-type-options"], "nosniff");
-    assert_eq!(
-        response.into_body().collect().await.unwrap().to_bytes(),
-        PDF
+        response.headers()[header::LOCATION],
+        format!("{public_base}/{}", first[0].storage_key)
     );
     let preview = app
         .oneshot(

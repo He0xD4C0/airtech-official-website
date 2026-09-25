@@ -462,9 +462,11 @@ different bytes returns stable `409 media_idempotency_conflict`.
 
 Every non-deleted asset has an immutable external `publicUrl` captured at
 upload. `/api/public/v1/media/{assetId}` and its `/download` variant remain as
-compatibility redirects. Content and product publication only determines
-whether a website projection contains the link. Soft-deleted historical assets
-return 404, and this release exposes no new delete operation.
+`308` compatibility redirects. The external object's response headers control
+the filename and whether browsers render or download it. Content and product
+publication only determines whether a website projection contains the link.
+Soft-deleted historical assets return 404, and this release exposes no new
+delete operation.
 
 The API identity can put and compensate-delete objects under the configured
 media prefix; the configured public base URL must provide anonymous reads.

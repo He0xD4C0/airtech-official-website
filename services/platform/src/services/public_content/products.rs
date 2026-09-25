@@ -182,8 +182,7 @@ pub(crate) async fn load_published_product_assets(
                   asset.byte_size,asset.checksum,asset.preview_storage_key
            FROM asset_references reference
            JOIN media_assets asset ON asset.id=reference.media_asset_id
-             AND asset.deleted_at IS NULL AND asset.scan_status='clean'
-             AND asset.access_level='public'
+             AND asset.deleted_at IS NULL
            WHERE reference.product_id=$1 AND reference.product_revision=$2
            ORDER BY reference.sort_order,reference.id"#,
     )

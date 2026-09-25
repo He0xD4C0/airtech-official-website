@@ -14,7 +14,6 @@ use sha2::{Digest, Sha256};
 use crate::error::ApiError;
 
 use super::config::MediaStorageSettings;
-use super::storage::MediaObject;
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -22,9 +21,6 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const IO_TIMEOUT: Duration = Duration::from_secs(60);
 const HEADER_LIMIT: usize = 64 * 1024;
 
-#[allow(dead_code)]
-#[path = "s3_stream.rs"]
-mod get_stream;
 #[path = "s3_upload.rs"]
 mod upload_stream;
 
@@ -57,14 +53,6 @@ pub(super) fn put_file(
     sha256: &str,
 ) -> Result<(), ApiError> {
     upload_stream::put(settings, key, content_type, path, byte_size, sha256)
-}
-
-pub(super) async fn get(
-    settings: &MediaStorageSettings,
-    key: &str,
-    expected_size: u64,
-) -> Result<MediaObject, ApiError> {
-    get_stream::get(settings, key, expected_size).await
 }
 
 pub(super) fn delete(settings: &MediaStorageSettings, key: &str) -> Result<(), ApiError> {

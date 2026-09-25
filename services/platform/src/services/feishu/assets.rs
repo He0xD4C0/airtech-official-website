@@ -318,8 +318,7 @@ async fn load_binding(
            FROM feishu_asset_bindings binding
            JOIN media_assets media ON media.id=binding.media_asset_id
            WHERE binding.connector_id=$1 AND binding.source_token_hash=$2
-             AND binding.source_revision=$3 AND media.deleted_at IS NULL
-             AND media.scan_status='clean' AND media.access_level='public'"#,
+             AND binding.source_revision=$3 AND media.deleted_at IS NULL"#,
     )
     .bind(connector_id)
     .bind(token_hash)
@@ -342,7 +341,6 @@ async fn load_checksum_asset(
     let row = sqlx::query(
         r#"SELECT id,storage_key,preview_storage_key,checksum,media_type,byte_size,original_name
            FROM media_assets WHERE checksum=$1 AND deleted_at IS NULL
-             AND scan_status='clean' AND access_level='public'
            ORDER BY created_at,id LIMIT 1"#,
     )
     .bind(checksum)

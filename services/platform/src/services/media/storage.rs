@@ -1,8 +1,5 @@
 use std::{fs, io::Write, path::PathBuf};
 
-use axum::body::{Body, Bytes};
-use futures_util::stream;
-use tokio::io::AsyncReadExt;
 use uuid::Uuid;
 
 use crate::error::ApiError;
@@ -10,12 +7,6 @@ use crate::error::ApiError;
 use super::config::{MediaStorageKind, MediaStorageSettings};
 use super::s3;
 use super::{validate_storage_key, MAX_ATTACHMENT_BYTES};
-
-#[allow(dead_code)]
-pub struct MediaObject {
-    pub body: Body,
-    pub content_length: u64,
-}
 
 pub(crate) async fn probe_storage(
     settings: &MediaStorageSettings,
@@ -104,23 +95,6 @@ pub async fn delete_object(settings: &MediaStorageSettings, key: &str) -> Result
     tokio::task::spawn_blocking(move || delete_blocking(&settings, &key))
         .await
         .map_err(|_| ApiError::service_unavailable("Media storage task failed."))?
-}
-
-pub async fn get_object(
-    settings: &MediaStorageSettings,
-    key: &str,
-    expected_size: u64,
-) -> Result<MediaObject, ApiError> {
-    validate_storage_key(key)?;
-    if expected_size > MAX_ATTACHMENT_BYTES as u64 {
-        return Err(ApiError::service_unavailable(
-            "Stored media object exceeds the delivery limit.",
-        ));
-    }
-    match settings.kind {
-        MediaStorageKind::Local => read_local(settings, key, expected_size).await,
-        MediaStorageKind::S3 => s3::get(settings, key, expected_size).await,
-    }
 }
 
 fn put_blocking(
@@ -215,70 +189,6 @@ fn write_local_file(
 fn storage_write_error(error: std::io::Error) -> ApiError {
     tracing::error!(%error, "media object write failed");
     ApiError::service_unavailable("Media storage is unavailable.")
-}
-
-#[allow(dead_code)]
-async fn read_local(
-    settings: &MediaStorageSettings,
-    key: &str,
-    expected_size: u64,
-) -> Result<MediaObject, ApiError> {
-    let path = local_path(settings, key)?;
-    let file = match tokio::fs::File::open(&path).await {
-        Ok(file) => file,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            return Err(ApiError::not_found("Media object was not found."))
-        }
-        Err(error) => {
-            tracing::error!(%error, "media object open failed");
-            return Err(ApiError::service_unavailable(
-                "Media storage is unavailable.",
-            ));
-        }
-    };
-    let metadata = match file.metadata().await {
-        Ok(metadata) => metadata,
-        Err(error) => {
-            tracing::error!(%error, "media object metadata failed");
-            return Err(ApiError::service_unavailable(
-                "Media storage is unavailable.",
-            ));
-        }
-    };
-    if metadata.len() != expected_size {
-        tracing::error!(
-            storage_key = key,
-            expected_size,
-            actual_size = metadata.len(),
-            "media object length differs from catalogue metadata"
-        );
-        return Err(ApiError::service_unavailable(
-            "Stored media object does not match its catalogue metadata.",
-        ));
-    }
-    let chunks = stream::try_unfold((file, expected_size), |(mut file, remaining)| async move {
-        if remaining == 0 {
-            return Ok(None);
-        }
-        let capacity = usize::try_from(remaining.min(64 * 1024)).unwrap_or(64 * 1024);
-        let mut buffer = vec![0_u8; capacity];
-        let read = file.read(&mut buffer).await.map_err(|error| {
-            tracing::error!(%error, "media object stream read failed");
-            error
-        })?;
-        if read == 0 {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::UnexpectedEof,
-                "media object ended before its catalogue length",
-            ));
-        }
-        buffer.truncate(read);
-        Ok(Some((Bytes::from(buffer), (file, remaining - read as u64))))
-    });
-    Ok(MediaObject {
-        body: Body::from_stream(chunks),
-        content_length: expected_size,
-    })
 }
 
 fn delete_local(settings: &MediaStorageSettings, key: &str) -> Result<(), ApiError> {

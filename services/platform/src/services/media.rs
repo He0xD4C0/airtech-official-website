@@ -20,7 +20,7 @@ pub use config::{
 pub use delivery::deliver_media_asset;
 pub(crate) use preview::{generate_preview, PreviewDerivative};
 pub(crate) use storage::probe_storage;
-pub(crate) use storage::{delete_object, get_object, put_file, put_object};
+pub(crate) use storage::{delete_object, put_file, put_object};
 pub use upload::upload_media_asset;
 pub(crate) use upload_input::sniff_media_type;
 

@@ -123,8 +123,9 @@ metadata-only audit boundaries.
 
 The public surface under `/api/public/v1` provides published content,
 route resolution, site bootstrap, News, discovery, and the unauthenticated
-`/media/{assetId}` and `/media/{assetId}/download` routes. Clients never
-receive an object-store URL or credentials.
+`/media/{assetId}` and `/media/{assetId}/download` routes. These compatibility
+routes redirect to immutable public object URLs; clients never receive object
+store credentials.
 
 ## Direct media boundary
 
@@ -140,6 +141,8 @@ catalogue row. Known URLs remain unchanged when object-storage settings change
 and remain readable while their original origin and object exist. Publication
 validation requires each referenced asset to exist and not be soft-deleted.
 Legacy same-origin media routes return permanent redirects to the stored URL.
+The object store controls the redirected response's filename and whether the
+browser renders it inline or downloads it as an attachment.
 
 The API identity has the least privileges needed for probe/upload and
 DeleteObject compensation under the media prefix; anonymous reads use the
