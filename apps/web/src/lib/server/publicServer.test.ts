@@ -4,6 +4,13 @@ import publicServer, { withPublicSecurityHeaders } from '../../../+server'
 afterEach(() => vi.unstubAllGlobals())
 
 describe('public server infrastructure routes', () => {
+  it('keeps process liveness independent from missing CMS and API', async () => {
+    const fetch = vi.fn().mockRejectedValue(new Error('offline'))
+    vi.stubGlobal('fetch', fetch)
+    const response = await publicServer.fetch(new Request('http://localhost:3000/healthz'))
+    expect(response.status).toBe(200)
+    expect(fetch).not.toHaveBeenCalled()
+  })
   it('uses a permanent 308 locale redirect with public security headers', async () => {
     const response = await publicServer.fetch(new Request('http://localhost:3000/'))
     expect(response.status).toBe(308)
@@ -21,9 +28,7 @@ describe('public server infrastructure routes', () => {
   })
 
   it('owns public robots and sitemap responses', async () => {
-    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(async () => new Response(JSON.stringify({
-      generatedAt: '2026-09-01T00:00:00Z', entries: [],
-    }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(async () => discoveryResponse()))
     const robots = await publicServer.fetch(new Request('http://localhost:3000/robots.txt'))
     expect(robots.status).toBe(200)
     expect(robots.headers.get('content-type')).toContain('text/plain')
@@ -62,3 +67,10 @@ describe('public server infrastructure routes', () => {
   })
 
 })
+
+function discoveryResponse(): Response {
+  return new Response(JSON.stringify({
+    generatedAt: '2026-09-01T00:00:00Z',
+    entries: [],
+  }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+}

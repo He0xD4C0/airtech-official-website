@@ -2,7 +2,7 @@
 use airtek_platform::services::development_admin::{self, DevelopmentAdminInput};
 #[cfg(feature = "devtools")]
 use airtek_platform::services::development_public_site;
-use airtek_platform::services::runtime_preparation;
+use airtek_platform::services::{public_readiness, runtime_preparation};
 use sqlx::postgres::PgPoolOptions;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -18,6 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     let command = std::env::args().nth(1);
+    airtek_platform::config::reject_development_seed_configuration()?;
     validate_command(command.as_deref())?;
     let database_url = std::env::var("DATABASE_URL")
         .map_err(|_| "DATABASE_URL is required for runtime preparation")?;
@@ -26,8 +27,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .connect(&database_url)
         .await?;
     let output = match command.as_deref() {
+        Some("inspect-public-site") => {
+            airtek_platform::services::public_site_inventory::inspect(&pool).await?
+        }
         Some("prepare-runtime") => {
             serde_json::to_value(runtime_preparation::prepare(&pool).await?)?
+        }
+        Some("check-public-readiness") => {
+            serde_json::to_value(public_readiness::check(&pool).await?)?
         }
         #[cfg(feature = "devtools")]
         Some("prepare-development-runtime") => {
@@ -70,7 +77,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn validate_command(command: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     match command {
-        Some("prepare-runtime") => Ok(()),
+        Some("prepare-runtime" | "check-public-readiness" | "inspect-public-site") => Ok(()),
         #[cfg(feature = "devtools")]
         Some("prepare-development-runtime" | "reset-development-admin") => Ok(()),
         _ => Err(usage().into()),
@@ -80,11 +87,11 @@ fn validate_command(command: Option<&str>) -> Result<(), Box<dyn std::error::Err
 fn usage() -> &'static str {
     #[cfg(feature = "devtools")]
     {
-        "usage: airtek-maintenance prepare-runtime|prepare-development-runtime|reset-development-admin"
+        "usage: airtek-maintenance prepare-runtime|inspect-public-site|check-public-readiness|prepare-development-runtime|reset-development-admin"
     }
     #[cfg(not(feature = "devtools"))]
     {
-        "usage: airtek-maintenance prepare-runtime"
+        "usage: airtek-maintenance prepare-runtime|inspect-public-site|check-public-readiness"
     }
 }
 

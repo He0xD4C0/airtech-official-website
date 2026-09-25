@@ -76,11 +76,14 @@ for (const staticDiscoveryAsset of [
   'sitemap-products.xml',
   'sitemap-solutions.xml',
   'sitemap-resources.xml',
+  'site.webmanifest',
+  'site-icon',
+  'favicon.ico',
 ]) {
   const clientPath = join(publicDist, 'client', staticDiscoveryAsset)
   const fallbackPath = join(publicDist, staticDiscoveryAsset)
   if (existsSync(clientPath) || existsSync(fallbackPath)) {
-    failures.push(`Public production output contains static ${staticDiscoveryAsset}; it would bypass the published discovery handler.`)
+    failures.push(`Public production output contains static ${staticDiscoveryAsset}; it would bypass the dynamic publication handler.`)
   }
 }
 
@@ -88,7 +91,7 @@ const publicServerText = walk(join(publicDist, 'server'))
   .filter((path) => /\.(?:js|mjs|cjs)$/u.test(path))
   .map((path) => readFileSync(path, 'utf8'))
   .join('\n')
-for (const marker of ['/robots.txt', '/sitemap.xml', '/discovery']) {
+for (const marker of ['/robots.txt', '/sitemap.xml', '/discovery', '/site-icon', '/site.webmanifest']) {
   if (!publicServerText.includes(marker)) {
     failures.push(`Public SSR bundle does not contain the dynamic ${marker} handler.`)
   }

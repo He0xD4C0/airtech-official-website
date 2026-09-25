@@ -344,7 +344,7 @@ pub(super) async fn lock_published(
     .ok_or_else(|| ApiError::not_found("Published content was not found."))
 }
 
-async fn insert_draft(
+pub(super) async fn insert_draft(
     transaction: &mut Transaction<'_, Postgres>,
     draft_id: Uuid,
     content_id: Uuid,

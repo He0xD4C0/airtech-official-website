@@ -6,6 +6,7 @@ import type {
   NewsEntry,
   NewsPage,
   ProductFamilyPresentation,
+  PublicSearchPage,
   ProductSourceAssetDocument,
   RouteResolution,
   SiteBootstrap,
@@ -23,6 +24,9 @@ export type PublishedProductListQuery = NonNullable<
 export type PublishedNewsListQuery = NonNullable<
   operations['listPublishedNews']['parameters']['query']
 >
+export type PublishedSearchQuery = NonNullable<
+  operations['searchPublishedSite']['parameters']['query']
+>
 export type ProductFamilyProjectionResponse = ProductFamilyPresentation
 export type SiteBootstrapResponse = SiteBootstrap
 export type RouteProjectionResponse = RouteResolution
@@ -33,3 +37,4 @@ export type PublicDiscoveryResponse = DiscoveryDocument
 export type GuestVisitRequest = CreateGuestVisit
 export type GuestVisitResponse = GuestVisit
 export type ProductSourceAssetDocumentResponse = ProductSourceAssetDocument
+export type PublicSearchPageResponse = PublicSearchPage

@@ -19,6 +19,10 @@ defineProps<{ page: PublicPageModel }>()
       :families="page.productFamilies ?? []"
       :products="page.publishedProducts ?? []"
       :next-cursor="page.productNextCursor"
+      :total="page.productTotal"
+      :family-counts="page.productFamilyCounts"
+      :motor-technology-counts="page.productMotorTechnologyCounts"
+      :initial-state="page.catalogState"
     />
   </main>
 </template>

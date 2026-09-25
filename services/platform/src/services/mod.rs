@@ -22,6 +22,8 @@ pub mod product_facts;
 pub mod product_import;
 pub mod product_publication;
 pub mod public_content;
+pub mod public_readiness;
+pub mod public_site_inventory;
 pub mod request_metrics;
 pub mod runtime_preparation;
 pub mod selector;

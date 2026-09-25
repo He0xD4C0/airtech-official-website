@@ -2,6 +2,7 @@ use super::*;
 
 impl Config {
     pub fn from_env() -> Result<Self, ConfigError> {
+        reject_development_seed_configuration()?;
         let host_raw = env::var("AIRTEK_API_HOST").unwrap_or_else(|_| "0.0.0.0".into());
         let host =
             IpAddr::from_str(&host_raw).map_err(|_| ConfigError::InvalidHost(host_raw.clone()))?;
@@ -65,6 +66,7 @@ impl Config {
                 .as_deref()
                 .unwrap_or_default(),
         )?;
+        let development_admin_password_only = development_admin_password_only()?;
         let media = MediaSettings::disabled();
         if admin_bootstrap_token
             .as_ref()
@@ -104,6 +106,7 @@ impl Config {
             trusted_proxy_cidrs,
             media,
             production,
+            development_admin_password_only,
         })
     }
 
@@ -137,6 +140,7 @@ impl Config {
             trusted_proxy_cidrs: Vec::new(),
             media: MediaSettings::disabled(),
             production: false,
+            development_admin_password_only: false,
         }
     }
 

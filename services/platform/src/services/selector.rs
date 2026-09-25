@@ -37,11 +37,6 @@ pub fn evaluate(request: &SelectorRequest, products: &[Product]) -> SelectorResp
                     .preferred_family
                     .map(|family| family == product.family)
                     .unwrap_or(true)
-                && request
-                    .motor_technology
-                    .as_ref()
-                    .map(|technology| product.motor_technology.as_ref() == Some(technology))
-                    .unwrap_or(true)
         })
         .collect();
 
@@ -51,7 +46,46 @@ pub fn evaluate(request: &SelectorRequest, products: &[Product]) -> SelectorResp
 
     let priority = request.priority.unwrap_or(SelectorPriority::Headroom);
     let mut matches = Vec::new();
+    let mut incomplete_evidence = false;
     for product in eligible {
+        if request.motor_technology.as_ref().is_some_and(|required| {
+            product
+                .motor_technology
+                .as_ref()
+                .is_some_and(|actual| actual != required)
+        }) {
+            continue;
+        }
+        if let Some(maximum) = request.maximum_diameter_mm {
+            match verified_numeric_spec(&product.specifications, "diameter", "mm") {
+                Some(diameter) if diameter > maximum => continue,
+                Some(_) => {}
+                None => {
+                    incomplete_evidence = true;
+                    continue;
+                }
+            }
+        }
+        if request.motor_technology.is_some() && product.motor_technology.is_none() {
+            incomplete_evidence = true;
+            continue;
+        }
+        let usable_curve = product.performance_curves.iter().any(|curve| {
+            curve.state == FactState::Verified
+                && curve.airflow_unit == request.airflow_unit
+                && curve.pressure_unit == request.pressure_unit
+                && curve.points.len() >= 2
+                && request.voltage.as_ref().is_none_or(|required| {
+                    curve
+                        .voltage
+                        .as_ref()
+                        .is_some_and(|actual| actual.trim().eq_ignore_ascii_case(required.trim()))
+                })
+        });
+        if !usable_curve {
+            incomplete_evidence = true;
+            continue;
+        }
         let best = product
             .performance_curves
             .iter()
@@ -73,52 +107,22 @@ pub fn evaluate(request: &SelectorRequest, products: &[Product]) -> SelectorResp
             })
             .max_by(|left, right| left.1.partial_cmp(&right.1).unwrap_or(Ordering::Equal));
         if let Some((curve_index, available_pressure)) = best {
-            let ranking_value = if let Some((key, unit, _)) = priority.specification() {
-                match verified_numeric_spec(&product.specifications, key, unit) {
-                    Some(value) => value,
-                    None => {
-                        return engineering_review(format!(
-                            "A duty-point candidate is missing a verified numeric {key} specification in {unit}; ranking was not guessed or downgraded."
-                        ));
-                    }
-                }
-            } else {
-                available_pressure - request.pressure
-            };
             matches.push(DutyMatch {
                 product,
                 available_pressure,
                 curve_index,
-                ranking_value,
+                ranking_value: 0.0,
             });
         }
     }
 
+    if incomplete_evidence {
+        return engineering_review("Published records lack verified curve conditions or dimensions; suitability cannot be determined automatically.".into());
+    }
     if matches.is_empty() {
         return no_candidates(
             "No verified published curve covers the requested duty point and units.",
         );
-    }
-
-    if let Some(maximum_diameter_mm) = request.maximum_diameter_mm {
-        let mut within_size = Vec::new();
-        for matched in matches {
-            let Some(diameter) =
-                verified_numeric_spec(&matched.product.specifications, "diameter", "mm")
-            else {
-                return engineering_review(
-                    "A duty-point candidate is missing a verified numeric diameter specification in mm, so the maximum diameter constraint cannot be evaluated."
-                        .into(),
-                );
-            };
-            if diameter <= maximum_diameter_mm {
-                within_size.push(matched);
-            }
-        }
-        matches = within_size;
-        if matches.is_empty() {
-            return no_candidates("No duty-point candidate fits the requested maximum diameter.");
-        }
     }
 
     let unevaluated_constraints = [
@@ -137,6 +141,31 @@ pub fn evaluate(request: &SelectorRequest, products: &[Product]) -> SelectorResp
                 "Verified curves cover the duty point, but the current published selector contract cannot safely evaluate: {}.",
                 unevaluated_constraints.join(", ")
             ));
+    }
+
+    if matches.iter().any(|matched| {
+        matched.product.slug.trim().is_empty()
+            || matched
+                .product
+                .seo
+                .canonical_path
+                .as_deref()
+                .is_none_or(|path| !path.starts_with("/en/products/"))
+    }) {
+        return engineering_review(
+            "A duty-point candidate is missing its canonical published product identity.".into(),
+        );
+    }
+
+    for matched in &mut matches {
+        matched.ranking_value = if let Some((key, unit, _)) = priority.specification() {
+            match verified_numeric_spec(&matched.product.specifications, key, unit) {
+                Some(value) => value,
+                None => return engineering_review(format!("A candidate lacks verified {key} in {unit}; ranking requires engineering review.")),
+            }
+        } else {
+            matched.available_pressure - request.pressure
+        };
     }
 
     matches.sort_by(|left, right| {
@@ -201,6 +230,14 @@ pub fn evaluate(request: &SelectorRequest, products: &[Product]) -> SelectorResp
                     .product
                     .published_revision
                     .expect("eligible published product has a revision"),
+                slug: matched.product.slug.clone(),
+                family: matched.product.family,
+                canonical_path: matched
+                    .product
+                    .seo
+                    .canonical_path
+                    .clone()
+                    .expect("candidate canonical identity was validated"),
                 title: matched.product.title.clone(),
                 matched_constraints,
                 warnings,

@@ -7,7 +7,7 @@ async fn synthetic_product_master_scale_is_private_promoted_draft_and_idempotent
         .expect("AIRTEK_TEST_DATABASE_URL must point to disposable PostgreSQL");
     let pool = PgPoolOptions::new()
         .max_connections(4)
-        .connect(&database_url)
+        .connect(crate::support::disposable_database_url(&database_url))
         .await
         .expect("PostgreSQL connection");
     support::assert_flyway_schema_current(&pool).await;

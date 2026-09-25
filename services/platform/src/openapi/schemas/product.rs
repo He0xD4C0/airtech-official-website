@@ -159,15 +159,15 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         "type": "object", "additionalProperties": false, "required": ["airflow", "airflowUnit", "pressure", "pressureUnit", "requiredCertifications"],
         "properties": {
             "airflow": {"type": "number", "exclusiveMinimum": 0}, "airflowUnit": {"type": "string"}, "pressure": {"type": "number", "exclusiveMinimum": 0}, "pressureUnit": {"type": "string"},
-            "ambientTemperatureC": nullable(json!({"type": "number"})), "maximumDiameterMm": nullable(json!({"type": "number", "exclusiveMinimum": 0})),
-            "voltage": nullable(json!({"type": "string"})), "frequencyHz": nullable(json!({"type": "number", "exclusiveMinimum": 0})),
+            "ambientTemperatureC": nullable(json!({"type": "number", "minimum": -100, "maximum": 300})), "maximumDiameterMm": nullable(json!({"type": "number", "exclusiveMinimum": 0, "maximum": 100000})),
+            "voltage": nullable(json!({"type": "string", "minLength": 1, "maxLength": 120})), "frequencyHz": nullable(json!({"type": "number", "exclusiveMinimum": 0, "maximum": 1000})),
             "motorTechnology": nullable(json!({"type": "string", "minLength": 1, "maxLength": 120})),
-            "requiredCertifications": array(json!({"type": "string"})), "preferredFamily": nullable(r("ProductFamily")), "priority": nullable(r("SelectorPriority"))
+            "requiredCertifications": {"type": "array", "maxItems": 20, "items": {"type": "string", "minLength": 1, "maxLength": 120}}, "preferredFamily": nullable(r("ProductFamily")), "priority": nullable(r("SelectorPriority"))
         }
     }));
     s.insert("SelectorCandidate".into(), object(
-        &["productId", "productRevision", "title", "matchedConstraints", "warnings", "rank"],
-        json!({"productId": uuid(), "productRevision": revision(), "title": {"type": "string"}, "matchedConstraints": array(json!({"type": "string"})), "warnings": array(json!({"type": "string"})), "rank": {"type": "integer", "minimum": 0}})
+        &["productId", "productRevision", "slug", "family", "canonicalPath", "title", "matchedConstraints", "warnings", "rank"],
+        json!({"productId": uuid(), "productRevision": revision(), "slug": slug(), "family": r("ProductFamily"), "canonicalPath": {"type": "string", "pattern": "^/en/products/"}, "title": {"type": "string"}, "matchedConstraints": array(json!({"type": "string"})), "warnings": array(json!({"type": "string"})), "rank": {"type": "integer", "minimum": 0}})
     ));
     s.insert(
         "SelectorOutcome".into(),

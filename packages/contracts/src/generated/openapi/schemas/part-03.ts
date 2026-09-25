@@ -435,9 +435,12 @@ ProductMediaGalleryItem: {
             assetId: string;
         };
 ProductPage: {
+            familyCounts: components["schemas"]["ProductFacetCount"][];
             items: components["schemas"]["Product"][];
-            /** @description Opaque base64url v2 keyset cursor bound to the active filters; v1 is accepted for one compatibility release. */
+            motorTechnologyCounts: components["schemas"]["ProductFacetCount"][];
+            /** @description Opaque base64url v3 keyset cursor bound to normalized query and filters; v2 is accepted only when q is absent for one compatibility release. */
             nextCursor: string | null;
+            total: number;
         };
 ProductPresentation: {
             indexable: boolean;

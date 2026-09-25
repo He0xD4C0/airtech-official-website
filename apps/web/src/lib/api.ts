@@ -11,6 +11,7 @@ import type {
   GuestVisitRequest,
   PublishedNewsListQuery,
   PublishedProductListQuery,
+  PublishedSearchQuery,
 } from './publicApiTypes'
 
 export { ApiError as PublicApiError } from '@airtek/contracts'
@@ -51,6 +52,10 @@ export function getPublishedProductAssets(slug: string, family?: ProductFamily) 
 
 export function getPublishedProducts(query: PublishedProductListQuery = {}) {
   return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).listProducts(query)
+}
+
+export function searchPublishedSite(query: PublishedSearchQuery = {}) {
+  return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).search(query)
 }
 
 export function getPublishedNews(query: PublishedNewsListQuery = {}) {

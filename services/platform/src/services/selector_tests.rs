@@ -70,7 +70,11 @@ fn product(state: FactState, points: Vec<CurvePoint>) -> Product {
         motor_technology: None,
         title: "Published verified product".into(),
         summary: None,
-        seo: Default::default(),
+        seo: crate::models::SeoMetadata {
+            canonical_path: Some("/en/products/axial/verified-model".into()),
+            indexable: true,
+            ..Default::default()
+        },
         sort_order: 0,
         related_content_ids: Vec::new(),
         media_gallery: Vec::new(),
@@ -117,6 +121,12 @@ fn interpolates_only_verified_published_curves() {
     assert_eq!(response.outcome, SelectorOutcome::Matched);
     assert_eq!(response.candidates.len(), 1);
     assert_eq!(response.candidates[0].rank, 1);
+    assert_eq!(response.candidates[0].slug, "verified-model");
+    assert_eq!(response.candidates[0].family, ProductFamily::Axial);
+    assert_eq!(
+        response.candidates[0].canonical_path,
+        "/en/products/axial/verified-model"
+    );
 }
 
 #[test]
@@ -183,7 +193,30 @@ fn does_not_use_pending_curves() {
             ],
         )],
     );
-    assert_eq!(response.outcome, SelectorOutcome::NoValidatedCandidates);
+    assert_eq!(response.outcome, SelectorOutcome::EngineeringReviewRequired);
+}
+
+#[test]
+fn filters_hard_limits_before_requesting_missing_evidence_or_ranking() {
+    let mut value = ranked_product("A", 80.0, 40.0, 300.0);
+    value.performance_curves.clear();
+    let mut query = request();
+    assert_eq!(
+        evaluate(&query, &[value.clone()]).outcome,
+        SelectorOutcome::EngineeringReviewRequired
+    );
+    query.maximum_diameter_mm = Some(200.0);
+    query.priority = Some(SelectorPriority::Noise);
+    assert_eq!(
+        evaluate(&query, &[value]).outcome,
+        SelectorOutcome::NoValidatedCandidates
+    );
+    let value = ranked_product("A", 80.0, 40.0, 100.0);
+    query.motor_technology = Some("EC".into());
+    assert_eq!(
+        evaluate(&query, &[value]).outcome,
+        SelectorOutcome::EngineeringReviewRequired
+    );
 }
 
 #[test]

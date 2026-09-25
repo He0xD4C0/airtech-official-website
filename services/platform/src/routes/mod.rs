@@ -125,7 +125,7 @@ async fn require_admin(
         .ok_or_else(|| {
             ApiError::forbidden("This admin route has no RBAC policy and is denied by default.")
         })?;
-    if !principal.totp_enabled {
+    if !principal.business_access_enabled() {
         return Err(ApiError::forbidden(
             "This account must enable TOTP before accessing Admin business data.",
         ));

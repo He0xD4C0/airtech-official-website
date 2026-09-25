@@ -16,6 +16,7 @@ fn cms_workflow_principal(
         session_token_hash: vec![1; 32],
         csrf_hash: vec![2; 32],
         totp_enabled: true,
+        development_password_only: false,
     }
 }
 

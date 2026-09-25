@@ -2,8 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { usePageContext } from 'vike-vue/usePageContext'
 import horizontalLogo from '@airtek/ui/assets/brand/airtek-standard-lockup-horizontal.webp'
-import CookieBanner from './CookieBanner.vue'
-import CompareTray from '@/components/product/CompareTray.vue'
+import BottomActions from './BottomActions.vue'
 import type { PublicPageModel, PublicSiteBootstrap } from '@/types/content'
 import { setCurrentAnalyticsContext } from '@/lib/analytics'
 
@@ -85,6 +84,5 @@ function active(href: string) {
       </nav>
     </div>
   </footer>
-  <CompareTray />
-  <CookieBanner />
+  <BottomActions />
 </template>

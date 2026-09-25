@@ -1,7 +1,7 @@
 import vike from 'vike/fetch'
 import type { Server } from 'vike/types'
 import { isSitemapName, renderRobots, renderSitemapIndex, renderUrlSitemap } from '@/lib/server/sitemaps'
-import { renderSiteIcon, renderWebManifest } from '@/lib/server/siteMetadata'
+import { renderSiteIcon, renderWebManifest } from '@/lib/server/siteAssets'
 
 // Vike's universal middleware type includes optional adapter context arguments,
 // while the built-in server invokes the Fetch API shape used here.
@@ -20,6 +20,12 @@ function publicApiBrowserOrigin(): string {
 
 function publicMediaImageSources(): string {
   const publicOrigin = process.env.PUBLIC_ORIGIN || 'http://localhost:3000'
+  if (publicOrigin.startsWith('http:') && process.env.PUBLIC_MEDIA_ORIGIN) {
+    try {
+      const media = new URL(process.env.PUBLIC_MEDIA_ORIGIN)
+      if (['http:', 'https:'].includes(media.protocol)) return `https: ${media.origin}`
+    } catch { /* Invalid origins are not added to CSP. */ }
+  }
   return publicOrigin.startsWith('https:')
     ? 'https:'
     : 'https: http://media.localhost:19000 http://localhost:19000'
@@ -56,6 +62,11 @@ export function withPublicSecurityHeaders(response: Response, pathname = ''): Re
 export default {
   async fetch(request: Request) {
     const url = new URL(request.url)
+    if (url.pathname === '/healthz') {
+      return new Response('ok\n', {
+        headers: { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' },
+      })
+    }
     if (url.pathname === '/') {
       return withPublicSecurityHeaders(new Response(null, {
         status: 308,
@@ -71,7 +82,7 @@ export default {
     if (url.pathname === '/robots.txt') {
       return withPublicSecurityHeaders(await renderRobots(), url.pathname)
     }
-    if (url.pathname === '/site-icon') {
+    if (url.pathname === '/site-icon' || url.pathname === '/favicon.ico') {
       return withPublicSecurityHeaders(await renderSiteIcon(), url.pathname)
     }
     if (url.pathname === '/site.webmanifest') {

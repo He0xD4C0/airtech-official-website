@@ -111,13 +111,24 @@ services:
         NO_PROXY: ${NO_PROXY:-}
     entrypoint: ["/usr/local/bin/airtek-maintenance"]
     command: ["${AIRTEK_MAINTENANCE_COMMAND:-prepare-development-runtime}"]
+    extra_hosts:
+      - "media.localhost:host-gateway"
     environment:
       DATABASE_URL: ${AIRTEK_DATABASE_URL_INTERNAL:-postgres://airtek:airtek@postgres:5432/airtek}
       AIRTEK_DEV_ADMIN_SEED: ${AIRTEK_DEV_ADMIN_SEED:-true}
-      AIRTEK_DEV_PUBLIC_SEED: ${AIRTEK_DEV_PUBLIC_SEED:-true}
+      AIRTEK_DEV_PUBLIC_SEED: ${AIRTEK_DEV_PUBLIC_SEED:-false}
       AIRTEK_DEV_ADMIN_DISPLAY_NAME: AIRTEK Local Administrator
       AIRTEK_DEV_ADMIN_EMAIL: local-admin@airtek.invalid
       AIRTEK_DEV_ADMIN_PASSWORD: Airtek-Local-Admin-20260917!
+      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.airtek.localhost:8088}
+      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_COMPOSE_ADMIN_ORIGIN:-http://admin.airtek.localhost:8088}
+      AIRTEK_API_ORIGIN: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.airtek.localhost:8088}
+      AIRTEK_READINESS_GATEWAY_ORIGIN: http://gateway:8088
+      AIRTEK_READINESS_ALLOW_HTTP: "true"
+      AIRTEK_READINESS_EXTERNAL: "false"
+      PUBLIC_HOST: ${PUBLIC_HOST:-www.airtek.localhost}
+      ADMIN_HOST: ${ADMIN_HOST:-admin.airtek.localhost}
+      API_HOST: ${API_HOST:-api.airtek.localhost}
       RUST_LOG: ${RUST_LOG:-airtek_platform=info}
     depends_on:
       flyway-migrate:
@@ -137,8 +148,9 @@ services:
     environment:
       AIRTEK_API_HOST: ${AIRTEK_API_HOST:-0.0.0.0}
       DATABASE_URL: ${AIRTEK_DATABASE_URL_INTERNAL:-postgres://airtek:airtek@postgres:5432/airtek}
-      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.localhost:8088}
-      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_COMPOSE_ADMIN_ORIGIN:-http://admin.localhost:8088}
+      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.airtek.localhost:8088}
+      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_COMPOSE_ADMIN_ORIGIN:-http://admin.airtek.localhost:8088}
+      AIRTEK_DEV_ADMIN_PASSWORD_ONLY: ${AIRTEK_DEV_ADMIN_PASSWORD_ONLY:-true}
       AIRTEK_ADMIN_BOOTSTRAP_TOKEN: ${AIRTEK_ADMIN_BOOTSTRAP_TOKEN:-local-development-bootstrap-change-me}
       AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:-}
       AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: ${AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY:-}
@@ -161,7 +173,7 @@ services:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_API_HOST_PORT:-8080}:8080"
     extra_hosts:
       - "host.docker.internal:host-gateway"
-      - "${AIRTEK_PUBLIC_ASSET_HOSTNAME:-media.localhost}:host-gateway"
+      - "media.localhost:host-gateway"
     depends_on:
       platform-maintenance:
         condition: service_completed_successfully
@@ -187,8 +199,8 @@ services:
     environment:
       AIRTEK_API_HOST: ${AIRTEK_API_HOST:-0.0.0.0}
       DATABASE_URL: ${AIRTEK_DATABASE_URL_INTERNAL:-postgres://airtek:airtek@postgres:5432/airtek}
-      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.localhost:8088}
-      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_COMPOSE_ADMIN_ORIGIN:-http://admin.localhost:8088}
+      AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.airtek.localhost:8088}
+      AIRTEK_ADMIN_ORIGIN: ${AIRTEK_COMPOSE_ADMIN_ORIGIN:-http://admin.airtek.localhost:8088}
       AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:-}
       AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: ${AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY:-}
       AIRTEK_ANALYTICS_TOKEN_HMAC_KEY: ${AIRTEK_ANALYTICS_TOKEN_HMAC_KEY:-}
@@ -219,19 +231,20 @@ services:
         HTTP_PROXY: ${AIRTEK_BUILD_PROXY:-}
         HTTPS_PROXY: ${AIRTEK_BUILD_PROXY:-}
         NO_PROXY: ${NO_PROXY:-}
-        VITE_PUBLIC_API_BASE_URL: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.localhost:8088}/api/public/v1
-        VITE_PUBLIC_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.localhost:8088}
+        VITE_PUBLIC_API_BASE_URL: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.airtek.localhost:8088}/api/public/v1
+        VITE_PUBLIC_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.airtek.localhost:8088}
     environment:
       PUBLIC_API_INTERNAL_URL: ${PUBLIC_API_INTERNAL_URL:-http://platform-api:8080/api/public/v1}
-      PUBLIC_API_BROWSER_ORIGIN: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.localhost:8088}
-      PUBLIC_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.localhost:8088}
+      PUBLIC_API_BROWSER_ORIGIN: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.airtek.localhost:8088}
+      PUBLIC_MEDIA_ORIGIN: ${AIRTEK_COMPOSE_MEDIA_ORIGIN:-http://media.localhost:19000}
+      PUBLIC_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.airtek.localhost:8088}
     ports:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_PUBLIC_HOST_PORT:-3000}:3000"
     depends_on:
       platform-api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/en').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -247,9 +260,9 @@ services:
         HTTP_PROXY: ${AIRTEK_BUILD_PROXY:-}
         HTTPS_PROXY: ${AIRTEK_BUILD_PROXY:-}
         NO_PROXY: ${NO_PROXY:-}
-        VITE_ADMIN_API_BASE_URL: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.localhost:8088}/api/admin/v1
+        VITE_ADMIN_API_BASE_URL: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.airtek.localhost:8088}/api/admin/v1
     environment:
-      ADMIN_API_ORIGIN: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.localhost:8088}
+      ADMIN_API_ORIGIN: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.airtek.localhost:8088}
       ADMIN_MEDIA_IMAGE_SOURCES: "https: ${AIRTEK_COMPOSE_MEDIA_ORIGIN:-http://media.localhost:19000} http://localhost:${AIRTEK_OBJECT_STORE_HOST_PORT:-19000}"
     ports:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_ADMIN_HOST_PORT:-3100}:3100"
@@ -269,10 +282,12 @@ services:
       context: .
       dockerfile: infra/docker/Dockerfile.gateway
     environment:
-      PUBLIC_HOST: ${PUBLIC_HOST:-www.localhost}
-      ADMIN_HOST: ${ADMIN_HOST:-admin.localhost}
-      API_HOST: ${API_HOST:-api.localhost}
-      API_BROWSER_ORIGIN: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.localhost:8088}
+      PUBLIC_LEGACY_HOST: www.localhost
+      PUBLIC_REDIRECT_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.airtek.localhost:8088}
+      PUBLIC_HOST: ${PUBLIC_HOST:-www.airtek.localhost}
+      ADMIN_HOST: ${ADMIN_HOST:-admin.airtek.localhost}
+      API_HOST: ${API_HOST:-api.airtek.localhost}
+      API_BROWSER_ORIGIN: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.airtek.localhost:8088}
       MEDIA_IMAGE_SOURCES: "https: ${AIRTEK_COMPOSE_MEDIA_ORIGIN:-http://media.localhost:19000} http://localhost:${AIRTEK_OBJECT_STORE_HOST_PORT:-19000}"
     ports:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_GATEWAY_HOST_PORT:-8088}:8088"

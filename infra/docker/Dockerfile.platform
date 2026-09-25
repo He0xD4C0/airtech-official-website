@@ -10,6 +10,7 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse \
     CARGO_HTTP_TIMEOUT=120 \
     CARGO_NET_RETRY=5
 COPY services/platform services/platform
+COPY config/public-site-core.json config/public-site-core.json
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     if [ -n "${CARGO_REGISTRY_MIRROR}" ]; then \

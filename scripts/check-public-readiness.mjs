@@ -225,16 +225,26 @@ export async function checkPublicReadiness(options, fetchImpl = globalThis.fetch
     }
   }
 
-  const icon = await expectStatus(options.publicBase, '/site-icon', [307])
+  const icon = await expectStatus(options.publicBase, '/site-icon', [200, 307, 308])
   if (icon) {
-    const location = icon.headers.get('location')
-    if (!location) errors.push('/site-icon: redirect target is missing.')
+    if (icon.status === 200) {
+      if (!icon.headers.get('content-type')?.startsWith('image/')) {
+        errors.push('/site-icon: direct response is not an image.')
+      }
+      else warnings.push('No custom site icon is published; the neutral fallback remains active.')
+    }
     else {
-      if (location === '/site-icon-placeholder.svg') warnings.push('No custom site icon is published; the neutral fallback remains active.')
-      const target = location.startsWith('/') ? `${options.publicBase}${location}` : location
-      const resolved = await request('', target)
-      if (!resolved?.ok || !resolved.headers.get('content-type')?.startsWith('image/')) {
-        errors.push('/site-icon: resolved icon is not a readable image.')
+      const location = icon.headers.get('location')
+      if (!location) {
+        errors.push('/site-icon: redirect target is missing.')
+      }
+      else {
+        if (location === '/site-icon-placeholder.svg') warnings.push('No custom site icon is published; the neutral fallback remains active.')
+        const target = location.startsWith('/') ? `${options.publicBase}${location}` : location
+        const resolved = await request('', target)
+        if (!resolved?.ok || !resolved.headers.get('content-type')?.startsWith('image/')) {
+          errors.push('/site-icon: resolved icon is not a readable image.')
+        }
       }
     }
   }

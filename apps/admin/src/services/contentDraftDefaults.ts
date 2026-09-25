@@ -64,6 +64,7 @@ export function defaultTypeFields(kind: CmsContentKind): ContentTypeFields {
         type: 'generalInformation',
         organizationName: null,
         brandLine: null,
+        siteIcon: null,
         homePath: null,
         footerStatement: null,
         copyrightTemplate: null,

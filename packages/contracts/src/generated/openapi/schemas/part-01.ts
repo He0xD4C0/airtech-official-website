@@ -311,7 +311,7 @@ BusinessInboxPage: {
             total: number;
         };
 /** @enum {string} */
-        BusinessInboxStatus: "new" | "triaged" | "assigned" | "qualified" | "closed" | "spam";
+        BusinessInboxStatus: "new" | "triaged" | "assigned" | "qualified" | "closed" | "spam" | "piiCleared";
 BusinessInternalNote: {
             body: string;
             /** Format: date-time */
@@ -332,6 +332,7 @@ BusinessPii: {
             message: string | null;
             name: string;
             phone: string | null;
+            rfqContext?: components["schemas"]["RfqContextSnapshot"] | null;
         };
 BusinessStatusHistoryEntry: {
             /** Format: date-time */

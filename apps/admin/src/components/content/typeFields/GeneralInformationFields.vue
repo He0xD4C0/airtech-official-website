@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { Plus, Trash2 } from 'lucide-vue-next'
 import type {
+  AssetVersionReference,
   ContactInformationInput,
   EditorialAction,
   GeneralInformationTypeFields,
-  AssetVersionReference,
   MediaUseReference,
   ProductCategoryPresentationInput,
   ProductFamily,
@@ -93,10 +93,6 @@ function updateDefaultSeo(values: Partial<GeneralInformationTypeFields['defaultS
 function updateNavigationCta(action: EditorialAction | null): void {
   patch({ navigationCta: action })
 }
-
-function updateSiteIcon(value: AssetVersionReference | null): void {
-  patch({ siteIcon: value })
-}
 </script>
 
 <template>
@@ -116,18 +112,16 @@ function updateSiteIcon(value: AssetVersionReference | null): void {
         <input :value="modelValue.brandLine ?? ''" maxlength="200" @input="patch({ brandLine: ($event.target as HTMLInputElement).value || null })" />
       </label>
       <div class="field">
-        <span>站点图标<small>须为至少 512 × 512 的正方形图片，并在发布前完成公开使用审核</small></span>
+        <span>站点图标<small>正方形 PNG、JPEG 或 WebP，至少 512 × 512 像素</small></span>
         <MediaAssetField
           :model-value="modelValue.siteIcon ?? null"
           mode="asset"
-          usage="siteIcon"
           label="站点图标"
-          @update:model-value="updateSiteIcon($event as AssetVersionReference | null)"
+          site-icon
+          @update:model-value="patch({ siteIcon: $event as AssetVersionReference | null })"
         />
-        <small>发布此配置表示确认所选精确文件及版本拥有小尺寸公开使用授权；未设置时公开站使用中性占位图标。</small>
-        <p v-if="!modelValue.siteIcon" class="empty-mini" role="status">
-          发布就绪警告：尚未配置自定义站点图标；这不会阻断发布，但公开站将继续使用中性占位图标。
-        </p>
+        <p v-if="!modelValue.siteIcon" class="site-fields__warning">尚未配置自定义站点图标；公开站将使用中性占位图标。</p>
+        <p class="site-fields__notice">发布即确认该文件具备合法权利、身份识别用途及小尺寸展示授权。系统不会自动采用、裁切或重绘旧站标识。</p>
       </div>
       <label class="field">
         <span>首页路径<small>必须是站内绝对路径，例如 /en</small></span>
@@ -239,5 +233,7 @@ function updateSiteIcon(value: AssetVersionReference | null): void {
 .site-fields__card { display: flex; flex-direction: column; gap: 0.45rem; padding: 0.6rem; border: 1px solid var(--border-default); border-radius: 9px; background: white; }
 .site-fields__repeat { display: flex; align-items: center; gap: 0.3rem; margin-bottom: 0.3rem; }
 .site-fields__repeat input { flex: 1; }
+.site-fields__warning { margin: 0; color: #9a6700; font-size: 0.75rem; }
+.site-fields__notice { margin: 0; color: var(--text-secondary); font-size: 0.75rem; line-height: 1.55; }
 }
 </style>

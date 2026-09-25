@@ -1396,7 +1396,8 @@
           "assigned",
           "qualified",
           "closed",
-          "spam"
+          "spam",
+          "piiCleared"
         ],
         "type": "string"
       },
@@ -1480,6 +1481,16 @@
             "anyOf": [
               {
                 "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rfqContext": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RfqContextSnapshot"
               },
               {
                 "type": "null"
@@ -3547,6 +3558,9 @@
       "DiscoveryEntry": {
         "additionalProperties": false,
         "properties": {
+          "displayType": {
+            "$ref": "#/components/schemas/PublicSearchType"
+          },
           "entityId": {
             "format": "uuid",
             "type": "string"
@@ -6981,9 +6995,21 @@
       "ProductPage": {
         "additionalProperties": false,
         "properties": {
+          "familyCounts": {
+            "items": {
+              "$ref": "#/components/schemas/ProductFacetCount"
+            },
+            "type": "array"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/Product"
+            },
+            "type": "array"
+          },
+          "motorTechnologyCounts": {
+            "items": {
+              "$ref": "#/components/schemas/ProductFacetCount"
             },
             "type": "array"
           },
@@ -6999,12 +7025,19 @@
                 "type": "null"
               }
             ],
-            "description": "Opaque base64url v2 keyset cursor bound to the active filters; v1 is accepted for one compatibility release."
+            "description": "Opaque base64url v3 keyset cursor bound to normalized query and filters; v2 is accepted only when q is absent for one compatibility release."
+          },
+          "total": {
+            "minimum": 0,
+            "type": "integer"
           }
         },
         "required": [
           "items",
-          "nextCursor"
+          "nextCursor",
+          "total",
+          "familyCounts",
+          "motorTechnologyCounts"
         ],
         "type": "object"
       },
@@ -7614,6 +7647,111 @@
         ],
         "type": "object"
       },
+      "PublicSearchEntityType": {
+        "enum": [
+          "content",
+          "product"
+        ],
+        "type": "string"
+      },
+      "PublicSearchItem": {
+        "additionalProperties": false,
+        "properties": {
+          "canonicalPath": {
+            "pattern": "^/en(?:/|$)",
+            "type": "string"
+          },
+          "displayType": {
+            "$ref": "#/components/schemas/PublicSearchType"
+          },
+          "entityId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "entityType": {
+            "$ref": "#/components/schemas/PublicSearchEntityType"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "entityType",
+          "entityId",
+          "title",
+          "summary",
+          "canonicalPath",
+          "displayType"
+        ],
+        "type": "object"
+      },
+      "PublicSearchPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PublicSearchItem"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "typeCounts": {
+            "items": {
+              "$ref": "#/components/schemas/ProductFacetCount"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "total",
+          "typeCounts"
+        ],
+        "type": "object"
+      },
+      "PublicSearchType": {
+        "enum": [
+          "product",
+          "solution",
+          "technology",
+          "article",
+          "news",
+          "faq",
+          "caseStudy",
+          "download",
+          "company",
+          "page"
+        ],
+        "type": "string"
+      },
       "PublicationStatus": {
         "enum": [
           "draft",
@@ -8087,6 +8225,78 @@
         ],
         "type": "object"
       },
+      "RfqContextSnapshot": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "context": {
+                "$ref": "#/components/schemas/ProductRfqContext"
+              },
+              "journey": {
+                "const": "product",
+                "type": "string"
+              }
+            },
+            "required": [
+              "journey",
+              "context"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "context": {
+                "$ref": "#/components/schemas/SelectionRfqContext"
+              },
+              "journey": {
+                "const": "selection",
+                "type": "string"
+              }
+            },
+            "required": [
+              "journey",
+              "context"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "context": {
+                "$ref": "#/components/schemas/ProjectRfqContext"
+              },
+              "journey": {
+                "const": "project",
+                "type": "string"
+              }
+            },
+            "required": [
+              "journey",
+              "context"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "context": {
+                "$ref": "#/components/schemas/ReplacementRfqContext"
+              },
+              "journey": {
+                "const": "replacement",
+                "type": "string"
+              }
+            },
+            "required": [
+              "journey",
+              "context"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "RfqDutyPoint": {
         "additionalProperties": false,
         "properties": {
@@ -8266,6 +8476,11 @@
             "minLength": 1,
             "type": "string"
           },
+          "ambientTemperatureC": {
+            "maximum": 1000,
+            "minimum": -273.15,
+            "type": "number"
+          },
           "application": {
             "maxLength": 500,
             "minLength": 1,
@@ -8291,6 +8506,14 @@
             "exclusiveMinimum": 0,
             "maximum": 100000,
             "type": "number"
+          },
+          "motorTechnology": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "preferredFamily": {
+            "$ref": "#/components/schemas/ProductFamily"
           },
           "priority": {
             "enum": [
@@ -8367,6 +8590,13 @@
       "SelectorCandidate": {
         "additionalProperties": false,
         "properties": {
+          "canonicalPath": {
+            "pattern": "^/en/products/",
+            "type": "string"
+          },
+          "family": {
+            "$ref": "#/components/schemas/ProductFamily"
+          },
           "matchedConstraints": {
             "items": {
               "type": "string"
@@ -8386,6 +8616,12 @@
             "minimum": 0,
             "type": "integer"
           },
+          "slug": {
+            "maxLength": 180,
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "type": "string"
+          },
           "title": {
             "type": "string"
           },
@@ -8399,6 +8635,9 @@
         "required": [
           "productId",
           "productRevision",
+          "slug",
+          "family",
+          "canonicalPath",
           "title",
           "matchedConstraints",
           "warnings",
@@ -8436,6 +8675,8 @@
           "ambientTemperatureC": {
             "anyOf": [
               {
+                "maximum": 300,
+                "minimum": -100,
                 "type": "number"
               },
               {
@@ -8447,6 +8688,7 @@
             "anyOf": [
               {
                 "exclusiveMinimum": 0,
+                "maximum": 1000,
                 "type": "number"
               },
               {
@@ -8458,6 +8700,7 @@
             "anyOf": [
               {
                 "exclusiveMinimum": 0,
+                "maximum": 100000,
                 "type": "number"
               },
               {
@@ -8506,13 +8749,18 @@
           },
           "requiredCertifications": {
             "items": {
+              "maxLength": 120,
+              "minLength": 1,
               "type": "string"
             },
+            "maxItems": 20,
             "type": "array"
           },
           "voltage": {
             "anyOf": [
               {
+                "maxLength": 120,
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -24549,6 +24797,16 @@
         "parameters": [
           {
             "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "family",
             "required": false,
             "schema": {
@@ -24560,11 +24818,13 @@
             "name": "motorTechnology",
             "required": false,
             "schema": {
+              "maxLength": 120,
+              "minLength": 1,
               "type": "string"
             }
           },
           {
-            "description": "Opaque base64url v2 keyset cursor bound to the active family and motorTechnology filters; v1 is accepted for one compatibility release.",
+            "description": "Opaque base64url v3 keyset cursor bound to normalized q, family, and motorTechnology; v2 is accepted only without q for one compatibility release.",
             "in": "query",
             "name": "cursor",
             "required": false,
@@ -25304,6 +25564,169 @@
         "summary": "Resolve one canonical published public route",
         "tags": [
           "publicSite"
+        ]
+      }
+    },
+    "/api/public/v1/search": {
+      "get": {
+        "operationId": "searchPublishedSite",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/PublicSearchType"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicSearchPage"
+                }
+              }
+            },
+            "description": "Published search results"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "summary": "Search canonical indexable published content and products",
+        "tags": [
+          "publicDiscovery"
         ]
       }
     },

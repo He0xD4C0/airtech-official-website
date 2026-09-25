@@ -116,6 +116,12 @@ async fn automatic_publish_is_idempotent_and_does_not_publish_cms_drafts() {
     let sandbox = support::DatabaseClone::create(&database_url).await;
     sandbox.apply_current().await;
     let state = postgres_state(sandbox.connection_url());
+    let connection = airtek_platform::services::admin_sync::connection_status(&state)
+        .await
+        .unwrap();
+    assert!(!connection.configured);
+    assert!(!connection.runnable);
+    assert!(connection.unavailable_reason.is_some());
     let connector_id: Uuid =
         sqlx::query_scalar("SELECT connector_id FROM feishu_connector_settings LIMIT 1")
             .fetch_one(&state.pool)

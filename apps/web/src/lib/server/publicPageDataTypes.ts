@@ -1,4 +1,4 @@
-import type { ProductFamily } from '@airtek/contracts'
+import type { ProductFamily, PublicSearchType } from '@airtek/contracts'
 import type { PublicPageModel, PublicSiteBootstrap } from '@/types/content'
 
 export interface PublicPageDataOptions {
@@ -6,6 +6,18 @@ export interface PublicPageDataOptions {
   fetchImpl?: typeof fetch
   productSlug?: string
   productFamily?: ProductFamily
+  catalogQuery?: {
+    cursor?: string
+    q?: string
+    family?: ProductFamily
+    motorTechnology?: string
+    view?: 'cards' | 'table'
+  }
+  searchQuery?: {
+    cursor?: string
+    q?: string
+    type?: PublicSearchType
+  }
 }
 
 export interface LoadedPublicPageData {

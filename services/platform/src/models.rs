@@ -13,12 +13,18 @@ pub use editorial::*;
 #[path = "models/product.rs"]
 mod product;
 pub use product::*;
+#[path = "models/public_search.rs"]
+mod public_search;
+pub use public_search::*;
 #[path = "models/sync.rs"]
 mod sync;
 pub use sync::*;
 #[path = "models/submissions.rs"]
 mod submissions;
 pub use submissions::*;
+#[path = "models/rfq_context.rs"]
+mod rfq_context;
+pub use rfq_context::*;
 #[path = "models/analytics.rs"]
 mod analytics;
 pub use analytics::*;

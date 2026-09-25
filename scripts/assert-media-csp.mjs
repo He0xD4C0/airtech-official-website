@@ -6,13 +6,13 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const read = (path) => readFileSync(join(root, path), 'utf8')
 const failures = []
 const localSources = 'https: http://media.localhost:19000 http://localhost:19000'
-const localComposeSources = 'https: ${AIRTEK_COMPOSE_MEDIA_ORIGIN:-http://media.localhost:19000} http://localhost:${AIRTEK_OBJECT_STORE_HOST_PORT:-19000}'
+const composeSources = 'https: ${AIRTEK_COMPOSE_MEDIA_ORIGIN:-http://media.localhost:19000} http://localhost:${AIRTEK_OBJECT_STORE_HOST_PORT:-19000}'
 
 for (const [label, body, expected] of [
   ['Admin development CSP', read('apps/admin/vite.config.ts'), `DEVELOPMENT_MEDIA_IMAGE_SOURCES = '${localSources}'`],
-  ['Local Admin Compose', read('compose.yaml'), `ADMIN_MEDIA_IMAGE_SOURCES: "${localComposeSources}"`],
-  ['Local gateway Compose', read('compose.yaml'), `MEDIA_IMAGE_SOURCES: "${localComposeSources}"`],
-  ['Local API host mapping', read('compose.yaml'), '${AIRTEK_PUBLIC_ASSET_HOSTNAME:-media.localhost}:host-gateway'],
+  ['Local Admin Compose', read('compose.yaml'), `ADMIN_MEDIA_IMAGE_SOURCES: "${composeSources}"`],
+  ['Local gateway Compose', read('compose.yaml'), `MEDIA_IMAGE_SOURCES: "${composeSources}"`],
+  ['Local API host mapping', read('compose.yaml'), 'media.localhost:host-gateway'],
   ['Production Admin Compose', read('compose.production.yaml'), 'ADMIN_MEDIA_IMAGE_SOURCES: "https:"'],
   ['Production gateway Compose', read('compose.production.yaml'), 'MEDIA_IMAGE_SOURCES: "https:"'],
   ['Admin Nginx template', read('apps/admin/deploy/nginx.conf'), "img-src 'self' data: blob: ${ADMIN_MEDIA_IMAGE_SOURCES}"],

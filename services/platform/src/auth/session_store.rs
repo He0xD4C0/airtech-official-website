@@ -27,6 +27,7 @@ pub(super) async fn create_session(
         .bind(user.id)
         .execute(pool)
         .await?;
+    let development_password_only = state.config.development_password_only_for(&user.email);
     Ok(SessionIssue {
         principal: AdminPrincipal {
             user_id: user.id,
@@ -38,6 +39,7 @@ pub(super) async fn create_session(
             session_token_hash,
             csrf_hash,
             totp_enabled: user.totp_enabled,
+            development_password_only,
         },
         session_token,
         csrf_token,

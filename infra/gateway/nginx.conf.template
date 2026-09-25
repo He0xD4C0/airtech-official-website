@@ -1,4 +1,11 @@
 server {
+  listen 8088;
+  server_name ${PUBLIC_LEGACY_HOST};
+  add_header X-Robots-Tag "noindex" always;
+  return 308 ${PUBLIC_REDIRECT_ORIGIN}$request_uri;
+}
+
+server {
   listen 8088 default_server;
   server_name _;
   server_tokens off;

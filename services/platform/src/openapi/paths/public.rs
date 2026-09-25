@@ -130,11 +130,20 @@ pub(super) fn add_core(paths: &mut Map<String, Value>) {
                 [("200", json_response("Published products", r("ProductPage")))],
             ),
             vec![
+                query_param(
+                    "q",
+                    false,
+                    json!({"type": "string", "minLength": 1, "maxLength": 200}),
+                ),
                 query_param("family", false, r("ProductFamily")),
-                query_param("motorTechnology", false, json!({"type": "string"})),
+                query_param(
+                    "motorTechnology",
+                    false,
+                    json!({"type": "string", "minLength": 1, "maxLength": 120}),
+                ),
                 json!({
                     "name": "cursor", "in": "query", "required": false,
-                    "description": "Opaque base64url v2 keyset cursor bound to the active family and motorTechnology filters; v1 is accepted for one compatibility release.",
+                    "description": "Opaque base64url v3 keyset cursor bound to normalized q, family, and motorTechnology; v2 is accepted only without q for one compatibility release.",
                     "schema": {"type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^[A-Za-z0-9_-]+$"}
                 }),
                 json!({
@@ -199,6 +208,40 @@ pub(super) fn add_core(paths: &mut Map<String, Value>) {
             vec![
                 path_param("slug", slug()),
                 query_param("family", false, r("ProductFamily")),
+            ],
+        ),
+    );
+    add(
+        paths,
+        "/api/public/v1/search",
+        "get",
+        params(
+            op(
+                "searchPublishedSite",
+                "Search canonical indexable published content and products",
+                "publicDiscovery",
+                [(
+                    "200",
+                    json_response("Published search results", r("PublicSearchPage")),
+                )],
+            ),
+            vec![
+                query_param(
+                    "q",
+                    false,
+                    json!({"type": "string", "minLength": 1, "maxLength": 200}),
+                ),
+                query_param("type", false, r("PublicSearchType")),
+                query_param(
+                    "cursor",
+                    false,
+                    json!({"type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^[A-Za-z0-9_-]+$"}),
+                ),
+                query_param(
+                    "limit",
+                    false,
+                    json!({"type": "integer", "minimum": 1, "maximum": 100, "default": 20}),
+                ),
             ],
         ),
     );

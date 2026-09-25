@@ -1,0 +1,180 @@
+{
+  "entries": [
+    {
+      "canonicalPath": null,
+      "missing": false,
+      "records": [
+        {
+          "contentId": "9621b235-6783-4a96-9295-2603356b014d",
+          "draftId": "65b2f465-1a69-496b-8132-a804039d3ff4",
+          "draftIssues": [
+            {
+              "message": "Editorial verification and approval required.",
+              "path": "isPlaceholder"
+            }
+          ],
+          "draftPath": "/content/drafts/65b2f465-1a69-496b-8132-a804039d3ff4",
+          "draftState": "editing",
+          "published": false,
+          "publishedIssues": null
+        }
+      ],
+      "slug": null,
+      "templateKey": "generalInformation",
+      "title": "General information"
+    },
+    {
+      "canonicalPath": null,
+      "missing": false,
+      "records": [
+        {
+          "contentId": "9bd8544e-7dd9-4f1a-9bad-b1f155d8d1a1",
+          "draftId": "3ab1b318-bd50-4a2b-bf0b-12fd4aea06de",
+          "draftIssues": [
+            {
+              "message": "Editorial verification and approval required.",
+              "path": "isPlaceholder"
+            }
+          ],
+          "draftPath": "/content/drafts/3ab1b318-bd50-4a2b-bf0b-12fd4aea06de",
+          "draftState": "editing",
+          "published": false,
+          "publishedIssues": null
+        }
+      ],
+      "slug": null,
+      "templateKey": "navigation",
+      "title": "Navigation"
+    },
+    {
+      "canonicalPath": null,
+      "missing": true,
+      "records": [],
+      "slug": null,
+      "templateKey": "footer",
+      "title": "Footer"
+    },
+    {
+      "canonicalPath": "/en",
+      "missing": true,
+      "records": [],
+      "slug": "home",
+      "templateKey": "home",
+      "title": "Home"
+    },
+    {
+      "canonicalPath": "/en/products",
+      "missing": true,
+      "records": [],
+      "slug": "products",
+      "templateKey": "productIndex",
+      "title": "Products"
+    },
+    {
+      "canonicalPath": "/en/products/selector",
+      "missing": true,
+      "records": [],
+      "slug": "selector",
+      "templateKey": "selector",
+      "title": "Product selector"
+    },
+    {
+      "canonicalPath": "/en/products/compare",
+      "missing": true,
+      "records": [],
+      "slug": "compare",
+      "templateKey": "compare",
+      "title": "Compare products"
+    },
+    {
+      "canonicalPath": "/en/search",
+      "missing": true,
+      "records": [],
+      "slug": "search",
+      "templateKey": "search",
+      "title": "Search"
+    },
+    {
+      "canonicalPath": "/en/company/about",
+      "missing": true,
+      "records": [],
+      "slug": "about",
+      "templateKey": "about",
+      "title": "About"
+    },
+    {
+      "canonicalPath": "/en/company/contact",
+      "missing": true,
+      "records": [],
+      "slug": "contact",
+      "templateKey": "contact",
+      "title": "Contact"
+    },
+    {
+      "canonicalPath": "/en/request-a-quote",
+      "missing": true,
+      "records": [],
+      "slug": "request-a-quote",
+      "templateKey": "rfqRouter",
+      "title": "Request a quote"
+    },
+    {
+      "canonicalPath": "/en/request-a-quote/product",
+      "missing": true,
+      "records": [],
+      "slug": "product",
+      "templateKey": "rfqForm",
+      "title": "Product inquiry"
+    },
+    {
+      "canonicalPath": "/en/request-a-quote/selection",
+      "missing": true,
+      "records": [],
+      "slug": "selection",
+      "templateKey": "rfqForm",
+      "title": "Selection inquiry"
+    },
+    {
+      "canonicalPath": "/en/request-a-quote/project",
+      "missing": true,
+      "records": [],
+      "slug": "project",
+      "templateKey": "rfqForm",
+      "title": "Project inquiry"
+    },
+    {
+      "canonicalPath": "/en/request-a-quote/replacement",
+      "missing": true,
+      "records": [],
+      "slug": "replacement",
+      "templateKey": "rfqForm",
+      "title": "Replacement inquiry"
+    },
+    {
+      "canonicalPath": "/en/privacy",
+      "missing": true,
+      "records": [],
+      "slug": "privacy",
+      "templateKey": "legal",
+      "title": "Privacy"
+    },
+    {
+      "canonicalPath": "/en/terms",
+      "missing": true,
+      "records": [],
+      "slug": "terms",
+      "templateKey": "legal",
+      "title": "Terms"
+    },
+    {
+      "canonicalPath": "/en/cookie-settings",
+      "missing": true,
+      "records": [],
+      "slug": "cookie-settings",
+      "templateKey": "legal",
+      "title": "Cookie settings"
+    }
+  ],
+  "locale": "en",
+  "readOnly": true
+}

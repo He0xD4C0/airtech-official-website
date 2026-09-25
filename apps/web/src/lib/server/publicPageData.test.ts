@@ -113,13 +113,11 @@ describe('database-driven public SSR page loading', () => {
     await expect(loadPublicPageData('/en', { baseUrl: 'http://api:8080/api/public/v1', fetchImpl: unavailableFetch }))
       .rejects.toMatchObject({ status: 503 })
 
-    const simultaneousFailure = vi.fn(async (input: RequestInfo | URL) => String(input).includes('/site-bootstrap?')
+    const bothUnavailable = vi.fn(async (input: RequestInfo | URL) => String(input).includes('/site-bootstrap?')
       ? json({ title: 'Unavailable' }, 503)
       : json({ title: 'Not Found' }, 404)) as unknown as typeof fetch
-    await expect(loadPublicPageData('/en/missing', {
-      baseUrl: 'http://api:8080/api/public/v1',
-      fetchImpl: simultaneousFailure,
-    })).rejects.toMatchObject({ status: 503 })
+    await expect(loadPublicPageData('/en/missing', { baseUrl: 'http://api:8080/api/public/v1', fetchImpl: bothUnavailable }))
+      .rejects.toMatchObject({ status: 503 })
   })
 
   it('SSR-renders a complete development bootstrap but forces its pages noindex', async () => {
@@ -217,6 +215,36 @@ describe('database-driven public SSR page loading', () => {
     }) as unknown as typeof fetch
     await expect(loadPublicPageData('/en/products/axial/missing-product', { baseUrl: 'http://api:8080/api/public/v1', fetchImpl }))
       .rejects.toMatchObject({ status: 404 })
+  })
+
+  it('builds the RFQ router only from resolved published form routes', async () => {
+    const router = content({
+      kind: 'page', templateKey: 'rfqRouter', slug: 'request-a-quote',
+      typeFields: { type: 'page' },
+    })
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('/site-bootstrap?')) return json(bootstrap())
+      const resolvedPath = new URL(url).searchParams.get('path')
+      if (resolvedPath === '/en/request-a-quote') return json(route(router, { path: resolvedPath }))
+      if (resolvedPath === '/en/request-a-quote/replacement') return json({ title: 'Not Found' }, 404)
+      const slug = resolvedPath?.split('/').at(-1) ?? 'selection'
+      const form = content({
+        id: crypto.randomUUID(), kind: 'page', templateKey: 'rfqForm', slug,
+        title: `${slug} inquiry`, summary: `Start a ${slug} inquiry.`, typeFields: { type: 'page' },
+      })
+      return json(route(form, { path: resolvedPath }))
+    }) as unknown as typeof fetch
+
+    const result = await loadPublicPageData('/en/request-a-quote', {
+      baseUrl: 'http://api:8080/api/public/v1', fetchImpl,
+    })
+    expect(result.page.entries?.map((entry) => entry.href)).toEqual([
+      '/en/request-a-quote/product',
+      '/en/request-a-quote/selection',
+      '/en/request-a-quote/project',
+    ])
+    expect(result.page.entries?.[0]?.summary).toBe('Summary from content projection.')
   })
 
   it('uses the exact published product localization for product SEO', async () => {

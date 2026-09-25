@@ -29,16 +29,9 @@ function validDetailPath(path: string, prefix: string): boolean {
 }
 
 function discoveryEntryType(entry: PublicDiscoveryEntryResponse): string {
-  if (entry.entityType === 'product') return 'Product'
-  if (entry.path.startsWith('/en/solutions/')) return 'Solution'
-  if (entry.path.startsWith('/en/technology/')) return 'Technology'
-  if (entry.path.startsWith('/en/resources/articles/')) return 'Article'
-  if (entry.path.startsWith('/en/resources/news/')) return 'News'
-  if (entry.path.startsWith('/en/resources/faqs/')) return 'FAQ'
-  if (entry.path.startsWith('/en/resources/case-studies/')) return 'Case study'
-  if (entry.path.startsWith('/en/resources/downloads/')) return 'Download'
-  if (entry.path.startsWith('/en/company/')) return 'Company'
-  return 'Page'
+  const labels = { product: 'Product', solution: 'Solution', technology: 'Technology', article: 'Article',
+    news: 'News', faq: 'FAQ', caseStudy: 'Case study', download: 'Download', company: 'Company', page: 'Page' }
+  return labels[entry.displayType ?? (entry.entityType === 'product' ? 'product' : 'page')]
 }
 
 function discoveryCards(entries: PublicDiscoveryEntryResponse[], page: PublicPageModel): CardEntry[] {
@@ -64,6 +57,38 @@ function discoveryCards(entries: PublicDiscoveryEntryResponse[], page: PublicPag
       summary: safeText(entry.summary, 1_000) ?? '',
       eyebrow: discoveryEntryType(entry),
       href: entry.path,
+    }]
+  })
+}
+
+async function rfqRouteCards(client: ReturnType<typeof createPublicApiClient>): Promise<CardEntry[]> {
+  const paths = [
+    '/en/request-a-quote/product',
+    '/en/request-a-quote/selection',
+    '/en/request-a-quote/project',
+    '/en/request-a-quote/replacement',
+  ]
+  const routes = await Promise.all(paths.map(async (path) => {
+    try {
+      return await client.resolveRoute(path, 'en')
+    } catch (cause) {
+      if (cause instanceof PublicApiError && cause.status === 404) return undefined
+      throw cause
+    }
+  }))
+  return routes.flatMap((route) => {
+    if (!route?.page
+      || !paths.includes(route.path)
+      || route.entityType !== 'content'
+      || route.templateKey !== 'rfqForm') return []
+    const title = pageTitle(route.page)
+    if (!title) return []
+    return [{
+      slug: route.path.split('/').at(-1) ?? 'inquiry',
+      title,
+      summary: pageDescription(route.page) ?? '',
+      eyebrow: 'Inquiry',
+      href: route.path,
     }]
   })
 }
@@ -95,10 +120,31 @@ export async function enrichPage(
 ): Promise<PublicPageModel> {
   try {
     if (page.kind === 'catalog') {
-      const family = productFamilyCode(page, route.path)
-      const products = await client.listProducts({ limit: PUBLIC_PRODUCT_PAGE_SIZE, family })
+      const routeFamily = productFamilyCode(page, route.path)
+      const family = routeFamily ?? options.catalogQuery?.family
+      const products = await client.listProducts({
+        ...(options.catalogQuery?.cursor ? { cursor: options.catalogQuery.cursor } : {}),
+        limit: PUBLIC_PRODUCT_PAGE_SIZE,
+        ...(options.catalogQuery?.q ? { q: options.catalogQuery.q } : {}),
+        ...(family ? { family } : {}),
+        ...(options.catalogQuery?.motorTechnology
+          ? { motorTechnology: options.catalogQuery.motorTechnology }
+          : {}),
+      })
       page.publishedProducts = products.items.filter((product) => !family || product.family === family)
       page.productNextCursor = products.nextCursor
+      page.productTotal = products.total
+      page.productFamilyCounts = products.familyCounts
+      page.productMotorTechnologyCounts = products.motorTechnologyCounts
+      page.catalogState = {
+        ...(options.catalogQuery?.cursor ? { cursor: options.catalogQuery.cursor } : {}),
+        q: options.catalogQuery?.q ?? '',
+        ...(family ? { family } : {}),
+        ...(options.catalogQuery?.motorTechnology
+          ? { motorTechnology: options.catalogQuery.motorTechnology }
+          : {}),
+        view: options.catalogQuery?.view ?? 'cards',
+      }
     } else if (page.kind === 'product-detail') {
       const match = route.path.match(/^\/en\/products\/([^/]+)\/([^/]+)$/u)
       if (!match || !slugPattern.test(match[2])) throw new PublicPageDataError('The product route is invalid.', 404)
@@ -126,6 +172,14 @@ export async function enrichPage(
         contentKind: 'product',
         contentId: product.id,
         publishedRevision: product.publishedRevision,
+      }
+      if (product.relatedContentIds.length) {
+        const discovery = await client.getDiscovery()
+        const relatedIds = new Set(product.relatedContentIds)
+        page.relatedEntries = discoveryCards(
+          discovery.entries.filter((entry) => relatedIds.has(entry.entityId)),
+          { ...page, kind: 'search' },
+        )
       }
     } else if (page.kind === 'news') {
       const news = await client.listNews({ locale: 'en', limit: 48 })
@@ -178,7 +232,25 @@ export async function enrichPage(
         contentId: news.content.id,
         publishedRevision: news.content.publishedRevision,
       }
-    } else if (page.kind === 'collection' || page.kind === 'downloads' || page.kind === 'search') {
+    } else if (page.kind === 'search') {
+      const results = await client.search({
+        ...(options.searchQuery?.cursor ? { cursor: options.searchQuery.cursor } : {}),
+        limit: 20,
+        ...(options.searchQuery?.q ? { q: options.searchQuery.q } : {}),
+        ...(options.searchQuery?.type ? { type: options.searchQuery.type } : {}),
+      })
+      page.searchResults = results.items
+      page.searchNextCursor = results.nextCursor
+      page.searchTotal = results.total
+      page.searchTypeCounts = results.typeCounts
+      page.searchState = {
+        ...(options.searchQuery?.cursor ? { cursor: options.searchQuery.cursor } : {}),
+        q: options.searchQuery?.q ?? '',
+        ...(options.searchQuery?.type ? { type: options.searchQuery.type } : {}),
+      }
+    } else if (page.kind === 'rfq-router') {
+      page.entries = await rfqRouteCards(client)
+    } else if (page.kind === 'collection' || page.kind === 'downloads') {
       const discovery = await client.getDiscovery()
       page.entries = discoveryCards(discovery.entries, page)
     } else if (page.kind === 'rfq-form' && page.rfqType === 'product' && options.productSlug && slugPattern.test(options.productSlug)) {

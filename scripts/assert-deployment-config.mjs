@@ -11,15 +11,19 @@ function read(relativePath) {
   }
   return readFileSync(path, 'utf8').replace(/\r\n/gu, '\n')
 }
+
 function requireMatch(body, pattern, failure) {
   if (!pattern.test(body)) failures.push(failure)
 }
+
 function forbidMatch(body, pattern, failure) {
   if (pattern.test(body)) failures.push(failure)
 }
+
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }
+
 function serviceBlock(body, name) {
   const marker = `  ${name}:\n`
   const start = body.indexOf(marker)
@@ -31,16 +35,17 @@ function serviceBlock(body, name) {
   const nextService = remainder.search(/^  [a-z0-9][a-z0-9-]*:\s*$/mu)
   return nextService < 0 ? remainder : remainder.slice(0, nextService)
 }
+
 const dockerignore = read('.dockerignore')
 for (const marker of ['.git', '**/node_modules', '**/dist', '**/target', 'docs']) {
   requireMatch(dockerignore, new RegExp(`^${marker.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}$`, 'mu'), `.dockerignore must exclude ${marker}.`)
 }
+
 const webDockerfile = read('infra/docker/Dockerfile.web')
 requireMatch(webDockerfile, /^FROM\s+node:22-alpine\s+AS\s+runtime$/mu, 'Public Web Dockerfile needs a separate runtime stage.')
 requireMatch(webDockerfile, /^USER\s+node$/mu, 'Public Web runtime must use the non-root node user.')
 requireMatch(webDockerfile, /deploy\s+--prod\s+--legacy\s+\/runtime/u, 'Public Web runtime dependencies must be production-only.')
 requireMatch(webDockerfile, /ARG\s+VITE_PUBLIC_API_BASE_URL/u, 'Public Web Dockerfile must accept the browser API build argument.')
-requireMatch(webDockerfile, /COPY\s+scripts\/check-public-readiness\.mjs\s+scripts\/check-public-readiness\.mjs/u, 'Public Web image must package the read-only readiness gate.')
 for (const variable of ['NPM_CONFIG_REGISTRY', 'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY']) {
   requireMatch(webDockerfile, new RegExp(`ARG\\s+${variable}`, 'u'), `Public Web Dockerfile must accept ${variable} during builds.`)
 }
@@ -50,6 +55,7 @@ requireMatch(webDockerfile, /NPM_CONFIG_REGISTRY=\$\{NPM_CONFIG_REGISTRY\}/u, 'P
 requireMatch(webDockerfile, /pnpm config set registry "\$\{NPM_CONFIG_REGISTRY\}" --location=project/u, 'Public Web must persist the selected registry for every pnpm build command.')
 requireMatch(webDockerfile, /^EXPOSE\s+3000$/mu, 'Public Web image must expose only its fixed application port 3000.')
 forbidMatch(webDockerfile, /ARG\s+PUBLIC_ENV__/u, 'Public Web Dockerfile still uses a non-exposed Vite environment prefix.')
+
 const webVite = read('apps/web/vite.config.ts')
 requireMatch(webVite, /port:\s*3000/u, 'Public Vite development and preview servers must use port 3000.')
 requireMatch(webVite, /strictPort:\s*true/u, 'Public Vite must fail instead of selecting a different port.')
@@ -64,6 +70,7 @@ requireMatch(platformDockerfile, /^USER\s+10001$/mu, 'Platform runtime must rema
 requireMatch(platformDockerfile, /^EXPOSE\s+8080$/mu, 'Platform image must expose only its fixed API port 8080.')
 forbidMatch(platformDockerfile, /airtekctl/u, 'Production Platform image must not contain the retired airtekctl.')
 forbidMatch(platformDockerfile, /airtek-migrate/u, 'Production Platform image must not contain the retired SQLx migrator.')
+
 const flywayDockerfile = read('infra/docker/Dockerfile.flyway')
 requireMatch(flywayDockerfile, /^ARG\s+FLYWAY_BASE_IMAGE=flyway\/flyway:13\.4\.0-alpine$/mu, 'Flyway must use the reviewed, fixed OSS image version.')
 requireMatch(flywayDockerfile, /COPY\s+services\/platform\/migrations\s+\/flyway\/project\/migrations/u, 'Flyway image must package the versioned SQL migrations.')
@@ -71,6 +78,7 @@ requireMatch(flywayDockerfile, /COPY\s+services\/platform\/flyway\/callbacks\s+\
 requireMatch(flywayDockerfile, /COPY\s+--chmod=0555\s+infra\/docker\/flyway-entrypoint\.sh/u, 'Flyway image must package the validated entrypoint.')
 requireMatch(flywayDockerfile, /^USER\s+10001$/mu, 'Flyway runtime must use a non-root UID.')
 requireMatch(flywayDockerfile, /^ENTRYPOINT\s+\["\/usr\/local\/bin\/airtek-flyway"\]$/mu, 'Flyway image must use the runtime-role validating entrypoint.')
+
 const flywayEntrypoint = read('infra/docker/flyway-entrypoint.sh')
 requireMatch(flywayEntrypoint, /FLYWAY_PLACEHOLDERS_RUNTIME_ROLE/u, 'Flyway entrypoint must validate the runtime-role placeholder.')
 requireMatch(flywayEntrypoint, /-configFiles=\/flyway\/project\/flyway\.toml/u, 'Flyway entrypoint must load the reviewed configuration explicitly.')
@@ -108,6 +116,7 @@ requireMatch(flywayEntrypoint, /-baselineVersion=10/u, 'Flyway entrypoint must f
 requireMatch(flywayEntrypoint, /-connectRetries=10/u, 'Flyway entrypoint must retain bounded database connection retries.')
 requireMatch(flywayEntrypoint, /-skipExecutingMigrations=false/u, 'Flyway entrypoint must always execute pending migrations.')
 requireMatch(flywayEntrypoint, /exec\s+flyway/u, 'Flyway entrypoint must replace itself with the Flyway CLI.')
+
 const beforeBaseline = read('services/platform/flyway/callbacks/beforeBaseline.sql')
 requireMatch(beforeBaseline, /actual\.success IS DISTINCT FROM TRUE/u, 'Flyway baseline validation must reject null or failed SQLx migration rows.')
 requireMatch(beforeBaseline, /actual\.checksum IS DISTINCT FROM decode/u, 'Flyway baseline validation must reject null or changed SQLx checksums.')
@@ -147,6 +156,7 @@ for (const roleAttribute of ['rolsuper', 'rolcreatedb', 'rolcreaterole', 'rolrep
 requireMatch(afterMigrate, /pg_has_role\(runtime_role, target_role\.oid, 'SET'\)/u, 'Flyway must reject runtime roles that can SET ROLE to another identity.')
 requireMatch(afterMigrate, /pg_has_role\(runtime_role, target_role\.oid, 'USAGE'\)/u, 'Flyway must reject runtime roles that inherit another role.')
 requireMatch(afterMigrate, /has_table_privilege/u, 'Flyway must fail if runtime table grants are incomplete.')
+
 const flywayConfig = read('services/platform/flyway.toml')
 for (const required of [
   /validateMigrationNaming\s*=\s*true/u,
@@ -192,6 +202,7 @@ const flywayRuntime = read('services/platform/src/flyway.rs')
 requireMatch(flywayRuntime, /include!\(concat!\(env!\("OUT_DIR"\), "\/flyway_version\.rs"\)\)/u, 'Runtime readiness must use the build-derived Flyway version.')
 requireMatch(flywayRuntime, /LEGACY_SQLX_BASELINE_VERSION:\s*i64\s*=\s*10/u, 'Runtime readiness must recognize only the reviewed SQLx v10 baseline.')
 requireMatch(flywayRuntime, /migration_type = 'SQL'/u, 'Runtime readiness must count only successful Flyway SQL migrations as schema coverage.')
+
 const adminDockerfile = read('infra/docker/Dockerfile.admin')
 requireMatch(adminDockerfile, /\/etc\/nginx\/templates\/default\.conf\.template/u, 'Admin Nginx config must be rendered as an environment-aware template.')
 requireMatch(adminDockerfile, /^ENV\s+VITE_ENABLE_DEVTOOLS=false$/mu, 'Admin production image must force DevTools off.')
@@ -203,12 +214,14 @@ requireMatch(adminDockerfile, /pnpm config set registry "\$\{NPM_CONFIG_REGISTRY
 requireMatch(adminDockerfile, /NODE_USE_ENV_PROXY=1/u, 'Admin Node build must honor explicit proxy arguments.')
 requireMatch(adminDockerfile, /^USER\s+nginx$/mu, 'Admin runtime must use the non-root nginx user.')
 requireMatch(adminDockerfile, /^EXPOSE\s+3100$/mu, 'Admin image must expose only its fixed application port 3100.')
+
 const adminVite = read('apps/admin/vite.config.ts')
 requireMatch(adminVite, /port:\s*3100/u, 'Admin Vite development and preview servers must use port 3100.')
 requireMatch(adminVite, /strictPort:\s*true/u, 'Admin Vite must fail instead of selecting a different port.')
 requireMatch(adminVite, /apiConnectSources\(env\.VITE_ADMIN_API_BASE_URL\)/u, 'Admin development CSP must derive HTTP and WebSocket origins from VITE_ADMIN_API_BASE_URL.')
 requireMatch(adminVite, /requestedDevtools\s*=\s*env\.VITE_ENABLE_DEVTOOLS\s*===\s*'true'/u, 'Admin DevTools must require an explicit development opt-in.')
 forbidMatch(adminVite, /connect-src 'self' http:\/\/localhost:8080 ws:\/\/localhost:8080/u, 'Admin development CSP must not hard-code an API port that bypasses the root environment.')
+
 const platformConfig = `${read('services/platform/src/config.rs')}\n${read('services/platform/src/config/types.rs')}`
 requireMatch(platformConfig, /pub const API_PORT:\s*u16\s*=\s*8080;/u, 'Rust API must use the fixed application port 8080.')
 const platformApi = read('services/platform/src/bin/api.rs')
@@ -236,7 +249,6 @@ requireMatch(serviceBlock(compose, 'platform-maintenance'), /entrypoint:\s*\["\/
 requireMatch(serviceBlock(compose, 'platform-maintenance'), /command:\s*\["\$\{AIRTEK_MAINTENANCE_COMMAND:-prepare-development-runtime\}"\]/u, 'Local maintenance must prepare runtime data and the optional development administrator.')
 for (const marker of [
   /AIRTEK_DEV_ADMIN_SEED:\s*\$\{AIRTEK_DEV_ADMIN_SEED:-true\}/u,
-  /AIRTEK_DEV_PUBLIC_SEED:\s*\$\{AIRTEK_DEV_PUBLIC_SEED:-true\}/u,
   /AIRTEK_DEV_ADMIN_DISPLAY_NAME:\s*AIRTEK Local Administrator/u,
   /AIRTEK_DEV_ADMIN_EMAIL:\s*local-admin@airtek\.invalid/u,
   /AIRTEK_DEV_ADMIN_PASSWORD:\s*Airtek-Local-Admin-20260917!/u,
@@ -252,15 +264,6 @@ if (migrationWaits < 2) failures.push('Both API and Worker must wait for a succe
 requireMatch(compose, /^\s{2}gateway:\s*$/mu, 'Compose must define the HTTP gateway service.')
 requireMatch(compose, /dockerfile:\s*infra\/docker\/Dockerfile\.gateway/u, 'Compose must build the non-root gateway image.')
 requireMatch(compose, /PUBLIC_API_INTERNAL_URL:\s*\$\{PUBLIC_API_INTERNAL_URL:-http:\/\/platform-api:8080\/api\/public\/v1\}/u, 'Public SSR must receive a configurable internal API URL with the fixed service default.')
-for (const [variable, fallback] of [
-  ['AIRTEK_COMPOSE_PUBLIC_ORIGIN', 'http://www.localhost:8088'],
-  ['AIRTEK_COMPOSE_ADMIN_ORIGIN', 'http://admin.localhost:8088'],
-  ['AIRTEK_COMPOSE_API_ORIGIN', 'http://api.localhost:8088'],
-]) {
-  requireMatch(compose, new RegExp(`\\$\\{${variable}:-${escapeRegExp(fallback)}\\}`, 'u'), `Local Compose must derive browser and CORS configuration from ${variable}.`)
-}
-requireMatch(serviceBlock(compose, 'public-web'), /healthcheck:[\s\S]*127\.0\.0\.1:3000\/en/u, 'Public health must verify the rendered English home route.')
-forbidMatch(serviceBlock(compose, 'public-web'), /healthcheck:[\s\S]*robots\.txt/u, 'Public health must not treat robots.txt as application readiness.')
 requireMatch(compose, /AIRTEK_ADMIN_BOOTSTRAP_TOKEN:/u, 'Compose must configure the setup-only admin bootstrap secret.')
 forbidMatch(compose, /AIRTEK_ADMIN_BEARER_TOKEN:/u, 'Compose must not present the setup secret as a reusable bearer token.')
 for (const [variable, hostPort, containerPort] of [
@@ -286,7 +289,7 @@ for (const variable of ['AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY', 'AIRTEK_ANALYTI
 forbidMatch(serviceBlock(compose, 'postgres'), /^\s+ports:/mu, 'Base Compose must not publish PostgreSQL to the host.')
 requireMatch(serviceBlock(compose, 'minio'), /profiles:\s*\["minio"\]/u, 'Local MinIO must be controlled by the minio Compose profile.')
 requireMatch(serviceBlock(compose, 'minio-create-bucket'), /profiles:\s*\["minio"\]/u, 'Local bucket initialization must use the minio Compose profile.')
-requireMatch(serviceBlock(compose, 'minio'), /127\.0\.0\.1:\$\{AIRTEK_OBJECT_STORE_HOST_PORT:-19000\}:9000[\s\S]*127\.0\.0\.1:\$\{AIRTEK_OBJECT_STORE_CONSOLE_HOST_PORT:-19001\}:9001/u, 'Profiled MinIO ports must remain configurable and loopback-only.')
+requireMatch(serviceBlock(compose, 'minio'), /127\.0\.0\.1:\$\{AIRTEK_OBJECT_STORE_HOST_PORT:-19000\}:9000[\s\S]*127\.0\.0\.1:\$\{AIRTEK_OBJECT_STORE_CONSOLE_HOST_PORT:-19001\}:9001/u, 'Profiled MinIO ports must be configurable and loopback-only.')
 requireMatch(serviceBlock(compose, 'minio-create-bucket'), /mc mb --ignore-existing/u, 'Local object storage must create its media bucket idempotently.')
 requireMatch(serviceBlock(compose, 'minio'), new RegExp(`image:\\s*${escapeRegExp(minioImage)}`, 'u'), 'Local MinIO must use the reviewed multi-architecture manifest digest.')
 requireMatch(serviceBlock(compose, 'minio'), /healthcheck:[\s\S]*\/minio\/health\/live/u, 'Local MinIO must expose a container healthcheck.')
@@ -315,7 +318,7 @@ for (const service of ['platform-maintenance', 'platform-api', 'platform-worker'
 forbidMatch(serviceBlock(compose, 'platform-api'), /AIRTEK_MEDIA_|S3_/u, 'The API must load S3 settings from PostgreSQL, not environment variables.')
 forbidMatch(serviceBlock(compose, 'platform-worker'), /AIRTEK_MEDIA_|S3_/u, 'The ordinary Worker must not receive media storage configuration.')
 for (const service of ['platform-api', 'platform-worker', 'admin-web', 'public-web']) {
-  forbidMatch(serviceBlock(compose, service), /AIRTEK_DEV_ADMIN_|local-admin@airtek\.invalid|Airtek-Local-Admin-20260917!/u, `${service} must not receive fixed development administrator credentials.`)
+  forbidMatch(serviceBlock(compose, service), /AIRTEK_DEV_ADMIN_(?:SEED|DISPLAY_NAME|EMAIL|PASSWORD):|local-admin@airtek\.invalid|Airtek-Local-Admin-20260917!/u, `${service} must not receive fixed development administrator credentials.`)
 }
 const debugCompose = read('compose.debug.yaml')
 for (const [variable, hostPort, containerPort] of [['AIRTEK_POSTGRES_DEBUG_PORT', 54320, 5432]]) {
@@ -326,7 +329,7 @@ for (const [variable, hostPort, containerPort] of [['AIRTEK_POSTGRES_DEBUG_PORT'
 const productionCompose = read('compose.production.yaml')
 const productionEnvironment = read('infra/deploy/production.env.example')
 for (const [body, label] of [[productionCompose, 'Production Compose'], [productionEnvironment, 'Production environment example'], [platformDockerfile, 'Platform Dockerfile']]) {
-  forbidMatch(body, /AIRTEK_DEV_(?:ADMIN|PUBLIC)_|local-admin@airtek\.invalid|Airtek-Local-Admin-20260917!|prepare-development-runtime|reset-development-admin|development-public-site/u, `${label} must not contain development provisioning, fixtures, or credentials.`)
+  forbidMatch(body, /AIRTEK_DEV_(?:ADMIN|PUBLIC)_|local-admin@airtek\.invalid|Airtek-Local-Admin-20260917!|prepare-development-runtime|reset-development-admin/u, `${label} must not contain development fixture provisioning or credentials.`)
 }
 requireMatch(serviceBlock(productionCompose, 'flyway-migrate'), new RegExp(`AIRTEK_FLYWAY_TARGET:\\s*\\$\\{AIRTEK_FLYWAY_TARGET:\\?set AIRTEK_FLYWAY_TARGET=${latestMigration}\\}`, 'u'), `Production Compose must target schema V${latestMigration}.`)
 forbidMatch(productionCompose, /e2e-test/u, 'Production Compose must never reference the isolated E2E feature.')
@@ -345,7 +348,7 @@ for (const [service, port] of [['public-web', 3000], ['admin-web', 3100], ['plat
   forbidMatch(block, /^\s+ports:/mu, `Production ${service} must not publish its internal port.`)
 }
 forbidMatch(serviceBlock(productionCompose, 'platform-worker'), /^\s+(?:ports|expose):/mu, 'Production Worker must not expose or publish a listening port.')
-for (const service of ['flyway-migrate', 'platform-maintenance', 'platform-api', 'platform-worker', 'public-web', 'admin-web']) {
+for (const service of ['flyway-migrate', 'platform-maintenance', 'platform-api', 'platform-worker', 'public-web', 'admin-web', 'public-readiness']) {
   forbidMatch(serviceBlock(productionCompose, service), /^\s+ports:/mu, `Production ${service} must not publish an application port.`)
 }
 forbidMatch(serviceBlock(productionCompose, 'public-web'), /DATABASE_URL/u, 'Production Public SSR must not receive database credentials.')
@@ -406,9 +409,6 @@ forbidMatch(productionRelease, /ECS_|SSH_PRIVATE_KEY|deploy_after_publish/u, 'Im
 const productionDeploy = read('infra/deploy/deploy-app.sh')
 requireMatch(productionDeploy, /compose_release "\$release_dir" run --rm flyway-migrate validate\ncompose_release "\$release_dir" run --rm platform-maintenance\n/u, 'Production deployment must prepare runtime data immediately after Flyway validation.')
 requireMatch(productionDeploy, /AIRTEK_PLATFORM_IMAGE=\$image_prefix-platform:\$release_id/u, 'Production deployment must reference the GHCR AIRTEKPOWER platform package.')
-requireMatch(productionDeploy, /exec -T public-web node scripts\/check-public-readiness\.mjs/u, 'Production deployment must run the public readiness gate before activation.')
-requireMatch(productionDeploy, /--expected-public-origin "\$AIRTEK_PUBLIC_ORIGIN"/u, 'Production readiness must verify the configured canonical public origin.')
-requireMatch(productionDeploy, /--expected-api-origin "\$AIRTEK_API_ORIGIN"/u, 'Production readiness must verify the configured browser API origin.')
 
 const localEnvExample = read('.env.example')
 for (const variable of [

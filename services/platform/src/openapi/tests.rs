@@ -98,6 +98,7 @@ fn documents_every_production_route() {
         "/api/public/v1/products/{slug}/assets",
         "/api/public/v1/rfqs",
         "/api/public/v1/routes/resolve",
+        "/api/public/v1/search",
         "/api/public/v1/selector",
         "/api/public/v1/site-bootstrap",
         "/healthz",

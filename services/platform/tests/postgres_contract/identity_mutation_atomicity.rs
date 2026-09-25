@@ -67,6 +67,7 @@ async fn identity_mutations_are_idempotent_and_commit_with_their_audit_records()
         session_token_hash: vec![1; 32],
         csrf_hash: vec![2; 32],
         totp_enabled: true,
+        development_password_only: false,
     };
     let app = airtek_platform::routes::admin_data::router()
         .layer(Extension(principal))

@@ -1,4 +1,12 @@
-import type { ContentBlock, Product, ProductContext, ProductSourceAsset } from '@airtek/contracts'
+import type {
+  ContentBlock,
+  Product,
+  ProductContext,
+  ProductFacetCount,
+  ProductSourceAsset,
+  PublicSearchItem,
+  PublicSearchType,
+} from '@airtek/contracts'
 import type { PublicContentProjection } from '@/types/projection'
 
 export type PageKind =
@@ -127,9 +135,25 @@ export interface PublicPageModel {
   blocks?: ContentBlock[]
   publishedProducts?: Product[]
   productNextCursor?: string | null
+  productTotal?: number
+  productFamilyCounts?: ProductFacetCount[]
+  productMotorTechnologyCounts?: ProductFacetCount[]
+  catalogState?: {
+    cursor?: string
+    q: string
+    family?: Product['family']
+    motorTechnology?: string
+    view: 'cards' | 'table'
+  }
+  searchResults?: PublicSearchItem[]
+  searchNextCursor?: string | null
+  searchTotal?: number
+  searchTypeCounts?: ProductFacetCount[]
+  searchState?: { q: string; type?: PublicSearchType; cursor?: string }
   newsNextCursor?: string | null
   publishedProduct?: Product
   productAssets?: ProductSourceAsset[]
+  relatedEntries?: CardEntry[]
   productContext?: ProductContext
   primaryCta?: PublicCallToAction
   sections?: PublicPageSection[]

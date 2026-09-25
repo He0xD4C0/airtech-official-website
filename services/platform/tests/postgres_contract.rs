@@ -22,6 +22,8 @@ use sha2::{Digest, Sha256};
 use tower::ServiceExt;
 use uuid::Uuid;
 
+#[path = "postgres_contract/public_product_query.rs"]
+mod public_product_query;
 mod support;
 
 fn contact_request(index: usize, run_id: Uuid, peer: SocketAddr) -> Request<Body> {
@@ -100,6 +102,7 @@ fn cms_principal() -> AdminPrincipal {
         session_token_hash: vec![1; 32],
         csrf_hash: vec![2; 32],
         totp_enabled: true,
+        development_password_only: false,
     }
 }
 
@@ -133,6 +136,9 @@ mod cms_private_workflow;
 #[cfg(feature = "devtools")]
 #[path = "postgres_contract/development_admin.rs"]
 mod development_admin;
+#[cfg(feature = "devtools")]
+#[path = "postgres_contract/development_public_site.rs"]
+mod development_public_site;
 #[path = "postgres_contract/feishu_asset_storage.rs"]
 mod feishu_asset_storage;
 #[path = "postgres_contract/feishu_reconciliation.rs"]

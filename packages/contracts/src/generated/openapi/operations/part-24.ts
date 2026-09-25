@@ -353,12 +353,13 @@ getPublishedNews: {
 listPublishedProducts: {
         parameters: {
             query?: {
-                /** @description Opaque base64url v2 keyset cursor bound to the active family and motorTechnology filters; v1 is accepted for one compatibility release. */
+                /** @description Opaque base64url v3 keyset cursor bound to normalized q, family, and motorTechnology; v2 is accepted only without q for one compatibility release. */
                 cursor?: string;
                 family?: components["schemas"]["ProductFamily"];
                 /** @description Page size; values outside 1 through 100 return Problem Details 400. */
                 limit?: number;
                 motorTechnology?: string;
+                q?: string;
             };
             header?: never;
             path?: never;

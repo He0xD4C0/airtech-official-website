@@ -10,7 +10,9 @@ try {
 const hostResolverRules = process.env.E2E_HOST_RESOLVER_RULES
 const mutableAdminStack = process.env.E2E_RUN_ADMIN_WORKFLOWS === 'true'
 const browserArgs = hostResolverRules
-  ? [`--host-resolver-rules=${hostResolverRules}`]
+  ? [
+      `--host-resolver-rules=${hostResolverRules}`,
+    ]
   : undefined
 
 export default defineConfig({
@@ -43,10 +45,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: {
-        ...devices['Desktop Chrome'],
-        ...(browserArgs ? { launchOptions: { args: browserArgs } } : {}),
-      },
+      use: { ...devices['Desktop Chrome'] },
     },
   ],
 })

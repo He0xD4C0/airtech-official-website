@@ -198,16 +198,25 @@ pub(super) fn page(item: &str) -> Value {
 
 pub(super) fn product_page() -> Value {
     object(
-        &["items", "nextCursor"],
+        &[
+            "items",
+            "nextCursor",
+            "total",
+            "familyCounts",
+            "motorTechnologyCounts",
+        ],
         json!({
             "items": array(r("Product")),
             "nextCursor": {
-                "description": "Opaque base64url v2 keyset cursor bound to the active filters; v1 is accepted for one compatibility release.",
+                "description": "Opaque base64url v3 keyset cursor bound to normalized query and filters; v2 is accepted only when q is absent for one compatibility release.",
                 "anyOf": [
                     {"type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^[A-Za-z0-9_-]+$"},
                     {"type": "null"}
                 ]
-            }
+            },
+            "total": {"type": "integer", "minimum": 0},
+            "familyCounts": array(r("ProductFacetCount")),
+            "motorTechnologyCounts": array(r("ProductFacetCount"))
         }),
     )
 }

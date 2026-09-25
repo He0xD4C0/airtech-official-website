@@ -5,11 +5,11 @@ const gatewayPort = process.env.AIRTEK_GATEWAY_HOST_PORT ?? '8088'
 export const runAdminWorkflows = process.env.E2E_RUN_ADMIN_WORKFLOWS === 'true'
 export const isolatedStack = process.env.E2E_ISOLATED_STACK === 'true'
 export const publicOrigin = process.env.E2E_PUBLIC_ORIGIN
-  ?? `http://www.airtek.test:${gatewayPort}`
+  ?? `http://www.airtek.localhost:${gatewayPort}`
 export const adminOrigin = process.env.E2E_ADMIN_ORIGIN
-  ?? `http://admin.airtek.test:${gatewayPort}`
+  ?? `http://admin.airtek.localhost:${gatewayPort}`
 export const apiOrigin = process.env.E2E_API_ORIGIN
-  ?? `http://api.airtek.test:${gatewayPort}`
+  ?? `http://api.airtek.localhost:${gatewayPort}`
 export const apiControlOrigin = process.env.E2E_API_CONTROL_ORIGIN ?? apiOrigin
 export const gatewayControlOrigin = process.env.E2E_GATEWAY_CONTROL_ORIGIN ?? publicOrigin
 export const mediaPublicBaseUrl = process.env.E2E_MEDIA_PUBLIC_BASE_URL
@@ -57,6 +57,6 @@ export function browserCookiesForLocalGateway<T extends { domain: string; secure
   return cookies.map((cookie) => ({
     ...cookie,
     domain: apiHostname,
-    secure: apiOrigin.startsWith('https://') ? cookie.secure : false,
+    secure: cookie.secure,
   }))
 }

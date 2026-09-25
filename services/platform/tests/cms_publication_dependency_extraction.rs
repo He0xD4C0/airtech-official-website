@@ -189,3 +189,33 @@ fn nested_navigation_links_use_array_index_json_pointers() {
         "/typeFields/columns/0/links/0/children/0/target/contentId"
     );
 }
+
+#[test]
+fn general_information_site_icon_is_an_exact_media_dependency() {
+    let asset_id = id(123);
+    let mut document = empty_document();
+    document["typeFields"] = json!({
+        "type": "generalInformation",
+        "siteIcon": {"assetId": asset_id},
+        "navigationCta": null,
+        "defaultSeo": {"socialImage": null}
+    });
+
+    let extracted = extract_document(&document);
+    assert!(extracted.blocking_issues.is_empty());
+    assert_eq!(extracted.references.len(), 1);
+    assert_eq!(
+        extracted.references[0].reference_path,
+        "/typeFields/siteIcon/assetId"
+    );
+    assert_eq!(
+        extracted.references[0].kind,
+        PublicationDependencyKind::MediaInline
+    );
+    assert_eq!(extracted.lock_targets.len(), 1);
+    assert_eq!(
+        extracted.lock_targets[0].kind,
+        PublicationLockTargetKind::Media
+    );
+    assert_eq!(extracted.lock_targets[0].id, asset_id);
+}

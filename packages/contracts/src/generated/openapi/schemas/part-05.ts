@@ -6,6 +6,46 @@
 import type { components } from '../components'
 
 export interface SchemasPart05 {
+TiptapCodeBlockAttrs: {
+            language?: string;
+        };
+TiptapCodeBlockNode: {
+            attrs?: components["schemas"]["TiptapCodeBlockAttrs"];
+            content?: components["schemas"]["TiptapNode"][];
+            marks?: components["schemas"]["TiptapMark"][];
+            /** @enum {string} */
+            type: "codeBlock";
+        };
+TiptapDocument: {
+            content: components["schemas"]["TiptapNode"][];
+            /** @constant */
+            type: "doc";
+        };
+TiptapFormulaAttrs: {
+            latex: string;
+        };
+TiptapFormulaNode: {
+            attrs: components["schemas"]["TiptapFormulaAttrs"];
+            content?: components["schemas"]["TiptapNode"][];
+            marks?: components["schemas"]["TiptapMark"][];
+            /** @enum {string} */
+            type: "formula";
+        };
+TiptapHeadingAttrs: {
+            level: number;
+        };
+TiptapHeadingNode: {
+            attrs: components["schemas"]["TiptapHeadingAttrs"];
+            content?: components["schemas"]["TiptapNode"][];
+            marks?: components["schemas"]["TiptapMark"][];
+            /** @enum {string} */
+            type: "heading";
+        };
+TiptapLinkAttrs: {
+            href: string;
+            rel?: string | null;
+            target?: ("_self" | "_blank") | null;
+        };
 TiptapLinkMark: {
             attrs: components["schemas"]["TiptapLinkAttrs"];
             /** @constant */

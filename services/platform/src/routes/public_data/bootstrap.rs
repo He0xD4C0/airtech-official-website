@@ -5,26 +5,28 @@ pub(super) async fn site_bootstrap(
     Query(query): Query<LocaleQuery>,
 ) -> Result<Json<SiteBootstrap>, ApiError> {
     validate_locale(&query.locale)?;
-    published_site_shell_has_placeholder(&state, &query.locale).await?;
     let general_information =
-        load_v2_singleton(&state, CmsContentKind::GeneralInformation, &query.locale).await?;
-    let navigation = load_v2_singleton(&state, CmsContentKind::Navigation, &query.locale).await?;
-    let footer = load_v2_singleton(&state, CmsContentKind::Footer, &query.locale).await?;
-    let categories = general_information
-        .as_ref()
-        .and_then(|projection| match &projection.type_fields {
-            ContentTypeFields::GeneralInformation(fields) => {
-                Some(fields.product_categories.as_slice())
-            }
-            _ => None,
-        })
-        .unwrap_or_default();
+        load_v2_singleton(&state, CmsContentKind::GeneralInformation, &query.locale)
+            .await?
+            .ok_or_else(incomplete_site_shell)?;
+    let navigation = load_v2_singleton(&state, CmsContentKind::Navigation, &query.locale)
+        .await?
+        .ok_or_else(incomplete_site_shell)?;
+    let footer = load_v2_singleton(&state, CmsContentKind::Footer, &query.locale)
+        .await?
+        .ok_or_else(incomplete_site_shell)?;
+    validate_site_shell(&general_information, &navigation, &footer, &query.locale)?;
+    let categories = match &general_information.type_fields {
+        ContentTypeFields::GeneralInformation(fields) => Some(fields.product_categories.as_slice()),
+        _ => None,
+    }
+    .unwrap_or_default();
     let product_families = product_family_presentations(categories);
     let motor_technologies = published_motor_technologies(&state, &query.locale).await?;
     Ok(Json(SiteBootstrap {
-        general_information,
-        navigation,
-        footer,
+        general_information: Some(general_information),
+        navigation: Some(navigation),
+        footer: Some(footer),
         product_families,
         motor_technologies,
         generated_at: Utc::now(),
@@ -121,11 +123,12 @@ pub(super) fn valid_site_home_path(path: &str, locale: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use axum::http::StatusCode;
-    use serde_json::json;
+    use serde_json::{json, Value};
+    use uuid::Uuid;
 
     use super::*;
 
-    fn projection(kind: &str, type_fields: serde_json::Value) -> PublicContentProjection {
+    fn projection(kind: &str, type_fields: Value) -> PublicContentProjection {
         serde_json::from_value(json!({
             "schemaVersion": 2,
             "id": Uuid::new_v4(),
@@ -149,14 +152,13 @@ mod tests {
         .unwrap()
     }
 
-    fn shell_information(organization_name: serde_json::Value) -> PublicContentProjection {
+    fn information(organization_name: Value) -> PublicContentProjection {
         projection(
             "generalInformation",
             json!({
                 "type": "generalInformation",
                 "organizationName": organization_name,
                 "brandLine": null,
-                "siteIcon": null,
                 "homePath": "/en",
                 "footerStatement": null,
                 "copyrightTemplate": null,
@@ -170,26 +172,21 @@ mod tests {
     }
 
     #[test]
-    fn complete_placeholder_shell_is_available_but_invalid_placeholder_shell_is_not() {
+    fn complete_placeholder_shell_is_available_but_invalid_shell_is_not() {
         let navigation = projection("navigation", json!({ "type": "navigation", "items": [] }));
         let footer = projection(
             "footer",
             json!({ "type": "footer", "columns": [], "legalLinks": [] }),
         );
         assert!(validate_site_shell(
-            &shell_information(json!("AIRTEKPOWER Development Preview")),
+            &information(json!("AIRTEKPOWER Development Preview")),
             &navigation,
             &footer,
             "en"
         )
         .unwrap());
-        let error = validate_site_shell(
-            &shell_information(serde_json::Value::Null),
-            &navigation,
-            &footer,
-            "en",
-        )
-        .unwrap_err();
+        let error =
+            validate_site_shell(&information(Value::Null), &navigation, &footer, "en").unwrap_err();
         assert_eq!(error.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 }

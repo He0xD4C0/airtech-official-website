@@ -74,6 +74,23 @@ export interface PathsPart04 {
         patch?: never;
         trace?: never;
     };
+"/api/public/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search canonical indexable published content and products */
+        get: operations["searchPublishedSite"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/public/v1/selector": {
         parameters: {
             query?: never;

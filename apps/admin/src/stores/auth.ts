@@ -10,7 +10,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => Boolean(user.value))
   const isDevelopment = computed(() => user.value?.environment === 'development')
-  const requiresTotpEnrollment = computed(() => Boolean(user.value && !user.value.totpEnabled))
+  const requiresTotpEnrollment = computed(() => Boolean(
+    user.value && !user.value.totpEnabled && user.value.permissions.length === 0,
+  ))
 
   function hasPermission(permission?: Permission): boolean {
     if (!permission) return true

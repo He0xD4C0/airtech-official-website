@@ -16,7 +16,7 @@ describe('public error page', () => {
     expect(html).not.toContain('Try again')
   })
 
-  it('offers reload without redirecting an unavailable site back into the failure', async () => {
+  it('offers reload without redirecting an unavailable site into the same failure', async () => {
     pageContext.abortStatusCode = 503
     const html = await renderToString(createSSRApp(ErrorPage))
     expect(html).toContain('temporarily unavailable')

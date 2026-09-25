@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Building2, CheckCircle2, Clock3, Inbox, LockKeyhole, Mail, Search, UserRound } from 'lucide-vue-next'
 import type { BusinessInboxDetail, BusinessInboxItem, BusinessInboxStatus, BusinessPii } from '@airtek/contracts'
+import RfqContextDetails from '@/components/RfqContextDetails.vue'
 import CursorPaginationControls from '@/components/CursorPaginationControls.vue'
 import DataStatePanel from '@/components/DataStatePanel.vue'
 import PageHeader from '@/components/PageHeader.vue'
@@ -60,7 +61,7 @@ const state = computed<'loading' | 'ready' | 'empty' | 'error' | 'forbidden'>(()
   if (inboxPager.error.value) return 'error'
   return items.value.length ? 'ready' : 'empty'
 })
-const canMutate = computed(() => auth.hasPermission('rfq.assign'))
+const canMutate = computed(() => auth.hasPermission('rfq.assign') && selected.value?.status !== 'piiCleared')
 const canReadPii = computed(() => auth.hasPermission('rfq.read_pii'))
 
 function kindLabel(item: BusinessInboxItem): string {
@@ -205,7 +206,9 @@ watch(() => props.kind, () => { selectedId.value = ''; detail.value = null; pii.
         <header><div><p class="eyebrow">{{ selected.reference }}</p><h2>{{ selected.organization || 'Organization not supplied' }}</h2><p>{{ kindLabel(selected) }} · revision {{ selected.revision }}</p></div><button v-if="canMutate" class="button button--primary" type="button" :disabled="mutationLoading" @click="assignToMe"><UserRound :size="16" />分配给我</button></header>
         <div class="inbox-detail__meta"><span><Clock3 :size="15" />{{ new Date(selected.submittedAt).toLocaleString('zh-CN') }}</span><span><Building2 :size="15" />{{ selected.countryOrRegion || '未提供地区' }}</span><span><StatusBadge :label="selected.status" tone="info" /></span></div>
         <section class="detail-section"><h3>结构化上下文</h3><dl><div><dt>来源页面</dt><dd><code>{{ selected.sourcePath }}</code></dd></div><div><dt>产品上下文</dt><dd>{{ selected.productContext ? `${selected.productContext.model || selected.productContext.stableId} · revision ${selected.productContext.publishedRevision}` : '未提供' }}</dd></div><div><dt>Consent</dt><dd><CheckCircle2 :size="14" />{{ selected.consent ? '已记录' : '未记录' }}</dd></div><div><dt>负责人</dt><dd>{{ selected.assignedTo || '未分配' }}</dd></div></dl></section>
-        <section class="detail-section"><h3>PII（按需读取）</h3><button v-if="canReadPii && !pii" class="button button--secondary" type="button" :disabled="piiLoading" @click="loadPii"><LockKeyhole :size="15" />{{ piiLoading ? '读取中…' : '读取并记录审计' }}</button><dl v-if="pii"><div><dt>姓名</dt><dd>{{ pii.name }}</dd></div><div><dt>邮箱</dt><dd>{{ pii.email }}</dd></div><div><dt>电话</dt><dd>{{ pii.phone || '未提供' }}</dd></div><div v-if="pii.message"><dt>消息</dt><dd>{{ pii.message }}</dd></div></dl><p v-else-if="!canReadPii">当前角色没有 <code>rfq.read_pii</code> 权限。</p></section>
+        <p v-if="selected.status === 'piiCleared'">联系信息和工程需求已按保留期清除，不能再次读取。</p>
+        <RfqContextDetails v-if="pii?.rfqContext" :snapshot="pii.rfqContext" />
+        <section v-if="selected.status !== 'piiCleared'" class="detail-section"><h3>联系信息与需求（受控读取）</h3><button v-if="canReadPii && !pii" class="button button--secondary" type="button" :disabled="piiLoading" @click="loadPii"><LockKeyhole :size="15" />{{ piiLoading ? '读取中…' : '读取并记录审计' }}</button><dl v-if="pii"><div><dt>姓名</dt><dd>{{ pii.name }}</dd></div><div><dt>邮箱</dt><dd>{{ pii.email }}</dd></div><div><dt>电话</dt><dd>{{ pii.phone || '未提供' }}</dd></div><div v-if="pii.message"><dt>消息</dt><dd>{{ pii.message }}</dd></div></dl><p v-else-if="!canReadPii">当前角色没有 <code>rfq.read_pii</code> 权限。</p></section>
         <section v-if="canMutate" class="detail-section"><h3>工作流</h3><label class="field"><span>变更原因</span><input v-model="reason" minlength="3" maxlength="2000" /></label><div class="inbox-actions"><select v-model="nextStatus"><option v-for="value in ['new','triaged','assigned','qualified','closed','spam']" :key="value" :value="value">{{ value }}</option></select><button class="button button--secondary" type="button" :disabled="mutationLoading || reason.trim().length < 3" @click="updateStatus()">更新状态</button><button class="button button--quiet" type="button" :disabled="mutationLoading || reason.trim().length < 3" @click="updateStatus('spam')">标记垃圾</button></div><label class="field"><span>不可变内部备注</span><textarea v-model="noteBody" rows="3" maxlength="4000" /></label><button class="button button--secondary" type="button" :disabled="mutationLoading || !noteBody.trim() || reason.trim().length < 3" @click="addNote">添加备注</button></section>
         <section v-if="detail?.notes.length" class="detail-section"><h3>内部备注</h3><ol><li v-for="entry in detail.notes" :key="entry.id"><strong>{{ new Date(entry.createdAt).toLocaleString('zh-CN') }}</strong><p>{{ entry.body }}</p></li></ol></section>
         <section v-if="detail?.statusHistory.length" class="detail-section"><h3>状态历史</h3><ol><li v-for="entry in detail.statusHistory" :key="entry.id">{{ entry.fromStatus || 'created' }} → {{ entry.toStatus }} · {{ entry.reason || '无原因' }}</li></ol></section>

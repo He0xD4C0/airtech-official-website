@@ -1,0 +1,21 @@
+# Use with compose.yaml and the existing local business environment.
+# This changes application builds only; it does not select another database or volume.
+services:
+  platform-api:
+    build:
+      args:
+        AIRTEK_PLATFORM_FEATURES: production
+    environment:
+      AIRTEK_DEV_ADMIN_PASSWORD_ONLY: !reset null
+  platform-worker:
+    build:
+      args:
+        AIRTEK_PLATFORM_FEATURES: production
+  platform-maintenance:
+    build:
+      args:
+        AIRTEK_PLATFORM_FEATURES: production
+    command: ["prepare-runtime"]
+    environment:
+      AIRTEK_DEV_ADMIN_SEED: !reset null
+      AIRTEK_DEV_PUBLIC_SEED: !reset null

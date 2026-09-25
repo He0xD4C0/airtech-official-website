@@ -1,3 +1,4 @@
+import { deflateSync } from 'node:zlib'
 import { expect, request, test } from '@playwright/test'
 import {
   absolute,
@@ -8,11 +9,51 @@ import {
   adminStorageStatePath,
   apiOrigin,
   browserCookiesForLocalGateway,
+  publicOrigin,
   restrictedUser,
   runAdminWorkflows,
 } from './support/environment'
 import { totp } from './support/totp'
 import { secureHostOnlyCookies } from './support/secure-cookie'
+
+const SMALL_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEklEQVR4nGP4z8DAAMH///8HACDtBftEyeG3AAAAAElFTkSuQmCC',
+  'base64',
+)
+
+function crc32(value: Buffer): number {
+  let checksum = 0xffff_ffff
+  for (const byte of value) {
+    checksum ^= byte
+    for (let bit = 0; bit < 8; bit += 1) {
+      checksum = (checksum >>> 1) ^ (checksum & 1 ? 0xedb8_8320 : 0)
+    }
+  }
+  return (checksum ^ 0xffff_ffff) >>> 0
+}
+
+function pngChunk(name: string, value: Buffer): Buffer {
+  const type = Buffer.from(name, 'ascii')
+  const length = Buffer.alloc(4)
+  length.writeUInt32BE(value.length)
+  const checksum = Buffer.alloc(4)
+  checksum.writeUInt32BE(crc32(Buffer.concat([type, value])))
+  return Buffer.concat([length, type, value, checksum])
+}
+
+function squarePng(size: number): Buffer {
+  const header = Buffer.alloc(13)
+  header.writeUInt32BE(size, 0)
+  header.writeUInt32BE(size, 4)
+  header.set([8, 6, 0, 0, 0], 8)
+  const rows = Buffer.alloc((size * 4 + 1) * size)
+  return Buffer.concat([
+    Buffer.from('89504e470d0a1a0a', 'hex'),
+    pngChunk('IHDR', header),
+    pngChunk('IDAT', deflateSync(rows)),
+    pngChunk('IEND', Buffer.alloc(0)),
+  ])
+}
 
 test.describe('Authenticated Admin workflows against Rust and PostgreSQL', () => {
   test.skip(!runAdminWorkflows, 'Run through pnpm test:e2e:stack so mutations use a disposable PostgreSQL volume.')
@@ -57,11 +98,56 @@ test.describe('Authenticated Admin workflows against Rust and PostgreSQL', () =>
 
     await expect(editorHeading).toBeVisible()
     await page.getByLabel('品牌标语').fill('AIRTEK E2E database-backed identity')
+    const identity = page.locator('section.site-fields__group').filter({
+      has: page.getByRole('heading', { name: '品牌标识', exact: true }),
+    })
+    const iconInput = identity.getByLabel('选择站点图标本地图片')
+    await iconInput.setInputFiles({
+      name: 'too-small-site-icon.png',
+      mimeType: 'image/png',
+      buffer: SMALL_PNG,
+    })
+    await expect(identity.getByRole('alert')).toContainText('512')
+
+    const iconBytes = squarePng(512)
+    await iconInput.setInputFiles({
+      name: 'e2e-site-icon.png',
+      mimeType: 'image/png',
+      buffer: iconBytes,
+    })
+    await expect(identity).toContainText('e2e-site-icon.png（待保存上传）')
+    await identity.getByRole('button', { name: '移除站点图标' }).click()
+    await expect(identity).toContainText('尚未配置自定义站点图标')
+    await iconInput.setInputFiles({
+      name: 'e2e-site-icon.png',
+      mimeType: 'image/png',
+      buffer: iconBytes,
+    })
     await expect(page.locator('.save-state')).toContainText('有未保存更改')
+    await page.getByRole('button', { name: '保存', exact: true }).click()
+    await expect(page.locator('.save-state')).toContainText('已保存')
+
+    await identity.getByRole('button', { name: '移除站点图标' }).click()
+    await page.getByRole('button', { name: '保存', exact: true }).click()
+    await expect(page.locator('.save-state')).toContainText('已保存')
+    await identity.getByRole('button', { name: '选择', exact: true }).click()
+    const mediaDialog = page.getByRole('dialog', { name: '选择站点图标' })
+    await expect(mediaDialog).toBeVisible()
+    await mediaDialog.getByRole('button').filter({ hasText: 'e2e-site-icon.png' }).click()
+    await expect(identity).toContainText('e2e-site-icon.png')
     await page.getByRole('button', { name: '保存', exact: true }).click()
     await expect(page.locator('.save-state')).toContainText('已保存')
     await page.getByRole('button', { name: '提交审核' }).click()
     await expect(page.getByText('已发布', { exact: true })).toBeVisible()
+
+    const siteIcon = await page.request.get(absolute(publicOrigin, '/site-icon'), { maxRedirects: 0 })
+    expect(siteIcon.status()).toBe(308)
+    expect(siteIcon.headers().location).toMatch(/\/media\//u)
+    const manifest = await page.request.get(absolute(publicOrigin, '/site.webmanifest'))
+    expect(manifest.headers()['content-type']).toContain('application/manifest+json')
+    expect(await manifest.json()).toMatchObject({
+      icons: [{ src: '/site-icon', type: 'image/png', sizes: '512x512' }],
+    })
   })
 
   test('imports a Product Master row and edits portal-owned product fields', async ({ page }) => {

@@ -10,7 +10,7 @@ async fn engagement_crossing_event_cutoffs_is_materialized_once() {
     let database_url = sandbox.connection_url().to_owned();
     let pool = PgPoolOptions::new()
         .max_connections(2)
-        .connect(&database_url)
+        .connect(crate::support::disposable_database_url(&database_url))
         .await
         .expect("PostgreSQL connection");
 

@@ -128,7 +128,7 @@
   {
     "schemaVersion": 2, "kind": "generalInformation", "locale": "en", "templateKey": "generalInformation", "title": "Development General Information", "slug": null,
     "summary": null, "isPlaceholder": true,
-    "typeFields": { "type": "generalInformation", "organizationName": "AIRTEKPOWER", "brandLine": "Redefining Airflow with Smart, Green Technology", "siteIcon": null, "homePath": "/en", "footerStatement": "Development fixture content. Replace all placeholders with reviewed publication data before launch.", "copyrightTemplate": "© {year} AIRTEKPOWER. Development fixture.",
+    "typeFields": { "type": "generalInformation", "organizationName": "AIRTEKPOWER", "brandLine": "Redefining Airflow with Smart, Green Technology", "homePath": "/en", "footerStatement": "Development fixture content. Replace all placeholders with reviewed publication data before launch.", "copyrightTemplate": "© {year} AIRTEKPOWER. Development fixture.",
       "contact": { "email": null, "phone": null, "addressLines": [], "locality": null, "region": null, "postalCode": null, "countryCode": null },
       "socialLinks": [], "defaultSeo": { "title": "AIRTEKPOWER | Development Preview", "description": "Database-backed development preview for the AIRTEKPOWER public website.", "indexable": false, "socialImage": null }, "productCategories": [],
       "navigationCta": { "label": "Request a Quote", "target": { "targetType": "route", "path": "/en/request-a-quote" } }

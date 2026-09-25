@@ -4,7 +4,8 @@ import { ImageIcon, LoaderCircle, RefreshCcw, Search, Trash2, Upload } from 'luc
 import type { AssetVersionReference, MediaAsset, MediaUseReference } from '@airtek/contracts'
 import { contentApi } from '@/services/contentApi'
 import { apiErrorMessage } from '@/services/cursorPagination'
-import { siteIconIssue as validateSiteIcon } from '@/services/siteIconValidation'
+import { getMediaAsset } from '@/services/mediaApi'
+import { readImageMetadata, siteIconAssetIssue, siteIconMetadataIssue } from '@/services/siteIconAsset'
 import { PENDING_MEDIA_PREFIX, useDeferredMediaUploads } from '@/stores/deferredMediaUploads'
 
 type MediaFieldValue = MediaUseReference | AssetVersionReference | null
@@ -12,14 +13,14 @@ type MediaFieldValue = MediaUseReference | AssetVersionReference | null
 const props = withDefaults(defineProps<{
   modelValue: MediaFieldValue
   mode?: 'media' | 'asset'
-  usage?: 'general' | 'siteIcon'
   label?: string
   disabled?: boolean
+  siteIcon?: boolean
 }>(), {
   mode: 'media',
-  usage: 'general',
   label: '媒体资产',
   disabled: false,
+  siteIcon: false,
 })
 
 const emit = defineEmits<{ 'update:modelValue': [value: MediaFieldValue] }>()
@@ -35,6 +36,8 @@ const listState = ref<'idle' | 'loading' | 'ready' | 'empty' | 'error'>('idle')
 const listError = ref('')
 const searchInput = ref<HTMLInputElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+const selectedAsset = ref<MediaAsset | null>(null)
+const constraintError = ref('')
 let previousFocus: HTMLElement | null = null
 let debounce: ReturnType<typeof setTimeout> | undefined
 
@@ -53,12 +56,19 @@ const selectionLabel = computed(() => {
   if (!selected.value) return '未选择资产'
   const pending = deferredMedia?.entries[selected.value.assetId]
   if (pending) return `${pending.file.name}（待保存上传）`
-  const name = options.value.find((entry) => entry.id === selected.value?.assetId)?.originalName
+  const name = selectedAsset.value?.originalName
+    ?? options.value.find((entry) => entry.id === selected.value?.assetId)?.originalName
   return name ?? `资产 ${selected.value.assetId.slice(0, 8)}`
 })
 const previewSrc = computed(() => selected.value
   ? deferredMedia?.objectUrls[selected.value.assetId]
+    ?? selectedAsset.value?.previewUrl
+    ?? selectedAsset.value?.publicUrl
   : undefined)
+
+function optionIssue(option: MediaAsset): string | null {
+  return props.siteIcon ? siteIconAssetIssue(option) : null
+}
 
 function mediaValue(assetId: string): MediaUseReference {
   return {
@@ -69,15 +79,18 @@ function mediaValue(assetId: string): MediaUseReference {
 }
 
 function selectAsset(option: MediaAsset): void {
+  const issue = optionIssue(option)
+  if (issue) {
+    constraintError.value = issue
+    return
+  }
   discardSelectedPending()
+  selectedAsset.value = option
+  constraintError.value = ''
   emit('update:modelValue', props.mode === 'asset'
     ? { assetId: option.id }
     : mediaValue(option.id))
   closeDialog()
-}
-
-function siteIconIssue(option: MediaAsset): string | undefined {
-  return props.usage === 'siteIcon' ? validateSiteIcon(option) : undefined
 }
 
 function updateAltText(value: string): void {
@@ -100,6 +113,8 @@ function updateDecorative(value: boolean): void {
 
 function clearSelection(): void {
   discardSelectedPending()
+  selectedAsset.value = null
+  constraintError.value = ''
   emit('update:modelValue', null)
 }
 
@@ -112,12 +127,26 @@ function chooseLocalFile(): void {
   if (!props.disabled) fileInput.value?.click()
 }
 
-function selectLocalFile(event: Event): void {
+async function selectLocalFile(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   input.value = ''
   if (!file || !deferredMedia) return
+  if (props.siteIcon) {
+    try {
+      const issue = siteIconMetadataIssue(await readImageMetadata(file))
+      if (issue) {
+        constraintError.value = issue
+        return
+      }
+    } catch (error) {
+      constraintError.value = error instanceof Error ? error.message : '无法验证站点图标。'
+      return
+    }
+  }
   discardSelectedPending()
+  selectedAsset.value = null
+  constraintError.value = ''
   const assetId = deferredMedia.register(file)
   emit('update:modelValue', props.mode === 'asset'
     ? { assetId }
@@ -175,6 +204,20 @@ function onDialogKeydown(event: KeyboardEvent): void {
 }
 
 watch(query, scheduleSearch)
+watch(() => selected.value?.assetId, async (assetId) => {
+  selectedAsset.value = null
+  constraintError.value = ''
+  if (!assetId || assetId.startsWith(PENDING_MEDIA_PREFIX)) return
+  try {
+    const asset = await getMediaAsset(assetId)
+    if (selected.value?.assetId !== assetId) return
+    selectedAsset.value = asset
+    constraintError.value = optionIssue(asset) ?? ''
+  } catch (error) {
+    if (selected.value?.assetId !== assetId) return
+    constraintError.value = apiErrorMessage(error, '无法验证已选择的媒体资产。')
+  }
+}, { immediate: true })
 onBeforeUnmount(() => {
   if (debounce !== undefined) clearTimeout(debounce)
 })
@@ -220,6 +263,7 @@ defineExpose({ loadOptions })
         </button>
       </div>
     </div>
+    <p v-if="constraintError" class="media-field__error" role="alert">{{ constraintError }}</p>
 
     <label v-if="selected && mode === 'media'" class="field media-field__alt">
       <span>替代文本<small v-if="selected.decorative">装饰性媒体已禁用替代文本</small></span>
@@ -251,11 +295,7 @@ defineExpose({ loadOptions })
           aria-describedby="media-asset-hint"
         >
           <h2 id="media-asset-title">选择{{ label }}</h2>
-          <p id="media-asset-hint" class="dialog-note">
-            {{ usage === 'siteIcon'
-              ? '站点图标必须为至少 512 × 512 的正方形图片；发布还要求资产已审核为 clean 且允许公开访问。'
-              : '所有上传成功的图片都可立即选择；发布时仍会检查媒体状态与公开权限。' }}
-          </p>
+          <p id="media-asset-hint" class="dialog-note">所有上传成功的图片都可立即选择；内容发布状态只控制网站是否展示。</p>
           <label class="search-field media-dialog__search">
             <Search :size="16" />
             <span class="sr-only">搜索媒体资产</span>
@@ -275,14 +315,15 @@ defineExpose({ loadOptions })
                 <button
                   class="media-dialog__option"
                   type="button"
-                  :disabled="Boolean(siteIconIssue(option))"
+                  :disabled="Boolean(optionIssue(option))"
+                  :title="optionIssue(option) ?? undefined"
                   @click="selectAsset(option)"
                 >
                   <span>
                     <strong>{{ option.originalName }}</strong>
-                    <small>{{ option.mediaType }} · {{ option.originalWidth ?? '?' }} × {{ option.originalHeight ?? '?' }} · {{ Math.max(1, Math.round(option.byteSize / 1024)) }} KB</small>
+                    <small>{{ option.mediaType }} · {{ Math.max(1, Math.round(option.byteSize / 1024)) }} KB</small>
                   </span>
-                  <em>{{ siteIconIssue(option) ?? '可选择' }}</em>
+                  <em>{{ optionIssue(option) ?? '可公开使用' }}</em>
                 </button>
               </li>
             </ul>
@@ -321,6 +362,7 @@ defineExpose({ loadOptions })
 .media-field__summary small { color: var(--text-secondary); font-size: 0.75rem; }
 .media-field__actions { display: flex; align-items: center; gap: 0.25rem; }
 .media-field__alt { margin-top: 0; }
+.media-field__error { margin: 0; color: #b42318; font-size: 0.75rem; font-weight: 700; }
 .media-dialog { width: min(38rem, 92vw); }
 .media-dialog__search { margin: 0.6rem 0; }
 .media-dialog__body { max-height: 18rem; overflow-y: auto; }

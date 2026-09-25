@@ -48,7 +48,6 @@ for (const path of [
   'compose.production.yaml',
   'infra/deploy/production.env.example',
   'infra/docker/flyway-entrypoint.sh',
-  'scripts/run-e2e-stack.mjs',
 ]) {
   requireText(
     path,
@@ -56,6 +55,16 @@ for (const path of [
     `${path} must target the latest Flyway migration V${latestMigration}.`,
   )
 }
+requireText(
+  'scripts/run-e2e-stack.mjs',
+  /readdirSync\('services\/platform\/migrations'\)/u,
+  'scripts/run-e2e-stack.mjs must derive the Flyway target from the migration directory.',
+)
+requireText(
+  'scripts/run-e2e-stack.mjs',
+  /AIRTEK_FLYWAY_TARGET:\s*String\(latestMigrationVersion\)/u,
+  'scripts/run-e2e-stack.mjs must use its derived latest Flyway target.',
+)
 
 const rustFiles = [
   ...filesUnder('services/platform/src'),

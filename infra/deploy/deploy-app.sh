@@ -111,11 +111,8 @@ curl --fail --silent --show-error "http://127.0.0.1:$ingress_port/healthz" >/dev
 curl --fail --silent --show-error -H "Host: $API_HOST" "http://127.0.0.1:$ingress_port/readyz" >/dev/null
 curl --fail --silent --show-error -H "Host: $PUBLIC_HOST" "http://127.0.0.1:$ingress_port/en" >/dev/null
 curl --fail --silent --show-error -H "Host: $ADMIN_HOST" "http://127.0.0.1:$ingress_port/robots.txt" >/dev/null
-compose_release "$release_dir" exec -T public-web node scripts/check-public-readiness.mjs \
-  --public-base http://127.0.0.1:3000 \
-  --api-base http://platform-api:8080 \
-  --expected-public-origin "$AIRTEK_PUBLIC_ORIGIN" \
-  --expected-api-origin "$AIRTEK_API_ORIGIN"
+compose_release "$release_dir" run --rm --no-deps public-readiness
+compose_release "$release_dir" run --rm --no-deps -e AIRTEK_READINESS_EXTERNAL=true public-readiness
 
 ln -sfn "$release_dir" "$deploy_root/current"
 deployment_started=0

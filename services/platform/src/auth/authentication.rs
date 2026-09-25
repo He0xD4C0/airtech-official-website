@@ -53,6 +53,9 @@ pub async fn authenticate(
         totp_enabled: row
             .try_get::<Option<DateTime<Utc>>, _>("totp_confirmed_at")?
             .is_some(),
+        development_password_only: state
+            .config
+            .development_password_only_for(&row.try_get::<String, _>("email")?),
     })
 }
 
@@ -84,13 +87,16 @@ pub async fn preview_session_is_authorized(
                      AND session.expires_at > now()
                      AND session.last_seen_at + ($3::bigint * interval '1 minute') > now()
                      AND user_account.status='active'
-                     AND user_account.totp_confirmed_at IS NOT NULL
+                     AND (user_account.totp_confirmed_at IS NOT NULL
+                          OR ($4 AND lower(user_account.email)=lower($5)))
                      AND role_permission.permission_key='content.read'
                )"#,
     )
     .bind(session_id)
     .bind(user_id)
     .bind(SESSION_IDLE_MINUTES)
+    .bind(state.config.development_admin_password_only)
+    .bind(crate::config::DEVELOPMENT_ADMIN_EMAIL)
     .fetch_one(&state.pool)
     .await?)
 }
