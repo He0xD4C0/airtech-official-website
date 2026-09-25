@@ -1,0 +1,7 @@
+services:
+  public-web:
+    # A fresh production-feature database is populated through the real Admin
+    # API by Playwright global setup. This temporary probe breaks that bootstrap
+    # dependency; the suite then requires /en and every public journey to render.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/robots.txt').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"]

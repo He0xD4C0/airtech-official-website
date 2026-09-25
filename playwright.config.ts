@@ -8,18 +8,9 @@ try {
 }
 
 const hostResolverRules = process.env.E2E_HOST_RESOLVER_RULES
-const adminOrigin = process.env.E2E_ADMIN_ORIGIN
 const mutableAdminStack = process.env.E2E_RUN_ADMIN_WORKFLOWS === 'true'
 const browserArgs = hostResolverRules
-  ? [
-      `--host-resolver-rules=${hostResolverRules}`,
-      // The disposable gateway is HTTP, while the real Admin deployment is
-      // HTTPS. Grant only that exact E2E origin a secure context so browser
-      // APIs such as crypto.randomUUID remain production-equivalent.
-      ...(adminOrigin?.startsWith('http://')
-        ? [`--unsafely-treat-insecure-origin-as-secure=${adminOrigin}`]
-        : []),
-    ]
+  ? [`--host-resolver-rules=${hostResolverRules}`]
   : undefined
 
 export default defineConfig({
@@ -52,7 +43,10 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        ...(browserArgs ? { launchOptions: { args: browserArgs } } : {}),
+      },
     },
   ],
 })

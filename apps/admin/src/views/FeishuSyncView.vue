@@ -272,17 +272,16 @@ onMounted(refreshPage)
 .settings-fieldset { margin: 0; padding: 0; border: 0; min-inline-size: 0; }
 .settings-panel > header,.run-header,.run-detail > header,.source-settings > header,.source-card > header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .settings-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1rem; }
-.credential-status { display: flex; align-items: center; gap: .6rem; grid-column: 1 / -1; padding: .75rem; border: 1px solid var(--color-border); border-radius: .65rem; }
+.credential-status { display: flex; align-items: center; gap: .6rem; grid-column: 1 / -1; padding: .75rem; border: 1px solid var(--border-default); border-radius: .65rem; }
 .credential-status span { display: grid; gap: .15rem; }
-.credential-status small,.source-settings small,.muted { color: var(--color-text-muted); }
+.credential-status small,.source-settings small,.muted { color: var(--text-secondary); }
 .source-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .75rem; }
-.source-card { display: grid; gap: .65rem; padding: .9rem; border: 1px solid var(--color-border); border-radius: .65rem; }
+.source-card { display: grid; gap: .65rem; padding: .9rem; border: 1px solid var(--border-default); border-radius: .65rem; }
 .field--check { display: flex; flex-direction: row; align-items: center; gap: .6rem; }
 .field--check input { width: auto; }
 .button-row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
-.run-detail { border-top: 1px solid var(--color-border); padding-top: 1rem; display: grid; gap: .8rem; }
+.run-detail { border-top: 1px solid var(--border-default); padding-top: 1rem; display: grid; gap: .8rem; }
 .run-detail h3 { font-family: monospace; font-size: .9rem; }
-.error-code { display: inline-flex; align-items: center; gap: .3rem; color: var(--color-danger); }
-@media (max-width: 760px) { .settings-grid,.source-grid { grid-template-columns: 1fr; } .settings-panel > header,.run-header,.run-detail > header,.source-settings > header { align-items: flex-start; flex-direction: column; } }
+.error-code { display: inline-flex; align-items: center; gap: .3rem; color: var(--airtek-danger); }
 }
 </style>

@@ -6,11 +6,14 @@ const gatewayPort = process.env.AIRTEK_E2E_GATEWAY_PORT ?? '8088'
 const publicPort = process.env.AIRTEK_E2E_PUBLIC_PORT ?? '3300'
 const adminPort = process.env.AIRTEK_E2E_ADMIN_PORT ?? '3310'
 const apiPort = process.env.AIRTEK_E2E_API_PORT ?? '8800'
+const minioPort = process.env.AIRTEK_E2E_MINIO_PORT ?? '19000'
+const minioConsolePort = process.env.AIRTEK_E2E_MINIO_CONSOLE_PORT ?? '19001'
 const publicOrigin = `http://localhost:${publicPort}`
 const adminOrigin = `http://localhost:${adminPort}`
 const apiOrigin = `http://localhost:${apiPort}`
 const apiControlOrigin = apiOrigin
 const gatewayControlOrigin = `http://localhost:${gatewayPort}`
+const mediaOrigin = `http://media.localhost:${minioPort}`
 const e2eProductMasterCsv = [
   'stable_id,model,family,title,样品报价（sample）',
   'E2E-PRODUCT-001,E2E-MODEL-001,Axial,E2E imported product,100.00',
@@ -27,22 +30,22 @@ const composeBuildArgument = process.env.E2E_SKIP_BUILD === 'true' ? '--no-build
 const environment = {
   ...process.env,
   COMPOSE_PROJECT_NAME: project,
+  COMPOSE_FILE: process.env.E2E_COMPOSE_FILE ?? 'compose.yaml:compose.e2e.yaml',
   COMPOSE_PROFILES: 'minio',
   AIRTEK_PUBLIC_HOST_PORT: publicPort,
   AIRTEK_ADMIN_HOST_PORT: adminPort,
   AIRTEK_API_HOST_PORT: apiPort,
   AIRTEK_GATEWAY_HOST_PORT: gatewayPort,
-  AIRTEK_PUBLIC_ORIGIN: publicOrigin,
-  AIRTEK_ADMIN_ORIGIN: adminOrigin,
-  VITE_PUBLIC_ORIGIN: publicOrigin,
-  PUBLIC_ORIGIN: publicOrigin,
-  VITE_PUBLIC_API_BASE_URL: `${apiOrigin}/api/public/v1`,
-  PUBLIC_API_BROWSER_ORIGIN: apiOrigin,
-  VITE_ADMIN_API_BASE_URL: `${apiOrigin}/api/admin/v1`,
-  API_BROWSER_ORIGIN: apiOrigin,
-  PUBLIC_HOST: 'www.airtek.test',
-  ADMIN_HOST: 'admin.airtek.test',
-  API_HOST: 'api.airtek.test',
+  AIRTEK_OBJECT_STORE_HOST_PORT: minioPort,
+  AIRTEK_OBJECT_STORE_CONSOLE_HOST_PORT: minioConsolePort,
+  AIRTEK_COMPOSE_PUBLIC_ORIGIN: publicOrigin,
+  AIRTEK_COMPOSE_ADMIN_ORIGIN: adminOrigin,
+  AIRTEK_COMPOSE_API_ORIGIN: apiOrigin,
+  AIRTEK_COMPOSE_MEDIA_ORIGIN: mediaOrigin,
+  AIRTEK_PUBLIC_ASSET_HOSTNAME: 'media.localhost',
+  PUBLIC_HOST: 'www.localhost',
+  ADMIN_HOST: 'admin.localhost',
+  API_HOST: 'api.localhost',
   AIRTEK_COMPOSE_SUBNET: process.env.AIRTEK_E2E_COMPOSE_SUBNET ?? '172.29.0.0/24',
   AIRTEK_GATEWAY_INTERNAL_IP: process.env.AIRTEK_E2E_GATEWAY_INTERNAL_IP ?? '172.29.0.10',
   AIRTEK_TRUSTED_PROXY_CIDRS: process.env.AIRTEK_E2E_TRUSTED_PROXY_CIDRS ?? '172.29.0.10/32',
@@ -52,6 +55,12 @@ const environment = {
   AIRTEK_FLYWAY_TARGET: '27',
   AIRTEK_ADMIN_BOOTSTRAP_TOKEN: process.env.E2E_ADMIN_BOOTSTRAP_TOKEN
     ?? 'airtek-e2e-bootstrap-token-change-me',
+  AIRTEK_TOTP_ENCRYPTION_KEY: process.env.AIRTEK_TOTP_ENCRYPTION_KEY
+    ?? Buffer.alloc(32, 0x54).toString('base64'),
+  AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: process.env.AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY
+    ?? Buffer.alloc(32, 0x50).toString('base64'),
+  AIRTEK_ANALYTICS_TOKEN_HMAC_KEY: process.env.AIRTEK_ANALYTICS_TOKEN_HMAC_KEY
+    ?? Buffer.alloc(32, 0x41).toString('base64'),
   AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY: process.env.AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY
     ?? Buffer.alloc(32, 0x45).toString('base64'),
   AIRTEK_PRODUCT_IMPORT_MAPPING_VERSION: e2eProductMasterMapping,
@@ -74,8 +83,9 @@ const environment = {
   E2E_API_ORIGIN: apiOrigin,
   E2E_API_CONTROL_ORIGIN: apiControlOrigin,
   E2E_GATEWAY_CONTROL_ORIGIN: gatewayControlOrigin,
-  E2E_PUBLIC_GATEWAY_HOST: environmentHost('PUBLIC_HOST', 'www.airtek.test'),
-  E2E_ADMIN_GATEWAY_HOST: environmentHost('ADMIN_HOST', 'admin.airtek.test'),
+  E2E_MEDIA_PUBLIC_BASE_URL: `${mediaOrigin}/airtek-media`,
+  E2E_PUBLIC_GATEWAY_HOST: environmentHost('PUBLIC_HOST', 'www.localhost'),
+  E2E_ADMIN_GATEWAY_HOST: environmentHost('ADMIN_HOST', 'admin.localhost'),
   E2E_RUN_ADMIN_WORKFLOWS: 'true',
   E2E_ISOLATED_STACK: 'true',
 }
@@ -151,7 +161,16 @@ try {
     process.exitCode = readyStatus
   }
   else {
-    testStatus = run('pnpm', ['exec', 'playwright', 'test', ...playwrightArgs])
+    const playwrightStatus = run('pnpm', ['exec', 'playwright', 'test', ...playwrightArgs])
+    const readinessStatus = run('node', [
+      'scripts/check-public-readiness.mjs',
+      '--public-base', publicOrigin,
+      '--api-base', apiOrigin,
+      '--expected-public-origin', publicOrigin,
+      '--expected-api-origin', apiOrigin,
+      '--allow-placeholders',
+    ])
+    testStatus = playwrightStatus || readinessStatus
     if (testStatus !== 0) run('docker', ['compose', 'logs', '--no-color'])
     process.exitCode = testStatus
   }

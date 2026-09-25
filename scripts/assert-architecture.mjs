@@ -41,7 +41,15 @@ const latestMigration = Number(migrations.at(-1)?.match(/\/V(\d{4})__/u)?.[1] ??
 if (!latestMigration) failures.push('Unable to derive the latest Flyway migration version.')
 
 requireText('services/platform/Cargo.toml', /^rust-version = "1\.88"$/mu, 'Rust MSRV must be 1.88.')
-for (const path of ['compose.yaml', 'compose.production.yaml', 'infra/deploy/production.env.example']) {
+for (const path of [
+  '.env.example',
+  '.github/workflows/ci.yml',
+  'compose.yaml',
+  'compose.production.yaml',
+  'infra/deploy/production.env.example',
+  'infra/docker/flyway-entrypoint.sh',
+  'scripts/run-e2e-stack.mjs',
+]) {
   requireText(
     path,
     new RegExp(`AIRTEK_FLYWAY_TARGET[^\\n]*${latestMigration}`, 'u'),

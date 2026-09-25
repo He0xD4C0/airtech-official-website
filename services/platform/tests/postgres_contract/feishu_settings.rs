@@ -1,5 +1,6 @@
 use airtek_platform::{
     models::{FeishuSettings, FeishuSyncTrigger, UpdateFeishuSettings},
+    services::admin_sync::connection_status,
     services::feishu::{
         get_feishu_settings, queue_full_sync, try_queue_full_sync, update_feishu_settings,
     },
@@ -20,6 +21,25 @@ fn update(settings: &FeishuSettings, app_id: &str, app_secret: &str) -> UpdateFe
         daily_enabled: false,
         daily_local_time: "02:00".into(),
     }
+}
+
+#[tokio::test]
+#[ignore = "requires AIRTEK_TEST_DATABASE_URL pointing to disposable PostgreSQL"]
+async fn untested_connection_status_is_unavailable_instead_of_null() {
+    let database_url = std::env::var("AIRTEK_TEST_DATABASE_URL").unwrap();
+    let sandbox = support::DatabaseClone::create(&database_url).await;
+    sandbox.apply_current().await;
+    let state = postgres_state(sandbox.connection_url());
+
+    let status = connection_status(&state).await.unwrap();
+
+    assert!(!status.configured);
+    assert!(!status.runnable);
+    assert_eq!(
+        status.unavailable_reason.as_deref(),
+        Some("Configure Feishu application credentials in Admin.")
+    );
+    sandbox.cleanup().await;
 }
 
 #[tokio::test]

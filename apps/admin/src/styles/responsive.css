@@ -52,6 +52,8 @@
   .performance-summary > div:last-child { grid-column: 1 / -1; }
   .activity-list { grid-template-columns: 1fr; }
   .family-grid, .sync-status-grid, .role-grid, .operations-grid { grid-template-columns: 1fr; }
+  .settings-grid, .source-grid { grid-template-columns: 1fr; }
+  .settings-panel > header, .run-header, .run-detail > header, .source-settings > header { align-items: flex-start; flex-direction: column; }
   .product-classification-list, .pq-record__conditions { grid-template-columns: 1fr 1fr; }
   .source-authority-banner { align-items: flex-start; flex-wrap: wrap; }
   .source-authority-banner a { width: auto; max-width: calc(100% - 3rem); margin-left: 3rem; }

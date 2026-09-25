@@ -108,8 +108,10 @@ pub async fn connection_status(state: &AppState) -> Result<FeishuConnectionStatu
                   EXISTS(SELECT 1 FROM object_storage_settings WHERE singleton=true) AS storage_ready,
                   settings.app_id IS NOT NULL AND settings.app_secret IS NOT NULL
                     AS credentials_ready,
-                  settings.connection_revision=settings.tested_connection_revision
-                    AS connection_test_ready,
+                  COALESCE(
+                    settings.connection_revision=settings.tested_connection_revision,
+                    false
+                  ) AS connection_test_ready,
                   EXISTS(SELECT 1 FROM jsonb_array_elements(settings.sources) source
                          WHERE COALESCE((source->>'enabled')::boolean,true)) AS source_ready,
                   EXISTS(SELECT 1 FROM sync_mappings mapping
