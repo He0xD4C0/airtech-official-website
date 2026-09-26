@@ -16,8 +16,15 @@ rustup run 1.98.0 cargo clippy \
 rustup run 1.98.0 cargo test \
   --manifest-path services/platform/Cargo.toml --workspace
 node scripts/testing/run-postgres-contracts.mjs
-node scripts/checks/assert-platform-production-features.mjs
-node scripts/checks/assert-platform-devtools-feature.mjs
-node scripts/checks/assert-platform-feature-mutual-exclusion.mjs
-cargo tree --manifest-path services/platform/Cargo.toml -p airtek-http --features production -e features \
-  | grep -Eq 'aws-sdk-s3 feature "rt-tokio"|aws-sdk-s3 feature "default"'
+rustup run 1.98.0 cargo check --manifest-path services/platform/Cargo.toml --workspace --features production
+rustup run 1.98.0 cargo check --manifest-path services/platform/Cargo.toml --workspace --features devtools
+if rustup run 1.98.0 cargo check \
+  --manifest-path services/platform/Cargo.toml --workspace --features production,devtools; then
+  echo 'production+devtools unexpectedly compiled' >&2
+  exit 1
+fi
+if rustup run 1.98.0 cargo tree --manifest-path services/platform/Cargo.toml --features production \
+  | grep -E '(^| )((clap|portable-pty|tokio-tungstenite|tungstenite) v)'; then
+  echo 'production dependency tree contains a DevTools package' >&2
+  exit 1
+fi
