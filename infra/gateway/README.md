@@ -22,12 +22,15 @@ For the checked-in local defaults, start the complete stack with:
 docker compose --project-directory . up --build
 ```
 
-Then use `http://www.localhost:8088`,
-`http://admin.localhost:8088`, and `http://api.localhost:8088`. A Host-header
+Then use `http://www.airtek.localhost:8088`,
+`http://admin.airtek.localhost:8088`, and
+`http://api.airtek.localhost:8088`. The legacy
+`http://www.localhost:8088` host permanently redirects to the canonical Public
+origin; there are no corresponding legacy Admin or API hosts. A Host-header
 probe that does not depend on local wildcard resolution is also possible:
 
 ```sh
-curl -H 'Host: admin.localhost' http://127.0.0.1:8088/robots.txt
+curl -H 'Host: admin.airtek.localhost' http://127.0.0.1:8088/robots.txt
 ```
 
 Unknown Hosts are rejected by the default server. The public Host rejects

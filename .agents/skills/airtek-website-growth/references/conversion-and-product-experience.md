@@ -1,8 +1,13 @@
 # Conversion and product experience
 
-Last reviewed: 2026-09-14
+Last reviewed: 2026-09-26
 
-Status: `PROVISIONAL` product-experience proposal normalized from the strategy DOCX and rebuild XLSX. Confirm the selected capabilities and acceptance criteria before implementation. Once a capability is approved, the validation, security, privacy, and accessibility controls described here are required implementation guardrails rather than optional marketing features.
+Status: the source proposal remains `PROVISIONAL` for unimplemented details, but
+the current repository has `VERIFIED` implementations for database-backed
+product detail, anonymous selector and comparison, four RFQ journeys, and the
+Admin business inbox. Treat the live README, architecture, OpenAPI, and tests as
+the implementation contract; the controls below remain guardrails for any
+extension.
 
 ## Product detail
 
@@ -22,7 +27,7 @@ Use `$airtek-product-knowledge` for schema, exact-data authority, and performanc
 
 ## Selector and comparison
 
-The canonical selector inputs, constraints, ranking, and comparison-data contract live in [product data rules](../../airtek-product-knowledge/references/product-data-rules.md#selector-contract). The website proposal allows anonymous selection and comparison without an account; confirm this session/privacy behavior before implementation.
+The canonical selector inputs, constraints, ranking, and comparison-data contract live in [product data rules](../../airtek-product-knowledge/references/product-data-rules.md#selector-contract). The current public site implements anonymous selection and client-side comparison without an account. Comparison state is browser-local; server-side selection returns matched, no-validated-candidate, or engineering-review-required outcomes from published records.
 
 The interface should preserve units and user-entered conditions, explain matched and disqualified results supplied by the product service, expose incomplete-data/engineering-review states, and pass visible editable context into an RFQ only when the user chooses. Comparison should render the selected live records with accessible headings and clear missing/incomparable states.
 
@@ -30,14 +35,21 @@ The supplied selector demo ignores inputs, displays all five hard-coded products
 
 ## RFQ journeys
 
-The strategy proposes a router at a canonical Request a Quote entry and four distinct journeys:
+The current public router and OpenAPI implement four distinct journeys:
 
 1. Product RFQ — begins with a known model/product context.
 2. Fan Selection RFQ — begins with duty point, environment, dimensions, electrical/control, and selector context.
-3. Project RFQ — begins with application, project conditions, scale, schedule, documents, and engineering needs.
-4. Replacement RFQ — begins with existing model/nameplate, installation, duty point, constraints, photos/files, and replacement goals.
+3. Project RFQ — begins with application, project conditions, scale, schedule, and engineering needs.
+4. Replacement RFQ — begins with existing model/nameplate, installation, duty point, constraints, and replacement goals.
 
-Confirm these four journeys and their ownership before build. Each approved journey should define fields, requiredness, conditional logic, validation, allowed file types/sizes, appropriate upload quarantine/malware controls, retention/access policy, success and error states, consent/privacy copy, notification/handoff, and a submission identifier. Prefill should be visible and editable. Do not promise price, MOQ, lead time, payment, Incoterms, certification, or selection suitability in an automatic response.
+The implemented requests define typed fields, validation, visible context, consent,
+idempotent submission, retention, and a submission identifier, then enter the
+Admin business inbox for assignment, status, PII access, and internal notes.
+Public RFQs do not accept file uploads; the source proposal's document/photo
+uploads remain unimplemented and require a separate quarantine, malware,
+retention, and access-control design before addition. Do not promise price, MOQ,
+lead time, payment, Incoterms, certification, or selection suitability in an
+automatic response.
 
 ## Lead handoff
 
@@ -51,4 +63,8 @@ Plan FAQ types for Product, Selection, Technical, Application, Customization/OEM
 
 ## Funnel events
 
-Measure meaningful steps such as CTA click, RFQ route selected, form started, field-group completed, upload attempted/completed, validation error, submit success/failure, and abandonment at a coarse approved stage. Never log free-text fields, uploaded-file names/content, email, phone, or other direct identifiers in analytics.
+Measure meaningful steps such as CTA click, RFQ route selected, form started,
+field-group completed, validation error, submit success/failure, and abandonment
+at a coarse approved stage. Upload events apply only if a future approved upload
+flow exists. Never log free-text fields, uploaded-file names/content, email,
+phone, or other direct identifiers in analytics.

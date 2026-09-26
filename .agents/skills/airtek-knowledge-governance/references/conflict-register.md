@@ -1,6 +1,6 @@
 # Conflict and correction register
 
-Last reviewed: 2026-09-14
+Last reviewed: 2026-09-26
 
 This is a cross-domain index of known traps. The linked domain reference is the canonical record; details are not copied here so they cannot drift independently.
 
@@ -35,7 +35,7 @@ This is a cross-domain index of known traps. The linked domain reference is the 
 | “Alibaba Cloud S3” is used as a product name | `DEPRECATED` unless compatibility is intended | [Delivery decisions](../../airtek-website-growth/references/delivery-decisions.md) |
 | Sitemap/push language promises recrawl, exposure, or ranking; AI content is framed as autonomous publishing | `DEPRECATED` | [Data, SEO, analytics, and integration](../../airtek-website-growth/references/data-seo-and-analytics.md) |
 | Sitemap indentation is damaged and route naming is inconsistent | `CONFLICTED` | [Information architecture](../../airtek-website-growth/references/information-architecture.md) |
-| Hong Kong and Singapore deployment proposals conflict | `CONFLICTED` | [Delivery decisions](../../airtek-website-growth/references/delivery-decisions.md) |
+| Historical Hong Kong and Singapore deployment proposals conflict | `DEPRECATED` as an active conflict after the 2026-09-26 owner decision | [Delivery decisions](../../airtek-website-growth/references/delivery-decisions.md); use Alibaba Cloud ECS in Singapore for the first production deployment and do not revive the Hong Kong proposal |
 | Stage numbering, duration, and portal/MCP scope disagree across planning files | `CONFLICTED` | [Delivery decisions](../../airtek-website-growth/references/delivery-decisions.md) |
 | Procurement formula parsing, incomplete cost scope, SaaS allowance, and pricing are dated | `PROVISIONAL` and date-sensitive | [Delivery decisions](../../airtek-website-growth/references/delivery-decisions.md) |
 | “Track every user action” conflicts with data minimization and consent-aware analytics | `DEPRECATED` | [Data, SEO, analytics, and integration](../../airtek-website-growth/references/data-seo-and-analytics.md) |

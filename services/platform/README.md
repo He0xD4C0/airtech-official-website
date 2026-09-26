@@ -60,7 +60,8 @@ removes public schema creation, and refuses an incomplete privilege topology.
 In production, that runtime role must not own the database or schema objects.
 Local Compose alone explicitly
 allows its existing shared `airtek` owner for development-volume compatibility.
-Application-owned migration and operations CLIs have been removed.
+Application-owned schema migration and general operations CLIs have been
+removed; the restricted maintenance binary described below remains.
 
 Admin authentication uses an Argon2id password and a host-only HttpOnly session
 cookie. The one-time `AIRTEK_ADMIN_BOOTSTRAP_TOKEN` is accepted only by
@@ -142,17 +143,20 @@ working directory; no `sudo`, `setuid` or OS-user mapping is used.
 Terminal establishment, termination and input-frame metadata are written to the
 immutable platform audit log. For command frames the audit includes actor,
 session, time, byte count and a fixed reason, but deliberately excludes command
-text and PTY output. Feishu synchronization remains disabled until its provider
-adapter is connected; no placeholder job is queued.
+text and PTY output. Feishu synchronization is implemented as a one-way,
+GUI-configured connector with manual and scheduled full scans. Code presence is
+not evidence that a deployment has saved real credentials, passed its connection
+test, or completed a live end-to-end run.
 
 Production artifacts must be built with `--features production`. The crate
 rejects `production,devtools` at compile time. The production Platform image
-contains only API and Worker. The browser terminal and PTY tooling remain gated
-by `devtools` and are absent from production.
+contains API, Worker, and the restricted `airtek-maintenance` binary. The browser
+terminal and PTY tooling remain gated by `devtools` and are absent from
+production.
 
 ## OpenAPI contract
 
-`src/openapi.rs` documents every registered system, public, and admin route with
+`crates/http/src/openapi.rs` documents every registered system, public, and admin route with
 named request, response, and Problem Details schemas. Development builds include
 the PTY routes only when `devtools` is compiled; the production export cannot
 contain them. From the repository root, regenerate or verify the checked-in
@@ -164,8 +168,10 @@ pnpm check:contracts
 ```
 
 The exporter is a Cargo example rather than a shipped runtime binary. The
-production Platform container contains the selected API and Worker plus the
-restricted operations CLI; schema migration ships as a separate non-root Flyway
+production Platform container contains the API, Worker, and restricted
+`airtek-maintenance` commands `prepare-runtime`, `inspect-public-site`, and
+`check-public-readiness`; development-only preparation and administrator reset
+commands are absent. Schema migration ships as a separate non-root Flyway
 artifact.
 
 ## Boundaries
@@ -177,17 +183,22 @@ artifact.
 - `/robots.txt`: disallows the complete API origin.
 - sitemap paths are deliberately unregistered and return `404`.
 
-All exact product data must arrive through a traceable, owner-approved Product
-Master snapshot, validation, staging, conflict handling, and publication.
-Future Feishu synchronization is an input to that governed flow, not proof of a
-current approved snapshot. Demo product values are not authoritative and are
-not present in this service.
+Exact product data follows one of two governed paths. A controlled CSV must match
+the registered approval tuple before staging and explicit publication. Enabled
+Feishu sources are fully scanned, validated record by record, and automatically
+publish valid fact revisions and source attachments; failed records retain their
+prior public revision, while successful missing-set reconciliation unpublishes
+and durably purges removed source records. Demo values remain prohibited, and an
+implemented connector is not proof of live deployment configuration or source
+approval outside its recorded scope.
 
-Content and products keep mutable working records separately from immutable
-published revision snapshots. Publishing or rolling back atomically switches the
-public revision pointer and records an outbox event. The worker durably claims
-those events; provider-specific CDN, search and sitemap adapters remain deployment
-configuration and are not represented as already connected.
+Content keeps one current private draft and one current publication row, with no
+recoverable database body history. Products retain immutable fact and
+presentation revisions, but the public pointer changes only through the current
+explicit CSV publish or Feishu automatic-publication flows; no product rollback
+endpoint or Feishu rollback workflow is exposed. The worker durably claims
+outbox events; provider-specific CDN, search and sitemap adapters remain
+deployment configuration and are not represented as already connected.
 
 High-risk operation requests require a Super Admin role and a freshly verified
 TOTP. Recovery codes can restore login access but are deliberately not accepted

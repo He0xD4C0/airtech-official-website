@@ -1,6 +1,6 @@
 # Source register
 
-Last reviewed: 2026-09-14
+Last reviewed: 2026-09-26
 
 Paths are relative to the project root. Original files remain evidence in `docs/`. Files marked `INTERNAL_LOCAL` are intentionally excluded from Git; their absence in a fresh checkout must be reported as `internal evidence unavailable`, never treated as permission to use a substitute.
 
@@ -18,8 +18,9 @@ Paths are relative to the project root. Original files remain evidence in `docs/
 | `docs/Plan & Solution/ProductDetailDemo.html` | `REPOSITORY` | Static product-detail prototype | Interaction and layout sketch only. Hard-coded specifications, curve, files, colors, and form behavior are not authoritative. |
 | `docs/Plan & Solution/SelectionToolDemo.html` | `REPOSITORY` | Static selector prototype | Interaction sketch only. Inputs, matching, comparison, product values, downloads, and RFQ behavior are not implemented contracts. |
 | Product Master CSV `e3b944d5d979c72d963ba353416ef452f9dac0bf63182bb09fc6b1201c043800` | `CONTROLLED_EXTERNAL` | Owner-approved exact-model source snapshot supplied 2026-09-02 and imported through the audited database pipeline | `VERIFIED` by the current explicit owner decision for the initial `airtek-basic-v1` import. The raw CSV is not repository-resident. Exact values require a matching controlled snapshot or published record with this provenance; otherwise return `Published data unavailable`. It contains 370 structurally valid model rows and five malformed trailing rows that must be rejected. Commercial price columns remain encrypted internal staging; filename-only assets remain unresolved; noise is not public until its measurement conditions are supplied. |
+| Owner deployment decision recorded 2026-09-26 | `OWNER_DECISION` | Selects the provider and region for the first production deployment | `VERIFIED` for Alibaba Cloud ECS in Singapore and the repository's implemented single-host topology only. It does not approve instance sizing, price, production domain, object-storage provider, or production-launch status. |
 | `docs/Plan & Solution/~$Airtek Power Website Rebuild Solution.xlsx` | `IGNORED_NOISE` | Office lock file | `DEPRECATED` project noise; ignored by Git and never used as evidence. |
 
 ## Missing authoritative sources
 
-The original `docs/` materials do not include controlled per-model datasheets, an approved standalone logo master, documented favicon treatment, a current certification register, an approved case-claim register, an agreed cloud deployment decision, or a signed implementation scope. A validated Product Master was supplied separately and is authoritative only when its full registered checksum matches the audited database source snapshot. Keep decisions that depend on the other missing sources provisional or conflicted.
+The original `docs/` materials do not include controlled per-model datasheets, an approved standalone logo master, documented favicon treatment, a current certification register, an approved case-claim register, an approved instance size or price, a production domain, an object-storage provider, or a signed implementation scope. A validated Product Master was supplied separately and is authoritative only when its full registered checksum matches the audited database source snapshot. The 2026-09-26 owner decision supplies only the first-production provider and region named above. Keep decisions that depend on the other missing sources provisional or conflicted.

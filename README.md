@@ -149,9 +149,12 @@ docker compose --project-directory . up --build
 
 The host-isolated HTTP entry points are:
 
-- `http://www.localhost:8088` for the public site
-- `http://admin.localhost:8088` for the management portal
-- `http://api.localhost:8088` for the API
+- `http://www.airtek.localhost:8088` for the public site
+- `http://admin.airtek.localhost:8088` for the management portal
+- `http://api.airtek.localhost:8088` for the API
+
+`http://www.localhost:8088` is retained only as a permanent redirect to the
+canonical local Public origin. It is not the Admin or API naming convention.
 
 The fixed application ports `3000`, `3100`, and `8080` also remain published
 to `127.0.0.1` for direct diagnostics. They are not reachable from another
@@ -239,10 +242,13 @@ The checked-in local Compose stack explicitly permits its historical single
 override is not present in `infra/compose/production.app.yaml`; production rejects using
 the Flyway DDL identity as the application runtime identity.
 
-Application-owned migration and operations CLIs have been removed. In-memory repositories exist only behind isolated test
-construction and are not a supported server mode. Runtime media storage is
-selected only by the database-owned object-storage setting; there is no
-environment or implicit local fallback when it is unconfigured.
+Application-owned schema migration and general operations CLIs have been
+removed. The restricted `airtek-maintenance` binary remains for runtime
+preparation, public-site inspection, and readiness checks. In-memory
+repositories exist only behind isolated test construction and are not a
+supported server mode. Runtime media storage is selected only by the
+database-owned object-storage setting; there is no environment or implicit
+local fallback when it is unconfigured.
 
 ### One-time adoption of an existing SQLx v1-10 database
 
@@ -293,7 +299,7 @@ Validate both deployment shapes without starting them:
 
 ```sh
 docker compose --project-directory . config --quiet
-docker compose --project-directory . -f compose.yaml -f infra/compose/debug.yaml --profile object-storage config --quiet
+docker compose --project-directory . -f compose.yaml -f infra/compose/debug.yaml --profile minio config --quiet
 docker compose --project-directory . --env-file infra/deploy/production.env.example -f infra/compose/production.app.yaml config --quiet
 ```
 
@@ -426,8 +432,8 @@ currency, identity, integrity, and media-safety gates in
 
 ## Database-driven content and Product Master
 
-CMS V2 drafts, immutable content revisions, public routes, products, guest
-attribution, users and roles are durable PostgreSQL records. News, General
+CMS V2 current private drafts, current publication rows, public routes,
+products, guest attribution, users and roles are durable PostgreSQL records. News, General
 Information, navigation and footer are CMS V2 content kinds rather than
 parallel write services. Business/editorial copy is never read from a
 production frontend fallback. Missing optional data is omitted; a missing
@@ -540,18 +546,21 @@ repository does not provide a CDN or third-party malware scanner.
   atomically takes the record into editorial ownership. Later development seed
   runs retain their ledger entry but skip that record without overwriting it.
 - Every CMS V2 kind, including News and General Information, uses the unified
-  content draft/snapshot/revision transaction. Publishing a routable kind writes
-  its canonical `public_routes` row in that same transaction.
+  private-draft, review, and current-publication transaction. Publishing a
+  routable kind writes its canonical `public_routes` row in that same
+  transaction. Content documents have no recoverable database revision history.
 - A media or download block can publish only when its referenced asset exists
   and has not been soft-deleted.
 - `docs/` is preserved as source evidence and is not edited by the implementation.
 
 ## Current integration status
 
-- Exact products may be published only from an accepted, audited Product Master
-  snapshot. This repository state does not prove that an owner-approved current
-  snapshot has been supplied. Missing curves, certifications, downloads, and
-  case outcomes remain omitted until their own controlled evidence exists.
+- Exact products may be published only from the registered, owner-approved CSV
+  provenance or from enabled Feishu sources that pass the configured mapping
+  and validation gates. Repository code does not prove that a current CSV or
+  live Feishu source has been configured in a deployment. Missing curves,
+  certifications, downloads, and case outcomes remain omitted until their own
+  controlled evidence exists.
 - Public SSR serves `robots.txt` and every sitemap document dynamically. The
   Rust discovery feed contributes only published, canonical, indexable,
   non-placeholder content and products; API failure is handled fail-closed.

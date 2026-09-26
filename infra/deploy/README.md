@@ -1,7 +1,8 @@
 # Production deployment contract
 
-The selected first production topology is one Alibaba Cloud ECS instance in
-Singapore with two independent operational boundaries:
+Owner decision recorded 2026-09-26: the selected first production provider and
+region are Alibaba Cloud ECS in Singapore. The implemented topology uses one ECS
+instance with two independent operational boundaries:
 
 - `airtek-infra` owns the long-lived PostgreSQL process. Operators start, back
   up, restore and upgrade it independently from application releases.
@@ -19,6 +20,8 @@ infrastructure project and must never remove its bind-mounted data directories.
 This is a single-host topology, not high availability. PostgreSQL backups must
 leave the ECS instance and must be restore-tested. The selected object-storage
 provider needs its own reviewed durability, backup and restore controls.
+The decision does not approve an instance size, price, production domain,
+object-storage provider, or production-launch status.
 
 ## Stateful infrastructure boundary
 
@@ -48,9 +51,9 @@ Build and scan five immutable artifacts:
   browser origins passed as Vite build arguments.
 - Admin Web from `infra/docker/Dockerfile.admin`, with the final Admin API
   browser origin passed at build time. Its production build forces DevTools off.
-- Platform from `infra/docker/Dockerfile.platform`. It supplies only the API
-  and Worker; it contains no application-owned CLI, schema migration tools, or
-  DevTools PTY/WebSocket dependencies.
+- Platform from `infra/docker/Dockerfile.platform`. It supplies the API, Worker,
+  and restricted `airtek-maintenance` binary; it contains no schema migration
+  tools or DevTools PTY/WebSocket dependencies.
 - Migrations from `infra/docker/Dockerfile.flyway`, pinned to Flyway `13.4.0`.
   It is an independent, non-root one-shot artifact and is the sole owner of
   PostgreSQL schema versions.
@@ -104,10 +107,11 @@ Before deployment:
     and API must keep their crawl-denial and sitemap `404` behavior.
 
 The fixed local-development administrator is not a deployment mechanism.
-Production images compile only the `production` feature, support only
-`airtek-maintenance prepare-runtime`, and receive no `AIRTEK_DEV_ADMIN_*`
-configuration. A fresh production database therefore remains without users
-until the one-time setup flow is completed.
+Production images compile only the `production` feature and expose only the
+maintenance commands `prepare-runtime`, `inspect-public-site`, and
+`check-public-readiness`; they receive no `AIRTEK_DEV_ADMIN_*` configuration.
+A fresh production database therefore remains without users until the one-time
+setup flow is completed.
 
 ## Direct media object identity
 

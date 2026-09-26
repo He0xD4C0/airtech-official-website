@@ -1,6 +1,6 @@
 # Product data rules
 
-Last reviewed: 2026-09-14
+Last reviewed: 2026-09-26
 
 ## Authority for exact values
 
@@ -12,7 +12,21 @@ Use this order for a specific model:
 4. Family-level company deck for broad capability context only.
 5. Demo HTML for interaction reference only; never for facts.
 
-On 2026-09-02 the owner explicitly approved the CSV registered as `Product Master CSV e3b944d5…` in the knowledge-governance source register as the validated Product Master for the initial database import. Exact SKU values are publishable only from the audited database source snapshot with that full checksum and the approved `airtek-basic-v1` mapping—not from copied CSV fragments, demos, or family-level material. A future source with a different checksum must enter staging and be approved independently.
+On 2026-09-02 the owner explicitly approved the CSV registered as `Product
+Master CSV e3b944d5…` in the knowledge-governance source register as the
+validated Product Master for the initial database import. CSV-origin exact SKU
+values are publishable only from the audited database source snapshot with that
+full checksum and the approved `airtek-basic-v1` mapping—not from copied CSV
+fragments, demos, or family-level material. A future CSV with a different
+checksum must enter staging and be approved independently.
+
+For a live deployment, an owner-enabled Feishu source may establish a newer
+exact product revision only after its saved connection revision is tested, its
+selected table and mapping provenance are retained, the record passes validation,
+and that revision is published. Repository code alone does not prove that any
+specific Feishu source or record is approved or live. When neither the registered
+CSV provenance nor a current published record with validated Feishu provenance
+is available, return `Published data unavailable`.
 
 ## Family-level reported ranges
 
@@ -46,11 +60,25 @@ Use explicit nullability. Missing, not applicable, not tested, confidential, and
 
 ## Import and publishing
 
-Recommended flow:
+The repository implements two distinct governed flows:
 
-`Feishu or controlled spreadsheet → staging import → schema/unit/reference validation → reviewer approval → publish → database/object storage`
+- Controlled CSV: owner-approved checksum and mapping tuple → idempotent staging
+  import → schema/unit/reference validation → immutable fact revision → explicit
+  publication of the current validated revision.
+- Enabled Feishu sources: frozen selected-table configuration → complete
+  per-table scan → record-by-record validation and attachment ingestion →
+  immutable fact revision → automatic publication. A failed record retains its
+  prior public revision. Only a completely fetched, schema-valid table may
+  reconcile missing records; a confirmed missing or disabled source record is
+  unpublished immediately and durably purged with object compensation.
 
-Validate uniqueness, required fields, enum values, units, ranges, curve monotonic/order constraints, asset existence, model/certificate scope, locale completeness, and referential integrity. Never publish directly from a spreadsheet edit. Keep an audit trail and allow rollback to a prior published revision.
+Validate uniqueness, required fields, enum values, units, ranges, curve
+monotonic/order constraints, asset existence, model/certificate scope, locale
+completeness, and referential integrity. Never publish directly from an
+unvalidated spreadsheet edit or raw Feishu row. Preserve audit and immutable
+revision evidence, but do not promise a rollback operation: the current API has
+no product rollback endpoint, and the Feishu workflow has no approval-conflict
+or rollback state.
 
 ## Selector contract
 

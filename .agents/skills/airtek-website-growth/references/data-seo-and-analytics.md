@@ -1,12 +1,12 @@
 # Data, SEO, analytics, and integration
 
-Last reviewed: 2026-09-14
+Last reviewed: 2026-09-26
 
 ## Product and content data integration
 
-The canonical import, validation, review, and publishing lifecycle lives in [product data rules](../../airtek-product-knowledge/references/product-data-rules.md#import-and-publishing). This website layer consumes only approved published records and assets; it must not bypass staging or treat Feishu/Excel rows as live public data.
+The canonical import, validation, and publishing lifecycle lives in [product data rules](../../airtek-product-knowledge/references/product-data-rules.md#import-and-publishing). The current repository supports an explicitly published, owner-approved CSV path and a one-way Feishu path whose enabled tables are fully scanned, validated independently, and automatically published. Public website code consumes only published projections and resolved assets; it never treats raw CSV or Feishu rows as public data.
 
-Keep content, relationships, routes, metadata, and editorial workflow distinct from exact product master fields while maintaining stable IDs between them. Integration transport must be authenticated, idempotent, observable, retryable, and auditable. Define ownership, field mapping, deletion/unpublish semantics, conflict behavior, rate limits, partial-failure handling, and rollback before scheduling a sync.
+Keep content, relationships, routes, metadata, and editorial workflow distinct from exact product master fields while maintaining stable IDs between them. The implemented Feishu transport is authenticated, scheduled or manually triggered, auditable, retry-aware, and freezes its settings/source list per run. Table-level fetch, schema, pagination, or timeout failures retain prior public records and block missing-set deletion for that table. A successful full table scan may reconcile removals; there is no Feishu conflict-resolution or rollback workflow.
 
 ## Search foundation
 
@@ -32,7 +32,11 @@ Use search/market research to inform an editorial brief, then require technical 
 
 The plan mentions Google Analytics, Google Tag Manager, and Microsoft Clarity. Their use is `PROVISIONAL` pending target markets, consent design, privacy review, retention, and vendor configuration.
 
-Maintain an approved event dictionary. Candidate event families include page/content view, internal search, filter/select/compare, download, selector step/result, FAQ expand, CTA, RFQ route/start/upload/submit/error/abandonment, and outbound contact actions.
+Maintain an approved event dictionary. Candidate event families include
+page/content view, internal search, filter/select/compare, download, selector
+step/result, FAQ expand, CTA, RFQ route/start/submit/error/abandonment, and
+outbound contact actions. Add RFQ upload events only if a separately approved
+public upload flow is implemented.
 
 - Collect only properties needed for a stated measurement purpose.
 - Separate anonymous/session analytics identifiers from RFQ/lead records and direct personal data.

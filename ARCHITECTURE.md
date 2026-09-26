@@ -96,13 +96,16 @@ Rust service before the projection reaches Web. `resolvedMedia` binds each
 document reference to the direct public asset and download URLs.
 
 Product publishing retains its own validated Product Master revision boundary.
-Publishing atomically changes its public projection and emits a durable outbox
-event. Rollback republishes a prior revision rather than mutating history. The
-public SSR sitemap handler reads the projection through the API discovery feed,
-so it reflects publication without a frontend rebuild. The worker consumes the
-internal hand-off, but provider-specific CDN invalidation and external search
-indexing are not connected; an internal hook completion does not mean an
-external provider was refreshed.
+An explicit CSV publish atomically selects the current validated revision,
+changes its public projection, and emits a durable outbox event. Enabled Feishu
+sources instead publish each valid fact revision automatically; a failed record
+retains its prior public revision, and only a complete successful table scan may
+reconcile missing records. Feishu has no approval-conflict or rollback workflow.
+The public SSR sitemap handler reads the projection through the API discovery
+feed, so it reflects publication without a frontend rebuild. The worker consumes
+the internal hand-off, but provider-specific CDN invalidation and external search
+indexing are not connected; an internal hook completion does not mean an external
+provider was refreshed.
 
 PostgreSQL is the only supported runtime repository for the API, Worker, and
 stateful contract tests; there is no in-memory business repository.
@@ -322,8 +325,10 @@ Audit events store actor, session, timestamps, fixed reasons and command-frame
 metadata while intentionally excluding command text and terminal output.
 
 Production builds exclude DevTools UI chunks, the Rust `devtools` feature, API
-route, WebSocket upstream, PTY dependencies, and every shell or operational
-entrypoint. `production` and `devtools` are mutually exclusive build features.
+route, WebSocket upstream, PTY dependencies, and every interactive shell
+entrypoint. The Platform image retains only the restricted maintenance commands
+for runtime preparation, public-site inspection, and readiness checks.
+`production` and `devtools` are mutually exclusive build features.
 
 ## Adapter readiness
 

@@ -32,7 +32,12 @@ Turn the supplied strategy into an evidence-led B2B product-discovery and inquir
 - Treat the HTML files as UX sketches, not implemented behavior, data, styling, or acceptance tests.
 - Keep optional analytics consent-aware and data-minimized. Do not put RFQ contents or direct personal identifiers into analytics event properties.
 - Give public clients and MCP controlled APIs, authentication, authorization, rate limits, and auditability; never direct production-database access.
-- Do not hard-code the disputed deployment region, cloud provider, instance size, cost, or schedule. Preserve the repository's implemented framework and platform boundaries unless the user explicitly approves a change.
+- Use the owner-approved first-production provider/region recorded in
+  [delivery decisions](references/delivery-decisions.md). Do not hard-code an
+  unapproved instance size, cost, domain, object-storage provider, launch status,
+  or schedule, and require a new explicit decision before changing the approved
+  provider or region. Preserve the repository's implemented framework and
+  platform boundaries unless the user explicitly approves a change.
 
 ## Definition of done
 
