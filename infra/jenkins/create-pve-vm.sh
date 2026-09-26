@@ -7,7 +7,8 @@ storage=${AIRTEK_JENKINS_STORAGE:-ZTnvme}
 bridge=${AIRTEK_JENKINS_BRIDGE:-vmbr0}
 ssh_key=${1:-/root/deploy.pub}
 image_name=debian-12-genericcloud-amd64.qcow2
-image_root=https://cloud.debian.org/images/cloud/bookworm/latest
+official_root=https://cloud.debian.org/images/cloud/bookworm/latest
+image_root=${AIRTEK_DEBIAN_IMAGE_ROOT:-$official_root}
 download_dir=/var/lib/vz/template/iso
 image_path=$download_dir/$image_name
 checksums_path=$download_dir/debian-12-SHA512SUMS
@@ -28,8 +29,9 @@ pvesm status --storage "$storage" >/dev/null
 ip link show "$bridge" >/dev/null
 install -d -m 0755 "$download_dir"
 
-curl -fL --retry 3 "$image_root/$image_name" -o "$image_path"
-curl -fL --retry 3 "$image_root/SHA512SUMS" -o "$checksums_path"
+curl -fL --retry 5 --retry-all-errors --continue-at - \
+  "$image_root/$image_name" -o "$image_path"
+curl -fL --retry 3 "$official_root/SHA512SUMS" -o "$checksums_path"
 expected=$(awk -v name="$image_name" '$2 == name { print $1 }' "$checksums_path")
 if [ -z "$expected" ]; then
   echo "The official checksum list does not contain $image_name." >&2
@@ -66,7 +68,7 @@ fi
 qm set "$vmid" --scsi0 "$disk_volume,discard=on,iothread=1,ssd=1"
 qm disk resize "$vmid" scsi0 200G
 qm set "$vmid" \
-  --ide2 "$storage:cloudinit" \
+  --scsi1 "$storage:cloudinit" \
   --boot order=scsi0 \
   --serial0 socket \
   --vga serial0 \

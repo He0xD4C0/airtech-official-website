@@ -11,6 +11,12 @@ plugins and JCasC configuration, generates controller and local-agent secrets,
 and applies the LAN firewall policy. Secrets remain root/Jenkins-readable on the
 VM and never enter this repository.
 
+Large Java, Node, Jenkins, Trivy and plugin-manager artifacts use overridable
+regional transport mirrors and pinned digests copied from their official
+release metadata. Docker remains on its signed official APT repository. The
+Debian cloud image mirror can be overridden with `AIRTEK_DEBIAN_IMAGE_ROOT`,
+while its checksum is always fetched from the official Debian image service.
+
 On the PVE node, `create-pve-vm.sh /root/deploy.pub` creates VMID 107 only when
 that ID is unused. It downloads the official Debian 12 Generic Cloud image,
 verifies its published SHA-512 checksum, imports a 200 GB disk to `ZTnvme`,

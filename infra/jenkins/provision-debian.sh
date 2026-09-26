@@ -9,45 +9,95 @@ fi
 repo_root=$(cd "$(dirname "$0")/../.." && pwd)
 export DEBIAN_FRONTEND=noninteractive
 install -d -m 0755 /etc/apt/keyrings
+printf '%s\n' 'Acquire::ForceIPv4 "true";' 'Acquire::Retries "5";' \
+  >/etc/apt/apt.conf.d/99airtek-network
+rm -f \
+  /etc/apt/sources.list.d/adoptium.list \
+  /etc/apt/sources.list.d/jenkins.list \
+  /etc/apt/sources.list.d/nodesource.list \
+  /etc/apt/sources.list.d/trivy.list
 apt-get update
-apt-get install -y ca-certificates curl fontconfig git gnupg jq nftables openssh-server openssl unzip xz-utils
+apt-get install -y \
+  adduser build-essential ca-certificates curl fontconfig git gnupg jq lsb-base \
+  net-tools nftables openssh-server openssl pkg-config qemu-guest-agent \
+  sysvinit-utils unzip xz-utils
 
-curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public \
-  | gpg --dearmor --yes -o /etc/apt/keyrings/adoptium.gpg
-printf '%s\n' 'deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb bookworm main' \
-  >/etc/apt/sources.list.d/adoptium.list
-
-curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key \
-  -o /etc/apt/keyrings/jenkins-keyring.asc
-printf '%s\n' 'deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/' \
-  >/etc/apt/sources.list.d/jenkins.list
-
-curl -fsSL https://download.docker.com/linux/debian/gpg \
+curl -4 -fsSL https://download.docker.com/linux/debian/gpg \
   | gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg
 printf '%s\n' \
   'deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable' \
   >/etc/apt/sources.list.d/docker.list
 
-curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
-  | gpg --dearmor --yes -o /etc/apt/keyrings/nodesource.gpg
-printf '%s\n' \
-  'deb [arch=amd64 signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main' \
-  >/etc/apt/sources.list.d/nodesource.list
-
-curl -fsSL https://aquasecurity.github.io/trivy-repo/deb/public.key \
-  | gpg --dearmor --yes -o /etc/apt/keyrings/trivy.gpg
-printf '%s\n' \
-  'deb [signed-by=/etc/apt/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main' \
-  >/etc/apt/sources.list.d/trivy.list
-
 apt-get update
 apt-get install -y \
-  temurin-21-jdk jenkins nodejs qemu-guest-agent trivy \
   docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+download_dir=/var/cache/airtek/downloads
+install -d -m 0755 "$download_dir"
+download_verified() {
+  local url=$1 path=$2 sha256=$3
+  if ! printf '%s  %s\n' "$sha256" "$path" | sha256sum --check --status 2>/dev/null; then
+    if curl -4 -fL --retry 8 --retry-all-errors --continue-at - "$url" -o "$path" \
+      && printf '%s  %s\n' "$sha256" "$path" | sha256sum --check --status; then
+      return
+    fi
+    rm -f "$path"
+    curl -4 -fL --retry 8 --retry-all-errors "$url" -o "$path"
+    printf '%s  %s\n' "$sha256" "$path" | sha256sum --check --status
+  fi
+}
+
+# Digests are pinned from the corresponding official release metadata. Mirrors
+# are transport-only and can be overridden without weakening verification.
+java_archive=OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz
+download_verified \
+  "${AIRTEK_ADOPTIUM_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn/Adoptium}/21/jdk/x64/linux/$java_archive" \
+  "$download_dir/$java_archive" \
+  ce79869e1307ed8ee1e2baa86a412b1eb5b75d10a01006d788a6f968bcfaee94
+java_dir=/opt/jdk-21.0.12.1+1
+if [ ! -x "$java_dir/bin/java" ]; then
+  tar -xzf "$download_dir/$java_archive" -C /opt
+fi
+ln -sfn "$java_dir" /opt/temurin-21
+update-alternatives --install /usr/bin/java java /opt/temurin-21/bin/java 2121
+update-alternatives --install /usr/bin/javac javac /opt/temurin-21/bin/javac 2121
+update-alternatives --install /usr/bin/jar jar /opt/temurin-21/bin/jar 2121
+
+node_archive=node-v22.23.3-linux-x64.tar.xz
+download_verified \
+  "${AIRTEK_NODE_MIRROR:-https://mirrors.nju.edu.cn/nodejs-release}/v22.23.3/$node_archive" \
+  "$download_dir/$node_archive" \
+  df450af89261115ef9f9e3830c3eeb2cc9213b63c720b1af623cb5dcbe2e02de
+install -d -m 0755 /usr/local/lib/nodejs
+if [ ! -x /usr/local/lib/nodejs/node-v22.23.3-linux-x64/bin/node ]; then
+  tar -xJf "$download_dir/$node_archive" -C /usr/local/lib/nodejs
+fi
+for command in node npm npx corepack; do
+  ln -sfn "/usr/local/lib/nodejs/node-v22.23.3-linux-x64/bin/$command" \
+    "/usr/local/bin/$command"
+done
+
+jenkins_deb=jenkins_2.568.3_all.deb
+download_verified \
+  "${AIRTEK_JENKINS_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn/jenkins/debian-stable}/$jenkins_deb" \
+  "$download_dir/$jenkins_deb" \
+  05d00283415f902f85602eda67913cb874d7493119d109fe47122e287d24497c
+apt-get install -y "$download_dir/$jenkins_deb"
 systemctl stop jenkins
 
+github_proxy=${AIRTEK_GITHUB_PROXY:-https://ghproxy.net/https://github.com}
+trivy_archive=trivy_0.74.0_Linux-64bit.tar.gz
+download_verified \
+  "$github_proxy/aquasecurity/trivy/releases/download/v0.74.0/$trivy_archive" \
+  "$download_dir/$trivy_archive" \
+  2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a
+tar -xzf "$download_dir/$trivy_archive" -C /usr/local/bin trivy
+chmod 0755 /usr/local/bin/trivy
+
+export COREPACK_NPM_REGISTRY=${AIRTEK_NPM_REGISTRY:-https://registry.npmmirror.com}
+npm config set registry "$COREPACK_NPM_REGISTRY"
 corepack enable
-corepack prepare pnpm@11.19.0 --activate
+corepack install --global pnpm@11.19.0
 corepack pnpm dlx playwright@1.55.0 install-deps chromium
 
 if ! id jenkins-agent >/dev/null 2>&1; then
@@ -58,12 +108,19 @@ gpasswd -d jenkins docker >/dev/null 2>&1 || true
 install -d -o jenkins-agent -g jenkins-agent -m 0700 /var/lib/jenkins-agent/.ssh
 install -d -o jenkins-agent -g jenkins-agent -m 0755 /var/cache/airtek/{cargo,pnpm,playwright,buildkit,trivy}
 
+rustup_init=$download_dir/rustup-init
+download_verified \
+  "${AIRTEK_RUSTUP_MIRROR:-https://rsproxy.cn/rustup}/dist/x86_64-unknown-linux-gnu/rustup-init" \
+  "$rustup_init" \
+  dda7234360b7f578ca8b0ddcb80145646fa61a67c1720a5abc7051b35c9fcb71
+chmod 0755 "$rustup_init"
+rust_env='RUSTUP_DIST_SERVER=https://rsproxy.cn RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup'
 su -s /bin/bash jenkins-agent -c \
-  'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.98.0'
+  "$rust_env '$rustup_init' -y --profile minimal --default-toolchain 1.98.0"
 su -s /bin/bash jenkins-agent -c \
-  '/var/lib/jenkins-agent/.cargo/bin/rustup toolchain install 1.88.0 --profile minimal'
+  "$rust_env /var/lib/jenkins-agent/.cargo/bin/rustup toolchain install 1.88.0 --profile minimal"
 su -s /bin/bash jenkins-agent -c \
-  '/var/lib/jenkins-agent/.cargo/bin/rustup component add rustfmt clippy --toolchain 1.98.0'
+  "$rust_env /var/lib/jenkins-agent/.cargo/bin/rustup component add rustfmt clippy --toolchain 1.98.0"
 
 install -d -o jenkins -g jenkins -m 0700 /var/lib/jenkins/secrets /var/lib/jenkins/.ssh
 if [ ! -f /var/lib/jenkins/secrets/airtek-agent-key ]; then
@@ -81,10 +138,13 @@ chmod 0600 /var/lib/jenkins/secrets/airtek-agent-key /var/lib/jenkins/.ssh/known
 install -o jenkins -g jenkins -m 0600 "$repo_root/infra/jenkins/jenkins.yaml" \
   /var/lib/jenkins/jenkins.yaml
 plugin_manager_version=2.14.0
-curl -fsSL \
-  "https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/${plugin_manager_version}/jenkins-plugin-manager-${plugin_manager_version}.jar" \
-  -o /usr/local/lib/jenkins-plugin-manager.jar
-java -jar /usr/local/lib/jenkins-plugin-manager.jar \
+plugin_manager=$download_dir/jenkins-plugin-manager-${plugin_manager_version}.jar
+download_verified \
+  "$github_proxy/jenkinsci/plugin-installation-manager-tool/releases/download/${plugin_manager_version}/jenkins-plugin-manager-${plugin_manager_version}.jar" \
+  "$plugin_manager" \
+  aa720c79c658cacc54ae1156252e6eafb770cdc0c8b4f57d51d043e42e956c89
+JENKINS_UC_DOWNLOAD=${AIRTEK_JENKINS_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn/jenkins} \
+  java -jar "$plugin_manager" \
   --war /usr/share/java/jenkins.war \
   --plugin-file "$repo_root/infra/jenkins/plugins.txt" \
   --plugin-download-directory /var/lib/jenkins/plugins
@@ -115,6 +175,7 @@ printf '%s\n' 'PasswordAuthentication no' 'PermitRootLogin prohibit-password' \
 sshd -t
 systemctl reload ssh
 passwd -l root >/dev/null
+passwd -l deploy >/dev/null
 
 install -m 0755 /dev/stdin /usr/local/sbin/airtek-docker-firewall <<'EOF'
 #!/bin/sh
@@ -130,8 +191,8 @@ EOF
 install -m 0644 /dev/stdin /etc/systemd/system/airtek-docker-firewall.service <<'EOF'
 [Unit]
 Description=AIRTEK Docker ingress boundary
-After=docker.service
-Requires=docker.service
+After=nftables.service docker.service
+Requires=nftables.service docker.service
 
 [Service]
 Type=oneshot
@@ -140,6 +201,12 @@ RemainAfterExit=yes
 
 [Install]
 WantedBy=multi-user.target
+EOF
+install -d -m 0755 /etc/systemd/system/docker.service.d
+install -m 0644 /dev/stdin /etc/systemd/system/docker.service.d/airtek.conf <<'EOF'
+[Unit]
+After=nftables.service
+Requires=nftables.service
 EOF
 install -m 0644 /dev/stdin /etc/nftables.conf <<'EOF'
 #!/usr/sbin/nft -f
@@ -161,7 +228,11 @@ table inet filter {
 EOF
 
 systemctl daemon-reload
-systemctl enable --now docker nftables qemu-guest-agent airtek-docker-firewall
+systemctl enable nftables docker qemu-guest-agent airtek-docker-firewall
+systemctl restart nftables
+systemctl restart docker
+systemctl restart airtek-docker-firewall
+systemctl start qemu-guest-agent
 systemctl enable --now jenkins
 systemctl --no-pager --full status jenkins | sed -n '1,20p'
 printf 'Jenkins URL: http://%s:8080/\n' "$jenkins_ip"
