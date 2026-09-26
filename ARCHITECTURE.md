@@ -40,7 +40,7 @@ diagnostic ports bind to loopback by default.
 PostgreSQL is never host-published by the base stack. MinIO is an optional
 `minio` Compose profile; when enabled, its API and console use fixed loopback
 ports and its development bucket permits anonymous object reads.
-The image-only `compose.production.yaml` publishes only the Gateway listener;
+The image-only `infra/compose/production.app.yaml` publishes only the Gateway listener;
 Public `3000`, Admin `3100`, and API `8080` remain internal. Its five immutable
 image references are independent release and rollback units.
 
@@ -236,7 +236,7 @@ controlled, one-time takeover. Confirm the target environment and database,
 then run:
 
 ```sh
-docker compose run --rm flyway-migrate baseline
+docker compose --project-directory . run --rm flyway-migrate baseline
 pnpm db:migrate
 pnpm db:validate
 ```
@@ -250,7 +250,7 @@ databases use only `pnpm db:migrate`.
 ## Repository quality boundaries
 
 Repository source structure and production bundle shape are separate enforced
-contracts. `scripts/assert-source-line-limits.mjs` audits source-code extensions
+contracts. `scripts/checks/assert-source-line-limits.mjs` audits source-code extensions
 across the checkout, including tests, executable scripts, SQL, and generated
 source, while excluding documentation, data, lock files, dependencies, and
 build/test output. Ordinary source files are limited to 500 logical lines. The
@@ -259,7 +259,7 @@ exceptions whose line counts and SHA-256 checksums are pinned; any edit,
 extension, or removal is a violation. CI first tests the auditor and then runs
 it, and the production check repeats the audit before building artifacts.
 
-`scripts/assert-admin-ui-boundary.mjs` has the narrower post-build concern: it
+`scripts/checks/assert-admin-ui-boundary.mjs` has the narrower post-build concern: it
 inspects the Admin production JavaScript output and enforces gzip budgets for
 the editor entry and lazy chunks. It does not scan source length. Keeping these
 checks independent prevents a bundle assertion from silently defining source
@@ -270,14 +270,41 @@ artifacts are removed only through the explicit local-cleanup whitelist, while
 `check:workspace-hygiene` rejects accidental numbered copies in source and
 document directories. It never deletes files.
 
-Admin source moves are incremental and domain-scoped: content first,
-catalog/media second, then identity/analytics/settings. A migration keeps each
-domain's views, components, services, stores, and tests together while shared
-transport, authentication, pagination, and base UI remain common. Each change
-preserves routes, request contracts, state behavior, and the `@` source alias.
-The Rust Platform remains one crate with Route → Service → Storage boundaries;
-growing modules continue to use the existing `module.rs` plus `module/` layout
-rather than introducing a parallel architecture.
+Admin uses `src/app`, `src/shared` and domain-owned `src/features`. Its domains
+are auth, dashboard, content, catalog, media, inbox, analytics, identity, audit,
+integrations, settings and devtools. Each owns its views, components, services,
+stores and tests. Shared transport, authentication, pagination, types and base UI
+remain common. Routes, navigation, layouts and startup belong to `app`.
+Features cannot import `app`; shared code cannot import an upper layer. A
+cross-feature dependency must use an explicit `index.ts` public entrypoint, not
+a deep import. `pnpm check:frontend-boundaries` enforces these rules without
+changing URLs, lazy-loading boundaries or the `@` source alias.
+
+Web keeps Vike `pages/` as route/SSR adapters. Implementations live in
+`src/features/{content,catalog,compare,selector,conversion,search,analytics}`;
+`src/server` owns server integration and `src/shared` contains browser-safe
+primitives. Browser features cannot import server implementation modules.
+
+The Platform is a resolver-2 Cargo workspace. `airtek-domain` owns pure models;
+`airtek-runtime` owns configuration, authentication, state and database/business
+services; `airtek-http` owns route registration, HTTP middleware, OpenAPI and
+DevTools HTTP; `airtek-jobs` owns worker dispatch, leases and retention.
+Dependencies point from HTTP/jobs to runtime to domain. The api, worker and
+maintenance packages contain thin binaries with unchanged executable names.
+`tests/contracts` centrally hosts cross-crate, HTTP, PostgreSQL and migration
+contracts. `pnpm check:platform-boundaries` prevents reverse dependencies and
+checks feature forwarding. `production` and `devtools` remain mutually exclusive.
+DevTools uses narrow runtime methods for its token registry and session slots;
+those state containers stay private. All dependency versions are workspace-owned.
+Flyway migrations and callbacks remain in place and unchanged.
+
+Executable scripts are grouped by responsibility under `scripts/{checks,
+generation,testing,maintenance,brand}` with adjacent tests. Compose variants live
+in `infra/compose`; the default `compose.yaml` stays at the root. Root pnpm
+entrypoints always set the Compose project directory explicitly. Deployment
+release snapshots retain their own stable filename for rollback, independent of
+the source-tree location. `.local/qa` is disposable, whereas
+`.local/deliverables` is excluded from every automatic cleanup path.
 
 ## Developer tools
 

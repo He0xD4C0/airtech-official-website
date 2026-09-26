@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const openApiPath = resolve(root, 'packages/contracts/openapi/openapi.production.json')
 const matrixPath = resolve(root, 'packages/contracts/admin-operation-matrix.json')
 const check = process.argv.includes('--check')
@@ -126,6 +126,7 @@ function auditFor(path, method, operationId) {
 }
 
 function frontendConsumerFor(path) {
+  if (path.includes('/operations/')) return 'apps/admin/src/shared/services/operationPolling.ts'
   if (path.includes('/auth/')) return 'apps/admin/src/shared/services/adminAuthApi.ts'
   if (path.includes('/site-singletons/')) return 'apps/admin/src/features/content/services/contentApi.ts'
   if (path.includes('/content')) return 'apps/admin/src/features/content/services/contentApi.ts'

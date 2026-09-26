@@ -1,10 +1,15 @@
 import { isolatedTestEnvironment } from './isolated-test-environment.mjs'
 import { testProcess } from './test-process.mjs'
+import { contractObjectStore } from './contract-object-store.mjs'
 
 const isolated = isolatedTestEnvironment()
 const name = isolated.COMPOSE_PROJECT_NAME + '-postgres'
-const env = { ...process.env, AIRTEK_TEST_TEMPLATE_DATABASE: 'airtek_test_template' }
+const env = {
+  ...process.env, ...isolated,
+  AIRTEK_TEST_TEMPLATE_DATABASE: 'airtek_test_template',
+}
 const { run, capture } = testProcess(env)
+const storage = contractObjectStore(`${name}-objects`, run, capture)
 const postgres = ['docker', ['exec', name, 'psql', '-X', '-U', 'airtek', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1']]
 async function checked(command, args) {
   if (await run(command, args) !== 0) throw new Error(`${command} failed`)
@@ -41,15 +46,22 @@ try {
   const cargo = ['--manifest-path', 'services/platform/Cargo.toml']
   await checked('cargo', ['run', ...cargo, '-p', 'airtek-maintenance', '--bin', 'airtek-maintenance', '--', 'prepare-runtime'])
   await checked(postgres[0], [...postgres[1], '-c', `CREATE DATABASE airtek_test_template TEMPLATE ${isolated.POSTGRES_DB}`])
+  env.AIRTEK_TEST_S3_ENDPOINT = await storage.start()
   for (const suite of ['postgres_contract', 'retention_contract', 'migration_contract', 'cms_current_dependencies_contract', 'publication_dependency_migration_contract']) {
     await checked('cargo', ['test', ...cargo, '-p', 'airtek-platform-contract-tests', '--features', 'devtools', '--test', suite, '--', '--ignored'])
   }
   for (const filter of ['synthetic_master::', 'feishu_takeover_and_expiry::']) {
     await checked('cargo', ['test', ...cargo, '-p', 'airtek-platform-contract-tests', '--test', 'product_import_contract', filter, '--', '--ignored', '--test-threads=1'])
   }
+  if (env.AIRTEK_PRODUCT_MASTER_TEST_CSV) {
+    await checked('cargo', ['test', ...cargo, '-p', 'airtek-platform-contract-tests', '--test', 'product_import_contract', 'verified_master::', '--', '--ignored', '--test-threads=1'])
+  } else {
+    console.log('Controlled Product Master contract skipped: AIRTEK_PRODUCT_MASTER_TEST_CSV is not supplied.')
+  }
 } catch (error) {
   console.error(error.message)
   process.exitCode = 1
 } finally {
+  if (!await storage.cleanup()) process.exitCode = 1
   if (owned && await run('docker', ['rm', '--force', name], { cleanup: true }) !== 0) process.exitCode = 1
 }

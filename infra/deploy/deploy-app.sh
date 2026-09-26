@@ -3,7 +3,7 @@ set -eu
 
 release_id=${1:-}
 image_prefix=${2:-}
-source_compose=${3:-./compose.production.yaml}
+source_compose=${3:-./infra/compose/production.app.yaml}
 deploy_root=${AIRTEK_DEPLOY_ROOT:-/opt/airtek/app}
 production_env=${AIRTEK_PRODUCTION_ENV:-/etc/airtek/production.env}
 
@@ -36,6 +36,7 @@ fi
 
 release_dir="$deploy_root/releases/$release_id"
 mkdir -p "$release_dir"
+# Release snapshots have a stable name independent of the repository layout.
 cp "$source_compose" "$release_dir/compose.production.yaml"
 
 cat >"$release_dir/images.env" <<EOF
@@ -55,7 +56,7 @@ deployment_started=0
 compose_release() {
   target=$1
   shift
-  docker compose \
+  docker compose --project-directory . \
     --env-file "$production_env" \
     --env-file "$target/images.env" \
     -f "$target/compose.production.yaml" "$@"

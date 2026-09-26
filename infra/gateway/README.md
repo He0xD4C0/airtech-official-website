@@ -19,7 +19,7 @@ intersection of two independently configured policies.
 For the checked-in local defaults, start the complete stack with:
 
 ```sh
-docker compose up --build
+docker compose --project-directory . up --build
 ```
 
 Then use `http://www.localhost:8088`,
@@ -43,6 +43,6 @@ integration checks, not direct Internet exposure. Replace local hostnames,
 origins, and all example credentials before any production deployment.
 
 Local diagnostic listeners bind to `127.0.0.1`. The provider-neutral
-`compose.production.yaml` accepts independently versioned images and exposes
+`infra/compose/production.app.yaml` accepts independently versioned images and exposes
 only this Gateway listener to the outer ingress; it does not publish Public,
 Admin, or API application ports.

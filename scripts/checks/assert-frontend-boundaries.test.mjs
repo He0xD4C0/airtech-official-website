@@ -19,3 +19,8 @@ test('checks Vue scripts and keeps server imports out of browser features', () =
   const source = "<script setup>import x from '@/server/database.ts'</script><template>safe</template>"
   assert.equal(inspectImports(source, 'features/content/Page.vue', resolve).length, 1)
 })
+
+test('checks import types and rejects feature imports outside src', () => {
+  assert.equal(inspectImports("type X = import('@/features/media/private.ts').X", 'features/catalog/a.ts', resolve).length, 1)
+  assert.equal(inspectImports("import x from '../other-app/a.ts'", 'features/catalog/a.ts', resolve).length, 1)
+})

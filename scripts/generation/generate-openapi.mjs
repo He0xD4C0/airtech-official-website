@@ -18,7 +18,7 @@ import {
   writeModularOpenApiTypes,
 } from './openapi-typescript-modules.mjs'
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const snapshot = join(root, 'packages/contracts/openapi/openapi.production.json')
 const generatedRoot = join(root, 'packages/contracts/src/generated')
 const check = process.argv.includes('--check')

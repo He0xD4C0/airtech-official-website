@@ -149,7 +149,7 @@ const modulePath = fileURLToPath(import.meta.url)
 if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(modulePath)) {
   try {
     const { apply } = parseArguments(process.argv.slice(2))
-    runCleanup({ root: resolve(dirname(modulePath), '..'), apply })
+    runCleanup({ root: resolve(dirname(modulePath), '../..'), apply })
   } catch (error) {
     console.error(error instanceof Error ? error.message : error)
     process.exitCode = 1

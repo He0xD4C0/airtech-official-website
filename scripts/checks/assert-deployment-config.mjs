@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-const root = dirname(dirname(fileURLToPath(import.meta.url)))
+const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))))
 const failures = []
 function read(relativePath) {
   const path = join(root, relativePath)
@@ -320,13 +320,13 @@ forbidMatch(serviceBlock(compose, 'platform-worker'), /AIRTEK_MEDIA_|S3_/u, 'The
 for (const service of ['platform-api', 'platform-worker', 'admin-web', 'public-web']) {
   forbidMatch(serviceBlock(compose, service), /AIRTEK_DEV_ADMIN_(?:SEED|DISPLAY_NAME|EMAIL|PASSWORD):|local-admin@airtek\.invalid|Airtek-Local-Admin-20260917!/u, `${service} must not receive fixed development administrator credentials.`)
 }
-const debugCompose = read('compose.debug.yaml')
+const debugCompose = read('infra/compose/debug.yaml')
 for (const [variable, hostPort, containerPort] of [['AIRTEK_POSTGRES_DEBUG_PORT', 54320, 5432]]) {
   const mapping = `\\$\\{AIRTEK_BIND_ADDRESS:-127\\.0\\.0\\.1\\}:\\$\\{${variable}:-${hostPort}\\}:${containerPort}`
   requireMatch(debugCompose, new RegExp(mapping, 'u'), `Opt-in ${containerPort} diagnostic mapping must be configurable and loopback-only.`)
 }
 
-const productionCompose = read('compose.production.yaml')
+const productionCompose = read('infra/compose/production.app.yaml')
 const productionEnvironment = read('infra/deploy/production.env.example')
 for (const [body, label] of [[productionCompose, 'Production Compose'], [productionEnvironment, 'Production environment example'], [platformDockerfile, 'Platform Dockerfile']]) {
   forbidMatch(body, /AIRTEK_DEV_(?:ADMIN|PUBLIC)_|local-admin@airtek\.invalid|Airtek-Local-Admin-20260917!|prepare-development-runtime|reset-development-admin/u, `${label} must not contain development fixture provisioning or credentials.`)

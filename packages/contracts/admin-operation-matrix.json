@@ -1819,7 +1819,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
+      "frontendConsumer": "apps/admin/src/shared/services/operationPolling.ts"
     },
     {
       "method": "GET",
@@ -1855,7 +1855,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
+      "frontendConsumer": "apps/admin/src/shared/services/operationPolling.ts"
     },
     {
       "method": "GET",

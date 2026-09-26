@@ -1,18 +1,18 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 
-const root = resolve(import.meta.dirname, '..')
+const root = resolve(import.meta.dirname, '../..')
 const roots = [
   'compose.yaml',
-  'compose.debug.yaml',
-  'compose.production.yaml',
+  'infra/compose/debug.yaml',
+  'infra/compose/production.app.yaml',
   '.env.example',
   'infra/docker',
   'infra/gateway',
   'infra/object-storage',
   'infra/deploy/production.env.example',
   '.github/workflows/ci.yml',
-  'scripts/run-e2e-stack.mjs',
+  'scripts/testing/run-e2e-stack.mjs',
   'apps/admin/src',
   'apps/web/src',
   'services/platform/crates',

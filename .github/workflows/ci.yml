@@ -100,9 +100,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-browser-contracts
+          include-hidden-files: true
           path: |
             .local/qa/playwright-report/
             .local/qa/test-results/
+            !.local/qa/test-results/**/e2e-admin-*.json
+            !.local/qa/test-results/**/e2e-admin-totp-secret.txt
           if-no-files-found: ignore
           retention-days: 7
 
@@ -146,7 +149,7 @@ jobs:
         with:
           workspaces: services/platform
       - run: cargo fmt --manifest-path services/platform/Cargo.toml --all -- --check
-      - run: node scripts/assert-postgres-runtime-boundary.mjs
+      - run: node scripts/checks/assert-postgres-runtime-boundary.mjs
       - run: cargo clippy --manifest-path services/platform/Cargo.toml --workspace --all-targets --features production -- -D warnings
       - name: Provision a distinct runtime database role
         run: |
@@ -320,18 +323,10 @@ jobs:
           done
       - name: Run Rust unit and HTTP contract tests
         run: cargo test --manifest-path services/platform/Cargo.toml --workspace
-      - name: Run PostgreSQL integration contracts with default test parallelism
+      - name: Run isolated PostgreSQL, MinIO and serialized Product Master contracts
         run: |
-          cargo test --manifest-path services/platform/Cargo.toml -p airtek-platform-contract-tests --features devtools --test postgres_contract -- --ignored
-          cargo test --manifest-path services/platform/Cargo.toml -p airtek-platform-contract-tests --test retention_contract -- --ignored
-          cargo test --manifest-path services/platform/Cargo.toml -p airtek-platform-contract-tests --features devtools --test migration_contract -- --ignored
-          cargo test --manifest-path services/platform/Cargo.toml -p airtek-platform-contract-tests --features devtools --test cms_current_dependencies_contract -- --ignored
-          cargo test --manifest-path services/platform/Cargo.toml -p airtek-platform-contract-tests --features devtools --test publication_dependency_migration_contract -- --ignored
-      - name: Run shared-state Product Master contracts one at a time
-        run: |
-          cargo test --manifest-path services/platform/Cargo.toml -p airtek-platform-contract-tests --test product_import_contract feishu_takeover_and_expiry::expired_private_staging_requires_atomic_cryptographic_erasure -- --ignored --exact
-          cargo test --manifest-path services/platform/Cargo.toml -p airtek-platform-contract-tests --test product_import_contract synthetic_master::synthetic_product_master_scale_is_private_promoted_draft_and_idempotent -- --ignored --exact
-          cargo test --manifest-path services/platform/Cargo.toml -p airtek-platform-contract-tests --test product_import_contract feishu_takeover_and_expiry::feishu_takes_over_verified_csv_stable_id_and_projects_all_facts_atomically -- --ignored --exact
+          env -u DATABASE_URL -u AIRTEK_TEST_DATABASE_URL -u AIRTEK_DATABASE_URL_INTERNAL -u FLYWAY_URL \
+            node scripts/testing/run-postgres-contracts.mjs
       - run: cargo check --manifest-path services/platform/Cargo.toml --workspace --features production
       - run: cargo check --manifest-path services/platform/Cargo.toml --workspace --features devtools
       - name: Assert production and DevTools are mutually exclusive
@@ -354,15 +349,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node scripts/assert-deployment-config.mjs
-      - run: node scripts/assert-production-infrastructure.mjs
-      - run: docker compose config --quiet
+      - run: node scripts/checks/assert-deployment-config.mjs
+      - run: node scripts/checks/assert-production-infrastructure.mjs
+      - name: Validate every supported Compose combination
+        run: node scripts/checks/assert-compose-configs.mjs
+      - run: docker compose --project-directory . config --quiet
       - name: Validate opt-in debug port override
-        run: docker compose -f compose.yaml -f compose.debug.yaml --profile object-storage config --quiet
+        run: docker compose --project-directory . -f compose.yaml -f infra/compose/debug.yaml --profile object-storage config --quiet
       - name: Validate provider-neutral production Compose
-        run: docker compose --env-file infra/deploy/production.env.example -f compose.production.yaml config --quiet
+        run: docker compose --project-directory . --env-file infra/deploy/production.env.example -f infra/compose/production.app.yaml config --quiet
       - name: Validate independently operated production infrastructure
-        run: docker compose --env-file infra/deploy/infrastructure.env.example -f compose.infrastructure.production.yaml --profile bootstrap config --quiet
+        run: docker compose --project-directory . --env-file infra/deploy/infrastructure.env.example -f infra/compose/production.infrastructure.yaml --profile bootstrap config --quiet
       - name: Validate production shell scripts
         run: sh -n infra/deploy/deploy-app.sh infra/deploy/postgres-bootstrap.sh
       - name: Validate Admin Nginx template

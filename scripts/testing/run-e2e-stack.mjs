@@ -2,12 +2,12 @@ import { isolatedTestEnvironment } from './isolated-test-environment.mjs'
 import { testProcess } from './test-process.mjs'
 import { createHash } from 'node:crypto'
 import { readdirSync } from 'node:fs'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 
 const isolation = isolatedTestEnvironment()
-const sessionDirectory = await mkdtemp(join(tmpdir(), 'airtek-e2e-session-'))
+await mkdir('.local/qa', { recursive: true })
+const sessionDirectory = await mkdtemp(join('.local/qa', 'e2e-session-'))
 const gatewayPort = process.env.AIRTEK_E2E_GATEWAY_PORT ?? '18089'
 const publicPort = process.env.AIRTEK_E2E_PUBLIC_PORT ?? '3300'
 const adminPort = process.env.AIRTEK_E2E_ADMIN_PORT ?? '3310'
@@ -110,7 +110,7 @@ async function waitForSuccessfulJobs(services, timeoutMs = 300_000) {
   const pending = new Set(services)
   while (pending.size > 0 && Date.now() < deadline) {
     for (const service of pending) {
-      const listed = await capture('docker', ['compose', 'ps', '--all', '--quiet', service])
+      const listed = await capture('docker', ['compose', '--project-directory', '.', 'ps', '--all', '--quiet', service])
       const containerId = listed.stdout.trim()
       if (listed.status !== 0 || !containerId) continue
       const inspected = await capture('docker', [
@@ -136,32 +136,32 @@ async function waitForSuccessfulJobs(services, timeoutMs = 300_000) {
 let testStatus = 1
 let owned = false
 try {
-  const existing = await capture('docker', ['compose', 'ps', '--all', '--quiet'])
+  const existing = await capture('docker', ['compose', '--project-directory', '.', 'ps', '--all', '--quiet'])
   if (existing.status !== 0 || existing.stdout.trim()) throw new Error('Test project is not empty; refusing to use it.')
   owned = true
   const launchStatus = await run('docker', [
-    'compose', 'up', composeBuildArgument, '--detach',
+    'compose', '--project-directory', '.', 'up', composeBuildArgument, '--detach',
   ])
   const initStatus = launchStatus === 0
     ? await waitForSuccessfulJobs(['flyway-migrate', 'platform-maintenance', 'minio-create-bucket'])
     : launchStatus
   const readyStatus = initStatus === 0
     ? await run('docker', [
-        'compose', 'up', '--detach', '--wait', '--wait-timeout', '300', '--no-deps',
+        'compose', '--project-directory', '.', 'up', '--detach', '--wait', '--wait-timeout', '300', '--no-deps',
         'postgres', 'minio', 'platform-api', 'platform-worker', 'public-web', 'admin-web', 'gateway',
       ])
     : initStatus
   if (readyStatus !== 0) {
-    await run('docker', ['compose', 'logs', '--no-color'])
+    await run('docker', ['compose', '--project-directory', '.', 'logs', '--no-color'])
     process.exitCode = readyStatus
   }
   else {
-    const emptyProjectionStatus = await run('node', ['scripts/assert-empty-public-projection.mjs'])
+    const emptyProjectionStatus = await run('node', ['scripts/checks/assert-empty-public-projection.mjs'])
     const playwrightStatus = emptyProjectionStatus === 0
       ? await run('pnpm', ['exec', 'playwright', 'test', ...playwrightArgs])
       : emptyProjectionStatus
     const runtimeReadinessStatus = await run('docker', [
-      'compose', 'run', '--rm', '--no-deps',
+      'compose', '--project-directory', '.', 'run', '--rm', '--no-deps',
       '-e', `AIRTEK_PUBLIC_ORIGIN=${publicOrigin}`,
       '-e', `AIRTEK_ADMIN_ORIGIN=${adminOrigin}`,
       '-e', `AIRTEK_API_ORIGIN=${apiOrigin}`,
@@ -173,21 +173,21 @@ try {
       'platform-maintenance', 'check-public-readiness',
     ])
     const endpointReadinessStatus = await run('node', [
-      'scripts/check-public-readiness.mjs',
+      'scripts/checks/check-public-readiness.mjs',
       '--public-base', publicOrigin,
       '--api-base', apiOrigin,
       '--expected-public-origin', publicOrigin,
       '--expected-api-origin', apiOrigin,
     ])
     testStatus = playwrightStatus || runtimeReadinessStatus || endpointReadinessStatus
-    if (testStatus !== 0) await run('docker', ['compose', 'logs', '--no-color'])
+    if (testStatus !== 0) await run('docker', ['compose', '--project-directory', '.', 'logs', '--no-color'])
     process.exitCode = testStatus
   }
 } catch (error) {
   console.error(error.message)
   process.exitCode = 1
 } finally {
-  const downStatus = owned ? await run('docker', ['compose', 'down', '--volumes', '--remove-orphans'], { cleanup: true }) : 0
+  const downStatus = owned ? await run('docker', ['compose', '--project-directory', '.', 'down', '--volumes', '--remove-orphans'], { cleanup: true }) : 0
   if (downStatus !== 0 && (process.exitCode ?? 0) === 0) process.exitCode = downStatus
   // Generated authentication files belong only to this run, including interrupted runs.
   await rm(sessionDirectory, { recursive: true, force: true })

@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, relative } from 'node:path'
 
-const root = dirname(dirname(fileURLToPath(import.meta.url)))
+const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))))
 const adminDist = join(root, 'apps/admin/dist')
 const publicDist = join(root, 'apps/web/dist')
 const failures = []

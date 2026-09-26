@@ -13,7 +13,7 @@ connects an external S3-compatible service through the Admin GUI after startup;
 the application stores that configuration in PostgreSQL.
 
 Both projects join the pre-created external `airtek-production` Docker network.
-Application deployment must never run `docker compose down` against the
+Application deployment must never run `docker compose --project-directory . down` against the
 infrastructure project and must never remove its bind-mounted data directories.
 
 This is a single-host topology, not high availability. PostgreSQL backups must
@@ -29,9 +29,9 @@ the shared network and start the infrastructure once:
 
 ```sh
 docker network create --subnet 172.29.0.0/24 airtek-production
-docker compose \
+docker compose --project-directory . \
   --env-file /etc/airtek/infrastructure.env \
-  -f compose.infrastructure.production.yaml \
+  -f infra/compose/production.infrastructure.yaml \
   --profile bootstrap up -d
 ```
 
@@ -129,10 +129,10 @@ database-failure compensation.
 Run configuration and repository assertions before promotion:
 
 ```sh
-node scripts/assert-deployment-config.mjs
-node scripts/assert-production-infrastructure.mjs
-docker compose --env-file infra/deploy/production.env.example -f compose.production.yaml config --quiet
-docker compose --env-file infra/deploy/infrastructure.env.example -f compose.infrastructure.production.yaml --profile bootstrap config --quiet
+node scripts/checks/assert-deployment-config.mjs
+node scripts/checks/assert-production-infrastructure.mjs
+docker compose --project-directory . --env-file infra/deploy/production.env.example -f infra/compose/production.app.yaml config --quiet
+docker compose --project-directory . --env-file infra/deploy/infrastructure.env.example -f infra/compose/production.infrastructure.yaml --profile bootstrap config --quiet
 pnpm check:production
 pnpm check:contracts
 ```
@@ -220,9 +220,9 @@ Then perform the one-time takeover using the production Compose boundary and
 the real secret-managed environment file:
 
 ```sh
-docker compose --env-file /path/to/production.env -f compose.production.yaml run --rm flyway-migrate baseline
-docker compose --env-file /path/to/production.env -f compose.production.yaml run --rm flyway-migrate migrate
-docker compose --env-file /path/to/production.env -f compose.production.yaml run --rm flyway-migrate validate
+docker compose --project-directory . --env-file /path/to/production.env -f infra/compose/production.app.yaml run --rm flyway-migrate baseline
+docker compose --project-directory . --env-file /path/to/production.env -f infra/compose/production.app.yaml run --rm flyway-migrate migrate
+docker compose --project-directory . --env-file /path/to/production.env -f infra/compose/production.app.yaml run --rm flyway-migrate validate
 ```
 
 The `beforeBaseline` callback permits the `baselineVersion=10` baseline only

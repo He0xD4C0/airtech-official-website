@@ -12,7 +12,7 @@ export function isolatedTestEnvironment(source = process.env, token = randomByte
   const database = `airtek_test_${token}`
   return {
     COMPOSE_PROJECT_NAME: `${prefix}-${token}`,
-    COMPOSE_FILE: 'compose.yaml:compose.e2e.yaml',
+    COMPOSE_FILE: 'compose.yaml:infra/compose/e2e.yaml',
     COMPOSE_DISABLE_ENV_FILE: '1',
     POSTGRES_DB: database, POSTGRES_USER: 'airtek', POSTGRES_PASSWORD: 'airtek-test-only',
     FLYWAY_URL: `jdbc:postgresql://postgres:5432/${database}`,

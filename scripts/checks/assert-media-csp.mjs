@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+const root = join(dirname(fileURLToPath(import.meta.url)), '../..')
 const read = (path) => readFileSync(join(root, path), 'utf8')
 const failures = []
 const localSources = 'https: http://media.localhost:19000 http://localhost:19000'
@@ -13,8 +13,8 @@ for (const [label, body, expected] of [
   ['Local Admin Compose', read('compose.yaml'), `ADMIN_MEDIA_IMAGE_SOURCES: "${composeSources}"`],
   ['Local gateway Compose', read('compose.yaml'), `MEDIA_IMAGE_SOURCES: "${composeSources}"`],
   ['Local API host mapping', read('compose.yaml'), 'media.localhost:host-gateway'],
-  ['Production Admin Compose', read('compose.production.yaml'), 'ADMIN_MEDIA_IMAGE_SOURCES: "https:"'],
-  ['Production gateway Compose', read('compose.production.yaml'), 'MEDIA_IMAGE_SOURCES: "https:"'],
+  ['Production Admin Compose', read('infra/compose/production.app.yaml'), 'ADMIN_MEDIA_IMAGE_SOURCES: "https:"'],
+  ['Production gateway Compose', read('infra/compose/production.app.yaml'), 'MEDIA_IMAGE_SOURCES: "https:"'],
   ['Admin Nginx template', read('apps/admin/deploy/nginx.conf'), "img-src 'self' data: blob: ${ADMIN_MEDIA_IMAGE_SOURCES}"],
 ]) {
   if (!body.includes(expected)) failures.push(`${label} is missing ${expected}`)

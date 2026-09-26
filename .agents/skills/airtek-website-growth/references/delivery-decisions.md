@@ -10,6 +10,22 @@ The implemented platform boundary is current repository fact, not a claim inferr
 
 The cloud provider, deployment region, production domain, service sizing, current price, final schedule, signed scope, live external adapters, and production launch remain unapproved or environment-specific unless a current owner-approved record says otherwise.
 
+### Approved directory contract — 2026-09-26
+
+Status: `VERIFIED` for the owner's explicit structure-only refactor decision and
+its repository implementation; this is not production-launch approval. Admin
+and Web implementations are feature-owned, Web retains its Vike route adapters,
+and Platform uses domain/runtime/http/jobs crates with thin binary packages.
+HTTP contracts, schema history, routes and image responsibilities are unchanged.
+Use root pnpm entrypoints listed in the live README for tools now grouped under
+`scripts/{checks,generation,testing,maintenance,brand}` and Compose variants in
+`infra/compose`. `pnpm check:architecture` verifies directory/dependency
+boundaries; `pnpm check:compose` validates the configurations. `.local/qa` may be
+cleaned, but `.local/deliverables` must never be automatically cleaned. Brand
+source evidence, approval decisions and approved assets remain in their original
+locations. Reinspect the linked live implementation sources before reporting
+test status or deployment readiness.
+
 ## Confirm before implementation or estimate
 
 1. Requested increment and acceptance boundary across the implemented public site, core APIs, and internal management platform.

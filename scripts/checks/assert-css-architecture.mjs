@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { extname, join, relative, resolve } from 'node:path'
 
-const root = resolve(import.meta.dirname, '..')
+const root = resolve(import.meta.dirname, '../..')
 const sourceRoots = [
   'packages/ui/src',
   'packages/content-renderer/src',

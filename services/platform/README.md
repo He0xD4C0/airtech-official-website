@@ -1,7 +1,17 @@
 # AIRTEKPOWER platform service
 
-Rust modular-monolith backend for the public site and management portal. It exposes
+Rust layered-workspace backend for the public site and management portal. It exposes
 the API on fixed port `8080` and runs background work in a separate worker binary.
+
+`Cargo.toml` owns resolver 2 and all dependency versions. `crates/domain` has pure
+models; `crates/runtime` owns configuration, authentication, PostgreSQL and business
+services; `crates/http` owns routing, middleware, OpenAPI and DevTools HTTP;
+`crates/jobs` owns scheduling, leases and retention. HTTP/jobs depend on runtime,
+which depends on domain. `apps/{api,worker,maintenance}` are thin binary packages.
+Cross-crate/HTTP/PostgreSQL contracts live in `tests/contracts`. Flyway migrations,
+callbacks and fixtures retain their original locations. No legacy crate facade is
+provided. Production and DevTools features are forwarded by packages and cannot
+be enabled together.
 
 ## Local development
 
@@ -11,8 +21,8 @@ can silently diverge from the frontend origins, Compose mappings and database
 URLs.
 
 ```sh
-cargo run --bin airtek-api
-cargo run --bin airtek-worker
+cargo run -p airtek-api --bin airtek-api
+cargo run -p airtek-worker --bin airtek-worker
 ```
 
 `DATABASE_URL` is required by the API and Worker. PostgreSQL remains the runtime
@@ -23,8 +33,8 @@ With PostgreSQL configured:
 
 ```sh
 pnpm db:migrate
-cargo run --bin airtek-maintenance -- prepare-runtime
-cargo run --bin airtek-api
+cargo run -p airtek-maintenance --bin airtek-maintenance -- prepare-runtime
+cargo run -p airtek-api --bin airtek-api
 ```
 
 The maintenance command is idempotent and must complete after Flyway and before
@@ -64,7 +74,7 @@ the target environment, database, and credentials. Do not run the ordinary
 migration path first. Run:
 
 ```sh
-docker compose run --rm flyway-migrate baseline
+docker compose --project-directory . run --rm flyway-migrate baseline
 pnpm db:migrate
 pnpm db:validate
 ```

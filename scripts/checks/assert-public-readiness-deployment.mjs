@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 
-const compose = readFileSync(new URL('../compose.production.yaml', import.meta.url), 'utf8')
-const deploy = readFileSync(new URL('../infra/deploy/deploy-app.sh', import.meta.url), 'utf8')
+const compose = readFileSync(new URL('../../infra/compose/production.app.yaml', import.meta.url), 'utf8')
+const deploy = readFileSync(new URL('../../infra/deploy/deploy-app.sh', import.meta.url), 'utf8')
 const failures = []
 
 function serviceBlock(name) {

@@ -7,7 +7,7 @@ test content to make readiness pass.
 ## Local application build
 
 Use the existing business environment file and project name with both
-`compose.yaml` and `compose.local-production.yaml`. The latter selects production
+`compose.yaml` and `infra/compose/local-production.yaml`. The latter selects production
 Rust features and removes development seed settings. Use `up --build --no-deps`
 for application services only; do not recreate PostgreSQL or MinIO. Preserve the
 existing encryption keys. The local origins are:
@@ -27,7 +27,7 @@ connection. Its read-only transaction returns the three shell identities,
 15 core pages, existing draft paths, and publish-validation field issues.
 
 To prepare missing drafts only, pass that JSON report to
-`node scripts/prepare-public-drafts.mjs <report.json>`. Supply
+`node scripts/maintenance/prepare-public-drafts.mjs <report.json>`. Supply
 `AIRTEK_DRAFT_API_ORIGIN`, `AIRTEK_DRAFT_ADMIN_ORIGIN`,
 `AIRTEK_DRAFT_SESSION_COOKIE`, and `AIRTEK_DRAFT_CSRF_TOKEN` through a protected
 operator environment from an authenticated Admin session. Never commit or log

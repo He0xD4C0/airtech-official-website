@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-const root = resolve(import.meta.dirname, '..')
+const root = resolve(import.meta.dirname, '../..')
 const read = (path) => readFileSync(resolve(root, path), 'utf8')
 const failures = []
 
@@ -22,8 +22,8 @@ function serviceBlock(compose, service) {
   return match[1]
 }
 
-const infrastructure = read('compose.infrastructure.production.yaml')
-const application = read('compose.production.yaml')
+const infrastructure = read('infra/compose/production.infrastructure.yaml')
+const application = read('infra/compose/production.app.yaml')
 const infrastructureEnv = read('infra/deploy/infrastructure.env.example')
 const productionEnv = read('infra/deploy/production.env.example')
 const deployScript = read('infra/deploy/deploy-app.sh')

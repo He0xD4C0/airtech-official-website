@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const root = join(fileURLToPath(new URL('.', import.meta.url)), '..')
+const root = join(fileURLToPath(new URL('.', import.meta.url)), '../..')
 const failures = []
 const read = (path) => readFileSync(join(root, path), 'utf8')
 
@@ -45,7 +45,7 @@ for (const path of [
   '.env.example',
   '.github/workflows/ci.yml',
   'compose.yaml',
-  'compose.production.yaml',
+  'infra/compose/production.app.yaml',
   'infra/deploy/production.env.example',
   'infra/docker/flyway-entrypoint.sh',
 ]) {
@@ -56,14 +56,14 @@ for (const path of [
   )
 }
 requireText(
-  'scripts/run-e2e-stack.mjs',
+  'scripts/testing/run-e2e-stack.mjs',
   /readdirSync\('services\/platform\/migrations'\)/u,
-  'scripts/run-e2e-stack.mjs must derive the Flyway target from the migration directory.',
+  'scripts/testing/run-e2e-stack.mjs must derive the Flyway target from the migration directory.',
 )
 requireText(
-  'scripts/run-e2e-stack.mjs',
+  'scripts/testing/run-e2e-stack.mjs',
   /AIRTEK_FLYWAY_TARGET:\s*String\(latestMigrationVersion\)/u,
-  'scripts/run-e2e-stack.mjs must use its derived latest Flyway target.',
+  'scripts/testing/run-e2e-stack.mjs must use its derived latest Flyway target.',
 )
 
 const rustFiles = [
@@ -103,11 +103,21 @@ const retiredCmsPatterns = [
 ]
 for (const path of productionSources) {
   const body = read(path)
+  if (/infra\/compose\/|compose\.(?:debug|e2e|production|infrastructure|local-production)\./u.test(body)) {
+    failures.push(`${path} must not depend on Compose file locations.`)
+  }
   for (const pattern of retiredCmsPatterns) {
     if (pattern.test(body)) failures.push(`${path} still references retired CMS history or preview behavior.`)
   }
   if (/\.(?:ts|tsx|vue)$/u.test(path) && /as unknown as/u.test(body)) {
     failures.push(`${path} contains a duplicate unsafe decoder cast.`)
+  }
+}
+
+for (const entry of readdirSync(join(root, 'scripts'), { withFileTypes: true })) {
+  if (entry.isFile() && entry.name.endsWith('.mjs')) failures.push(`Executable script is not grouped by responsibility: ${entry.name}`)
+  if (entry.isDirectory() && !['checks', 'generation', 'testing', 'maintenance', 'brand'].includes(entry.name)) {
+    failures.push(`Unexpected scripts directory: ${entry.name}`)
   }
 }
 

@@ -15,5 +15,5 @@ test('refuses inherited connections, business projects and arbitrary Compose fil
     assert.throws(() => isolatedTestEnvironment({ [key]: 'postgres://localhost/airtek' }), /Refusing inherited/)
   }
   assert.throws(() => isolatedTestEnvironment({ E2E_COMPOSE_PROJECT_NAME: 'airtekpower' }), /prefix/)
-  assert.throws(() => isolatedTestEnvironment({ E2E_COMPOSE_FILE: 'compose.production.yaml' }), /not permitted/)
+  assert.throws(() => isolatedTestEnvironment({ E2E_COMPOSE_FILE: 'infra/compose/production.app.yaml' }), /not permitted/)
 })

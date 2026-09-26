@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs'
 
-const compose = readFileSync(new URL('../compose.yaml', import.meta.url), 'utf8')
-const environment = readFileSync(new URL('../.env.example', import.meta.url), 'utf8')
-const e2eStack = readFileSync(new URL('./run-e2e-stack.mjs', import.meta.url), 'utf8')
-const isolation = readFileSync(new URL('./isolated-test-environment.mjs', import.meta.url), 'utf8')
-const e2eCompose = readFileSync(new URL('../compose.e2e.yaml', import.meta.url), 'utf8')
-const localProductionCompose = readFileSync(new URL('../compose.local-production.yaml', import.meta.url), 'utf8')
+const compose = readFileSync(new URL('../../compose.yaml', import.meta.url), 'utf8')
+const environment = readFileSync(new URL('../../.env.example', import.meta.url), 'utf8')
+const e2eStack = readFileSync(new URL('../testing/run-e2e-stack.mjs', import.meta.url), 'utf8')
+const isolation = readFileSync(new URL('../testing/isolated-test-environment.mjs', import.meta.url), 'utf8')
+const e2eCompose = readFileSync(new URL('../../infra/compose/e2e.yaml', import.meta.url), 'utf8')
+const localProductionCompose = readFileSync(new URL('../../infra/compose/local-production.yaml', import.meta.url), 'utf8')
 const emptyProjection = readFileSync(new URL('./assert-empty-public-projection.mjs', import.meta.url), 'utf8')
 const failures = []
 
@@ -52,9 +52,9 @@ for (const name of [
 ]) {
   requireText(e2eStack, name, `The isolated E2E stack must provide ${name.split(':')[0]}.`)
 }
-requireText(isolation, 'compose.yaml:compose.e2e.yaml', 'The E2E runner must load its bootstrap-only Compose override.')
+requireText(isolation, 'compose.yaml:infra/compose/e2e.yaml', 'The E2E runner must load its bootstrap-only Compose override.')
 requireText(e2eStack, '...isolation', 'The E2E runner must apply the database isolation contract.')
-requireText(e2eStack, "run('node', ['scripts/assert-empty-public-projection.mjs'])", 'The E2E runner must verify fail-closed behavior before publishing fixtures.')
+requireText(e2eStack, "run('node', ['scripts/checks/assert-empty-public-projection.mjs'])", 'The E2E runner must verify fail-closed behavior before publishing fixtures.')
 requireText(e2eStack, "'platform-maintenance', 'check-public-readiness'", 'The E2E runner must finish with the production-style readiness gate.')
 requireText(e2eCompose, 'AIRTEK_DEV_PUBLIC_SEED: !reset null', 'Production-image E2E must omit seed configuration.')
 requireText(e2eCompose, 'AIRTEK_DEV_ADMIN_PASSWORD_ONLY: !reset null', 'Production-image E2E must omit the local password-only authentication switch.')

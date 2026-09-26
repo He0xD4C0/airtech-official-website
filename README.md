@@ -30,12 +30,47 @@ migration history.
 | `docs/` | Source evidence and planning inputs; not generated runtime output |
 | `reports/` | Dated QA and audit evidence intended for repository retention |
 | `scripts/` | Generation, validation, boundary checks, and local maintenance tools |
+| `.local/qa/` | Ignored Playwright, test and dogfood artifacts; safe to clean |
+| `.local/deliverables/` | Ignored local deliverables; never automatically cleaned |
+
+```text
+apps/admin/src/{app,shared,features/*}
+apps/web/{pages,src/{app,shared,server,features/*}}
+services/platform/{crates/{domain,runtime,http,jobs},apps/{api,worker,maintenance},tests/contracts}
+infra/compose/{debug,e2e,local-production,production.app,production.infrastructure}.yaml
+scripts/{checks,generation,testing,maintenance,brand}
+```
+
+The root `compose.yaml` is the default local stack. Run commands from this
+repository root; all Compose entrypoints set `--project-directory .`:
+
+| Command | Purpose |
+| --- | --- |
+| `pnpm stack:up` | Build and start the local stack |
+| `pnpm stack:debug` | Build and start with diagnostic ports |
+| `pnpm compose:local-production up --build` | Local production-feature stack |
+| `pnpm test:e2e:stack` | Disposable database, fresh stack and complete browser suite |
+| `pnpm config:production:app` | Validate the production app example configuration |
+| `pnpm config:production:infra` | Validate the separate infrastructure configuration |
+| `pnpm check:compose` | Validate all six Compose combinations without starting services |
+
+`pnpm compose:local`, `compose:debug`, `compose:local-production`,
+`compose:production:app` and `compose:production:infra` also forward ordinary
+Compose arguments. Production wrappers do not choose credentials for you; pass
+the appropriate `--env-file` explicitly. Old internal script/Compose paths have
+no compatibility entrypoints. The brand decision record
+`scripts/airtek-brand-asset-decisions.json` deliberately stays at its original
+evidence location; only its executable tools moved to `scripts/brand/`.
 
 Dependencies, build output, caches, browser reports, and temporary conversion
 files are local generated artifacts and remain Git-ignored. `pnpm clean:local`
 previews the cleanup whitelist; `pnpm clean:local:apply` explicitly removes it.
-Neither command deletes dependencies, environment files, or arbitrary
-untracked files.
+Neither command deletes dependencies, environment files, `.local/deliverables`,
+or arbitrary untracked files. The whitelist is `.local/qa`, the Platform Cargo
+`target`, and the Admin, Web and contracts `dist` directories. Dependency hygiene
+is read-only (`pnpm check:dependencies`). `pnpm migrate:local` previews old local
+artifact migration; `pnpm migrate:local --apply` refuses destination collisions
+and records before/after SHA-256 manifests under `.local/manifests/`.
 
 ## Local development
 
@@ -110,7 +145,7 @@ including clearing its TOTP and revoking its sessions, run
 artifacts and deployment configuration reject them.
 
 ```sh
-docker compose up --build
+docker compose --project-directory . up --build
 ```
 
 The host-isolated HTTP entry points are:
@@ -136,10 +171,10 @@ in separate terminals:
 
 ```sh
 pnpm install
-docker compose -f compose.yaml -f compose.debug.yaml up -d postgres
+docker compose --project-directory . -f compose.yaml -f infra/compose/debug.yaml up -d postgres
 pnpm db:migrate
-cargo run --manifest-path services/platform/Cargo.toml --bin airtek-api
-cargo run --manifest-path services/platform/Cargo.toml --bin airtek-worker
+cargo run --manifest-path services/platform/Cargo.toml -p airtek-api --bin airtek-api
+cargo run --manifest-path services/platform/Cargo.toml -p airtek-worker --bin airtek-worker
 pnpm dev
 ```
 
@@ -159,7 +194,7 @@ To expose PostgreSQL on loopback for native development, add the debug Compose
 overlay. MinIO exposure is controlled independently by its profile:
 
 ```sh
-docker compose -f compose.yaml -f compose.debug.yaml up --build
+docker compose --project-directory . -f compose.yaml -f infra/compose/debug.yaml up --build
 ```
 
 Object storage starts unconfigured in PostgreSQL, so the platform remains
@@ -202,7 +237,7 @@ its versioned preparation marker is absent.
 
 The checked-in local Compose stack explicitly permits its historical single
 `airtek` owner role for development-volume compatibility. That shared-role
-override is not present in `compose.production.yaml`; production rejects using
+override is not present in `infra/compose/production.app.yaml`; production rejects using
 the Flyway DDL identity as the application runtime identity.
 
 Application-owned migration and operations CLIs have been removed. In-memory repositories exist only behind isolated test
@@ -217,7 +252,7 @@ SQLx versions 1 through 10. Confirm the exact environment, database identity,
 credentials, and maintenance window, then run this controlled adoption sequence:
 
 ```sh
-docker compose run --rm flyway-migrate baseline
+docker compose --project-directory . run --rm flyway-migrate baseline
 pnpm db:migrate
 pnpm db:validate
 ```
@@ -238,7 +273,7 @@ new empty database must not be baselined; initialize it only with
 
 ## Production image boundary
 
-`compose.production.yaml` is a provider-neutral, image-only deployment
+`infra/compose/production.app.yaml` is a provider-neutral, image-only deployment
 boundary. It requires five separate immutable references for Public Web, Admin
 Web, Platform, Migrations, and Gateway. The non-root Flyway migration artifact
 is independent from the Rust Platform artifact. Only the Gateway is exposed to
@@ -258,9 +293,9 @@ publishes HTTPS `443`.
 Validate both deployment shapes without starting them:
 
 ```sh
-docker compose config --quiet
-docker compose -f compose.yaml -f compose.debug.yaml --profile object-storage config --quiet
-docker compose --env-file infra/deploy/production.env.example -f compose.production.yaml config --quiet
+docker compose --project-directory . config --quiet
+docker compose --project-directory . -f compose.yaml -f infra/compose/debug.yaml --profile object-storage config --quiet
+docker compose --project-directory . --env-file infra/deploy/production.env.example -f infra/compose/production.app.yaml config --quiet
 ```
 
 ## Verification
@@ -281,10 +316,10 @@ pnpm test:e2e:stack
 pnpm check:contracts
 pnpm check:production
 pnpm check:deployment
-docker compose config --quiet
+docker compose --project-directory . config --quiet
 cargo fmt --manifest-path services/platform/Cargo.toml --all -- --check
 cargo clippy --manifest-path services/platform/Cargo.toml --all-targets -- -D warnings
-cargo test --manifest-path services/platform/Cargo.toml
+cargo test --manifest-path services/platform/Cargo.toml --workspace
 ```
 
 The historical `pnpm test` command remains the frontend workspace test entry
@@ -368,7 +403,7 @@ staging directory, records source-page context, and deduplicates files by
 SHA-256:
 
 ```sh
-node scripts/scrape_airtek_brand_assets.mjs [staging-directory]
+node scripts/brand/scrape_airtek_brand_assets.mjs [staging-directory]
 ```
 
 After every unique candidate has been visually reviewed, record a decision for
@@ -376,7 +411,7 @@ each checksum ID in `scripts/airtek-brand-asset-decisions.json`, then finalize
 the same staging directory:
 
 ```sh
-node scripts/finalize_airtek_brand_assets.mjs [staging-directory]
+node scripts/brand/finalize_airtek_brand_assets.mjs [staging-directory]
 ```
 
 Finalization fails when decision coverage is incomplete or a downloaded file no
