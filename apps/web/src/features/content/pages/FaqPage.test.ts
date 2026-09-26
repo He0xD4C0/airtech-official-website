@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { publicPageFixture } from '@/shared/test/publicPageFixture'
 import { publicProjectionFixture, tiptapDocument } from '@/shared/test/publicProjectionFixture'
 import FaqPage from '@/features/content/pages/FaqPage.vue'
+import { createPublicTestPlugins } from '@/shared/test/publicAppPlugins'
 
 describe('native V2 FAQ page', () => {
   it('SSR-renders the V2 body and typed question-and-answer collection', async () => {
@@ -36,7 +37,9 @@ describe('native V2 FAQ page', () => {
     const page = publicPageFixture('/en/resources/faqs/technical', {
       projection, dataState: 'published', indexable: true,
     })
-    const html = await renderToString(createSSRApp({ render: () => h(FaqPage, { page }) }))
+    const app = createSSRApp({ render: () => h(FaqPage, { page }) })
+    for (const plugin of createPublicTestPlugins()) app.use(plugin)
+    const html = await renderToString(app)
 
     expect(html).toContain('Published V2 introduction.')
     expect(html).toContain('<details>')

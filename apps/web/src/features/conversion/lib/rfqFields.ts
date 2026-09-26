@@ -7,18 +7,6 @@ const paths: Record<string, string> = {
   'contact.country': 'contact.countryOrRegion', 'contact.message': 'context.additionalMessage', 'contact.consent': 'consent',
 }
 export function rfqFieldPath(model: string): string { return paths[model] ?? model }
-export function rfqFieldLabel(key: string): string {
-  const labels: Record<string, string> = {
-    ambientTemperature: 'Ambient temperature °C', maximumDiameter: 'Maximum diameter mm',
-    airflow: 'Required airflow', airflowUnit: 'Airflow unit', pressure: 'Required pressure', pressureUnit: 'Pressure unit',
-    frequency: 'Frequency Hz', voltage: 'Voltage', preferredFamily: 'Fan family', motorTechnology: 'Motor technology',
-    requiredCertifications: 'Required certifications', control: 'Control method', application: 'Application',
-    existingModel: 'Existing model', quantity: 'Quantity', environment: 'Environment', projectStage: 'Project stage',
-    priority: 'Priority', projectScale: 'Project scale', schedule: 'Schedule', engineeringNeeds: 'Engineering needs',
-    installationConstraints: 'Installation constraints', replacementGoal: 'Replacement goal',
-  }
-  return labels[key] ?? key
-}
 import type { RfqContextValues } from '@/features/conversion/lib/submissions'
 import type { RfqType } from '@/shared/types/content'
 

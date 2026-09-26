@@ -5,6 +5,7 @@ import type { PublicContentProjection } from '@airtek/contracts'
 import { publicPageFixture } from '@/shared/test/publicPageFixture'
 import { publicProjectionFixture, tiptapDocument } from '@/shared/test/publicProjectionFixture'
 import PublishedContentPage from '@/features/content/pages/PublishedContentPage.vue'
+import { createPublicTestPlugins } from '@/shared/test/publicAppPlugins'
 
 function articleProjection(
   typeFields: Extract<PublicContentProjection['typeFields'], { type: 'article' }>,
@@ -31,7 +32,9 @@ async function render(projection: PublicContentProjection): Promise<string> {
   const page = publicPageFixture('/en/resources/articles/visible-metadata', {
     projection, dataState: 'published', indexable: true,
   })
-  return renderToString(createSSRApp({ render: () => h(PublishedContentPage, { page }) }))
+  const app = createSSRApp({ render: () => h(PublishedContentPage, { page }) })
+  for (const plugin of createPublicTestPlugins()) app.use(plugin)
+  return renderToString(app)
 }
 
 describe('native V2 article metadata', () => {

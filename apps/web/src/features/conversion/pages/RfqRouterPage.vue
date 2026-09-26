@@ -22,7 +22,7 @@ function trackRoute(journey: string): void {
       :projection="page.projection"
       :breadcrumbs="page.breadcrumbs"
     />
-    <section class="section shell rfq-router-grid">
+    <section class="section shell rfq-router-grid" lang="en">
       <a v-for="(path, index) in paths" :key="path.type" :href="path.href" class="rfq-path-card" @click="trackRoute(path.type)">
         <span class="card-number">{{ String(index + 1).padStart(2, '0') }}</span><h2>{{ path.title }}</h2><p v-if="path.summary">{{ path.summary }}</p>
       </a>

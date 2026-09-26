@@ -1,12 +1,12 @@
 import { createSSRApp, h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
-import { createPinia } from 'pinia'
 import { describe, expect, it } from 'vitest'
 import type { ContentBlock, PublicContentProjection } from '@airtek/contracts'
 import PageRenderer from '@/app/pages/PageRenderer.vue'
 import { publicPageFixture } from '@/shared/test/publicPageFixture'
 import { publicProjectionFixture, tiptapDocument } from '@/shared/test/publicProjectionFixture'
 import type { PublicPageModel } from '@/shared/types/content'
+import { createPublicTestPlugins } from '@/shared/test/publicAppPlugins'
 
 interface ProjectionOptions {
   kind?: PublicContentProjection['kind']
@@ -50,7 +50,7 @@ function pageWithProjection(
 
 async function render(page: PublicPageModel): Promise<string> {
   const app = createSSRApp({ render: () => h(PageRenderer, { page }) })
-  app.use(createPinia())
+  for (const plugin of createPublicTestPlugins()) app.use(plugin)
   return renderToString(app)
 }
 

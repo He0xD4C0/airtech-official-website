@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 defineProps<{
   previewSrc: string
@@ -11,6 +12,7 @@ defineProps<{
 const dialog = ref<HTMLDialogElement | null>(null)
 const open = ref(false)
 const loaded = ref(false)
+const { locale, t } = useI18n({ useScope: 'global' })
 let previousFocus: HTMLElement | null = null
 
 async function show(): Promise<void> {
@@ -38,13 +40,13 @@ onBeforeUnmount(() => {
 
 <template>
   <figure class="media-lightbox">
-    <button class="media-lightbox__trigger" type="button" aria-label="View original image" @click="show">
+    <button class="media-lightbox__trigger" type="button" :aria-label="t('accessibility.viewOriginalImage')" @click="show">
       <img :src="previewSrc" :alt="alt" loading="lazy" decoding="async" />
     </button>
     <figcaption v-if="caption">{{ caption }}</figcaption>
-    <dialog ref="dialog" class="media-lightbox__dialog" aria-label="Original image viewer" @close="afterClose">
-      <button class="media-lightbox__close" type="button" aria-label="Close original image" @click="close">Close</button>
-      <p v-if="open && !loaded" class="media-lightbox__loading" role="status">Loading original image…</p>
+    <dialog ref="dialog" class="media-lightbox__dialog" :lang="locale" :aria-label="t('accessibility.originalImageViewer')" @close="afterClose">
+      <button class="media-lightbox__close" type="button" :aria-label="t('accessibility.closeOriginalImage')" @click="close">{{ t('accessibility.close') }}</button>
+      <p v-if="open && !loaded" class="media-lightbox__loading" role="status">{{ t('accessibility.loadingOriginalImage') }}</p>
       <img v-if="open" :src="originalSrc" :alt="alt" @load="loaded = true" />
     </dialog>
   </figure>

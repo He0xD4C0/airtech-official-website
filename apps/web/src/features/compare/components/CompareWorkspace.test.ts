@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Product } from '@airtek/contracts'
 import { getPublishedProduct } from '@/shared/lib/api'
 import CompareWorkspace from '@/features/compare/components/CompareWorkspace.vue'
+import { createPublicTestPlugins } from '@/shared/test/publicAppPlugins'
 
 vi.mock('@/shared/lib/api', () => ({
   getPublishedProduct: vi.fn(),
@@ -65,7 +66,7 @@ describe('published product comparison', () => {
   it('hydrates a share URL from live published records and highlights differences', async () => {
     const wrapper = mount(CompareWorkspace, {
       props: { productFamilies },
-      global: { plugins: [createPinia()] },
+      global: { plugins: createPublicTestPlugins() },
     })
     await flushPromises()
 
@@ -82,7 +83,7 @@ describe('published product comparison', () => {
     vi.mocked(getPublishedProduct).mockImplementation(async (slug) => product(slug, 'axial', 10))
     mount(CompareWorkspace, {
       props: { productFamilies },
-      global: { plugins: [createPinia()] },
+      global: { plugins: createPublicTestPlugins() },
     })
     await flushPromises()
 
@@ -95,7 +96,7 @@ describe('published product comparison', () => {
     vi.mocked(getPublishedProduct).mockImplementation(async (slug, family) => product(slug, family ?? 'axial', family === 'centrifugal' ? 20 : 10))
     mount(CompareWorkspace, {
       props: { productFamilies },
-      global: { plugins: [createPinia()] },
+      global: { plugins: createPublicTestPlugins() },
     })
     await flushPromises()
 

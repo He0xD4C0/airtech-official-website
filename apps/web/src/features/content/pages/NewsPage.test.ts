@@ -6,6 +6,7 @@ import type { PublicContentProjection } from '@airtek/contracts'
 import { getPublishedNews } from '@/shared/lib/api'
 import { publicPageFixture } from '@/shared/test/publicPageFixture'
 import NewsPage from '@/features/content/pages/NewsPage.vue'
+import { createPublicTestPlugins } from '@/shared/test/publicAppPlugins'
 
 vi.mock('@/shared/lib/api', () => ({ getPublishedNews: vi.fn() }))
 
@@ -47,7 +48,9 @@ describe('published News cursor pagination', () => {
       entries: [{ slug: 'first', title: 'First published News', summary: '', href: '/en/resources/news/first' }],
       newsNextCursor: 'next-news-cursor',
     }
-    const html = await renderToString(createSSRApp({ render: () => h(NewsPage, { page }) }))
+    const app = createSSRApp({ render: () => h(NewsPage, { page }) })
+    for (const plugin of createPublicTestPlugins()) app.use(plugin)
+    const html = await renderToString(app)
 
     expect(html).toContain('First published News')
     expect(html).toContain('Next page')
@@ -72,7 +75,7 @@ describe('published News cursor pagination', () => {
       entries: [{ slug: 'first', title: 'First published News', summary: '', href: '/en/resources/news/first' }],
       newsNextCursor: 'next-news-cursor',
     }
-    const wrapper = mount(NewsPage, { props: { page } })
+    const wrapper = mount(NewsPage, { props: { page }, global: { plugins: createPublicTestPlugins() } })
 
     const nextButton = wrapper.findAll('button').find((button) => button.text() === 'Next page')
     expect(nextButton).toBeDefined()

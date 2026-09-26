@@ -8,6 +8,7 @@ import { getPublishedProducts } from '@/shared/lib/api'
 import { PUBLIC_PRODUCT_PAGE_SIZE } from '@/shared/lib/productPagination'
 import { useCompareStore } from '@/features/compare'
 import type { ProductFamilyProjection, PublicPageModel } from '@/shared/types/content'
+import { useI18n } from 'vue-i18n'
 
 type CatalogState = NonNullable<PublicPageModel['catalogState']>
 
@@ -27,6 +28,7 @@ const props = withDefaults(defineProps<{
   motorTechnologyCounts: () => [],
   initialState: () => ({ q: '', view: 'cards' }),
 })
+const { locale, t } = useI18n({ useScope: 'global' })
 
 const familiesByCode = computed(() => new Map(props.families.map((family) => [family.code, family])))
 const lockedFamily = computed(() => props.families.find((family) => family.slug === props.category)?.code)
@@ -150,9 +152,9 @@ async function loadPage(cursor: string | null): Promise<boolean> {
     familyCounts.value = page.familyCounts
     motorTechnologyCounts.value = page.motorTechnologyCounts
     return true
-  } catch (cause) {
+  } catch {
     if (generation === requestGeneration) {
-      pageError.value = cause instanceof Error ? cause.message : 'The catalog page could not be loaded.'
+      pageError.value = t('catalog.loadError')
     }
     return false
   } finally {
@@ -209,53 +211,53 @@ async function previousPage(): Promise<void> {
 </script>
 
 <template>
-  <section class="section shell">
-    <SectionHeading eyebrow="Published catalog" title="Products" />
-    <div class="filter-panel product-filter-panel" aria-label="Product filters" :aria-busy="loading">
-      <label><span>Search the published catalog</span><input v-model="query" type="search" placeholder="Title, model, Stable ID, subtype or specification" @change="resetPagination('catalogSearch')" @keydown.enter.prevent="resetPagination('catalogSearch')"></label>
-      <label><span>Fan form</span><select v-model="selectedFamily" :disabled="Boolean(lockedFamily)" @change="resetPagination('family')">
-        <option v-if="!lockedFamily" value="all">All product families</option>
+  <section class="section shell" :lang="locale">
+    <SectionHeading :eyebrow="t('catalog.eyebrow')" :title="t('catalog.title')" />
+    <div class="filter-panel product-filter-panel" :aria-label="t('catalog.filters')" :aria-busy="loading">
+      <label><span>{{ t('catalog.search') }}</span><input v-model="query" type="search" :placeholder="t('catalog.searchPlaceholder')" @change="resetPagination('catalogSearch')" @keydown.enter.prevent="resetPagination('catalogSearch')"></label>
+      <label><span>{{ t('catalog.fanForm') }}</span><select v-model="selectedFamily" :disabled="Boolean(lockedFamily)" @change="resetPagination('family')">
+        <option v-if="!lockedFamily" value="all">{{ t('catalog.allFamilies') }}</option>
         <option v-for="family in families" :key="family.code" :value="family.code">{{ family.name }} ({{ familyCountMap.get(family.code) ?? 0 }})</option>
       </select></label>
-      <label><span>Motor technology</span><select v-model="selectedMotor" @change="resetPagination('motorTechnology')">
-        <option value="all">All published technologies</option>
+      <label><span>{{ t('catalog.motorTechnology') }}</span><select v-model="selectedMotor" @change="resetPagination('motorTechnology')">
+        <option value="all">{{ t('catalog.allTechnologies') }}</option>
         <option v-for="technology in motorTechnologies" :key="technology" :value="technology">{{ technology }}</option>
       </select></label>
-      <p class="result-count" role="status">{{ resultTotal }} matching {{ resultTotal === 1 ? 'record' : 'records' }}</p>
-      <p class="pagination-scope">Showing {{ publishedProducts.length }} records on page {{ pageIndex + 1 }}.</p>
+      <p class="result-count" role="status">{{ t('catalog.matchingRecords', { count: resultTotal }, resultTotal) }}</p>
+      <p class="pagination-scope">{{ t('catalog.showingPage', { count: publishedProducts.length, page: pageIndex + 1 }) }}</p>
     </div>
 
     <div v-if="pageError" class="data-notice catalog-page-error" role="alert">
-      <div><strong>Catalog page unavailable</strong><p>{{ pageError }}</p></div>
-      <button class="button secondary" type="button" :disabled="loading" @click="resetPagination()">Reload first page</button>
+      <div><strong>{{ t('catalog.unavailable') }}</strong><p>{{ pageError }}</p></div>
+      <button class="button secondary" type="button" :disabled="loading" @click="resetPagination()">{{ t('catalog.reload') }}</button>
     </div>
 
-    <div v-if="publishedProducts.length" class="catalog-toolbar" aria-label="Catalog view">
-      <span>View</span>
-      <button type="button" :aria-pressed="view === 'cards'" @click="setView('cards')">Cards</button>
-      <button type="button" :aria-pressed="view === 'table'" @click="setView('table')">Table</button>
+    <div v-if="publishedProducts.length" class="catalog-toolbar" :aria-label="t('catalog.viewLabel')">
+      <span>{{ t('catalog.view') }}</span>
+      <button type="button" :aria-pressed="view === 'cards'" @click="setView('cards')">{{ t('catalog.cards') }}</button>
+      <button type="button" :aria-pressed="view === 'table'" @click="setView('table')">{{ t('catalog.table') }}</button>
     </div>
 
     <div v-if="publishedProducts.length && view === 'cards'" class="card-grid product-grid">
       <article v-for="product in publishedProducts" :key="product.id" class="card product-card">
         <div class="product-card-body">
-          <p class="eyebrow">{{ familyName(product) }}</p>
-          <h2><a :href="productHref(product)">{{ product.model || product.title }}</a></h2>
+          <p class="eyebrow" lang="en">{{ familyName(product) }}</p>
+          <h2 lang="en"><a :href="productHref(product)">{{ product.model || product.title }}</a></h2>
           <dl class="product-card-meta">
-            <div><dt>Model</dt><dd>{{ product.model || 'Not published' }}</dd></div>
-            <div><dt>Diameter</dt><dd>{{ verifiedSpec(product, 'diameter') || 'Not published' }}</dd></div>
-            <div><dt>Rated voltage</dt><dd>{{ verifiedSpec(product, 'voltage') || 'Not published' }}</dd></div>
-            <div><dt>Protection</dt><dd>{{ verifiedSpec(product, 'protection') || 'Not published' }}</dd></div>
+            <div><dt>{{ t('catalog.model') }}</dt><dd lang="en">{{ product.model || t('common.notPublished') }}</dd></div>
+            <div><dt>{{ t('catalog.diameter') }}</dt><dd lang="en">{{ verifiedSpec(product, 'diameter') || t('common.notPublished') }}</dd></div>
+            <div><dt>{{ t('catalog.ratedVoltage') }}</dt><dd lang="en">{{ verifiedSpec(product, 'voltage') || t('common.notPublished') }}</dd></div>
+            <div><dt>{{ t('catalog.protection') }}</dt><dd lang="en">{{ verifiedSpec(product, 'protection') || t('common.notPublished') }}</dd></div>
           </dl>
-          <p>{{ product.summary || 'Product summary not published.' }}</p>
-          <ul class="tag-list" aria-label="Published facets">
+          <p lang="en">{{ product.summary || t('catalog.summaryMissing') }}</p>
+          <ul class="tag-list" :aria-label="t('catalog.facets')" lang="en">
             <li v-if="product.subtype">{{ product.subtype }}</li>
             <li v-if="product.motorTechnology">{{ product.motorTechnology }}</li>
-            <li v-else>Motor technology not published</li>
+            <li v-else>{{ t('catalog.motorMissing') }}</li>
           </ul>
           <div class="product-card-actions">
-            <a class="text-link" :href="productHref(product)">View product <span aria-hidden="true">→</span></a>
-            <button class="button secondary" type="button" :disabled="isCompared(product)" @click="addToCompare(product)">{{ isCompared(product) ? 'Added' : 'Compare' }}</button>
+            <a class="text-link" :href="productHref(product)">{{ t('catalog.viewProduct') }} <span aria-hidden="true">→</span></a>
+            <button class="button secondary" type="button" :disabled="isCompared(product)" @click="addToCompare(product)">{{ isCompared(product) ? t('catalog.added') : t('catalog.compare') }}</button>
           </div>
         </div>
       </article>
@@ -263,26 +265,26 @@ async function previousPage(): Promise<void> {
 
     <div v-else-if="publishedProducts.length" class="table-scroll published-products-table">
       <table>
-        <caption>{{ resultTotal }} matching published product records</caption>
-        <thead><tr><th scope="col">Product</th><th scope="col">Family</th><th scope="col">Diameter</th><th scope="col">Voltage</th><th scope="col">Protection</th><th scope="col">Motor technology</th></tr></thead>
+        <caption>{{ t('catalog.tableCaption', { count: resultTotal }) }}</caption>
+        <thead><tr><th scope="col">{{ t('catalog.product') }}</th><th scope="col">{{ t('catalog.family') }}</th><th scope="col">{{ t('catalog.diameter') }}</th><th scope="col">{{ t('catalog.voltage') }}</th><th scope="col">{{ t('catalog.protection') }}</th><th scope="col">{{ t('catalog.motorTechnology') }}</th></tr></thead>
         <tbody><tr v-for="product in publishedProducts" :key="product.id">
           <th scope="row"><a :href="productHref(product)">{{ product.model || product.title }}</a><small>{{ product.stableId }}</small></th>
-          <td>{{ familyName(product) }}</td><td>{{ verifiedSpec(product, 'diameter') || 'Not published' }}</td><td>{{ verifiedSpec(product, 'voltage') || 'Not published' }}</td><td>{{ verifiedSpec(product, 'protection') || 'Not published' }}</td><td>{{ product.motorTechnology || 'Not published' }}</td>
+          <td lang="en">{{ familyName(product) }}</td><td lang="en">{{ verifiedSpec(product, 'diameter') || t('common.notPublished') }}</td><td lang="en">{{ verifiedSpec(product, 'voltage') || t('common.notPublished') }}</td><td lang="en">{{ verifiedSpec(product, 'protection') || t('common.notPublished') }}</td><td lang="en">{{ product.motorTechnology || t('common.notPublished') }}</td>
         </tr></tbody>
       </table>
     </div>
 
     <div v-else class="empty-state large">
-      <p class="eyebrow">No matching published records</p><h2>No validated products are available for these filters.</h2>
-      <p>No model, performance value or compatibility claim has been inferred.</p>
-      <button v-if="query || selectedMotor !== 'all' || (!lockedFamily && selectedFamily !== 'all')" class="button secondary" type="button" @click="clearFilters">Clear filters</button>
+      <p class="eyebrow">{{ t('catalog.noMatching') }}</p><h2>{{ t('catalog.noValidated') }}</h2>
+      <p>{{ t('catalog.noInference') }}</p>
+      <button v-if="query || selectedMotor !== 'all' || (!lockedFamily && selectedFamily !== 'all')" class="button secondary" type="button" @click="clearFilters">{{ t('catalog.clearFilters') }}</button>
     </div>
 
-    <nav v-if="pageIndex > 0 || pageNextCursor" class="catalog-pagination" aria-label="Product catalog pages">
-      <button class="button secondary" type="button" :disabled="pageIndex === 0 || loading" @click="previousPage">Previous page</button>
-      <span aria-live="polite">Page {{ pageIndex + 1 }}<small>{{ publishedProducts.length }} of {{ resultTotal }}</small></span>
-      <button class="button secondary" type="button" :disabled="!pageNextCursor || loading" @click="nextPage">Next page</button>
+    <nav v-if="pageIndex > 0 || pageNextCursor" class="catalog-pagination" :aria-label="t('catalog.pages')">
+      <button class="button secondary" type="button" :disabled="pageIndex === 0 || loading" @click="previousPage">{{ t('common.previousPage') }}</button>
+      <span aria-live="polite">{{ t('common.page', { page: pageIndex + 1 }) }}<small>{{ t('catalog.pageCount', { shown: publishedProducts.length, total: resultTotal }) }}</small></span>
+      <button class="button secondary" type="button" :disabled="!pageNextCursor || loading" @click="nextPage">{{ t('common.nextPage') }}</button>
     </nav>
-    <p v-if="loading" class="catalog-loading" role="status">Loading published product records…</p>
+    <p v-if="loading" class="catalog-loading" role="status">{{ t('catalog.loading') }}</p>
   </section>
 </template>

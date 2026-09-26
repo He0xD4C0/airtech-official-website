@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@airtek/contracts'
 import { submitRfq } from '@/shared/lib/api'
 import RfqForm from '@/features/conversion/components/forms/RfqForm.vue'
+import { createPublicTestPlugins } from '@/shared/test/publicAppPlugins'
 
 vi.mock('@/shared/lib/api', async () => ({
   PublicApiError: (await import('@airtek/contracts')).ApiError,
@@ -21,7 +22,7 @@ describe('RFQ field errors and optional browser storage', () => {
       type: 'about:blank', title: 'Invalid', status: 422, detail: 'Check fields', requestId: 'test-request',
       errors: { 'context.projectScale': ['Please clarify scale.'] },
     }))
-    const wrapper = mount(RfqForm, { props: { kind: 'project' }, attachTo: document.body })
+    const wrapper = mount(RfqForm, { props: { kind: 'project' }, attachTo: document.body, global: { plugins: createPublicTestPlugins() } })
     const input = (path: string) => wrapper.get(`[id="rfq-${path}"]`)
     await input('context.application').setValue('Preserved requirement')
     await input('context.projectStage').setValue('Engineering')
@@ -40,7 +41,7 @@ describe('RFQ field errors and optional browser storage', () => {
     expect(input('context.projectScale').element).toBe(document.activeElement)
     expect(input('context.projectScale').attributes('aria-invalid')).toBe('true')
     expect((input('context.application').element as HTMLInputElement).value).toBe('Preserved requirement')
-    expect(wrapper.text()).toContain('Please clarify scale.')
+    expect(wrapper.text()).toContain('Check this field.')
     wrapper.unmount()
   })
 })

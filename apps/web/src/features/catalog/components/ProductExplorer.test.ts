@@ -1,12 +1,12 @@
 import { createSSRApp, h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { flushPromises, mount } from '@vue/test-utils'
-import { createPinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Product } from '@airtek/contracts'
 import { trackAnalyticsEvent } from '@/features/analytics'
 import { getPublishedProducts } from '@/shared/lib/api'
 import ProductExplorer from '@/features/catalog/components/ProductExplorer.vue'
+import { createPublicTestPlugins } from '@/shared/test/publicAppPlugins'
 
 vi.mock('@/features/analytics/lib/analytics', () => ({ trackAnalyticsEvent: vi.fn().mockResolvedValue(true) }))
 vi.mock('@/shared/lib/api', () => ({ getPublishedProducts: vi.fn() }))
@@ -70,7 +70,7 @@ describe('published product explorer', () => {
 
   it('SSR-renders only provided published Product Master records', async () => {
     const app = createSSRApp({ render: () => h(ProductExplorer, catalogProps) })
-    app.use(createPinia())
+    for (const plugin of createPublicTestPlugins()) app.use(plugin)
     const html = await renderToString(app)
     expect(html).toContain('Published model')
     expect(html).toContain('/en/products/axial/published-axial-product')
@@ -78,7 +78,7 @@ describe('published product explorer', () => {
 
   it('uses an explicit safe empty state when no product is published', async () => {
     const app = createSSRApp({ render: () => h(ProductExplorer, { products: [], families }) })
-    app.use(createPinia())
+    for (const plugin of createPublicTestPlugins()) app.use(plugin)
     const html = await renderToString(app)
     expect(html).toContain('No validated products are available')
     expect(html).toContain('No model, performance value or compatibility claim has been inferred.')
@@ -92,7 +92,7 @@ describe('published product explorer', () => {
       nativePush(state, title, url)
     })
     vi.mocked(getPublishedProducts).mockReset().mockResolvedValue(productPage([], null, 0))
-    const wrapper = mount(ProductExplorer, { props: catalogProps, global: { plugins: [createPinia()] } })
+    const wrapper = mount(ProductExplorer, { props: catalogProps, global: { plugins: createPublicTestPlugins() } })
     expect(wrapper.text()).toContain('Published model')
     const search = wrapper.get('input[type="search"]')
     await search.setValue('not-present')
@@ -107,7 +107,7 @@ describe('published product explorer', () => {
 
   it('runs a catalog search when the search field receives Enter', async () => {
     vi.mocked(getPublishedProducts).mockReset().mockResolvedValue(productPage([], null, 0))
-    const wrapper = mount(ProductExplorer, { props: catalogProps, global: { plugins: [createPinia()] } })
+    const wrapper = mount(ProductExplorer, { props: catalogProps, global: { plugins: createPublicTestPlugins() } })
     const search = wrapper.get('input[type="search"]')
     await search.setValue('T30D-24-D718N-02')
     await search.trigger('keydown', { key: 'Enter' })
@@ -120,7 +120,7 @@ describe('published product explorer', () => {
 
   it('tracks only structured filter state and never the catalog query text', async () => {
     vi.mocked(getPublishedProducts).mockResolvedValue(productPage([], null, 0))
-    const wrapper = mount(ProductExplorer, { props: catalogProps, global: { plugins: [createPinia()] } })
+    const wrapper = mount(ProductExplorer, { props: catalogProps, global: { plugins: createPublicTestPlugins() } })
     const privateQuery = 'buyer@example.com confidential requirement'
     const search = wrapper.get('input[type="search"]')
     await search.setValue(privateQuery)
@@ -157,7 +157,7 @@ describe('published product explorer', () => {
 
     const wrapper = mount(ProductExplorer, {
       props: { ...catalogProps, total: 2, nextCursor: 'cGFnZS0y' },
-      global: { plugins: [createPinia()] },
+      global: { plugins: createPublicTestPlugins() },
     })
     expect(wrapper.text()).toContain('2 matching records')
     expect(wrapper.text()).toContain('Showing 1 records on page 1')
@@ -185,7 +185,7 @@ describe('published product explorer', () => {
 
   it('restores filters, cursor and view on browser history changes without erasing router state', async () => {
     window.history.replaceState({ routerMarker: 'preserved' }, '', '/en/products')
-    const wrapper = mount(ProductExplorer, { props: catalogProps, global: { plugins: [createPinia()] } })
+    const wrapper = mount(ProductExplorer, { props: catalogProps, global: { plugins: createPublicTestPlugins() } })
     await wrapper.get('input[type="search"]').setValue('model')
     await wrapper.get('input[type="search"]').trigger('change')
     await flushPromises()
@@ -206,7 +206,7 @@ describe('published product explorer', () => {
 
     const wrapper = mount(ProductExplorer, {
       props: { ...catalogProps, total: 2, nextCursor: 'cGFnZS0y' },
-      global: { plugins: [createPinia()] },
+      global: { plugins: createPublicTestPlugins() },
     })
     const next = wrapper.findAll('button').find((button) => button.text() === 'Next page')
     await next!.trigger('click')
@@ -217,7 +217,7 @@ describe('published product explorer', () => {
     await flushPromises()
     expect(getPublishedProducts).toHaveBeenNthCalledWith(2, { limit: 24, family: 'centrifugal' })
     expect(wrapper.text()).toContain('Catalog page unavailable')
-    expect(wrapper.text()).toContain('Published catalog temporarily unavailable.')
+    expect(wrapper.text()).toContain('The catalog page could not be loaded.')
     expect(wrapper.text()).toContain('page 1')
     expect(wrapper.text()).not.toContain('Previous page')
 

@@ -3,6 +3,7 @@ import { renderToString } from 'vue/server-renderer'
 import { describe, expect, it } from 'vitest'
 import type { ContentBlock } from '@airtek/contracts'
 import PublicBlockRenderer from '@/features/content/components/blocks/PublicBlockRenderer.vue'
+import { createPublicTestPlugins } from '@/shared/test/publicAppPlugins'
 import { linkTargetHref, type PublicContentProjection } from '@/shared/types/projection'
 
 const heroId = '11111111-1111-4111-8111-111111111111'
@@ -95,9 +96,11 @@ const projection: PublicContentProjection = {
 }
 
 async function render(): Promise<string> {
-  return renderToString(createSSRApp({
+  const app = createSSRApp({
     render: () => h(PublicBlockRenderer, { blocks, projection }),
-  }))
+  })
+  for (const plugin of createPublicTestPlugins()) app.use(plugin)
+  return renderToString(app)
 }
 
 describe('PublicBlockRenderer', () => {

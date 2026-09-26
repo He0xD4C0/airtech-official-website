@@ -2,6 +2,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import CollectionPage from '@/features/content/pages/CollectionPage.vue'
 import type { PublicPageModel } from '@/shared/types/content'
+import { createPublicTestPlugins } from '@/shared/test/publicAppPlugins'
 
 const page: PublicPageModel = {
   kind: 'collection',
@@ -21,7 +22,7 @@ const page: PublicPageModel = {
 
 describe('article collection', () => {
   it('renders every published entry for SSR and filters it after hydration', async () => {
-    const wrapper = mount(CollectionPage, { props: { page } })
+    const wrapper = mount(CollectionPage, { props: { page }, global: { plugins: createPublicTestPlugins() } })
     expect(wrapper.text()).toContain('Airflow context')
     expect(wrapper.text()).toContain('Product data states')
 

@@ -4,6 +4,7 @@ import { trackAnalyticsEvent } from '@/features/analytics'
 import { publicProjectionFixture } from '@/shared/test/publicProjectionFixture'
 import type { PublicPageModel } from '@/shared/types/content'
 import DownloadsPage from '@/features/content/pages/DownloadsPage.vue'
+import { createPublicTestPlugins } from '@/shared/test/publicAppPlugins'
 
 vi.mock('@/features/analytics/lib/analytics', () => ({ trackAnalyticsEvent: vi.fn().mockResolvedValue(true) }))
 
@@ -38,7 +39,7 @@ describe('downloads analytics', () => {
   })
 
   it('reports only query length and result count for resource search', async () => {
-    const wrapper = mount(DownloadsPage, { props: { page } })
+    const wrapper = mount(DownloadsPage, { props: { page }, global: { plugins: createPublicTestPlugins() } })
     const privateQuery = 'confidential requested filename.pdf'
     const input = wrapper.get('input[type="search"]')
     await input.setValue(privateQuery)
@@ -52,7 +53,7 @@ describe('downloads analytics', () => {
   })
 
   it('tracks a detail entrance as a CTA and does not claim a file download', async () => {
-    const wrapper = mount(DownloadsPage, { props: { page } })
+    const wrapper = mount(DownloadsPage, { props: { page }, global: { plugins: createPublicTestPlugins() } })
     const link = wrapper.get('.collection-card h2 a')
     link.element.addEventListener('click', (event) => event.preventDefault())
     await link.trigger('click')
@@ -65,7 +66,7 @@ describe('downloads analytics', () => {
   })
 
   it('filters only on fields present in the V2 discovery contract', async () => {
-    const wrapper = mount(DownloadsPage, { props: { page } })
+    const wrapper = mount(DownloadsPage, { props: { page }, global: { plugins: createPublicTestPlugins() } })
     expect(wrapper.findAll('select')).toHaveLength(0)
     const input = wrapper.get('input[type="search"]')
     await input.setValue('published manual')

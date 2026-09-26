@@ -2,8 +2,10 @@
 import type { ProductMediaGalleryItem } from '@airtek/contracts'
 import MediaLightbox from '@/shared/components/common/MediaLightbox.vue'
 import { publicMediaHref } from '@/shared/types/projection'
+import { useI18n } from 'vue-i18n'
 
 defineProps<{ items: ProductMediaGalleryItem[] }>()
+const { locale, t } = useI18n({ useScope: 'global' })
 
 function displayUrl(assetId: string): string {
   return publicMediaHref(`/api/public/v1/media/${assetId}`)
@@ -15,8 +17,8 @@ function originalUrl(assetId: string): string {
 </script>
 
 <template>
-  <section v-if="items.length" class="section shell product-gallery" aria-labelledby="product-gallery-title">
-    <h2 id="product-gallery-title">Product gallery</h2>
+  <section v-if="items.length" class="section shell product-gallery" :lang="locale" aria-labelledby="product-gallery-title">
+    <h2 id="product-gallery-title">{{ t('product.gallery') }}</h2>
     <div class="product-gallery__grid">
       <MediaLightbox
         v-for="(item, index) in items"

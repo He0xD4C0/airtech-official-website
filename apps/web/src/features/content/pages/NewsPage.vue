@@ -4,8 +4,10 @@ import PublicBlockRenderer from '@/features/content/components/blocks/PublicBloc
 import { getPublishedNews } from '@/shared/lib/api'
 import { publishedNewsCard } from '@/features/content/lib/newsCard'
 import type { CardEntry, PublicPageModel } from '@/shared/types/content'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{ page: PublicPageModel }>()
+const { locale, t } = useI18n({ useScope: 'global' })
 const newsPageSize = 48
 const category = ref('all')
 const pageEntries = ref<CardEntry[]>([...(props.page.entries ?? [])])
@@ -47,9 +49,9 @@ async function loadPage(cursor: string | null): Promise<boolean> {
     pageNextCursor.value = page.nextCursor
     category.value = 'all'
     return true
-  } catch (cause) {
+  } catch {
     if (generation === requestGeneration) {
-      pageError.value = cause instanceof Error ? cause.message : 'The News page could not be loaded.'
+      pageError.value = t('content.newsError')
     }
     return false
   } finally {
@@ -83,18 +85,18 @@ function visibleDate(value: string): string { return value.slice(0, 10) }
       :projection="page.projection"
       :breadcrumbs="page.breadcrumbs"
     />
-    <section class="section shell">
+    <section class="section shell" :lang="locale">
       <div v-if="categories.length" class="filter-panel">
         <label>
-          <span>Category</span>
+          <span>{{ t('content.category') }}</span>
           <select v-model="category">
-            <option value="all">All categories</option>
+            <option value="all">{{ t('content.allCategories') }}</option>
             <option v-for="item in categories" :key="item" :value="item">{{ item }}</option>
           </select>
         </label>
       </div>
       <div v-if="entries.length" class="card-grid collection-grid">
-        <article v-for="entry in entries" :key="entry.href" class="card collection-card">
+        <article v-for="entry in entries" :key="entry.href" class="card collection-card" lang="en">
           <p v-if="entry.category" class="eyebrow">{{ entry.category }}</p>
           <h2><a :href="entry.href">{{ entry.title }}</a></h2>
           <p v-if="entry.summary">{{ entry.summary }}</p>
@@ -104,14 +106,14 @@ function visibleDate(value: string): string { return value.slice(0, 10) }
           </p>
         </article>
       </div>
-      <div v-else class="empty-state" role="status">No published News records are available.</div>
+      <div v-else class="empty-state" role="status">{{ t('content.noNews') }}</div>
       <p v-if="pageError" class="form-error" role="alert">{{ pageError }}</p>
-      <nav v-if="pageIndex > 0 || pageNextCursor" class="catalog-pagination" aria-label="News pages">
-        <button class="button secondary" type="button" :disabled="pageIndex === 0 || loading" @click="previousPage">Previous page</button>
-        <span aria-live="polite">Page {{ pageIndex + 1 }}</span>
-        <button class="button secondary" type="button" :disabled="!pageNextCursor || loading" @click="nextPage">Next page</button>
+      <nav v-if="pageIndex > 0 || pageNextCursor" class="catalog-pagination" :aria-label="t('content.newsPages')">
+        <button class="button secondary" type="button" :disabled="pageIndex === 0 || loading" @click="previousPage">{{ t('common.previousPage') }}</button>
+        <span aria-live="polite">{{ t('common.page', { page: pageIndex + 1 }) }}</span>
+        <button class="button secondary" type="button" :disabled="!pageNextCursor || loading" @click="nextPage">{{ t('common.nextPage') }}</button>
       </nav>
-      <p v-if="loading" class="catalog-loading" role="status">Loading published News records…</p>
+      <p v-if="loading" class="catalog-loading" role="status">{{ t('content.loadingNews') }}</p>
     </section>
   </main>
 </template>

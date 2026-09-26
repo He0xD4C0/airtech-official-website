@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
-import { createPinia } from 'pinia'
 import { describe, expect, it } from 'vitest'
 import SelectorWorkspace from '@/features/selector/components/SelectorWorkspace.vue'
+import { createPublicTestPlugins } from '@/shared/test/publicAppPlugins'
 
 describe('selector database facets', () => {
   it('renders only product families and motor technologies supplied by the published bootstrap', async () => {
@@ -15,7 +15,7 @@ describe('selector database facets', () => {
       }],
       motorTechnologies: ['Published EC facet'],
       },
-      global: { plugins: [createPinia()] },
+      global: { plugins: createPublicTestPlugins() },
     })
     await wrapper.get('input[aria-label="Required airflow"]').setValue('1200')
     await wrapper.get('input[aria-label="Required pressure"]').setValue('320')
@@ -32,7 +32,7 @@ describe('selector database facets', () => {
   it('omits empty facet controls instead of inventing options', async () => {
     const wrapper = mount(SelectorWorkspace, {
       props: { productFamilies: [], motorTechnologies: [] },
-      global: { plugins: [createPinia()] },
+      global: { plugins: createPublicTestPlugins() },
     })
     await wrapper.get('input[aria-label="Required airflow"]').setValue('1200')
     await wrapper.get('input[aria-label="Required pressure"]').setValue('320')

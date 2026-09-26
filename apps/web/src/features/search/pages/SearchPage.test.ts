@@ -4,6 +4,7 @@ import { trackAnalyticsEvent } from '@/features/analytics'
 import { searchPublishedSite } from '@/shared/lib/api'
 import { publicPageFixture } from '@/shared/test/publicPageFixture'
 import SearchPage from '@/features/search/pages/SearchPage.vue'
+import { createPublicTestPlugins } from '@/shared/test/publicAppPlugins'
 
 vi.mock('@/features/analytics/lib/analytics', () => ({ trackAnalyticsEvent: vi.fn().mockResolvedValue(true) }))
 vi.mock('@/shared/lib/api', () => ({ searchPublishedSite: vi.fn() }))
@@ -28,7 +29,7 @@ describe('public search analytics', () => {
   })
 
   it('reports only query length and result count for an internal search', async () => {
-    const wrapper = mount(SearchPage, { props: { page: publicPageFixture('/en/search', { kind: 'search', indexable: false }) } })
+    const wrapper = mount(SearchPage, { props: { page: publicPageFixture('/en/search', { kind: 'search', indexable: false }) }, global: { plugins: createPublicTestPlugins() } })
     const privateQuery = 'buyer@example.com confidential requirement'
     const input = wrapper.get('input[type="search"]')
     await input.setValue(privateQuery)
@@ -44,7 +45,7 @@ describe('public search analytics', () => {
   })
 
   it('searches and synchronizes the query when the user presses Enter', async () => {
-    const wrapper = mount(SearchPage, { props: { page: publicPageFixture('/en/search', { kind: 'search', indexable: false }) } })
+    const wrapper = mount(SearchPage, { props: { page: publicPageFixture('/en/search', { kind: 'search', indexable: false }) }, global: { plugins: createPublicTestPlugins() } })
     const input = wrapper.get('input[type="search"]')
     await input.setValue('T30D-24-D718N-02')
     await input.trigger('keydown', { key: 'Enter' })
@@ -64,7 +65,7 @@ describe('public search analytics', () => {
     vi.mocked(searchPublishedSite).mockResolvedValue({
       items: [publishedFaq], nextCursor: null, total: 1, typeCounts: [{ value: 'faq', count: 1 }],
     })
-    const wrapper = mount(SearchPage, { props: { page } })
+    const wrapper = mount(SearchPage, { props: { page }, global: { plugins: createPublicTestPlugins() } })
     await wrapper.get('select').setValue('faq')
     await flushPromises()
     const resultCount = Number.parseInt(wrapper.get('.result-count').text(), 10)

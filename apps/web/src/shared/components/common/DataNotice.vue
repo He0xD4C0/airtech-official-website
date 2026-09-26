@@ -1,19 +1,22 @@
 <script setup lang="ts">
-withDefaults(defineProps<{
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const props = defineProps<{
   title?: string
   text?: string
-}>(), {
-  title: 'Verified data required',
-  text: 'This field will be populated only from an approved Product Master record or controlled product document.',
-})
+}>()
+const { t } = useI18n({ useScope: 'global' })
+const titleText = computed(() => props.title ?? t('product.dataRequired'))
+const bodyText = computed(() => props.text ?? t('product.dataRequiredDescription'))
 </script>
 
 <template>
   <div class="data-notice" role="status">
     <span class="notice-icon" aria-hidden="true">i</span>
     <div>
-      <strong>{{ title }}</strong>
-      <p>{{ text }}</p>
+      <strong>{{ titleText }}</strong>
+      <p>{{ bodyText }}</p>
     </div>
   </div>
 </template>

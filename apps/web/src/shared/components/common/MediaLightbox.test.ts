@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import MediaLightbox from '@/shared/components/common/MediaLightbox.vue'
+import { createPublicTestPlugins } from '@/shared/test/publicAppPlugins'
 
 beforeAll(() => {
   HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
@@ -20,6 +21,7 @@ describe('MediaLightbox', () => {
         originalSrc: 'https://media.example/original.png',
         alt: 'Fan assembly',
       },
+      global: { plugins: createPublicTestPlugins() },
     })
     expect(wrapper.html()).toContain('https://media.example/preview.webp')
     expect(wrapper.html()).not.toContain('https://media.example/original.png')

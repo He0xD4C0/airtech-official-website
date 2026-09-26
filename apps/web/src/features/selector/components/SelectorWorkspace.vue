@@ -8,8 +8,10 @@ import { useCompareStore } from '@/features/compare'
 
 import { certificationInput, inputText, numericInput, type NumericInput } from '@/features/conversion'
 import { serializeRfqSession } from '@/features/conversion'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{ productFamilies: ProductFamilyProjection[]; motorTechnologies: string[] }>()
+const { locale, t } = useI18n({ useScope: 'global' })
 const step = ref<1 | 2 | 3 | 4>(1)
 const touched = ref(false)
 const submitting = ref(false)
@@ -27,10 +29,7 @@ const dutyPointValid = computed(() => [form.airflow, form.pressure].every((value
 const familyMap = computed(() => Object.fromEntries(
   props.productFamilies.map((family) => [family.slug, family.code]),
 ) as Record<string, ProductFamily>)
-const resultTitle = computed(() => ({
-  matched: 'Published candidates found', noValidatedCandidates: 'No validated candidates',
-  engineeringReviewRequired: 'Engineering review required',
-})[result.value?.outcome ?? 'engineeringReviewRequired'])
+const resultTitle = computed(() => t(`selector.${result.value?.outcome ?? 'engineeringReviewRequired'}`))
 
 function constraints() {
   return {
@@ -51,8 +50,8 @@ function constraintCount(): number {
 function next(): void {
   touched.value = true
   if (step.value === 1 && !dutyPointValid.value) return
-  try { constraints() } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : 'Check your constraints.'
+  try { constraints() } catch {
+    error.value = t('errors.selector')
     return
   }
   error.value = ''
@@ -105,8 +104,8 @@ async function evaluate(): Promise<void> {
       outcome: result.value.outcome,
       candidateCount: result.value.candidates.length,
     })
-  } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : 'The selector service is unavailable.'
+  } catch {
+    error.value = t('errors.selector')
   } finally {
     submitting.value = false
   }
@@ -132,77 +131,77 @@ function addCandidate(candidate: SelectorResponse['candidates'][number]): void {
 </script>
 
 <template>
-  <section class="section shell selector-layout">
-    <aside class="selector-steps" aria-label="Selector steps">
+  <section class="section shell selector-layout" :lang="locale">
+    <aside class="selector-steps" :aria-label="t('selector.stepsLabel')">
       <ol>
-        <li :class="{ active: step === 1 }"><span>1</span> Duty point</li>
-        <li :class="{ active: step === 2 }"><span>2</span> Hard constraints</li>
-        <li :class="{ active: step === 3 }"><span>3</span> Preferences</li>
-        <li :class="{ active: step === 4 }"><span>4</span> Result</li>
+        <li :class="{ active: step === 1 }"><span>1</span> {{ t('selector.dutyPoint') }}</li>
+        <li :class="{ active: step === 2 }"><span>2</span> {{ t('selector.hardConstraints') }}</li>
+        <li :class="{ active: step === 3 }"><span>3</span> {{ t('selector.preferences') }}</li>
+        <li :class="{ active: step === 4 }"><span>4</span> {{ t('selector.result') }}</li>
       </ol>
-      <p>Only structured fields in the selector request are evaluated. Free-text notes are carried to the Selection RFQ.</p>
+      <p>{{ t('selector.scope') }}</p>
     </aside>
 
     <form v-if="step < 4" class="form-card" @submit.prevent="step < 3 ? next() : evaluate()">
       <div v-if="step === 1">
-        <p class="eyebrow">Step 1 of 4</p><h2>Define the duty point</h2>
-        <p>A result requires a verified published curve with exactly matching units.</p>
+        <p class="eyebrow">{{ t('selector.step', { step: 1 }) }}</p><h2>{{ t('selector.defineDutyPoint') }}</h2>
+        <p>{{ t('selector.curveRequirement') }}</p>
         <div class="field-grid">
-          <label><span>Required airflow</span><div class="input-unit"><input v-model="form.airflow" aria-label="Required airflow" inputmode="decimal" type="number" min="0" step="any" required><select v-model="form.airflowUnit" aria-label="Airflow unit"><option value="m3/h">m³/h</option><option value="CFM">CFM</option></select></div></label>
-          <label><span>Required pressure</span><div class="input-unit"><input v-model="form.pressure" aria-label="Required pressure" inputmode="decimal" type="number" min="0" step="any" required><select v-model="form.pressureUnit" aria-label="Pressure unit"><option value="Pa">Pa</option><option value="kPa">kPa</option><option value="inH2O">inH₂O</option></select></div></label>
+          <label><span>{{ t('selector.airflow') }}</span><div class="input-unit"><input v-model="form.airflow" :aria-label="t('selector.airflow')" inputmode="decimal" type="number" min="0" step="any" required><select v-model="form.airflowUnit" :aria-label="t('selector.airflowUnit')"><option value="m3/h">m³/h</option><option value="CFM">CFM</option></select></div></label>
+          <label><span>{{ t('selector.pressure') }}</span><div class="input-unit"><input v-model="form.pressure" :aria-label="t('selector.pressure')" inputmode="decimal" type="number" min="0" step="any" required><select v-model="form.pressureUnit" :aria-label="t('selector.pressureUnit')"><option value="Pa">Pa</option><option value="kPa">kPa</option><option value="inH2O">inH₂O</option></select></div></label>
         </div>
-        <p v-if="touched && !dutyPointValid" class="form-error" role="alert">Enter positive airflow and pressure values to continue.</p>
+        <p v-if="touched && !dutyPointValid" class="form-error" role="alert">{{ t('selector.positiveValues') }}</p>
       </div>
 
       <div v-else-if="step === 2">
-        <p class="eyebrow">Step 2 of 4</p><h2>Add hard constraints</h2>
+        <p class="eyebrow">{{ t('selector.step', { step: 2 }) }}</p><h2>{{ t('selector.addConstraints') }}</h2>
         <div class="field-grid">
-          <label><span>Ambient temperature °C <small>(optional)</small></span><input v-model="form.ambientTemperature" type="number" step="any"></label>
-          <label><span>Maximum diameter mm <small>(optional)</small></span><input v-model="form.maximumDiameter" type="number" min="0" step="any"></label>
-          <label><span>Voltage <small>(optional, exact curve label)</small></span><input v-model.trim="form.voltage"></label>
-          <label><span>Frequency Hz <small>(optional)</small></span><input v-model="form.frequency" type="number" min="0" step="any"></label>
-          <label class="wide"><span>Required certifications <small>(optional, comma separated)</small></span><input v-model.trim="form.certifications"></label>
-          <label class="wide"><span>Environment or installation notes <small>(RFQ only)</small></span><textarea v-model.trim="form.environment" rows="3"></textarea></label>
-          <label class="wide"><span>Control method <small>(RFQ only)</small></span><input v-model.trim="form.control"></label>
+          <label><span>{{ t('selector.ambient') }} <small>({{ t('common.optional') }})</small></span><input v-model="form.ambientTemperature" type="number" step="any"></label>
+          <label><span>{{ t('selector.maximumDiameter') }} <small>({{ t('common.optional') }})</small></span><input v-model="form.maximumDiameter" type="number" min="0" step="any"></label>
+          <label><span>{{ t('selector.voltage') }} <small>({{ t('selector.exactCurveLabel') }})</small></span><input v-model.trim="form.voltage"></label>
+          <label><span>{{ t('selector.frequency') }} <small>({{ t('common.optional') }})</small></span><input v-model="form.frequency" type="number" min="0" step="any"></label>
+          <label class="wide"><span>{{ t('selector.certifications') }} <small>({{ t('selector.commaSeparated') }})</small></span><input v-model.trim="form.certifications"></label>
+          <label class="wide"><span>{{ t('selector.environment') }} <small>({{ t('selector.rfqOnly') }})</small></span><textarea v-model.trim="form.environment" rows="3"></textarea></label>
+          <label class="wide"><span>{{ t('selector.control') }} <small>({{ t('selector.rfqOnly') }})</small></span><input v-model.trim="form.control"></label>
         </div>
-        <p class="review-note">If published records cannot evaluate a structured constraint, the outcome is engineering review required—not a guessed match.</p>
+        <p class="review-note">{{ t('selector.reviewRule') }}</p>
       </div>
 
       <div v-else>
-        <p class="eyebrow">Step 3 of 4</p><h2>Choose preferences</h2>
+        <p class="eyebrow">{{ t('selector.step', { step: 3 }) }}</p><h2>{{ t('selector.choosePreferences') }}</h2>
         <div class="field-grid">
-          <label v-if="productFamilies.length"><span>Fan form</span><select v-model="form.family"><option value="">Open</option><option v-for="family in productFamilies" :key="family.code" :value="family.slug">{{ family.name }}</option></select></label>
-          <label v-if="motorTechnologies.length"><span>Motor technology</span><select v-model="form.motorTechnology"><option value="">Open</option><option v-for="technology in motorTechnologies" :key="technology" :value="technology">{{ technology }}</option></select></label>
-          <fieldset class="wide priority-field"><legend>Ranking priority</legend><label v-for="value in ['efficiency', 'noise', 'size', 'headroom']" :key="value"><input v-model="form.priority" type="radio" name="priority" :value="value"><span>{{ value.charAt(0).toUpperCase() + value.slice(1) }}</span></label></fieldset>
+          <label v-if="productFamilies.length"><span>{{ t('selector.fanForm') }}</span><select v-model="form.family"><option value="">{{ t('selector.open') }}</option><option v-for="family in productFamilies" :key="family.code" :value="family.slug">{{ family.name }}</option></select></label>
+          <label v-if="motorTechnologies.length"><span>{{ t('selector.motorTechnology') }}</span><select v-model="form.motorTechnology"><option value="">{{ t('selector.open') }}</option><option v-for="technology in motorTechnologies" :key="technology" :value="technology">{{ technology }}</option></select></label>
+          <fieldset class="wide priority-field"><legend>{{ t('selector.rankingPriority') }}</legend><label v-for="value in ['efficiency', 'noise', 'size', 'headroom']" :key="value"><input v-model="form.priority" type="radio" name="priority" :value="value"><span>{{ t(`selector.${value}`) }}</span></label></fieldset>
         </div>
       </div>
 
       <p v-if="error" class="form-error" role="alert">{{ error }}</p>
       <div class="button-row form-actions">
-        <button v-if="step > 1" class="button secondary" type="button" @click="previous">Back</button>
-        <button class="button" type="submit" :disabled="submitting">{{ step < 3 ? 'Continue' : submitting ? 'Evaluating…' : 'Evaluate published records' }}</button>
+        <button v-if="step > 1" class="button secondary" type="button" @click="previous">{{ t('common.back') }}</button>
+        <button class="button" type="submit" :disabled="submitting">{{ step < 3 ? t('common.continue') : submitting ? t('selector.evaluating') : t('selector.evaluate') }}</button>
       </div>
     </form>
 
     <div v-else class="selector-result" aria-live="polite">
-      <p class="eyebrow">Step 4 of 4 · Selection status</p><h2>{{ resultTitle }}</h2>
-      <p v-if="result?.outcome === 'noValidatedCandidates'">No candidate was returned from the published projection. Your inputs were not converted into a synthetic match score.</p>
-      <p v-else-if="result?.outcome === 'engineeringReviewRequired'">The published data is not sufficient for an automated recommendation. Continue through engineering review.</p>
-      <p v-else>Only candidates returned by the public selector API are shown.</p>
-      <ul v-if="result?.explanations.length" class="feature-list"><li v-for="explanation in result.explanations" :key="explanation">{{ explanation }}</li></ul>
+      <p class="eyebrow">{{ t('selector.step', { step: 4 }) }} · {{ t('selector.selectionStatus') }}</p><h2>{{ resultTitle }}</h2>
+      <p v-if="result?.outcome === 'noValidatedCandidates'">{{ t('selector.noCandidate') }}</p>
+      <p v-else-if="result?.outcome === 'engineeringReviewRequired'">{{ t('selector.reviewRequired') }}</p>
+      <p v-else>{{ t('selector.apiOnly') }}</p>
+      <ul v-if="result?.explanations.length" class="feature-list" lang="en"><li v-for="explanation in result.explanations" :key="explanation">{{ explanation }}</li></ul>
       <div v-if="result?.candidates.length" class="card-grid two">
         <article v-for="candidate in result.candidates" :key="candidate.productId" class="card">
-          <p class="eyebrow">Rank {{ candidate.rank }} · {{ familyName(candidate.family) }}</p><h3><a :href="candidate.canonicalPath">{{ candidate.title }}</a></h3>
-          <ul><li v-for="reason in candidate.matchedConstraints" :key="reason">{{ reason }}</li></ul>
-          <p v-for="warning in candidate.warnings" :key="warning" class="review-note">{{ warning }}</p>
-          <div class="button-row"><a class="button secondary" :href="candidate.canonicalPath">View product</a><button class="button secondary" type="button" @click="addCandidate(candidate)">Add to compare</button></div>
+          <p class="eyebrow">{{ t('selector.rank', { rank: candidate.rank }) }} · <span lang="en">{{ familyName(candidate.family) }}</span></p><h3 lang="en"><a :href="candidate.canonicalPath">{{ candidate.title }}</a></h3>
+          <ul lang="en"><li v-for="reason in candidate.matchedConstraints" :key="reason">{{ reason }}</li></ul>
+          <p v-for="warning in candidate.warnings" :key="warning" class="review-note" lang="en">{{ warning }}</p>
+          <div class="button-row"><a class="button secondary" :href="candidate.canonicalPath">{{ t('selector.viewProduct') }}</a><button class="button secondary" type="button" @click="addCandidate(candidate)">{{ t('selector.addToCompare') }}</button></div>
         </article>
       </div>
       <dl class="input-summary">
-        <div><dt>Duty point</dt><dd>{{ form.airflow }} {{ form.airflowUnit }} at {{ form.pressure }} {{ form.pressureUnit }}</dd></div>
-        <div><dt>Fan form</dt><dd>{{ form.family || 'Open' }}</dd></div><div><dt>Motor technology</dt><dd>{{ form.motorTechnology || 'Open' }}</dd></div><div><dt>Priority</dt><dd>{{ form.priority }}</dd></div>
+        <div><dt>{{ t('selector.dutyPoint') }}</dt><dd>{{ form.airflow }} {{ form.airflowUnit }} / {{ form.pressure }} {{ form.pressureUnit }}</dd></div>
+        <div><dt>{{ t('selector.fanForm') }}</dt><dd lang="en">{{ form.family || t('selector.open') }}</dd></div><div><dt>{{ t('selector.motorTechnology') }}</dt><dd lang="en">{{ form.motorTechnology || t('selector.open') }}</dd></div><div><dt>{{ t('selector.priority') }}</dt><dd>{{ t(`selector.${form.priority}`) }}</dd></div>
       </dl>
-      <div class="button-row"><button class="button secondary" type="button" @click="revise">Revise inputs</button><a class="button" href="/en/request-a-quote/selection">Send to selection RFQ</a></div>
+      <div class="button-row"><button class="button secondary" type="button" @click="revise">{{ t('selector.revise') }}</button><a class="button" href="/en/request-a-quote/selection">{{ t('selector.sendToRfq') }}</a></div>
     </div>
   </section>
 </template>

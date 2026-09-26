@@ -220,7 +220,7 @@ test.describe('Public SSR contract', () => {
     const productCard = page.locator('article.product-card').filter({ hasText: 'E2E-MODEL-001' })
     await expect(productCard).toBeVisible()
     await expect(page.locator('.result-count')).toContainText('1 matching record')
-    await expect(productCard).toContainText('Product summary not published.')
+    await expect(productCard).toContainText('E2E published product summary.')
 
     const catalogResponse = page.waitForResponse((response) => {
       const url = new URL(response.url())

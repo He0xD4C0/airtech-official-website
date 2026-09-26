@@ -5,8 +5,11 @@ import horizontalLogo from '@airtek/ui/assets/brand/airtek-standard-lockup-horiz
 import BottomActions from '@/app/layout/BottomActions.vue'
 import type { PublicPageModel, PublicSiteBootstrap } from '@/shared/types/content'
 import { setCurrentAnalyticsContext } from '@/features/analytics/lib/analytics'
+import LanguageSwitcher from '@/i18n/LanguageSwitcher.vue'
+import { useI18n } from 'vue-i18n'
 
 const pageContext = usePageContext()
+const { locale, t } = useI18n({ useScope: 'global' })
 const menuOpen = ref(false)
 const currentPath = computed(() => pageContext.urlPathname)
 const site = computed(() => {
@@ -27,25 +30,25 @@ function active(href: string) {
 </script>
 
 <template>
-  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <a class="skip-link" href="#main-content" :lang="locale">{{ t('navigation.skipToContent') }}</a>
   <template v-if="site">
     <div v-if="site.brandLine" class="brand-line">{{ site.brandLine }}</div>
     <header class="site-header">
       <div class="shell header-inner">
-        <a class="wordmark" :href="site.homePath" :aria-label="`${site.brandName} home`">
+        <a class="wordmark" :href="site.homePath" :aria-label="t('navigation.home', { brand: site.brandName })">
           <img :src="horizontalLogo" :alt="site.brandName" />
         </a>
         <button
           class="menu-toggle"
           type="button"
           :aria-expanded="menuOpen"
-          :aria-label="menuOpen ? 'Close menu' : 'Open menu'"
+          :aria-label="menuOpen ? t('navigation.closeMenu') : t('navigation.openMenu')"
           aria-controls="primary-navigation"
           @click="menuOpen = !menuOpen"
         >
-          <span aria-hidden="true">{{ menuOpen ? 'Close' : 'Menu' }}</span>
+          <span aria-hidden="true" :lang="locale">{{ menuOpen ? t('navigation.close') : t('navigation.menu') }}</span>
         </button>
-        <nav id="primary-navigation" :class="['primary-nav', { open: menuOpen }]" aria-label="Primary navigation">
+        <nav id="primary-navigation" :class="['primary-nav', { open: menuOpen }]" :aria-label="t('navigation.primary')" lang="en">
           <a
             v-for="item in site.navigation"
             :key="item.href"
@@ -59,6 +62,7 @@ function active(href: string) {
             :href="site.navigationCta.href"
             @click="menuOpen = false"
           >{{ site.navigationCta.label }}</a>
+          <LanguageSwitcher />
         </nav>
       </div>
     </header>
@@ -79,7 +83,7 @@ function active(href: string) {
     </div>
     <div v-if="copyright || site.legalLinks.length" class="shell footer-bottom">
       <p v-if="copyright">{{ copyright }}</p>
-      <nav v-if="site.legalLinks.length" aria-label="Legal">
+      <nav v-if="site.legalLinks.length" :aria-label="t('navigation.legal')" lang="en">
         <a v-for="link in site.legalLinks" :key="link.href" :href="link.href">{{ link.label }}</a>
       </nav>
     </div>

@@ -1,6 +1,5 @@
 import { createSSRApp, h, type Component } from 'vue'
 import { renderToString } from 'vue/server-renderer'
-import { createPinia } from 'pinia'
 import { describe, expect, it } from 'vitest'
 import type { ContentBlock, PublicContentProjection } from '@airtek/contracts'
 import { publicPageFixture } from '@/shared/test/publicPageFixture'
@@ -12,6 +11,7 @@ import RfqRouterPage from '@/features/conversion/pages/RfqRouterPage.vue'
 import RfqFormPage from '@/features/conversion/pages/RfqFormPage.vue'
 import SearchPage from '@/features/search/pages/SearchPage.vue'
 import ComparePage from '@/features/compare/pages/ComparePage.vue'
+import { createPublicTestPlugins } from '@/shared/test/publicAppPlugins'
 
 const mediaId = '11111111-1111-4111-8111-111111111111'
 const downloadId = '33333333-3333-4333-8333-333333333333'
@@ -106,7 +106,7 @@ function pageWithProjection(
 
 async function renderPage(component: Component, page: PublicPageModel): Promise<string> {
   const app = createSSRApp({ render: () => h(component, { page }) })
-  app.use(createPinia())
+  for (const plugin of createPublicTestPlugins()) app.use(plugin)
   return renderToString(app)
 }
 

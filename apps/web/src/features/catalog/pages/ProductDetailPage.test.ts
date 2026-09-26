@@ -1,10 +1,10 @@
 import { createSSRApp } from 'vue'
 import { renderToString } from 'vue/server-renderer'
-import { createPinia } from 'pinia'
 import { describe, expect, it } from 'vitest'
 import type { Product } from '@airtek/contracts'
 import ProductDetailPage from '@/features/catalog/pages/ProductDetailPage.vue'
 import type { PublicPageModel } from '@/shared/types/content'
+import { createPublicTestPlugins } from '@/shared/test/publicAppPlugins'
 
 const product: Product = {
   id: '77935cef-4111-4c4c-bdb8-17679a8b42fe',
@@ -59,7 +59,7 @@ const page: PublicPageModel = {
 describe('product detail progressive enhancement', () => {
   it('keeps verified PQ data in SSR HTML and omits unavailable optional sections', async () => {
     const app = createSSRApp(ProductDetailPage, { page })
-    app.use(createPinia())
+    for (const plugin of createPublicTestPlugins()) app.use(plugin)
     const html = await renderToString(app)
 
     expect(html).not.toContain('Structured specifications')
@@ -88,7 +88,7 @@ describe('product detail progressive enhancement', () => {
       ],
     }
     const app = createSSRApp(ProductDetailPage, { page: assetPage })
-    app.use(createPinia())
+    for (const plugin of createPublicTestPlugins()) app.use(plugin)
     const html = await renderToString(app)
 
     expect(html).toContain('Source attachments')

@@ -6,9 +6,11 @@ import {
   setAnalyticsConsent,
   trackCurrentPageView,
 } from '@/features/analytics/lib/analytics'
+import { useI18n } from 'vue-i18n'
 
 type Consent = 'accepted' | 'declined'
 const visible = ref(false)
+const { locale, t } = useI18n({ useScope: 'global' })
 const current = ref<Consent | null>(null)
 
 function load() {
@@ -41,14 +43,14 @@ onUnmounted(() => window.removeEventListener('airtek:open-cookie-settings', open
 </script>
 
 <template>
-  <aside v-if="visible" class="cookie-banner" aria-label="Analytics cookie preferences" aria-live="polite">
+  <aside v-if="visible" class="cookie-banner" :lang="locale" :aria-label="t('cookie.label')" aria-live="polite">
     <div>
-      <strong>Privacy choices</strong>
-      <p>Essential storage keeps this preference. Optional analytics stays off unless you accept it.</p>
+      <strong>{{ t('cookie.title') }}</strong>
+      <p>{{ t('cookie.description') }}</p>
     </div>
     <div class="cookie-actions">
-      <button class="button secondary" type="button" @click="save('declined')">Keep analytics off</button>
-      <button class="button" type="button" @click="save('accepted')">Allow analytics</button>
+      <button class="button secondary" type="button" @click="save('declined')">{{ t('cookie.decline') }}</button>
+      <button class="button" type="button" @click="save('accepted')">{{ t('cookie.accept') }}</button>
     </div>
   </aside>
 </template>

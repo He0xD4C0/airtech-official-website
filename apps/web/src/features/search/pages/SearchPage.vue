@@ -6,8 +6,10 @@ import { useQueryHistory } from '@/shared/lib/queryHistory'
 import { trackAnalyticsEvent } from '@/features/analytics'
 import { searchPublishedSite } from '@/shared/lib/api'
 import type { PublicPageModel } from '@/shared/types/content'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{ page: PublicPageModel }>()
+const { locale, t } = useI18n({ useScope: 'global' })
 const query = ref(props.page.searchState?.q ?? '')
 const type = ref<PublicSearchType | 'all'>(props.page.searchState?.type ?? 'all')
 const items = ref<PublicSearchItem[]>([...(props.page.searchResults ?? [])])
@@ -20,20 +22,16 @@ const loading = ref(false)
 const error = ref('')
 let requestGeneration = 0
 
-const typeLabels: Record<PublicSearchType, string> = {
-  product: 'Product', solution: 'Solution', technology: 'Technology', article: 'Article',
-  news: 'News', faq: 'FAQ', caseStudy: 'Case study', download: 'Download', company: 'Company', page: 'Page',
-}
 const availableTypes = computed(() => typeCounts.value.map((facet) => ({
   value: facet.value as PublicSearchType,
-  label: typeLabels[facet.value as PublicSearchType] ?? facet.value,
+  label: t(`search.types.${facet.value as PublicSearchType}`),
   count: facet.count,
 })))
 
 const writeQuery = useQueryHistory((params, cursors) => {
   query.value = params.get('q') ?? ''
   const requestedType = params.get('type')
-  type.value = requestedType && requestedType in typeLabels ? requestedType as PublicSearchType : 'all'
+  type.value = requestedType && ['product', 'solution', 'technology', 'article', 'news', 'faq', 'caseStudy', 'download', 'company', 'page'].includes(requestedType) ? requestedType as PublicSearchType : 'all'
   cursorHistory.value = cursors
   pageIndex.value = Math.max(0, cursors.indexOf(params.get('cursor')))
   void loadPage(params.get('cursor'))
@@ -68,9 +66,9 @@ async function loadPage(cursor: string | null): Promise<boolean> {
     total.value = page.total
     typeCounts.value = page.typeCounts
     return true
-  } catch (cause) {
+  } catch {
     if (generation === requestGeneration) {
-      error.value = cause instanceof Error ? cause.message : 'Published search is temporarily unavailable.'
+      error.value = t('errors.search')
     }
     return false
   } finally {
@@ -119,30 +117,30 @@ async function previousPage(): Promise<void> {
       :projection="page.projection"
       :breadcrumbs="page.breadcrumbs"
     />
-    <section class="section shell search-layout">
+    <section class="section shell search-layout" :lang="locale">
       <div class="search-controls" :aria-busy="loading">
-        <label><span>Search the public site</span><input v-model="query" autofocus type="search" placeholder="Search published products and content" @change="reset('query')" @keydown.enter.prevent="reset('query')"></label>
-        <label><span>Content type</span><select v-model="type" @change="reset('type')">
-          <option value="all">All published content</option>
+        <label><span>{{ t('search.label') }}</span><input v-model="query" autofocus type="search" :placeholder="t('search.placeholder')" @change="reset('query')" @keydown.enter.prevent="reset('query')"></label>
+        <label><span>{{ t('search.contentType') }}</span><select v-model="type" @change="reset('type')">
+          <option value="all">{{ t('search.allContent') }}</option>
           <option v-for="entryType in availableTypes" :key="entryType.value" :value="entryType.value">{{ entryType.label }} ({{ entryType.count }})</option>
         </select></label>
       </div>
-      <p class="result-count" role="status">{{ total }} {{ total === 1 ? 'result' : 'results' }}</p>
+      <p class="result-count" role="status">{{ t('search.results', { count: total }, total) }}</p>
       <p v-if="error" class="form-error" role="alert">{{ error }}</p>
       <div v-if="items.length" class="search-results">
         <article v-for="entry in items" :key="`${entry.entityType}:${entry.entityId}`">
-          <span>{{ typeLabels[entry.displayType] }}</span>
-          <h2><a :href="entry.canonicalPath">{{ entry.title }}</a></h2>
-          <p>{{ entry.summary || 'Summary not published.' }}</p>
+          <span>{{ t(`search.types.${entry.displayType}`) }}</span>
+          <h2 lang="en"><a :href="entry.canonicalPath">{{ entry.title }}</a></h2>
+          <p lang="en">{{ entry.summary || t('search.summaryMissing') }}</p>
         </article>
       </div>
-      <div v-else class="empty-state"><h2>No matching published content</h2><p>Search results include only canonical, indexable records in the current public projection.</p></div>
-      <nav v-if="pageIndex > 0 || nextCursor" class="catalog-pagination" aria-label="Search result pages">
-        <button class="button secondary" type="button" :disabled="pageIndex === 0 || loading" @click="previousPage">Previous page</button>
-        <span>Page {{ pageIndex + 1 }}<small>{{ items.length }} of {{ total }}</small></span>
-        <button class="button secondary" type="button" :disabled="!nextCursor || loading" @click="nextPage">Next page</button>
+      <div v-else class="empty-state"><h2>{{ t('search.noMatching') }}</h2><p>{{ t('search.noMatchingDescription') }}</p></div>
+      <nav v-if="pageIndex > 0 || nextCursor" class="catalog-pagination" :aria-label="t('search.pages')">
+        <button class="button secondary" type="button" :disabled="pageIndex === 0 || loading" @click="previousPage">{{ t('common.previousPage') }}</button>
+        <span>{{ t('common.page', { page: pageIndex + 1 }) }}<small>{{ t('search.pageCount', { shown: items.length, total }) }}</small></span>
+        <button class="button secondary" type="button" :disabled="!nextCursor || loading" @click="nextPage">{{ t('common.nextPage') }}</button>
       </nav>
-      <p v-if="loading" role="status">Searching published records…</p>
+      <p v-if="loading" role="status">{{ t('search.loading') }}</p>
     </section>
   </main>
 </template>

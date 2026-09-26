@@ -152,7 +152,7 @@ async function seedProductProjection(api: ApiContext, csrf: string): Promise<voi
     },
     data: {
       locale: 'en', slug, title: 'E2E imported product',
-      summary: null, indexable: true, sortOrder: 1,
+      summary: 'E2E published product summary.', indexable: true, sortOrder: 1,
       relatedContentIds: [], mediaGallery: [],
       seo: {
         title: 'E2E imported product',

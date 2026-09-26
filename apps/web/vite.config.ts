@@ -22,6 +22,11 @@ export default defineConfig(({ mode }) => {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
     },
+    ssr: {
+      // vue-i18n's production build contains Vue feature flags that Vite must
+      // replace at bundle time; externalizing it leaves those globals undefined.
+      noExternal: ['vue-i18n'],
+    },
     server: {
       host: '0.0.0.0',
       port: 3000,

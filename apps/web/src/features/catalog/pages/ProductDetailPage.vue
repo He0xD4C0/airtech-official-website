@@ -11,8 +11,10 @@ import { useCompareStore } from '@/features/compare'
 import type { PublicPageModel } from '@/shared/types/content'
 import { hasCompleteProductContext } from '@/features/conversion'
 import { publicMediaHref } from '@/shared/types/projection'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{ page: PublicPageModel }>()
+const { locale, t } = useI18n({ useScope: 'global' })
 type ProductTab = 'overview' | 'performance'
 const family = computed(() => props.page.productFamilies?.find((item) => item.slug === props.page.category))
 const product = computed(() => props.page.publishedProduct)
@@ -48,16 +50,16 @@ function addProduct() {
 
 function displayValue(value: unknown) {
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value)
-  return 'See controlled source record'
+  return t('product.sourceRecord')
 }
 
 const specificationGroups = computed(() => {
   const groups: Array<{ key: string; title: string; items: SpecValue[] }> = [
-    { key: 'mechanical', title: 'Mechanical', items: [] },
-    { key: 'electrical', title: 'Electrical', items: [] },
-    { key: 'protection', title: 'Protection', items: [] },
-    { key: 'packaging', title: 'Packaging', items: [] },
-    { key: 'other', title: 'Other published facts', items: [] },
+    { key: 'mechanical', title: t('product.mechanical'), items: [] },
+    { key: 'electrical', title: t('product.electrical'), items: [] },
+    { key: 'protection', title: t('product.protection'), items: [] },
+    { key: 'packaging', title: t('product.packaging'), items: [] },
+    { key: 'other', title: t('product.otherFacts'), items: [] },
   ]
   for (const spec of product.value?.specifications ?? []) {
     const group = ['diameter', 'productDimensions'].includes(spec.key) ? 'mechanical'
@@ -72,11 +74,11 @@ const specificationGroups = computed(() => {
 
 const assetGroups = computed(() => {
   const definitions: Array<{ usage: ProductSourceAsset['usage']; title: string }> = [
-    { usage: 'curve', title: 'Performance curves' },
-    { usage: 'drawing', title: 'Drawings' },
-    { usage: 'cad', title: 'CAD files' },
-    { usage: 'datasheet', title: 'Data sheets' },
-    { usage: 'technicalDocument', title: 'Technical documents' },
+    { usage: 'curve', title: t('product.performanceCurves') },
+    { usage: 'drawing', title: t('product.drawings') },
+    { usage: 'cad', title: t('product.cadFiles') },
+    { usage: 'datasheet', title: t('product.dataSheets') },
+    { usage: 'technicalDocument', title: t('product.technicalDocuments') },
   ]
   return definitions.map((definition) => ({
     ...definition,
@@ -90,13 +92,13 @@ function curveConditions(curve: PerformanceCurve) {
     curve.densityKgM3 ? `${curve.densityKgM3} kg/m³` : '',
     curve.voltage || '',
     curve.testMethod || '',
-  ].filter(Boolean).join(' · ') || 'Conditions not published'
+  ].filter(Boolean).join(' · ') || t('product.conditionsMissing')
 }
 
 function factState(state: SpecValue['state']): string {
   return ({
-    verified: 'Verified', missing: 'Not published', notApplicable: 'Not applicable',
-    notTested: 'Not tested', confidential: 'Confidential', pendingVerification: 'Pending verification',
+    verified: t('product.verified'), missing: t('common.notPublished'), notApplicable: t('product.notApplicable'),
+    notTested: t('product.notTested'), confidential: t('product.confidential'), pendingVerification: t('product.pendingVerification'),
   })[state]
 }
 
@@ -105,7 +107,7 @@ function assetHref(value: string): string {
 }
 
 function fileType(name: string, mediaType: string): string {
-  return name.split('.').at(-1)?.toUpperCase() || mediaType.split('/').at(-1)?.toUpperCase() || 'FILE'
+  return name.split('.').at(-1)?.toUpperCase() || mediaType.split('/').at(-1)?.toUpperCase() || t('product.file')
 }
 
 function formatBytes(bytes: number): string {
@@ -118,41 +120,41 @@ function formatBytes(bytes: number): string {
 <template>
   <main id="main-content">
     <PageHero :eyebrow="page.eyebrow" :title="page.title" :description="page.description" :breadcrumbs="page.breadcrumbs">
-      <div class="status-row"><span :class="['status', product ? 'published' : 'pending']">{{ product ? 'Published Product Master' : 'Published record unavailable' }}</span><span>Revision: {{ product?.publishedRevision ?? 'not published' }}</span></div>
+      <div class="status-row" :lang="locale"><span :class="['status', product ? 'published' : 'pending']">{{ product ? t('product.publishedMaster') : t('product.unavailable') }}</span><span>{{ t('product.revision', { revision: product?.publishedRevision ?? t('common.notPublished') }) }}</span></div>
     </PageHero>
     <ProductMediaGallery v-if="product?.mediaGallery.length" :items="product.mediaGallery" />
-    <section class="section shell product-overview">
+    <section class="section shell product-overview" :lang="locale">
       <div>
-        <DataNotice v-if="!product" title="Product data unavailable" :text="page.placeholderReason || 'No published Product Master record is available. No product values have been assumed.'" />
+        <DataNotice v-if="!product" :title="t('product.dataUnavailable')" :text="page.placeholderReason || t('product.noMaster')" />
         <dl v-if="product" class="spec-summary">
-          <div v-if="product.model"><dt>Exact model</dt><dd>{{ product.model }}</dd></div>
-          <div v-if="family?.name"><dt>Fan form</dt><dd>{{ family.name }}</dd></div>
-          <div v-if="product.motorTechnology"><dt>Motor technology</dt><dd>{{ product.motorTechnology }}</dd></div>
-          <div v-if="product.stableId"><dt>Stable ID</dt><dd>{{ product.stableId }}</dd></div>
+          <div v-if="product.model"><dt>{{ t('product.exactModel') }}</dt><dd lang="en">{{ product.model }}</dd></div>
+          <div v-if="family?.name"><dt>{{ t('product.fanForm') }}</dt><dd lang="en">{{ family.name }}</dd></div>
+          <div v-if="product.motorTechnology"><dt>{{ t('product.motorTechnology') }}</dt><dd lang="en">{{ product.motorTechnology }}</dd></div>
+          <div v-if="product.stableId"><dt>{{ t('product.stableId') }}</dt><dd lang="en">{{ product.stableId }}</dd></div>
         </dl>
-        <DataNotice v-if="product && !product.summary" title="Product summary not published" text="Use the verified fields and source attachments below, or request engineering review." />
+        <DataNotice v-if="product && !product.summary" :title="t('product.summaryMissing')" :text="t('product.summaryHelp')" />
         <div class="button-row">
-          <button v-if="product" class="button secondary" type="button" :disabled="added" @click="addProduct">{{ added ? 'Added to compare' : 'Add to compare' }}</button>
-          <a v-if="productRfqHref" class="button" :href="productRfqHref">Request a quote for this product</a>
-          <a v-else class="button" href="/en/request-a-quote/selection">Request selection support</a>
+          <button v-if="product" class="button secondary" type="button" :disabled="added" @click="addProduct">{{ added ? t('product.added') : t('product.add') }}</button>
+          <a v-if="productRfqHref" class="button" :href="productRfqHref">{{ t('product.quote') }}</a>
+          <a v-else class="button" href="/en/request-a-quote/selection">{{ t('product.selectionSupport') }}</a>
         </div>
       </div>
     </section>
-    <section v-if="sourceAssets.length" class="section shell source-assets" aria-labelledby="source-assets-title">
-      <div class="source-assets__heading"><div><p class="eyebrow">PRODUCT MASTER FILES</p><h2 id="source-assets-title">Source attachments</h2></div><p>Original files synchronized from the current published Feishu revision.</p></div>
+    <section v-if="sourceAssets.length" class="section shell source-assets" :lang="locale" aria-labelledby="source-assets-title">
+      <div class="source-assets__heading"><div><p class="eyebrow">{{ t('product.filesEyebrow') }}</p><h2 id="source-assets-title">{{ t('product.sourceAttachments') }}</h2></div><p>{{ t('product.filesDescription') }}</p></div>
       <div v-for="group in assetGroups" :key="group.usage" class="source-asset-group">
         <h3>{{ group.title }}</h3>
         <div class="source-assets__grid">
           <article v-for="asset in group.items" :key="asset.assetId" class="source-asset-card">
             <img v-if="asset.previewUrl && asset.mediaType.startsWith('image/')" :src="assetHref(asset.previewUrl)" :alt="asset.originalName" loading="lazy" />
             <div v-else class="source-asset-card__type" aria-hidden="true">{{ fileType(asset.originalName, asset.mediaType) }}</div>
-            <div class="source-asset-card__body"><strong>{{ asset.originalName }}</strong><span>{{ fileType(asset.originalName, asset.mediaType) }} · {{ formatBytes(asset.byteSize) }}</span><small>SHA-256 {{ asset.sha256.slice(0, 12) }}…</small><a class="button secondary" :href="assetHref(asset.downloadUrl)" download>Download original</a></div>
+            <div class="source-asset-card__body" lang="en"><strong>{{ asset.originalName }}</strong><span>{{ fileType(asset.originalName, asset.mediaType) }} · {{ formatBytes(asset.byteSize) }}</span><small>SHA-256 {{ asset.sha256.slice(0, 12) }}…</small><a class="button secondary" :lang="locale" :href="assetHref(asset.downloadUrl)" download>{{ t('common.downloadOriginal') }}</a></div>
           </article>
         </div>
       </div>
     </section>
-    <section v-if="tabs.length" class="shell product-tabs">
-      <div v-if="tabs.length > 1" class="tab-list" role="tablist" aria-label="Product information">
+    <section v-if="tabs.length" class="shell product-tabs" :lang="locale">
+      <div v-if="tabs.length > 1" class="tab-list" role="tablist" :aria-label="t('product.productInformation')">
         <button
           v-for="tab in tabs"
           :id="`product-tab-${tab}`"
@@ -162,18 +164,18 @@ function formatBytes(bytes: number): string {
           :aria-controls="`product-panel-${tab}`"
           :aria-selected="activeTab === tab"
           @click="selectTab(tab)"
-        >{{ tab }}</button>
+        >{{ t(`product.${tab}`) }}</button>
       </div>
       <div v-if="product?.specifications.length" id="product-panel-overview" class="tab-panel" role="tabpanel" :aria-labelledby="tabs.length > 1 ? 'product-tab-overview' : undefined" :hidden="enhancedTabs && activeTab !== 'overview'">
-        <h2>Structured specifications</h2>
-        <section v-for="group in specificationGroups" :key="group.key" class="specification-group"><h3>{{ group.title }}</h3><div class="table-scroll"><table><tbody><tr v-for="spec in group.items" :key="spec.key"><th scope="row">{{ spec.label }}</th><td><span>{{ spec.value === undefined || spec.value === null ? factState(spec.state) : displayValue(spec.value) }} {{ spec.unit || '' }}</span><small>{{ factState(spec.state) }}<template v-if="spec.operatingCondition"> · {{ spec.operatingCondition }}</template></small></td></tr></tbody></table></div></section>
+        <h2>{{ t('product.specifications') }}</h2>
+        <section v-for="group in specificationGroups" :key="group.key" class="specification-group"><h3>{{ group.title }}</h3><div class="table-scroll"><table><tbody><tr v-for="spec in group.items" :key="spec.key"><th scope="row" lang="en">{{ spec.label }}</th><td><span :lang="spec.value === undefined || spec.value === null ? locale : 'en'">{{ spec.value === undefined || spec.value === null ? factState(spec.state) : displayValue(spec.value) }} {{ spec.unit || '' }}</span><small>{{ factState(spec.state) }}<template v-if="spec.operatingCondition"> · <span lang="en">{{ spec.operatingCondition }}</span></template></small></td></tr></tbody></table></div></section>
       </div>
       <div v-if="verifiedCurves.length" id="product-panel-performance" class="tab-panel" role="tabpanel" :aria-labelledby="tabs.length > 1 ? 'product-tab-performance' : undefined" :hidden="enhancedTabs && activeTab !== 'performance'">
-        <h2>Airflow and pressure</h2>
-        <section v-for="(curve, index) in verifiedCurves" :key="`${curve.sourceReference}:${index}`" class="performance-curve"><h3>Verified curve {{ index + 1 }}</h3><PqCurve :points="curve.points" :airflow-unit="curve.airflowUnit" :pressure-unit="curve.pressureUnit" :conditions="curveConditions(curve)" /></section>
+        <h2>{{ t('product.airflowPressure') }}</h2>
+        <section v-for="(curve, index) in verifiedCurves" :key="`${curve.sourceReference}:${index}`" class="performance-curve"><h3>{{ t('product.verifiedCurve', { number: index + 1 }) }}</h3><PqCurve :points="curve.points" :airflow-unit="curve.airflowUnit" :pressure-unit="curve.pressureUnit" :conditions="curveConditions(curve)" /></section>
       </div>
     </section>
-    <section v-if="page.relatedEntries?.length" class="section shell" aria-labelledby="related-content-title"><p class="eyebrow">Published relationships</p><h2 id="related-content-title">Related content</h2><div class="card-grid two"><article v-for="entry in page.relatedEntries" :key="entry.href" class="card"><p class="eyebrow">{{ entry.eyebrow }}</p><h3><a :href="entry.href">{{ entry.title }}</a></h3><p>{{ entry.summary || 'Summary not published.' }}</p></article></div></section>
+    <section v-if="page.relatedEntries?.length" class="section shell" :lang="locale" aria-labelledby="related-content-title"><p class="eyebrow">{{ t('product.relatedEyebrow') }}</p><h2 id="related-content-title">{{ t('product.related') }}</h2><div class="card-grid two" lang="en"><article v-for="entry in page.relatedEntries" :key="entry.href" class="card"><p class="eyebrow">{{ entry.eyebrow }}</p><h3><a :href="entry.href">{{ entry.title }}</a></h3><p>{{ entry.summary || t('search.summaryMissing') }}</p></article></div></section>
     <PageSlotSections :sections="page.sections" />
     <CallToAction
       v-if="page.primaryCta"
