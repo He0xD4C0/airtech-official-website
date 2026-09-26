@@ -41,6 +41,7 @@ requireMatch(casc, /numExecutors:\s*0/u, 'The Jenkins controller must have zero 
 requireMatch(casc, /name:\s*"airtek-builder"[\s\S]*numExecutors:\s*3/u, 'JCasC must define the independent local build agent.')
 requireMatch(casc, /key:\s*"CD_ENABLED"\s*\n\s*value:\s*"false"/u, 'CD must default to disabled in JCasC.')
 requireMatch(casc, /includes\('main cicd'\)/u, 'The multibranch job must only discover main and cicd.')
+requireMatch(casc, /credentialsId\('airtek-github-read'\)/u, 'Private repository polling must use its dedicated read-only credential ID.')
 forbidMatch(casc, /airtek-ghcr-push[\s\S]*(?:password|secret):/u, 'GHCR credentials must not be serialized in JCasC.')
 
 const publish = read('scripts/ci/publish-images.sh')

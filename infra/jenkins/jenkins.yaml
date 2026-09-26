@@ -48,8 +48,7 @@ jenkins:
             maxNumRetries: 5
             retryWaitTime: 15
             sshHostKeyVerificationStrategy:
-              knownHostsFileKeyVerificationStrategy:
-                requireInitialManualTrust: false
+              knownHostsFileKeyVerificationStrategy: {}
 
 credentials:
   system:
@@ -75,6 +74,7 @@ jobs:
           git {
             id('airtekpower-origin')
             remote('https://github.com/He0xD4C0/airtek-official-website.git')
+            credentialsId('airtek-github-read')
             includes('main cicd')
           }
         }

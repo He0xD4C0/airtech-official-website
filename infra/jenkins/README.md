@@ -13,6 +13,8 @@ VM and never enter this repository.
 
 After provisioning, add these Jenkins Credentials through the UI:
 
+- `airtek-github-read`: username/password credential containing a dedicated
+  read-only GitHub token for polling this private repository.
 - `airtek-ghcr-push`: username/password credential containing a dedicated GHCR
   package-write token.
 - `airtek-prod-ssh`: SSH private key for the future restricted deployment user.
