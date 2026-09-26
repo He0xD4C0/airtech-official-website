@@ -39,13 +39,13 @@ try {
     '-e', 'FLYWAY_PLACEHOLDERS_RUNTIME_ROLE=airtek', '-e', 'AIRTEK_FLYWAY_ALLOW_SHARED_ROLE=true',
     '-e', 'AIRTEK_FLYWAY_TARGET=27', flywayImage, 'migrate'])
   const cargo = ['--manifest-path', 'services/platform/Cargo.toml']
-  await checked('cargo', ['run', ...cargo, '--bin', 'airtek-maintenance', '--', 'prepare-runtime'])
+  await checked('cargo', ['run', ...cargo, '-p', 'airtek-maintenance', '--bin', 'airtek-maintenance', '--', 'prepare-runtime'])
   await checked(postgres[0], [...postgres[1], '-c', `CREATE DATABASE airtek_test_template TEMPLATE ${isolated.POSTGRES_DB}`])
   for (const suite of ['postgres_contract', 'retention_contract', 'migration_contract', 'cms_current_dependencies_contract', 'publication_dependency_migration_contract']) {
-    await checked('cargo', ['test', ...cargo, '--features', 'devtools', '--test', suite, '--', '--ignored'])
+    await checked('cargo', ['test', ...cargo, '-p', 'airtek-platform-contract-tests', '--features', 'devtools', '--test', suite, '--', '--ignored'])
   }
   for (const filter of ['synthetic_master::', 'feishu_takeover_and_expiry::']) {
-    await checked('cargo', ['test', ...cargo, '--test', 'product_import_contract', filter, '--', '--ignored', '--test-threads=1'])
+    await checked('cargo', ['test', ...cargo, '-p', 'airtek-platform-contract-tests', '--test', 'product_import_contract', filter, '--', '--ignored', '--test-threads=1'])
   }
 } catch (error) {
   console.error(error.message)

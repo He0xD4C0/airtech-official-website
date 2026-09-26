@@ -20,7 +20,7 @@ jobs:
           workspaces: services/platform
       - name: Compile the production platform at its declared MSRV
         working-directory: services/platform
-        run: cargo check --locked --all-targets --features production
+        run: cargo check --locked --workspace --all-targets --features production
 
   contracts:
     runs-on: ubuntu-latest
@@ -147,7 +147,7 @@ jobs:
           workspaces: services/platform
       - run: cargo fmt --manifest-path services/platform/Cargo.toml --all -- --check
       - run: node scripts/assert-postgres-runtime-boundary.mjs
-      - run: cargo clippy --manifest-path services/platform/Cargo.toml --all-targets --features production -- -D warnings
+      - run: cargo clippy --manifest-path services/platform/Cargo.toml --workspace --all-targets --features production -- -D warnings
       - name: Provision a distinct runtime database role
         run: |
           docker exec -i "${{ job.services.postgres.id }}" \
@@ -172,7 +172,7 @@ jobs:
             --no-password --set ON_ERROR_STOP=1 --command "SELECT 1"
       - name: Prepare runtime data and create the isolated test template
         run: |
-          cargo run --manifest-path services/platform/Cargo.toml --bin airtek-maintenance -- prepare-runtime
+          cargo run --manifest-path services/platform/Cargo.toml -p airtek-maintenance --bin airtek-maintenance -- prepare-runtime
           docker exec "${{ job.services.postgres.id }}" \
             psql --username airtek --dbname postgres --set ON_ERROR_STOP=1 \
             --command "CREATE DATABASE airtek_test_template TEMPLATE airtek"
@@ -319,24 +319,24 @@ jobs:
             fi
           done
       - name: Run Rust unit and HTTP contract tests
-        run: cargo test --manifest-path services/platform/Cargo.toml
+        run: cargo test --manifest-path services/platform/Cargo.toml --workspace
       - name: Run PostgreSQL integration contracts with default test parallelism
         run: |
-          cargo test --manifest-path services/platform/Cargo.toml --features devtools --test postgres_contract -- --ignored
-          cargo test --manifest-path services/platform/Cargo.toml --test retention_contract -- --ignored
-          cargo test --manifest-path services/platform/Cargo.toml --features devtools --test migration_contract -- --ignored
-          cargo test --manifest-path services/platform/Cargo.toml --features devtools --test cms_current_dependencies_contract -- --ignored
-          cargo test --manifest-path services/platform/Cargo.toml --features devtools --test publication_dependency_migration_contract -- --ignored
+          cargo test --manifest-path services/platform/Cargo.toml -p airtek-platform-contract-tests --features devtools --test postgres_contract -- --ignored
+          cargo test --manifest-path services/platform/Cargo.toml -p airtek-platform-contract-tests --test retention_contract -- --ignored
+          cargo test --manifest-path services/platform/Cargo.toml -p airtek-platform-contract-tests --features devtools --test migration_contract -- --ignored
+          cargo test --manifest-path services/platform/Cargo.toml -p airtek-platform-contract-tests --features devtools --test cms_current_dependencies_contract -- --ignored
+          cargo test --manifest-path services/platform/Cargo.toml -p airtek-platform-contract-tests --features devtools --test publication_dependency_migration_contract -- --ignored
       - name: Run shared-state Product Master contracts one at a time
         run: |
-          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract feishu_takeover_and_expiry::expired_private_staging_requires_atomic_cryptographic_erasure -- --ignored --exact
-          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract synthetic_master::synthetic_product_master_scale_is_private_promoted_draft_and_idempotent -- --ignored --exact
-          cargo test --manifest-path services/platform/Cargo.toml --test product_import_contract feishu_takeover_and_expiry::feishu_takes_over_verified_csv_stable_id_and_projects_all_facts_atomically -- --ignored --exact
-      - run: cargo check --manifest-path services/platform/Cargo.toml --features production
-      - run: cargo check --manifest-path services/platform/Cargo.toml --features devtools
+          cargo test --manifest-path services/platform/Cargo.toml -p airtek-platform-contract-tests --test product_import_contract feishu_takeover_and_expiry::expired_private_staging_requires_atomic_cryptographic_erasure -- --ignored --exact
+          cargo test --manifest-path services/platform/Cargo.toml -p airtek-platform-contract-tests --test product_import_contract synthetic_master::synthetic_product_master_scale_is_private_promoted_draft_and_idempotent -- --ignored --exact
+          cargo test --manifest-path services/platform/Cargo.toml -p airtek-platform-contract-tests --test product_import_contract feishu_takeover_and_expiry::feishu_takes_over_verified_csv_stable_id_and_projects_all_facts_atomically -- --ignored --exact
+      - run: cargo check --manifest-path services/platform/Cargo.toml --workspace --features production
+      - run: cargo check --manifest-path services/platform/Cargo.toml --workspace --features devtools
       - name: Assert production and DevTools are mutually exclusive
         run: |
-          if cargo check --manifest-path services/platform/Cargo.toml --features production,devtools; then
+          if cargo check --manifest-path services/platform/Cargo.toml --workspace --features production,devtools; then
             echo "production+devtools unexpectedly compiled"
             exit 1
           fi

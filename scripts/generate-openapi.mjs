@@ -37,6 +37,8 @@ try {
     '--locked',
     '--manifest-path',
     'services/platform/Cargo.toml',
+    '-p',
+    'airtek-http',
     '--example',
     'export_openapi',
     '--features',
@@ -186,10 +188,10 @@ function assertRequiredDataContracts(document) {
 
 function assertRustRouteInventory(document) {
   const roots = [
-    { relativePath: 'services/platform/src/routes/system.rs', prefix: '' },
-    { relativePath: 'services/platform/src/routes/public.rs', prefix: '/api/public/v1' },
-    { relativePath: 'services/platform/src/auth.rs', prefix: '/api/admin/v1' },
-    { relativePath: 'services/platform/src/routes/admin.rs', prefix: '/api/admin/v1' },
+    { relativePath: 'services/platform/crates/http/src/routes/system.rs', prefix: '' },
+    { relativePath: 'services/platform/crates/http/src/routes/public.rs', prefix: '/api/public/v1' },
+    { relativePath: 'services/platform/crates/http/src/routes/auth.rs', prefix: '/api/admin/v1' },
+    { relativePath: 'services/platform/crates/http/src/routes/admin.rs', prefix: '/api/admin/v1' },
   ]
   const registered = new Map()
   const visited = new Set()
@@ -335,13 +337,12 @@ function findMatchingRustBrace(source, openBrace) {
 }
 
 function resolveRustModule(fromRelativePath, moduleReference) {
-  if (moduleReference === 'crate::auth') return 'services/platform/src/auth.rs'
 
   let modulePath
   if (moduleReference.startsWith('crate::routes::')) {
     modulePath = join(
       root,
-      'services/platform/src/routes',
+      'services/platform/crates/http/src/routes',
       ...moduleReference.slice('crate::routes::'.length).split('::'),
     )
   } else if (moduleReference.startsWith('super::')) {
@@ -371,7 +372,7 @@ function resolveRustModule(fromRelativePath, moduleReference) {
 }
 
 function assertEveryProductionRouteModuleIsReachable(visited) {
-  const routeRoot = join(root, 'services/platform/src/routes')
+  const routeRoot = join(root, 'services/platform/crates/http/src/routes')
   const visitedPaths = new Set([...visited].map((entry) => entry.split('\0')[0]))
   for (const absolutePath of walkRustFiles(routeRoot)) {
     const relativePath = normalizeRelativePath(relative(root, absolutePath))

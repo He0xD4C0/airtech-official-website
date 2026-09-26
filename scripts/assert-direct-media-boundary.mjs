@@ -15,7 +15,8 @@ const roots = [
   'scripts/run-e2e-stack.mjs',
   'apps/admin/src',
   'apps/web/src',
-  'services/platform/src',
+  'services/platform/crates',
+  'services/platform/apps',
   'packages/contracts/openapi',
   'packages/contracts/src/generated',
 ]
@@ -31,7 +32,7 @@ for (const entry of roots) {
   }
   for (const file of files(path)) {
     const name = relative(root, file)
-    if (forbiddenTaskFiles.test(name) && name.includes('services/platform/src/worker/')) {
+    if (forbiddenTaskFiles.test(name) && name.includes('services/platform/crates/jobs/src/worker/')) {
       failures.push(`${name} is an obsolete media Worker component.`)
     }
     const lines = readFileSync(file, 'utf8').split(/\r?\n/u)

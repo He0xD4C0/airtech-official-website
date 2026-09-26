@@ -1,0 +1,32 @@
+[package]
+name = "airtek-platform-contract-tests"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+production = ["airtek-runtime/production", "airtek-http/production", "airtek-jobs/production"]
+devtools = ["airtek-runtime/devtools", "airtek-http/devtools", "airtek-jobs/devtools"]
+
+[dependencies]
+airtek-domain.workspace = true
+airtek-runtime.workspace = true
+airtek-http.workspace = true
+airtek-jobs.workspace = true
+axum.workspace = true
+base64.workspace = true
+chrono.workspace = true
+image.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+ring.workspace = true
+reqwest.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
+tower.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+http-body-util.workspace = true

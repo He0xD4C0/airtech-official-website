@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
         echo "registry = \"${CARGO_REGISTRY_MIRROR}\""; \
       } > "${CARGO_HOME}/config.toml"; \
     fi \
-    && cargo build --locked --release --manifest-path services/platform/Cargo.toml --features "$AIRTEK_PLATFORM_FEATURES" --bin airtek-api --bin airtek-worker --bin airtek-maintenance
+    && cargo build --locked --release --manifest-path services/platform/Cargo.toml --features "$AIRTEK_PLATFORM_FEATURES" -p airtek-api -p airtek-worker -p airtek-maintenance
 
 FROM debian:bookworm-slim
 RUN apt-get update \

@@ -67,19 +67,19 @@ requireText(
 )
 
 const rustFiles = [
-  ...filesUnder('services/platform/src'),
+  ...filesUnder('services/platform/crates'),
+  ...filesUnder('services/platform/apps'),
   ...filesUnder('services/platform/tests'),
-  'services/platform/build.rs',
 ].filter((path) => extname(path) === '.rs')
 const includeUses = rustFiles.flatMap((path) => {
   const matches = [...read(path).matchAll(/include!\s*\(/gu)]
   return matches.map(() => path)
 })
-if (includeUses.length !== 1 || includeUses[0] !== 'services/platform/src/flyway.rs') {
+if (includeUses.length !== 1 || includeUses[0] !== 'services/platform/crates/runtime/src/flyway.rs') {
   failures.push(`Only the generated Flyway version may use include!: ${includeUses.join(', ')}`)
 }
 
-const routeFiles = filesUnder('services/platform/src/routes').filter((path) => extname(path) === '.rs')
+const routeFiles = filesUnder('services/platform/crates/http/src/routes').filter((path) => extname(path) === '.rs')
 for (const path of routeFiles) {
   forbidText(
     path,
@@ -92,7 +92,8 @@ const productionSources = [
   ...filesUnder('apps/admin/src'),
   ...filesUnder('apps/web/src'),
   ...filesUnder('apps/web/pages'),
-  ...filesUnder('services/platform/src'),
+  ...filesUnder('services/platform/crates'),
+  ...filesUnder('services/platform/apps'),
 ].filter((path) => /\.(?:rs|ts|tsx|vue)$/u.test(path)
   && !/(?:\/tests?(?:\/|\.)|\.(?:test|spec)\.)/u.test(path))
 const retiredCmsPatterns = [

@@ -22,7 +22,7 @@ services:
     command: ["prepare-runtime"]
     environment:
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
-      RUST_LOG: ${RUST_LOG:-airtek_platform=info}
+      RUST_LOG: ${RUST_LOG:-airtek_runtime=info,airtek_http=info,airtek_jobs=info}
     depends_on:
       flyway-migrate:
         condition: service_completed_successfully
@@ -51,7 +51,7 @@ services:
       AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS: ${AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS:-}
       AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS: ${AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS:-}
       AIRTEK_TRUSTED_PROXY_CIDRS: ${AIRTEK_TRUSTED_PROXY_CIDRS:-172.29.0.10/32}
-      RUST_LOG: ${RUST_LOG:-airtek_platform=info,tower_http=info}
+      RUST_LOG: ${RUST_LOG:-airtek_runtime=info,airtek_http=info,airtek_jobs=info,tower_http=info}
     expose:
       - "8080"
     depends_on:
@@ -86,7 +86,7 @@ services:
       AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES: ${AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES:-}
       AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS: ${AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS:-}
       AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS: ${AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS:-}
-      RUST_LOG: ${RUST_LOG:-airtek_platform=info}
+      RUST_LOG: ${RUST_LOG:-airtek_runtime=info,airtek_http=info,airtek_jobs=info}
     depends_on:
       platform-maintenance:
         condition: service_completed_successfully
@@ -171,7 +171,7 @@ services:
       PUBLIC_HOST: ${PUBLIC_HOST:?set PUBLIC_HOST}
       ADMIN_HOST: ${ADMIN_HOST:?set ADMIN_HOST}
       API_HOST: ${API_HOST:?set API_HOST}
-      RUST_LOG: ${RUST_LOG:-airtek_platform=info}
+      RUST_LOG: ${RUST_LOG:-airtek_runtime=info,airtek_http=info,airtek_jobs=info}
     depends_on:
       gateway:
         condition: service_healthy

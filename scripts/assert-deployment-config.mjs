@@ -194,11 +194,11 @@ if (migrationVersions.slice().sort((left, right) => left - right).join(',') !== 
   failures.push('Flyway migration versions must be contiguous from V0001.')
 }
 if (migrationFiles.some((file) => /^\d{4}_/u.test(file))) failures.push('Legacy SQLx migration filenames must not remain in the Flyway location.')
-const flywayBuild = read('services/platform/build.rs')
+const flywayBuild = read('services/platform/crates/runtime/build.rs')
 requireMatch(flywayBuild, /Flyway migration versions must be contiguous from V1/u, 'Rust builds must derive their required schema version from the Flyway directory.')
 requireMatch(flywayBuild, /LEGACY_SQLX_LAST_VERSION:\s*i64\s*=\s*10/u, 'Rust builds must lock the immutable SQLx v1-v10 migration history.')
 requireMatch(flywayBuild, /Flyway migration history V1-V10 must remain present/u, 'Rust builds must reject deletion of an adopted SQLx migration.')
-const flywayRuntime = read('services/platform/src/flyway.rs')
+const flywayRuntime = read('services/platform/crates/runtime/src/flyway.rs')
 requireMatch(flywayRuntime, /include!\(concat!\(env!\("OUT_DIR"\), "\/flyway_version\.rs"\)\)/u, 'Runtime readiness must use the build-derived Flyway version.')
 requireMatch(flywayRuntime, /LEGACY_SQLX_BASELINE_VERSION:\s*i64\s*=\s*10/u, 'Runtime readiness must recognize only the reviewed SQLx v10 baseline.')
 requireMatch(flywayRuntime, /migration_type = 'SQL'/u, 'Runtime readiness must count only successful Flyway SQL migrations as schema coverage.')
@@ -222,9 +222,9 @@ requireMatch(adminVite, /apiConnectSources\(env\.VITE_ADMIN_API_BASE_URL\)/u, 'A
 requireMatch(adminVite, /requestedDevtools\s*=\s*env\.VITE_ENABLE_DEVTOOLS\s*===\s*'true'/u, 'Admin DevTools must require an explicit development opt-in.')
 forbidMatch(adminVite, /connect-src 'self' http:\/\/localhost:8080 ws:\/\/localhost:8080/u, 'Admin development CSP must not hard-code an API port that bypasses the root environment.')
 
-const platformConfig = `${read('services/platform/src/config.rs')}\n${read('services/platform/src/config/types.rs')}`
+const platformConfig = `${read('services/platform/crates/runtime/src/config.rs')}\n${read('services/platform/crates/runtime/src/config/types.rs')}`
 requireMatch(platformConfig, /pub const API_PORT:\s*u16\s*=\s*8080;/u, 'Rust API must use the fixed application port 8080.')
-const platformApi = read('services/platform/src/bin/api.rs')
+const platformApi = read('services/platform/apps/api/src/main.rs')
 requireMatch(platformApi, /AppState::new\(config\)\?/u, 'The running Rust API must construct the PostgreSQL-only application state.')
 requireMatch(platformApi, /verify_runtime_ready\(\)\.await\?/u, 'The running Rust API must verify one-shot runtime preparation.')
 

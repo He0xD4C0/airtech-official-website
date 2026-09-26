@@ -18,8 +18,8 @@
     "lint": "pnpm -r --if-present lint",
     "test": "pnpm -r --if-present test",
     "test:frontend": "pnpm -r --if-present test",
-    "test:rust": "cargo test --manifest-path services/platform/Cargo.toml",
-    "test:workspace-tools": "node --test scripts/clean-local-artifacts.test.mjs scripts/check-workspace-hygiene.test.mjs scripts/isolated-test-environment.test.mjs scripts/check-dependency-hygiene.test.mjs scripts/assert-frontend-boundaries.test.mjs",
+    "test:rust": "cargo test --manifest-path services/platform/Cargo.toml --workspace",
+    "test:workspace-tools": "node --test scripts/clean-local-artifacts.test.mjs scripts/check-workspace-hygiene.test.mjs scripts/isolated-test-environment.test.mjs scripts/check-dependency-hygiene.test.mjs scripts/assert-frontend-boundaries.test.mjs scripts/assert-platform-workspace.test.mjs",
     "test:postgres": "node scripts/run-postgres-contracts.mjs",
     "test:all": "pnpm test:workspace-tools && pnpm test:frontend && pnpm test:rust",
     "test:e2e": "playwright test",
@@ -30,7 +30,7 @@
     "check:production": "pnpm check:source-lines && pnpm check:postgres-boundary && pnpm build:production && node scripts/assert-production-isolation.mjs && node scripts/assert-admin-ui-boundary.mjs",
     "check:admin-ui": "node scripts/assert-admin-ui-boundary.mjs",
     "check:source-lines": "node scripts/assert-source-line-limits.mjs",
-    "check:architecture": "pnpm test:workspace-tools && pnpm check:workspace-hygiene && pnpm check:dependencies && node scripts/assert-architecture.mjs && pnpm check:source-lines && pnpm check:frontend-boundaries",
+    "check:architecture": "pnpm test:workspace-tools && pnpm check:workspace-hygiene && pnpm check:dependencies && node scripts/assert-architecture.mjs && pnpm check:source-lines && pnpm check:frontend-boundaries && pnpm check:platform-boundaries",
     "check:workspace-hygiene": "node scripts/check-workspace-hygiene.mjs",
     "check:postgres-boundary": "node scripts/assert-postgres-runtime-boundary.mjs",
     "test:source-lines": "node --test scripts/assert-source-line-limits.test.mjs",
@@ -47,7 +47,8 @@
     "check:contracts": "node scripts/generate-openapi.mjs --check && node scripts/generate-openapi-runtime.mjs --check && node scripts/generate-admin-operation-matrix.mjs --check && pnpm --filter @airtek/contracts typecheck",
     "check:dependencies": "node scripts/check-dependency-hygiene.mjs",
     "migrate:local": "node scripts/migrate-local-artifacts.mjs",
-    "check:frontend-boundaries": "node scripts/assert-frontend-boundaries.mjs"
+    "check:frontend-boundaries": "node scripts/assert-frontend-boundaries.mjs",
+    "check:platform-boundaries": "node scripts/assert-platform-workspace.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.10.2",

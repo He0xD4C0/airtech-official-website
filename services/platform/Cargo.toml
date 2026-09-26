@@ -1,17 +1,23 @@
-[package]
-name = "airtek-platform"
+[workspace]
+resolver = "2"
+members = [
+  "crates/domain",
+  "crates/runtime",
+  "crates/http",
+  "crates/jobs",
+  "apps/api",
+  "apps/worker",
+  "apps/maintenance",
+  "tests/contracts",
+]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.88"
 publish = false
 
-[features]
-default = []
-production = []
-devtools = ["dep:portable-pty", "axum/ws"]
-
-[dependencies]
-async-trait = "0.1"
+[workspace.dependencies]
 argon2 = { version = "0.5", features = ["std"] }
 axum = { version = "0.8", features = ["http2", "json", "macros", "multipart"] }
 base64 = "0.22"
@@ -22,7 +28,7 @@ futures-util = "0.3"
 hmac = "0.12"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 kamadak-exif = "0.6"
-portable-pty = { version = "0.9", optional = true }
+portable-pty = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
@@ -43,19 +49,8 @@ uuid = { version = "1", features = ["serde", "v4"] }
 webp = "0.3"
 webpki-roots = "1"
 zeroize = "1.8"
-
-[dev-dependencies]
 http-body-util = "0.1"
-tokio = { version = "1", features = ["test-util"] }
-
-[[bin]]
-name = "airtek-api"
-path = "src/bin/api.rs"
-
-[[bin]]
-name = "airtek-worker"
-path = "src/bin/worker.rs"
-
-[[bin]]
-name = "airtek-maintenance"
-path = "src/bin/maintenance.rs"
+airtek-domain = { path = "crates/domain" }
+airtek-runtime = { path = "crates/runtime" }
+airtek-http = { path = "crates/http" }
+airtek-jobs = { path = "crates/jobs" }

@@ -129,7 +129,7 @@ services:
       PUBLIC_HOST: ${PUBLIC_HOST:-www.airtek.localhost}
       ADMIN_HOST: ${ADMIN_HOST:-admin.airtek.localhost}
       API_HOST: ${API_HOST:-api.airtek.localhost}
-      RUST_LOG: ${RUST_LOG:-airtek_platform=info}
+      RUST_LOG: ${RUST_LOG:-airtek_runtime=info,airtek_http=info,airtek_jobs=info}
     depends_on:
       flyway-migrate:
         condition: service_completed_successfully
@@ -168,7 +168,7 @@ services:
       AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS: ${AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS:-}
       # Only this fixed gateway address may supply X-Forwarded-For to the API.
       AIRTEK_TRUSTED_PROXY_CIDRS: ${AIRTEK_TRUSTED_PROXY_CIDRS:-172.28.0.10/32}
-      RUST_LOG: ${RUST_LOG:-airtek_platform=info,tower_http=info}
+      RUST_LOG: ${RUST_LOG:-airtek_runtime=info,airtek_http=info,airtek_jobs=info,tower_http=info}
     ports:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_API_HOST_PORT:-8080}:8080"
     extra_hosts:
@@ -215,7 +215,7 @@ services:
       AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES: ${AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES:-}
       AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS: ${AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS:-}
       AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS: ${AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS:-}
-      RUST_LOG: ${RUST_LOG:-airtek_platform=info}
+      RUST_LOG: ${RUST_LOG:-airtek_runtime=info,airtek_http=info,airtek_jobs=info}
     depends_on:
       platform-maintenance:
         condition: service_completed_successfully

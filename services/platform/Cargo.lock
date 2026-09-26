@@ -18,22 +18,116 @@ dependencies = [
 ]
 
 [[package]]
-name = "airtek-platform"
+name = "airtek-api"
 version = "0.1.0"
 dependencies = [
+ "airtek-http",
+ "airtek-runtime",
+ "axum",
+ "dotenvy",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "airtek-domain"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
+name = "airtek-http"
+version = "0.1.0"
+dependencies = [
+ "airtek-domain",
+ "airtek-runtime",
+ "axum",
+ "base64",
+ "chrono",
+ "futures-util",
+ "portable-pty",
+ "ring",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "tower-http",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "airtek-jobs"
+version = "0.1.0"
+dependencies = [
+ "airtek-domain",
+ "airtek-runtime",
+ "chrono",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "airtek-maintenance"
+version = "0.1.0"
+dependencies = [
+ "airtek-runtime",
+ "dotenvy",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "airtek-platform-contract-tests"
+version = "0.1.0"
+dependencies = [
+ "airtek-domain",
+ "airtek-http",
+ "airtek-jobs",
+ "airtek-runtime",
+ "axum",
+ "base64",
+ "chrono",
+ "http-body-util",
+ "image",
+ "reqwest",
+ "ring",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sqlx",
+ "tokio",
+ "tower",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "airtek-runtime"
+version = "0.1.0"
+dependencies = [
+ "airtek-domain",
  "argon2",
- "async-trait",
  "axum",
  "base64",
  "chrono",
  "data-encoding",
- "dotenvy",
  "futures-util",
  "hmac",
  "http-body-util",
  "image",
  "kamadak-exif",
- "portable-pty",
  "reqwest",
  "ring",
  "roxmltree",
@@ -47,13 +141,22 @@ dependencies = [
  "tokio",
  "totp-rs",
  "tower",
- "tower-http",
  "tracing",
- "tracing-subscriber",
  "uuid",
  "webp",
  "webpki-roots 1.0.9",
  "zeroize",
+]
+
+[[package]]
+name = "airtek-worker"
+version = "0.1.0"
+dependencies = [
+ "airtek-jobs",
+ "airtek-runtime",
+ "dotenvy",
+ "tokio",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -87,17 +190,6 @@ dependencies = [
  "blake2",
  "cpufeatures 0.2.17",
  "password-hash",
-]
-
-[[package]]
-name = "async-trait"
-version = "0.1.92"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82f6aeea286b8eb4dd3431a1be1b59d290ace00f5bfd8e2a159bc2a05e2c1667"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 3.0.5",
 ]
 
 [[package]]

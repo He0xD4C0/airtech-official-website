@@ -14,7 +14,8 @@ function rustFiles(directory) {
 
 const failures = [];
 const files = [
-  ...rustFiles(path.join(platform, "src")),
+  ...rustFiles(path.join(platform, "crates")),
+  ...rustFiles(path.join(platform, "apps")),
   ...rustFiles(path.join(platform, "tests")),
 ];
 const forbidden = [
@@ -38,9 +39,9 @@ for (const file of files) {
   }
 }
 
-const api = fs.readFileSync(path.join(platform, "src/bin/api.rs"), "utf8");
-const worker = fs.readFileSync(path.join(platform, "src/bin/worker.rs"), "utf8");
-const maintenance = fs.readFileSync(path.join(platform, "src/bin/maintenance.rs"), "utf8");
+const api = fs.readFileSync(path.join(platform, "apps/api/src/main.rs"), "utf8");
+const worker = fs.readFileSync(path.join(platform, "apps/worker/src/main.rs"), "utf8");
+const maintenance = fs.readFileSync(path.join(platform, "apps/maintenance/src/main.rs"), "utf8");
 for (const [name, source] of [["api", api], ["worker", worker]]) {
   if (!source.includes("verify_runtime_ready")) {
     failures.push(`${name}: startup must verify the preparation marker`);

@@ -1,0 +1,24 @@
+[package]
+name = "airtek-jobs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+production = ["airtek-runtime/production"]
+devtools = ["airtek-runtime/devtools"]
+
+[dependencies]
+airtek-domain.workspace = true
+airtek-runtime.workspace = true
+chrono.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
