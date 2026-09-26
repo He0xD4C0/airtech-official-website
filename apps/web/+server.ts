@@ -1,7 +1,7 @@
 import vike from 'vike/fetch'
 import type { Server } from 'vike/types'
-import { isSitemapName, renderRobots, renderSitemapIndex, renderUrlSitemap } from '@/lib/server/sitemaps'
-import { renderSiteIcon, renderWebManifest } from '@/lib/server/siteAssets'
+import { isSitemapName, renderRobots, renderSitemapIndex, renderUrlSitemap } from '@/server/sitemaps'
+import { renderSiteIcon, renderWebManifest } from '@/server/siteAssets'
 
 // Vike's universal middleware type includes optional adapter context arguments,
 // while the built-in server invokes the Fetch API shape used here.

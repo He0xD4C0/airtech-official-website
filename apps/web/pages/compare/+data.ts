@@ -1,7 +1,7 @@
 import type { PageContextServer } from 'vike/types'
 import { render } from 'vike/abort'
-import { loadPublicPageData, PublicPageDataError } from '@/lib/server/publicPageData'
-import { normalizePublicOrigin } from '@/lib/publicOrigin'
+import { loadPublicPageData, PublicPageDataError } from '@/server/publicPageData'
+import { normalizePublicOrigin } from '@/shared/lib/publicOrigin'
 
 export async function data(pageContext: PageContextServer) {
   try {

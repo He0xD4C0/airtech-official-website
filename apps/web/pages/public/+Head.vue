@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useData } from 'vike-vue/useData'
-import { canonicalUrl, openGraphType as resolveOpenGraphType, robotsDirective, shouldEmitStructuredData } from '@/lib/seo'
-import { buildPublicStructuredData } from '@/lib/structuredData'
+import { canonicalUrl, openGraphType as resolveOpenGraphType, robotsDirective, shouldEmitStructuredData } from '@/shared/lib/seo'
+import { buildPublicStructuredData } from '@/app/lib/structuredData'
 import type { Data } from './+data'
 
 const data = useData<Data>()

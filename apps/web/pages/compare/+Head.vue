@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useData } from 'vike-vue/useData'
-import { canonicalUrl, robotsDirective } from '@/lib/seo'
+import { canonicalUrl, robotsDirective } from '@/shared/lib/seo'
 import type { Data } from './+data'
 
 const data = useData<Data>()

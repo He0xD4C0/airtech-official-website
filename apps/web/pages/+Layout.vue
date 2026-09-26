@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import '@/styles/site.css'
-import SiteShell from '@/components/layout/SiteShell.vue'
+import '@/app/styles/site.css'
+import SiteShell from '@/app/layout/SiteShell.vue'
 </script>
 
 <template>
