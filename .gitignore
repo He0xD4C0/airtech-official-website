@@ -11,9 +11,6 @@ target/
 .env.*
 !.env.example
 coverage/
-playwright-report/
-test-results/
-dogfood-output/
-/deliverables/
+/.local/
 *.log
 Internal-docs/

@@ -37,22 +37,22 @@ afterEach(() => {
 test('defaults to a dry run and preserves every target', () => {
   const root = fixture()
   addFile(root, 'services/platform/target/debug/cache')
-  addFile(root, 'tmp/result.txt')
+  addFile(root, '.local/qa/result.txt')
 
   const result = runCleanup({ root, cwd: root, log: () => {} })
 
   assert.equal(result.applied, false)
   assert.equal(existsSync(join(root, 'services/platform/target/debug/cache')), true)
-  assert.equal(existsSync(join(root, 'tmp/result.txt')), true)
+  assert.equal(existsSync(join(root, '.local/qa/result.txt')), true)
 })
 
 test('apply removes only whitelisted outputs and uses Cargo for its target', () => {
   const root = fixture()
   addFile(root, 'services/platform/target/debug/cache')
   addFile(root, 'apps/admin/dist/index.html')
-  addFile(root, 'tmp/result.txt')
+  addFile(root, '.local/qa/result.txt')
   addFile(root, 'node_modules/keep.txt')
-  addFile(root, 'deliverables/contracts/keep.md')
+  addFile(root, '.local/deliverables/contracts/keep.md')
 
   const result = runCleanup({
     root,
@@ -66,15 +66,15 @@ test('apply removes only whitelisted outputs and uses Cargo for its target', () 
   assert.equal(result.applied, true)
   assert.equal(existsSync(join(root, 'services/platform/target')), false)
   assert.equal(existsSync(join(root, 'apps/admin/dist')), false)
-  assert.equal(existsSync(join(root, 'tmp')), false)
+  assert.equal(existsSync(join(root, '.local/qa')), false)
   assert.equal(existsSync(join(root, 'node_modules/keep.txt')), true)
-  assert.equal(existsSync(join(root, 'deliverables/contracts/keep.md')), true)
+  assert.equal(existsSync(join(root, '.local/deliverables/contracts/keep.md')), true)
 })
 
 test('Cargo preflight failure leaves all targets untouched', () => {
   const root = fixture()
   addFile(root, 'services/platform/target/debug/cache')
-  addFile(root, 'tmp/result.txt')
+  addFile(root, '.local/qa/result.txt')
 
   assert.throws(
     () => runCleanup({
@@ -87,7 +87,7 @@ test('Cargo preflight failure leaves all targets untouched', () => {
     /Cargo is unavailable/u,
   )
   assert.equal(existsSync(join(root, 'services/platform/target/debug/cache')), true)
-  assert.equal(existsSync(join(root, 'tmp/result.txt')), true)
+  assert.equal(existsSync(join(root, '.local/qa/result.txt')), true)
 })
 
 test('rejects execution outside the repository root', () => {
@@ -103,7 +103,8 @@ test('rejects a symlinked cleanup target before deleting anything', () => {
   const outside = mkdtempSync(join(tmpdir(), 'airtek-clean-outside-'))
   fixtureRoots.push(outside)
   writeFileSync(join(outside, 'keep.txt'), 'keep')
-  symlinkSync(outside, join(root, 'tmp'))
+  mkdirSync(join(root, '.local'))
+  symlinkSync(outside, join(root, '.local/qa'))
 
   assert.throws(
     () => runCleanup({ root, cwd: root, apply: true, log: () => {} }),

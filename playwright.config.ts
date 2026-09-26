@@ -19,7 +19,7 @@ export default defineConfig({
   testDir: './tests/e2e',
   globalSetup: './tests/e2e/global-setup.ts',
   globalTeardown: './tests/e2e/global-teardown.ts',
-  outputDir: 'test-results/playwright',
+  outputDir: '.local/qa/test-results/playwright',
   // Authenticated mutations rotate a single CSRF token stored in the shared
   // admin session. The disposable full stack intentionally reuses that session,
   // so run it serially instead of invalidating sibling workers' tokens.
@@ -28,8 +28,8 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   ...(process.env.CI || mutableAdminStack ? { workers: 1 } : {}),
   reporter: process.env.CI
-    ? [['line'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]
-    : [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
+    ? [['line'], ['html', { open: 'never', outputFolder: '.local/qa/playwright-report' }]]
+    : [['list'], ['html', { open: 'never', outputFolder: '.local/qa/playwright-report' }]],
   timeout: 30_000,
   expect: {
     timeout: 5_000,

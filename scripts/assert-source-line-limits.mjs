@@ -22,6 +22,7 @@ export const SOURCE_EXTENSIONS = new Set([
 ])
 export const SKIPPED_DIRECTORIES = new Set([
   '.git',
+  '.local',
   '.pnpm-store',
   '.prebuilt',
   'coverage',

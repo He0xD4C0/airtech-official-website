@@ -101,8 +101,8 @@ jobs:
         with:
           name: playwright-browser-contracts
           path: |
-            playwright-report/
-            test-results/
+            .local/qa/playwright-report/
+            .local/qa/test-results/
           if-no-files-found: ignore
           retention-days: 7
 

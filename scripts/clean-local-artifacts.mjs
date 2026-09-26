@@ -15,9 +15,7 @@ export const CLEAN_TARGETS = [
   'apps/admin/dist',
   'apps/web/dist',
   'packages/contracts/dist',
-  'tmp',
-  'playwright-report',
-  'test-results',
+  '.local/qa',
 ]
 
 const PLATFORM_MANIFEST = 'services/platform/Cargo.toml'
@@ -54,6 +52,13 @@ function validateTarget(root, relativePath) {
   }
 
   const absolutePath = resolve(root, relativePath)
+  let ancestor = dirname(absolutePath)
+  while (ancestor !== root && isWithin(root, ancestor)) {
+    if (existsSync(ancestor) && lstatSync(ancestor).isSymbolicLink()) {
+      throw new Error(`Cleanup target ancestor is a symbolic link: ${relativePath}`)
+    }
+    ancestor = dirname(ancestor)
+  }
   if (!isWithin(root, absolutePath)) {
     throw new Error(`Cleanup target escapes the repository: ${relativePath}`)
   }

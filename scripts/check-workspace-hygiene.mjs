@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 
 const IGNORED_DIRECTORIES = new Set([
   '.git',
+  '.local',
   '.pnpm-store',
   'coverage',
   'dist',
