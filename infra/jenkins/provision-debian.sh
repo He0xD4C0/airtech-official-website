@@ -42,7 +42,7 @@ printf '%s\n' \
 
 apt-get update
 apt-get install -y \
-  temurin-21-jdk jenkins nodejs trivy \
+  temurin-21-jdk jenkins nodejs qemu-guest-agent trivy \
   docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 systemctl stop jenkins
 
@@ -114,16 +114,18 @@ printf '%s\n' 'PasswordAuthentication no' 'PermitRootLogin prohibit-password' \
   >/etc/ssh/sshd_config.d/20-airtek-hardening.conf
 sshd -t
 systemctl reload ssh
+passwd -l root >/dev/null
 
 install -m 0755 /dev/stdin /usr/local/sbin/airtek-docker-firewall <<'EOF'
 #!/bin/sh
 set -eu
+external_interface=$(ip route show default | awk '{ print $5; exit }')
 iptables -N DOCKER-USER 2>/dev/null || true
 iptables -F DOCKER-USER
 iptables -A DOCKER-USER -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 iptables -A DOCKER-USER -i lo -j ACCEPT
-iptables -A DOCKER-USER -i docker0 -j ACCEPT
-iptables -A DOCKER-USER -j DROP
+iptables -A DOCKER-USER -i "$external_interface" -j DROP
+iptables -A DOCKER-USER -j RETURN
 EOF
 install -m 0644 /dev/stdin /etc/systemd/system/airtek-docker-firewall.service <<'EOF'
 [Unit]
@@ -159,7 +161,7 @@ table inet filter {
 EOF
 
 systemctl daemon-reload
-systemctl enable --now docker nftables airtek-docker-firewall
+systemctl enable --now docker nftables qemu-guest-agent airtek-docker-firewall
 systemctl enable --now jenkins
 systemctl --no-pager --full status jenkins | sed -n '1,20p'
 printf 'Jenkins URL: http://%s:8080/\n' "$jenkins_ip"

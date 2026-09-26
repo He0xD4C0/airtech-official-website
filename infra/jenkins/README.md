@@ -11,6 +11,13 @@ plugins and JCasC configuration, generates controller and local-agent secrets,
 and applies the LAN firewall policy. Secrets remain root/Jenkins-readable on the
 VM and never enter this repository.
 
+On the PVE node, `create-pve-vm.sh /root/deploy.pub` creates VMID 107 only when
+that ID is unused. It downloads the official Debian 12 Generic Cloud image,
+verifies its published SHA-512 checksum, imports a 200 GB disk to `ZTnvme`,
+configures 12 vCPU/24 GiB fixed RAM, VirtIO networking, QEMU Guest Agent,
+cloud-init DHCP and host autostart, then boots the VM. It refuses to overwrite
+an existing VM.
+
 After provisioning, add these Jenkins Credentials through the UI:
 
 - `airtek-github-read`: username/password credential containing a dedicated
