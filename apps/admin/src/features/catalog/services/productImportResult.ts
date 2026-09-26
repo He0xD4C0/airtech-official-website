@@ -8,4 +8,3 @@ export function productImportResult(operation: BackendOperation): ProductImportR
   }
   return (value as { import: ProductImportResult }).import
 }
-
