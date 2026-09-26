@@ -1,5 +1,5 @@
 import type { ApiProblem } from '@/shared/types/domain'
-import { adminApiBaseUrl } from '@/app/runtimeConfig'
+import { adminApiBaseUrl } from '@/shared/config/runtimeConfig'
 import { getAdminCsrfToken } from '@/shared/services/adminCsrf'
 
 function developmentApiBaseUrl(): string {

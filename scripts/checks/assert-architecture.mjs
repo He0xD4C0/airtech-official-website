@@ -116,7 +116,7 @@ for (const path of productionSources) {
 
 for (const entry of readdirSync(join(root, 'scripts'), { withFileTypes: true })) {
   if (entry.isFile() && entry.name.endsWith('.mjs')) failures.push(`Executable script is not grouped by responsibility: ${entry.name}`)
-  if (entry.isDirectory() && !['checks', 'generation', 'testing', 'maintenance', 'brand'].includes(entry.name)) {
+  if (entry.isDirectory() && !['checks', 'generation', 'testing', 'maintenance', 'brand', 'ci'].includes(entry.name)) {
     failures.push(`Unexpected scripts directory: ${entry.name}`)
   }
 }

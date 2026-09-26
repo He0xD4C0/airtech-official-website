@@ -1,6 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { initializeAdminRuntime } from '@/app/runtimeConfig'
+import { initializeAdminRuntime } from '@/shared/config/runtimeConfig'
 import '@airtek/ui/base.css'
 import '@/app/styles/main.css'
 import '@/app/styles/responsive.css'

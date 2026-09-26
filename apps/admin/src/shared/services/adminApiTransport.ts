@@ -1,5 +1,5 @@
 import { createContractClient } from '@airtek/contracts'
-import { adminApiBaseUrl } from '@/app/runtimeConfig'
+import { adminApiBaseUrl } from '@/shared/config/runtimeConfig'
 import { captureAdminCsrfToken, getAdminCsrfToken } from '@/shared/services/adminCsrf'
 import type { CursorPageRequest } from '@/shared/services/cursorPagination'
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { adminApiBaseUrl, adminApiOrigin, configureAdminRuntime } from '@/app/runtimeConfig'
+import { adminApiBaseUrl, adminApiOrigin, configureAdminRuntime } from '@/shared/config/runtimeConfig'
 
 describe('Admin runtime configuration', () => {
   it('accepts the exact public Admin API prefix', () => {

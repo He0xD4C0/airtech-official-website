@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { settingsApi } from '@/features/settings'
-import { adminApiOrigin } from '@/app/runtimeConfig'
+import { adminApiOrigin } from '@/shared/config/runtimeConfig'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Copy, ExternalLink, FileImage, RefreshCcw, Search, UploadCloud, X } from 'lucide-vue-next'
