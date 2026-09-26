@@ -123,7 +123,7 @@ services:
       platform-api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3100/robots.txt"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3100/robots.txt && wget -q -O /dev/null http://127.0.0.1:3100/runtime-config.json"]
       interval: 10s
       timeout: 3s
       retries: 12

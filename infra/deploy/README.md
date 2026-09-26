@@ -147,19 +147,19 @@ activated when a core route, CMS shell, CORS preflight, canonical URL,
 sitemap, manifest, icon, or origin contract fails, or when published
 development placeholders are present. A missing custom icon is warning-only.
 
-## GitHub application release
+## Jenkins application release
 
-`.github/workflows/release-production.yml` publishes after every successful
-`CI` run on `main`, or from an explicit manual dispatch with a full commit SHA.
-It builds five images and pushes them to GitHub Container Registry (GHCR). The
-workflow is publish-only: it has no SSH credentials, ECS configuration, or
+The Jenkins multibranch job polls `main` and `cicd`. Both branches run the same
+CI gates. `main` stops after CI; `cicd` builds and pushes the five domain-neutral
+images to GHCR using the full 40-character Git SHA. With `CD_ENABLED=false`, the
+run ends as `PUBLISHED_NOT_DEPLOYED` and never attempts SSH. The target host
+keeps runtime origins in `/etc/airtek/production.env`, so a released SHA can be
+reapplied under different reviewed domains without rebuilding.
+
+`.github/workflows/release-production.yml` is retained only as a migration-time
+manual publishing fallback. It requires an explicit full commit SHA, publishes
+the same immutable tags, accepts no deployment credentials, and has no server
 deployment job.
-
-When all three production origins are configured, the immutable tag is the full
-commit SHA. Until then, the workflow uses the Dockerfiles' reviewed local
-origins and publishes `<sha>-candidate`. Candidate images are pullable build
-artifacts, not production-release images, and never overwrite the production
-SHA tag.
 
 The server keeps `/etc/airtek/production.env` and its registry pull credential.
 The publishing workflow never receives PostgreSQL superuser, object-storage,
@@ -167,18 +167,13 @@ or server access secrets. The separate deployment script retains its application
 health rollback; schema migrations are forward-only and are never automatically
 reversed.
 
-These GitHub repository variables are optional for candidate publishing and
-required only before producing deployable production images:
-
-- Optional `PRODUCTION_CONTAINER_PLATFORM` (defaults to `linux/amd64`).
-- `PRODUCTION_PUBLIC_ORIGIN`, `PRODUCTION_ADMIN_ORIGIN`, and
-  `PRODUCTION_API_ORIGIN`, all exact HTTPS origins.
+The optional `PRODUCTION_CONTAINER_PLATFORM` GitHub repository variable defaults
+to `linux/amd64`. Runtime domains are deliberately absent from image publishing.
 
 Image publishing uses the workflow's short-lived `GITHUB_TOKEN` with
 `packages: write`; no external registry credentials are required. Images use
 the names `ghcr.io/<owner>/airtekpower-{public-web,admin-web,platform,migrations,gateway}`
-and either the full release commit SHA or the distinct `<sha>-candidate` tag
-described above.
+and the full release commit SHA.
 
 Before a later deployment, authenticate the server's Docker client to `ghcr.io` with a
 dedicated read-only GitHub token that has `read:packages`. Keep that credential
@@ -186,9 +181,9 @@ only in the server's Docker credential store; never add it to the repository or
 the workflow. Public packages may be pulled anonymously if their visibility is
 deliberately changed after review.
 
-Server deployment credentials are deliberately not accepted by the image
-publishing workflow. Add a separate, protected deployment workflow only when
-the target host and operational controls are ready.
+Jenkins deployment credentials are added only after the target host and
+operational controls are ready. They remain in Jenkins Credentials and are not
+serialized by JCasC or committed to the repository.
 
 ## Deployment order
 

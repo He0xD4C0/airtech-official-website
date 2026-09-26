@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import publicServer, { withPublicSecurityHeaders } from '../../+server'
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
+})
 
 describe('public server infrastructure routes', () => {
   it('keeps process liveness independent from missing CMS and API', async () => {
@@ -10,6 +13,24 @@ describe('public server infrastructure routes', () => {
     const response = await publicServer.fetch(new Request('http://localhost:3000/healthz'))
     expect(response.status).toBe(200)
     expect(fetch).not.toHaveBeenCalled()
+  })
+  it('publishes only validated runtime origins without caching them', async () => {
+    vi.stubEnv('PUBLIC_ORIGIN', 'https://www.example.test')
+    vi.stubEnv('PUBLIC_API_BROWSER_ORIGIN', 'https://api.example.test')
+    const response = await publicServer.fetch(new Request('http://localhost:3000/runtime-config.json'))
+    expect(response.status).toBe(200)
+    expect(response.headers.get('cache-control')).toBe('no-store, max-age=0')
+    expect(await response.json()).toEqual({
+      apiBaseUrl: 'https://api.example.test/api/public/v1',
+      publicOrigin: 'https://www.example.test',
+    })
+  })
+
+  it('fails health checks when a production origin is invalid', async () => {
+    vi.stubEnv('PUBLIC_ORIGIN', 'javascript:alert(1)')
+    await expect(publicServer.fetch(new Request('http://localhost:3000/healthz'))).rejects.toThrow(
+      'PUBLIC_ORIGIN must be a bare HTTP(S) origin.',
+    )
   })
   it('uses a permanent 308 locale redirect with public security headers', async () => {
     const response = await publicServer.fetch(new Request('http://localhost:3000/'))

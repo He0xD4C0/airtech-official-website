@@ -1,0 +1,84 @@
+jenkins:
+  systemMessage: "AIRTEKPOWER Jenkins - configuration is managed by JCasC."
+  numExecutors: 0
+  mode: EXCLUSIVE
+  scmCheckoutRetryCount: 2
+  disableRememberMe: true
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "${AIRTEK_JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    globalMatrix:
+      entries:
+        - user:
+            name: "admin"
+            permissions:
+              - "Overall/Administer"
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: "CD_ENABLED"
+            value: "false"
+          - key: "AIRTEK_IMAGE_PREFIX"
+            value: "ghcr.io/he0xd4c0/airtekpower"
+          - key: "AIRTEK_DEPLOY_USER"
+            value: "deploy"
+  nodes:
+    - permanent:
+        name: "airtek-builder"
+        labelString: "airtek-builder linux docker"
+        numExecutors: 3
+        remoteFS: "/var/lib/jenkins-agent"
+        retentionStrategy: "always"
+        nodeProperties:
+          - envVars:
+              env:
+                - key: "PATH+AIRTEK"
+                  value: "/usr/local/bin:/var/lib/jenkins-agent/.cargo/bin"
+        launcher:
+          ssh:
+            host: "127.0.0.1"
+            port: 22
+            credentialsId: "airtek-local-agent-ssh"
+            javaPath: "/usr/bin/java"
+            launchTimeoutSeconds: 60
+            maxNumRetries: 5
+            retryWaitTime: 15
+            sshHostKeyVerificationStrategy:
+              knownHostsFileKeyVerificationStrategy:
+                requireInitialManualTrust: false
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - basicSSHUserPrivateKey:
+              scope: SYSTEM
+              id: "airtek-local-agent-ssh"
+              username: "jenkins-agent"
+              privateKeySource:
+                directEntry:
+                  privateKey: "${file:/var/lib/jenkins/secrets/airtek-agent-key}"
+
+unclassified:
+  location:
+    url: "${AIRTEK_JENKINS_URL}"
+
+jobs:
+  - script: >
+      multibranchPipelineJob('airtekpower') {
+        displayName('AIRTEKPOWER main and cicd')
+        branchSources {
+          git {
+            id('airtekpower-origin')
+            remote('https://github.com/He0xD4C0/airtek-official-website.git')
+            includes('main cicd')
+          }
+        }
+        factory { workflowBranchProjectFactory { scriptPath('Jenkinsfile') } }
+        orphanedItemStrategy { discardOldItems { numToKeep(10) } }
+        triggers { periodicFolderTrigger { interval('3m') } }
+      }

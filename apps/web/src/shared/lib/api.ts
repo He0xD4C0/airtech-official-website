@@ -7,6 +7,7 @@ import type {
   SelectorRequest,
 } from '@airtek/contracts'
 import { createPublicApiClient } from '@/shared/lib/publicApiClient'
+import { publicApiBaseUrl } from '@/shared/lib/runtimeConfig'
 import type {
   GuestVisitRequest,
   PublishedNewsListQuery,
@@ -18,52 +19,48 @@ export { ApiError as PublicApiError } from '@airtek/contracts'
 export { createPublicApiClient } from '@/shared/lib/publicApiClient'
 export * from '@/shared/lib/publicApiTypes'
 
-function browserApiBaseUrl() {
-  return import.meta.env.VITE_PUBLIC_API_BASE_URL || 'http://localhost:8080/api/public/v1'
-}
-
 export function submitContact(payload: CreateContactRequest, idempotencyKey: string) {
-  return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).submitContact(payload, idempotencyKey)
+  return createPublicApiClient({ baseUrl: publicApiBaseUrl() }).submitContact(payload, idempotencyKey)
 }
 
 export function submitRfq(payload: CreateRfqRequest, idempotencyKey: string) {
-  return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).submitRfq(payload, idempotencyKey)
+  return createPublicApiClient({ baseUrl: publicApiBaseUrl() }).submitRfq(payload, idempotencyKey)
 }
 
 export function selectProducts(payload: SelectorRequest) {
-  return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).selectProducts(payload)
+  return createPublicApiClient({ baseUrl: publicApiBaseUrl() }).selectProducts(payload)
 }
 
 export function submitAnalyticsEvent(payload: CreateAnalyticsEvent, idempotencyKey: string) {
-  return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).submitAnalyticsEvent(payload, idempotencyKey)
+  return createPublicApiClient({ baseUrl: publicApiBaseUrl() }).submitAnalyticsEvent(payload, idempotencyKey)
 }
 
 export function submitAnalyticsConsent(payload: CreateAnalyticsConsent) {
-  return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).submitAnalyticsConsent(payload)
+  return createPublicApiClient({ baseUrl: publicApiBaseUrl() }).submitAnalyticsConsent(payload)
 }
 
 export function getPublishedProduct(slug: string, family?: ProductFamily) {
-  return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).getProduct(slug, family)
+  return createPublicApiClient({ baseUrl: publicApiBaseUrl() }).getProduct(slug, family)
 }
 
 export function getPublishedProductAssets(slug: string, family?: ProductFamily) {
-  return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).getProductAssets(slug, family)
+  return createPublicApiClient({ baseUrl: publicApiBaseUrl() }).getProductAssets(slug, family)
 }
 
 export function getPublishedProducts(query: PublishedProductListQuery = {}) {
-  return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).listProducts(query)
+  return createPublicApiClient({ baseUrl: publicApiBaseUrl() }).listProducts(query)
 }
 
 export function searchPublishedSite(query: PublishedSearchQuery = {}) {
-  return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).search(query)
+  return createPublicApiClient({ baseUrl: publicApiBaseUrl() }).search(query)
 }
 
 export function getPublishedNews(query: PublishedNewsListQuery = {}) {
-  return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).listNews(query)
+  return createPublicApiClient({ baseUrl: publicApiBaseUrl() }).listNews(query)
 }
 
 export function recordGuestVisit(payload: GuestVisitRequest) {
-  return createPublicApiClient({ baseUrl: browserApiBaseUrl() }).recordGuestVisit(payload)
+  return createPublicApiClient({ baseUrl: publicApiBaseUrl() }).recordGuestVisit(payload)
 }
 
 export function newIdempotencyKey() {

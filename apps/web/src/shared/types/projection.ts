@@ -6,6 +6,7 @@ import type {
   ResolvedMedia as GeneratedResolvedMedia,
   ResolvedRelationCard as GeneratedResolvedRelationCard,
 } from '@airtek/contracts'
+import { publicApiOrigin } from '@/shared/lib/runtimeConfig'
 
 export type ResolvedRelationCard = GeneratedResolvedRelationCard
 export type ResolvedLinkTarget = GeneratedResolvedLinkTarget
@@ -20,9 +21,7 @@ export type PublicContentProjection = GeneratedPublicContentProjection
 
 export function publicMediaHref(href: string): string {
   if (/^https?:\/\//u.test(href)) return href
-  const apiBase = import.meta.env.VITE_PUBLIC_API_BASE_URL
-    || 'http://localhost:8080/api/public/v1'
-  return new URL(href, new URL(apiBase).origin).toString()
+  return new URL(href, publicApiOrigin()).toString()
 }
 
 export function linkTargetHref(

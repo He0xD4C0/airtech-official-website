@@ -287,10 +287,12 @@ permits Public and Admin to be promoted or rolled back independently. Start from
 `infra/deploy/production.env.example`; replace every example image, host,
 origin, database URL, and secret through the deployment platform before use.
 
-The public image must be built with the final `VITE_PUBLIC_ORIGIN` and
-`VITE_PUBLIC_API_BASE_URL`; the admin image must be built with the final
-`VITE_ADMIN_API_BASE_URL`. Runtime origin values are security and SSR settings,
-not a way to rewrite browser code that was already compiled. Remove the
+The Public and Admin images are domain-neutral. At container start, the Public
+server reads `PUBLIC_ORIGIN` and `PUBLIC_API_BROWSER_ORIGIN`, while the Admin
+entrypoint generates an uncacheable `/runtime-config.json` from
+`ADMIN_API_ORIGIN`. Local development retains the `VITE_*` fallbacks. The same
+runtime origins also drive CSP, CORS, canonical URLs, robots, sitemaps and
+readiness. Remove the
 bootstrap token after the initial Super Admin has been created. The production
 gateway listens on loopback port `8088` for an outer ingress; only that ingress
 publishes HTTPS `443`.

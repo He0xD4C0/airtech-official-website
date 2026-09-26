@@ -1,13 +1,15 @@
 import type { PageContextServer } from 'vike/types'
 import { render } from 'vike/abort'
 import { loadPublicPageData, PublicPageDataError } from '@/server/publicPageData'
-import { normalizePublicOrigin } from '@/shared/lib/publicOrigin'
+import { serverPublicRuntimeConfig } from '@/server/runtimeConfig'
 
 export async function data(pageContext: PageContextServer) {
   try {
+    const runtimeConfig = serverPublicRuntimeConfig()
     return {
       ...await loadPublicPageData(pageContext.urlPathname),
-      publicOrigin: normalizePublicOrigin(process.env.PUBLIC_ORIGIN || import.meta.env.VITE_PUBLIC_ORIGIN),
+      publicOrigin: runtimeConfig.publicOrigin,
+      runtimeConfig,
     }
   } catch (cause) {
     if (cause instanceof PublicPageDataError) throw render(cause.status, cause.message)

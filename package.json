@@ -35,7 +35,7 @@
     "check:postgres-boundary": "node scripts/checks/assert-postgres-runtime-boundary.mjs",
     "test:source-lines": "node --test scripts/checks/assert-source-line-limits.test.mjs",
     "test:css": "node --test scripts/checks/assert-css-architecture.test.mjs",
-    "check:deployment": "node scripts/checks/assert-compose-origin-contract.mjs && node scripts/checks/assert-deployment-config.mjs && node scripts/checks/assert-production-infrastructure.mjs && node scripts/checks/assert-public-readiness-deployment.mjs && node scripts/checks/assert-media-csp.mjs",
+    "check:deployment": "node scripts/checks/assert-compose-origin-contract.mjs && node scripts/checks/assert-deployment-config.mjs && node scripts/checks/assert-jenkins-config.mjs && node scripts/checks/assert-production-infrastructure.mjs && node scripts/checks/assert-public-readiness-deployment.mjs && node scripts/checks/assert-media-csp.mjs",
     "check:public-readiness": "node scripts/checks/check-public-readiness.mjs",
     "check:media-boundary": "node scripts/checks/assert-direct-media-boundary.mjs",
     "lint:css": "stylelint 'packages/ui/src/**/*.css' 'packages/content-renderer/src/**/*.vue' 'apps/admin/src/**/*.{css,vue}'",

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { settingsApi } from '@/features/settings'
+import { adminApiOrigin } from '@/app/runtimeConfig'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Copy, ExternalLink, FileImage, RefreshCcw, Search, UploadCloud, X } from 'lucide-vue-next'
@@ -16,7 +17,7 @@ type PageState = 'loading' | 'ready' | 'empty' | 'error' | 'forbidden'
 
 const ACCEPTED_TYPES = 'image/png,image/jpeg,image/webp'
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024
-const apiOrigin = new URL(import.meta.env.VITE_ADMIN_API_BASE_URL ?? 'http://localhost:8080/api/admin/v1').origin
+const apiOrigin = adminApiOrigin()
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()

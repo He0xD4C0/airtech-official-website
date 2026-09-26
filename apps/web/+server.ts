@@ -2,6 +2,7 @@ import vike from 'vike/fetch'
 import type { Server } from 'vike/types'
 import { isSitemapName, renderRobots, renderSitemapIndex, renderUrlSitemap } from '@/server/sitemaps'
 import { renderSiteIcon, renderWebManifest } from '@/server/siteAssets'
+import { serverPublicRuntimeConfig } from '@/server/runtimeConfig'
 
 // Vike's universal middleware type includes optional adapter context arguments,
 // while the built-in server invokes the Fetch API shape used here.
@@ -63,9 +64,18 @@ export default {
   async fetch(request: Request) {
     const url = new URL(request.url)
     if (url.pathname === '/healthz') {
+      serverPublicRuntimeConfig()
       return new Response('ok\n', {
         headers: { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' },
       })
+    }
+    if (url.pathname === '/runtime-config.json') {
+      return withPublicSecurityHeaders(new Response(JSON.stringify(serverPublicRuntimeConfig()), {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      }), url.pathname)
     }
     if (url.pathname === '/') {
       return withPublicSecurityHeaders(new Response(null, {

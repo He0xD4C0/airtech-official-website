@@ -1,13 +1,9 @@
 import type { ApiProblem } from '@/shared/types/domain'
+import { adminApiBaseUrl } from '@/app/runtimeConfig'
 import { getAdminCsrfToken } from '@/shared/services/adminCsrf'
 
-const adminApiBaseUrl = (
-  import.meta.env.VITE_ADMIN_API_BASE_URL
-  ?? 'http://localhost:8080/api/admin/v1'
-).replace(/\/$/, '')
-
 function developmentApiBaseUrl(): string {
-  return adminApiBaseUrl.replace(/\/api\/admin\/v1$/, '/api/devtools/v1')
+  return adminApiBaseUrl().replace(/\/api\/admin\/v1$/, '/api/devtools/v1')
 }
 
 export async function createDevtoolsTerminalToken(): Promise<{ token: string; expiresInSeconds: number }> {

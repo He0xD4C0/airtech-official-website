@@ -1,8 +1,9 @@
 import { createContractClient } from '@airtek/contracts'
+import { adminApiBaseUrl } from '@/app/runtimeConfig'
 import { captureAdminCsrfToken, getAdminCsrfToken } from '@/shared/services/adminCsrf'
 import type { CursorPageRequest } from '@/shared/services/cursorPagination'
 
-const baseUrl = (import.meta.env.VITE_ADMIN_API_BASE_URL ?? 'http://localhost:8080/api/admin/v1').replace(/\/$/, '')
+const baseUrl = adminApiBaseUrl()
 
 export function randomRequestId(): string {
   if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
