@@ -28,7 +28,6 @@ migration history.
 | `infra/` | Container, gateway, deployment, and object-storage configuration |
 | `tests/` | Cross-application browser contracts and their support code |
 | `docs/` | Source evidence and planning inputs; not generated runtime output |
-| `reports/` | Dated QA and audit evidence intended for repository retention |
 | `scripts/` | Generation, validation, boundary checks, and local maintenance tools |
 | `.local/qa/` | Ignored Playwright, test and dogfood artifacts; safe to clean |
 | `.local/deliverables/` | Ignored local deliverables; never automatically cleaned |
