@@ -82,7 +82,7 @@ function devtoolsRoutesPlugin(enabled: boolean): Plugin {
         export const devtoolsRoutes = [{
           path: '/developer-tools',
           name: 'developer-tools',
-          component: () => import('/src/devtools/DevToolsView.vue'),
+          component: () => import('/src/features/devtools/DevToolsView.vue'),
           meta: { requiresAuth: true, permission: 'devtools.shell', section: 'system' }
         }]
         export const devtoolsNavigation = [{

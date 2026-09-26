@@ -4,7 +4,7 @@ import test from 'node:test'
 
 const uiBase = readFileSync('packages/ui/src/base.css', 'utf8')
 const layout = readFileSync('packages/ui/src/layout.css', 'utf8')
-const editor = readFileSync('apps/admin/src/components/content/ContentEditorShell.vue', 'utf8')
+const editor = readFileSync('apps/admin/src/features/content/components/ContentEditorShell.vue', 'utf8')
 
 test('declares the native cascade layers in one canonical order', () => {
   assert.match(uiBase, /@import '\.\/layers\.css'/)

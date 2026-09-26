@@ -126,20 +126,23 @@ function auditFor(path, method, operationId) {
 }
 
 function frontendConsumerFor(path) {
-  if (path.includes('/auth/')) return 'apps/admin/src/services/adminAuthApi.ts'
-  if (path.includes('/site-singletons/')) return 'apps/admin/src/services/contentApi.ts'
-  if (path.includes('/content')) return 'apps/admin/src/services/contentApi.ts'
-  if (path.includes('/products')) return 'apps/admin/src/services/adminProductApi.ts'
-  if (path.includes('/media/')) return 'apps/admin/src/services/mediaApi.ts'
-  if (path.includes('/feishu/')) return 'apps/admin/src/services/adminIntegrationApi.ts'
+  if (path.includes('/auth/')) return 'apps/admin/src/shared/services/adminAuthApi.ts'
+  if (path.includes('/site-singletons/')) return 'apps/admin/src/features/content/services/contentApi.ts'
+  if (path.includes('/content')) return 'apps/admin/src/features/content/services/contentApi.ts'
+  if (path.includes('/products')) return 'apps/admin/src/features/catalog/services/adminProductApi.ts'
+  if (path.includes('/media/')) return 'apps/admin/src/features/media/services/mediaApi.ts'
+  if (path.includes('/feishu/')) return 'apps/admin/src/features/integrations/services/adminIntegrationApi.ts'
   if (path.includes('/rfqs') || path.includes('/contacts') || path.includes('/dashboard')) {
-    return 'apps/admin/src/services/adminEngagementApi.ts'
+    return path.includes('/dashboard/')
+      ? 'apps/admin/src/features/dashboard/services/dashboardApi.ts'
+      : 'apps/admin/src/features/inbox/services/inboxApi.ts'
   }
-  if (path.includes('/analytics/')) return 'apps/admin/src/services/adminApi.ts'
+  if (path.includes('/analytics/')) return 'apps/admin/src/features/analytics/services/analyticsApi.ts'
   if (path.includes('/users') || path.includes('/roles') || path.includes('/user-invitations')) {
-    return 'apps/admin/src/services/adminIdentityApi.ts'
+    return 'apps/admin/src/features/identity/services/adminIdentityApi.ts'
   }
-  return 'apps/admin/src/services/adminOperationsApi.ts'
+  if (path.includes('/audit')) return 'apps/admin/src/features/audit/services/auditApi.ts'
+  return 'apps/admin/src/features/settings/services/settingsApi.ts'
 }
 
 function assertComplete(operations) {

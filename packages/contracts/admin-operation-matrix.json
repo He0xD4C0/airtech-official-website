@@ -37,7 +37,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminApi.ts"
+      "frontendConsumer": "apps/admin/src/features/analytics/services/analyticsApi.ts"
     },
     {
       "method": "GET",
@@ -78,7 +78,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminApi.ts"
+      "frontendConsumer": "apps/admin/src/features/analytics/services/analyticsApi.ts"
     },
     {
       "method": "GET",
@@ -124,7 +124,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+      "frontendConsumer": "apps/admin/src/features/audit/services/auditApi.ts"
     },
     {
       "method": "GET",
@@ -170,7 +170,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+      "frontendConsumer": "apps/admin/src/features/audit/services/auditApi.ts"
     },
     {
       "method": "POST",
@@ -210,7 +210,7 @@
         "required": true,
         "action": "acceptAdministratorInvitation"
       },
-      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
     },
     {
       "method": "POST",
@@ -249,7 +249,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
     },
     {
       "method": "POST",
@@ -279,7 +279,7 @@
         "required": true,
         "action": "logoutAdministrator"
       },
-      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
     },
     {
       "method": "POST",
@@ -319,7 +319,7 @@
         "required": true,
         "action": "regenerateRecoveryCodes"
       },
-      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
     },
     {
       "method": "GET",
@@ -353,7 +353,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
     },
     {
       "method": "GET",
@@ -387,7 +387,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
     },
     {
       "method": "DELETE",
@@ -418,7 +418,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
     },
     {
       "method": "POST",
@@ -458,7 +458,7 @@
         "required": true,
         "action": "setupInitialAdministrator"
       },
-      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
     },
     {
       "method": "POST",
@@ -498,7 +498,7 @@
         "required": true,
         "action": "confirmTotpEnrollment"
       },
-      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
     },
     {
       "method": "POST",
@@ -533,7 +533,7 @@
         "required": true,
         "action": "startTotpEnrollment"
       },
-      "frontendConsumer": "apps/admin/src/services/adminAuthApi.ts"
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
     },
     {
       "method": "GET",
@@ -575,7 +575,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+      "frontendConsumer": "apps/admin/src/features/inbox/services/inboxApi.ts"
     },
     {
       "method": "GET",
@@ -611,7 +611,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+      "frontendConsumer": "apps/admin/src/features/inbox/services/inboxApi.ts"
     },
     {
       "method": "POST",
@@ -657,7 +657,7 @@
         "required": true,
         "action": "assignContactInboxItem"
       },
-      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+      "frontendConsumer": "apps/admin/src/features/inbox/services/inboxApi.ts"
     },
     {
       "method": "POST",
@@ -703,7 +703,7 @@
         "required": true,
         "action": "createContactInternalNote"
       },
-      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+      "frontendConsumer": "apps/admin/src/features/inbox/services/inboxApi.ts"
     },
     {
       "method": "GET",
@@ -740,7 +740,7 @@
         "required": true,
         "action": "getContactPii.read"
       },
-      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+      "frontendConsumer": "apps/admin/src/features/inbox/services/inboxApi.ts"
     },
     {
       "method": "POST",
@@ -786,7 +786,7 @@
         "required": true,
         "action": "updateContactInboxStatus"
       },
-      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+      "frontendConsumer": "apps/admin/src/features/inbox/services/inboxApi.ts"
     },
     {
       "method": "GET",
@@ -826,7 +826,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+      "frontendConsumer": "apps/admin/src/features/content/services/contentApi.ts"
     },
     {
       "method": "POST",
@@ -866,7 +866,7 @@
         "required": true,
         "action": "createPrivateContentDraft"
       },
-      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+      "frontendConsumer": "apps/admin/src/features/content/services/contentApi.ts"
     },
     {
       "method": "GET",
@@ -902,7 +902,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+      "frontendConsumer": "apps/admin/src/features/content/services/contentApi.ts"
     },
     {
       "method": "PATCH",
@@ -946,7 +946,7 @@
         "required": true,
         "action": "savePrivateContentDraft"
       },
-      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+      "frontendConsumer": "apps/admin/src/features/content/services/contentApi.ts"
     },
     {
       "method": "POST",
@@ -983,7 +983,7 @@
         "required": true,
         "action": "claimUnassignedPrivateContentDraft"
       },
-      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+      "frontendConsumer": "apps/admin/src/features/content/services/contentApi.ts"
     },
     {
       "method": "PUT",
@@ -1025,7 +1025,7 @@
         "required": true,
         "action": "setPrivateContentDraftShares"
       },
-      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+      "frontendConsumer": "apps/admin/src/features/content/services/contentApi.ts"
     },
     {
       "method": "POST",
@@ -1064,7 +1064,7 @@
         "required": true,
         "action": "submitPrivateContentDraft"
       },
-      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+      "frontendConsumer": "apps/admin/src/features/content/services/contentApi.ts"
     },
     {
       "method": "POST",
@@ -1101,7 +1101,7 @@
         "required": true,
         "action": "withdrawPrivateContentDraft"
       },
-      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+      "frontendConsumer": "apps/admin/src/features/content/services/contentApi.ts"
     },
     {
       "method": "GET",
@@ -1135,7 +1135,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+      "frontendConsumer": "apps/admin/src/features/content/services/contentApi.ts"
     },
     {
       "method": "GET",
@@ -1175,7 +1175,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+      "frontendConsumer": "apps/admin/src/features/content/services/contentApi.ts"
     },
     {
       "method": "POST",
@@ -1212,7 +1212,7 @@
         "required": true,
         "action": "approveContentReview"
       },
-      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+      "frontendConsumer": "apps/admin/src/features/content/services/contentApi.ts"
     },
     {
       "method": "POST",
@@ -1254,7 +1254,7 @@
         "required": true,
         "action": "rejectContentReview"
       },
-      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+      "frontendConsumer": "apps/admin/src/features/content/services/contentApi.ts"
     },
     {
       "method": "GET",
@@ -1288,7 +1288,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+      "frontendConsumer": "apps/admin/src/features/dashboard/services/dashboardApi.ts"
     },
     {
       "method": "GET",
@@ -1322,7 +1322,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+      "frontendConsumer": "apps/admin/src/features/integrations/services/adminIntegrationApi.ts"
     },
     {
       "method": "POST",
@@ -1357,7 +1357,7 @@
         "required": true,
         "action": "testFeishuConnection"
       },
-      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+      "frontendConsumer": "apps/admin/src/features/integrations/services/adminIntegrationApi.ts"
     },
     {
       "method": "GET",
@@ -1396,7 +1396,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+      "frontendConsumer": "apps/admin/src/features/integrations/services/adminIntegrationApi.ts"
     },
     {
       "method": "GET",
@@ -1430,7 +1430,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+      "frontendConsumer": "apps/admin/src/features/integrations/services/adminIntegrationApi.ts"
     },
     {
       "method": "PUT",
@@ -1473,7 +1473,7 @@
         "required": true,
         "action": "updateFeishuSettings"
       },
-      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+      "frontendConsumer": "apps/admin/src/features/integrations/services/adminIntegrationApi.ts"
     },
     {
       "method": "GET",
@@ -1515,7 +1515,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+      "frontendConsumer": "apps/admin/src/features/integrations/services/adminIntegrationApi.ts"
     },
     {
       "method": "GET",
@@ -1554,7 +1554,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+      "frontendConsumer": "apps/admin/src/features/integrations/services/adminIntegrationApi.ts"
     },
     {
       "method": "POST",
@@ -1588,7 +1588,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+      "frontendConsumer": "apps/admin/src/features/integrations/services/adminIntegrationApi.ts"
     },
     {
       "method": "GET",
@@ -1624,7 +1624,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminIntegrationApi.ts"
+      "frontendConsumer": "apps/admin/src/features/integrations/services/adminIntegrationApi.ts"
     },
     {
       "method": "GET",
@@ -1664,7 +1664,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/mediaApi.ts"
+      "frontendConsumer": "apps/admin/src/features/media/services/mediaApi.ts"
     },
     {
       "method": "POST",
@@ -1707,7 +1707,7 @@
         "required": true,
         "action": "uploadAdminMediaAsset"
       },
-      "frontendConsumer": "apps/admin/src/services/mediaApi.ts"
+      "frontendConsumer": "apps/admin/src/features/media/services/mediaApi.ts"
     },
     {
       "method": "GET",
@@ -1743,7 +1743,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/mediaApi.ts"
+      "frontendConsumer": "apps/admin/src/features/media/services/mediaApi.ts"
     },
     {
       "method": "GET",
@@ -1783,7 +1783,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/mediaApi.ts"
+      "frontendConsumer": "apps/admin/src/features/media/services/mediaApi.ts"
     },
     {
       "method": "GET",
@@ -1819,7 +1819,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
     },
     {
       "method": "GET",
@@ -1855,7 +1855,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
     },
     {
       "method": "GET",
@@ -1898,7 +1898,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+      "frontendConsumer": "apps/admin/src/features/catalog/services/adminProductApi.ts"
     },
     {
       "method": "GET",
@@ -1934,7 +1934,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+      "frontendConsumer": "apps/admin/src/features/catalog/services/adminProductApi.ts"
     },
     {
       "method": "PATCH",
@@ -1980,7 +1980,7 @@
         "required": true,
         "action": "updateProductPresentation"
       },
-      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+      "frontendConsumer": "apps/admin/src/features/catalog/services/adminProductApi.ts"
     },
     {
       "method": "GET",
@@ -2016,7 +2016,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+      "frontendConsumer": "apps/admin/src/features/catalog/services/adminProductApi.ts"
     },
     {
       "method": "GET",
@@ -2052,7 +2052,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+      "frontendConsumer": "apps/admin/src/features/catalog/services/adminProductApi.ts"
     },
     {
       "method": "POST",
@@ -2093,7 +2093,7 @@
         "required": true,
         "action": "publishProductRevision"
       },
-      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+      "frontendConsumer": "apps/admin/src/features/catalog/services/adminProductApi.ts"
     },
     {
       "method": "GET",
@@ -2133,7 +2133,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+      "frontendConsumer": "apps/admin/src/features/catalog/services/adminProductApi.ts"
     },
     {
       "method": "POST",
@@ -2177,7 +2177,7 @@
         "required": true,
         "action": "createTemporaryOverride"
       },
-      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+      "frontendConsumer": "apps/admin/src/features/catalog/services/adminProductApi.ts"
     },
     {
       "method": "GET",
@@ -2213,7 +2213,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+      "frontendConsumer": "apps/admin/src/features/catalog/services/adminProductApi.ts"
     },
     {
       "method": "GET",
@@ -2252,7 +2252,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+      "frontendConsumer": "apps/admin/src/features/catalog/services/adminProductApi.ts"
     },
     {
       "method": "POST",
@@ -2295,7 +2295,7 @@
         "required": true,
         "action": "importProductMaster"
       },
-      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+      "frontendConsumer": "apps/admin/src/features/catalog/services/adminProductApi.ts"
     },
     {
       "method": "GET",
@@ -2331,7 +2331,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminProductApi.ts"
+      "frontendConsumer": "apps/admin/src/features/catalog/services/adminProductApi.ts"
     },
     {
       "method": "GET",
@@ -2371,7 +2371,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
     },
     {
       "method": "GET",
@@ -2407,7 +2407,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
     },
     {
       "method": "POST",
@@ -2444,7 +2444,7 @@
         "required": true,
         "action": "copyPublishedContentToPrivateDraft"
       },
-      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
     },
     {
       "method": "GET",
@@ -2486,7 +2486,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+      "frontendConsumer": "apps/admin/src/features/inbox/services/inboxApi.ts"
     },
     {
       "method": "GET",
@@ -2522,7 +2522,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+      "frontendConsumer": "apps/admin/src/features/inbox/services/inboxApi.ts"
     },
     {
       "method": "POST",
@@ -2568,7 +2568,7 @@
         "required": true,
         "action": "assignRfqInboxItem"
       },
-      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+      "frontendConsumer": "apps/admin/src/features/inbox/services/inboxApi.ts"
     },
     {
       "method": "POST",
@@ -2614,7 +2614,7 @@
         "required": true,
         "action": "createRfqInternalNote"
       },
-      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+      "frontendConsumer": "apps/admin/src/features/inbox/services/inboxApi.ts"
     },
     {
       "method": "GET",
@@ -2651,7 +2651,7 @@
         "required": true,
         "action": "getRfqPii.read"
       },
-      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+      "frontendConsumer": "apps/admin/src/features/inbox/services/inboxApi.ts"
     },
     {
       "method": "POST",
@@ -2697,7 +2697,7 @@
         "required": true,
         "action": "updateRfqInboxStatus"
       },
-      "frontendConsumer": "apps/admin/src/services/adminEngagementApi.ts"
+      "frontendConsumer": "apps/admin/src/features/inbox/services/inboxApi.ts"
     },
     {
       "method": "GET",
@@ -2737,7 +2737,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
     },
     {
       "method": "GET",
@@ -2773,7 +2773,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
     },
     {
       "method": "PATCH",
@@ -2819,7 +2819,7 @@
         "required": true,
         "action": "updateAdminRole"
       },
-      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
     },
     {
       "method": "GET",
@@ -2853,7 +2853,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
     },
     {
       "method": "PATCH",
@@ -2896,7 +2896,7 @@
         "required": true,
         "action": "updatePlatformSettings"
       },
-      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
     },
     {
       "method": "GET",
@@ -2930,7 +2930,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
     },
     {
       "method": "PUT",
@@ -2973,7 +2973,7 @@
         "required": true,
         "action": "updateObjectStorageSettings"
       },
-      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
     },
     {
       "method": "POST",
@@ -3013,7 +3013,7 @@
         "required": true,
         "action": "testObjectStorageSettings"
       },
-      "frontendConsumer": "apps/admin/src/services/adminOperationsApi.ts"
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
     },
     {
       "method": "GET",
@@ -3050,7 +3050,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/contentApi.ts"
+      "frontendConsumer": "apps/admin/src/features/content/services/contentApi.ts"
     },
     {
       "method": "GET",
@@ -3089,7 +3089,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
     },
     {
       "method": "POST",
@@ -3132,7 +3132,7 @@
         "required": true,
         "action": "inviteAdminUser"
       },
-      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
     },
     {
       "method": "POST",
@@ -3171,7 +3171,7 @@
         "required": true,
         "action": "revokeUserInvitation"
       },
-      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
     },
     {
       "method": "GET",
@@ -3212,7 +3212,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
     },
     {
       "method": "GET",
@@ -3248,7 +3248,7 @@
       "audit": {
         "required": false
       },
-      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
     },
     {
       "method": "PATCH",
@@ -3294,7 +3294,7 @@
         "required": true,
         "action": "updateAdminUser"
       },
-      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
     },
     {
       "method": "DELETE",
@@ -3326,7 +3326,7 @@
         "required": true,
         "action": "revokeAdminUserSessions"
       },
-      "frontendConsumer": "apps/admin/src/services/adminIdentityApi.ts"
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
     }
   ]
 }

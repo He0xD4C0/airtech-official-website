@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises'
-import { draftFromTemplate } from '../apps/admin/src/services/contentDraftDefaults.ts'
+import { draftFromTemplate } from '../apps/admin/src/features/content/services/contentDraftDefaults.ts'
 
 // Supply a fresh inspect-public-site report and an authenticated Admin session.
 // Only missing entities are created. No save, review, or publish calls are made.
