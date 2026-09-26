@@ -51,6 +51,7 @@ async function uploadFromBrowser(
   fileName: string,
   bytes: Buffer,
 ): Promise<{ status: number; body: unknown }> {
+  await page.waitForLoadState('networkidle')
   return await page.evaluate(async ({ apiBase, idempotencyKey, name, base64 }) => {
     const session = await fetch(`${apiBase}/api/admin/v1/auth/session`, { credentials: 'include' })
     const csrf = session.headers.get('x-csrf-token')

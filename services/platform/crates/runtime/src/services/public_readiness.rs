@@ -1,7 +1,7 @@
 use std::{collections::BTreeSet, time::Duration};
 
 use reqwest::{
-    header::{LOCATION, ORIGIN},
+    header::{CACHE_CONTROL, LOCATION, ORIGIN},
     redirect::Policy,
     Client, Method, StatusCode,
 };
@@ -82,7 +82,7 @@ pub async fn check(pool: &PgPool) -> Result<PublicReadinessReport, PublicReadine
     checker.check_cors().await?;
     checker.check_discovery().await?;
     checker.check_site_assets().await?;
-    checker.check_bundled_origins().await?;
+    checker.check_runtime_origins().await?;
     Ok(PublicReadinessReport {
         status: "ready",
         checks: checker.checks,
@@ -339,11 +339,7 @@ impl Checker {
         Ok(())
     }
 
-    async fn check_bundled_origins(&mut self) -> Result<(), PublicReadinessError> {
-        let public_html = self.text(Surface::Public, "/en").await?;
-        let admin_html = self.text(Surface::Admin, "/login").await?;
-        let public_bundle = self.bundle_text(Surface::Public, &public_html).await?;
-        let admin_bundle = self.bundle_text(Surface::Admin, &admin_html).await?;
+    async fn check_runtime_origins(&mut self) -> Result<(), PublicReadinessError> {
         let public_api = format!(
             "{}/api/public/v1",
             self.config.api_origin.as_str().trim_end_matches('/')
@@ -352,28 +348,48 @@ impl Checker {
             "{}/api/admin/v1",
             self.config.api_origin.as_str().trim_end_matches('/')
         );
+        let public = self
+            .runtime_config(Surface::Public, "/runtime-config.json")
+            .await?;
+        let admin = self
+            .runtime_config(Surface::Admin, "/runtime-config.json")
+            .await?;
         require(
-            public_bundle.contains(&public_api),
-            "Public bundle API origin does not match runtime",
+            public.get("apiBaseUrl").and_then(Value::as_str) == Some(&public_api),
+            "Public runtime API origin does not match deployment configuration",
         )?;
         require(
-            admin_bundle.contains(&admin_api),
-            "Admin bundle API origin does not match runtime",
+            public.get("publicOrigin").and_then(Value::as_str)
+                == Some(self.config.public_origin.as_str().trim_end_matches('/')),
+            "Public runtime canonical origin does not match deployment configuration",
         )?;
-        for (name, bundle) in [("Public", &public_bundle), ("Admin", &admin_bundle)] {
-            require(
-                ![
-                    "http://localhost:8080",
-                    "http://localhost:3000",
-                    "http://localhost:3100",
-                ]
-                .iter()
-                .any(|origin| bundle.contains(origin)),
-                format!("{name} bundle contains a native-development origin"),
-            )?;
-        }
-        self.checks.push("browserBundleOrigins");
+        require(
+            admin.get("apiBaseUrl").and_then(Value::as_str) == Some(&admin_api),
+            "Admin runtime API origin does not match deployment configuration",
+        )?;
+        self.checks.push("browserRuntimeOrigins");
         Ok(())
+    }
+
+    async fn runtime_config(
+        &self,
+        surface: Surface,
+        path: &str,
+    ) -> Result<Value, PublicReadinessError> {
+        let response = self.response(surface, path, Method::GET).await?;
+        require(
+            response.status().is_success(),
+            format!("{path} is unavailable"),
+        )?;
+        require(
+            response
+                .headers()
+                .get(CACHE_CONTROL)
+                .and_then(|value| value.to_str().ok())
+                .is_some_and(|value| value.contains("no-store")),
+            format!("{path} must not be cached"),
+        )?;
+        response.json().await.map_err(failure)
     }
 }
 

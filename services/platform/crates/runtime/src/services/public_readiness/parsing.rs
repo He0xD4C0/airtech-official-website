@@ -34,33 +34,6 @@ pub(super) fn canonical_href(html: &str) -> Option<String> {
     })
 }
 
-pub(super) fn javascript_assets(html: &str) -> BTreeSet<String> {
-    let mut assets = BTreeSet::new();
-    for tag in tags(html, "script") {
-        if let Some(source) = tag_attribute(tag, "src").filter(|value| is_javascript(value)) {
-            assets.insert(source);
-        }
-    }
-    for tag in tags(html, "link") {
-        let relation = tag_attribute(tag, "rel").unwrap_or_default();
-        if relation.split_ascii_whitespace().any(|value| {
-            value.eq_ignore_ascii_case("modulepreload") || value.eq_ignore_ascii_case("preload")
-        }) {
-            if let Some(source) = tag_attribute(tag, "href").filter(|value| is_javascript(value)) {
-                assets.insert(source);
-            }
-        }
-    }
-    assets
-}
-
-fn is_javascript(value: &str) -> bool {
-    value
-        .split(['?', '#'])
-        .next()
-        .is_some_and(|path| path.ends_with(".js") || path.ends_with(".mjs"))
-}
-
 pub(super) fn xml_locations(xml: &str) -> Result<Vec<String>, roxmltree::Error> {
     let document = roxmltree::Document::parse(xml)?;
     Ok(document
@@ -103,17 +76,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn extracts_canonical_and_javascript_assets_without_attribute_order_assumptions() {
+    fn extracts_canonical_without_attribute_order_assumptions() {
         let html = r#"<link href='https://www.example.test/en' rel='canonical'>
           <link rel="modulepreload" href="/assets/chunk.js?x=1">
           <script defer src='/assets/app.mjs'></script>"#;
         assert_eq!(
             canonical_href(html).as_deref(),
             Some("https://www.example.test/en")
-        );
-        assert_eq!(
-            javascript_assets(html).into_iter().collect::<Vec<_>>(),
-            vec!["/assets/app.mjs", "/assets/chunk.js?x=1"]
         );
     }
 

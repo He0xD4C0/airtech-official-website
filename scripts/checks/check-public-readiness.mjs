@@ -81,12 +81,6 @@ function xmlLocations(xml) {
   return [...xml.matchAll(/<loc>([^<]+)<\/loc>/gu)].map((match) => match[1])
 }
 
-function assetPaths(html) {
-  return [...html.matchAll(/(?:src|href)="([^"?#]+\.js)(?:[?#][^"]*)?"/gu)]
-    .map((match) => match[1])
-    .filter((path) => path.startsWith('/'))
-}
-
 async function responseBody(response) {
   try {
     return await response.text()
@@ -125,6 +119,24 @@ export async function checkPublicReadiness(options, fetchImpl = globalThis.fetch
 
   const root = await expectStatus(options.publicBase, '/', [308])
   if (root && root.headers.get('location') !== '/en') errors.push('/: expected redirect location /en.')
+
+  const runtimeConfigResponse = await expectStatus(options.publicBase, '/runtime-config.json', [200])
+  if (runtimeConfigResponse) {
+    if (!runtimeConfigResponse.headers.get('cache-control')?.includes('no-store')) {
+      errors.push('/runtime-config.json: response must not be cached.')
+    }
+    try {
+      const runtimeConfig = await runtimeConfigResponse.json()
+      if (runtimeConfig.apiBaseUrl !== `${options.expectedApiOrigin}/api/public/v1`) {
+        errors.push('/runtime-config.json: API base does not match the deployment origin.')
+      }
+      if (runtimeConfig.publicOrigin !== options.expectedPublicOrigin) {
+        errors.push('/runtime-config.json: canonical origin does not match the deployment origin.')
+      }
+    } catch {
+      errors.push('/runtime-config.json: response is not valid JSON.')
+    }
+  }
 
   const bootstrapResponse = await expectStatus(
     options.apiBase,
@@ -258,18 +270,6 @@ export async function checkPublicReadiness(options, fetchImpl = globalThis.fetch
       }
     } catch {
       errors.push('/site.webmanifest: response is not valid JSON.')
-    }
-  }
-
-  if (homeHtml) {
-    const scripts = [...new Set(assetPaths(homeHtml))]
-    const sources = await Promise.all(scripts.map(async (path) => {
-      const response = await request(options.publicBase, path)
-      return response?.ok ? responseBody(response) : ''
-    }))
-    const expectedApiBase = `${options.expectedApiOrigin}/api/public/v1`
-    if (!sources.some((source) => source.includes(expectedApiBase))) {
-      errors.push(`public bundle does not contain the expected API base ${expectedApiBase}.`)
     }
   }
 

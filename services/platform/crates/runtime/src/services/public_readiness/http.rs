@@ -6,32 +6,10 @@ use serde_json::Value;
 
 use super::{
     config::{authority, Surface},
-    failure, parsing, require, Checker, PublicReadinessError,
+    failure, require, Checker, PublicReadinessError,
 };
 
 impl Checker {
-    pub(super) async fn bundle_text(
-        &self,
-        surface: Surface,
-        html: &str,
-    ) -> Result<String, PublicReadinessError> {
-        let assets = parsing::javascript_assets(html);
-        require(
-            !assets.is_empty(),
-            "HTML contains no JavaScript bundle references",
-        )?;
-        let mut output = String::new();
-        for asset in assets {
-            let absolute = self.config.origin(surface).join(&asset).map_err(failure)?;
-            require(
-                absolute.origin() == self.config.origin(surface).origin(),
-                format!("bundle URL crosses an unexpected origin: {absolute}"),
-            )?;
-            output.push_str(&self.text(surface, absolute.path()).await?);
-        }
-        Ok(output)
-    }
-
     pub(super) async fn xml(
         &self,
         surface: Surface,
