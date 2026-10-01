@@ -358,7 +358,7 @@ pub(super) async fn begin_run(
     sqlx::query("INSERT INTO sync_runs(id,connector_id,source,dry_run,trigger,settings_revision,source_config,mapping_version,status,started_at,payload) VALUES($1,$2,'feishu',false,'manual',$3,$4,$5,'validating',now(),$6)")
         .bind(id).bind(CONNECTOR_ID).bind(revision).bind(sources).bind(&mapping.version)
         .bind(json!({"archiveSha256":digest,"capturedAt":archive.captured_at,"mode":mode_label})).execute(&mut *tx).await?;
-    sqlx::query("INSERT INTO product_import_runs(id,sync_run_id,connector_id,environment,data_origin,dry_run,status,mapping_version,source_checksum,records_received,records_valid,error_count,started_at,created_at) VALUES($1,$1,$2,$3,'feishu',false,'processing',$4,$5,0,0,0,now(),now())")
+    sqlx::query("INSERT INTO product_import_runs(id,sync_run_id,connector_id,environment,data_origin,dry_run,status,mapping_version,source_checksum,records_received,records_valid,error_count,started_at,created_at) VALUES($1,$1,$2,$3,'feishu',false,'receiving',$4,$5,0,0,0,now(),now())")
         .bind(id).bind(CONNECTOR_ID).bind(state.environment_label()).bind(&mapping.version).bind(digest).execute(&mut *tx).await?;
     sqlx::query("INSERT INTO audit_log(id,actor,action,entity_type,entity_id,after_value,reason,request_id,occurred_at) VALUES($1,'maintenance',$5,'sourceConnector',$2,$3,$6,$4,now())")
         .bind(Uuid::new_v4()).bind(CONNECTOR_ID).bind(json!({"archiveSha256":digest,"mappingVersion":mapping.version})).bind(id)
