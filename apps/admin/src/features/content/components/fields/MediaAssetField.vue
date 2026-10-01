@@ -16,6 +16,7 @@ const props = withDefaults(defineProps<{
   label?: string
   disabled?: boolean
   siteIcon?: boolean
+  imagesOnly?: boolean
 }>(), {
   mode: 'media',
   label: '媒体资产',
@@ -67,6 +68,9 @@ const previewSrc = computed(() => selected.value
   : undefined)
 
 function optionIssue(option: MediaAsset): string | null {
+  if (props.imagesOnly && !['image/png', 'image/jpeg', 'image/webp'].includes(option.mediaType)) {
+    return 'Banner 仅支持 PNG、JPEG、WebP 图片。'
+  }
   return props.siteIcon ? siteIconAssetIssue(option) : null
 }
 

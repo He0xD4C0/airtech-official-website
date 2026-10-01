@@ -5,6 +5,7 @@ name: ${AIRTEK_INFRA_PROJECT_NAME:-airtek-infra}
 # application stack and never participates in application rollback or teardown.
 services:
   postgres:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_POSTGRES_IMAGE:?set AIRTEK_POSTGRES_IMAGE to a pinned PostgreSQL 17 image}
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-airtek}
@@ -29,6 +30,7 @@ services:
         max-file: "5"
 
   postgres-bootstrap:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_POSTGRES_IMAGE:?set AIRTEK_POSTGRES_IMAGE to a pinned PostgreSQL 17 image}
     profiles: ["bootstrap"]
     environment:

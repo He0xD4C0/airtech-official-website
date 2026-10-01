@@ -8,6 +8,7 @@ import MediaAssetField from '@/features/content/components/fields/MediaAssetFiel
 import RelationCollectionFields from '@/features/content/components/blockInspectors/RelationCollectionFields.vue'
 
 const props = defineProps<{
+  homeBanner?: boolean
   modelValue: ContentBlock
   relations: ContentRelationReference[]
 }>()
@@ -57,7 +58,7 @@ function updateHeroAction(index: number, action: EditorialAction | null): void {
 }
 
 function addHeroAction(): void {
-  if (!hero.value) return
+  if (!hero.value || hero.value.actions.length >= 2) return
   patch({ actions: [...hero.value.actions, { label: '', target: { targetType: 'route', path: '' } }] })
 }
 
@@ -120,7 +121,7 @@ function updateCtaAction(action: EditorialAction | null): void {
       <label class="field"><span>引导文案</span>
         <textarea :value="hero.lead ?? ''" rows="2" maxlength="500" @input="patch({ lead: ($event.target as HTMLTextAreaElement).value || null })" />
       </label>
-      <label class="field"><span>版式</span>
+      <label v-if="!homeBanner" class="field"><span>版式</span>
         <select :value="hero.variant" @change="patch({ variant: ($event.target as HTMLSelectElement).value })">
           <option value="standard">standard</option>
           <option value="splitMedia">splitMedia</option>
@@ -128,12 +129,12 @@ function updateCtaAction(action: EditorialAction | null): void {
         </select>
       </label>
       <div class="field"><span>背景媒体</span>
-        <MediaAssetField :model-value="hero.media ?? null" label="Hero 媒体" @update:model-value="patch({ media: $event as MediaUseReference | null })" />
+        <MediaAssetField :model-value="hero.media ?? null" :images-only="homeBanner" :label="homeBanner ? 'Banner 图片' : 'Hero 媒体'" @update:model-value="patch({ media: $event as MediaUseReference | null })" />
       </div>
       <div class="block-fields__list">
         <div class="block-fields__list-head">
           <strong>行动按钮（{{ hero.actions.length }}）</strong>
-          <button class="button button--quiet" type="button" @click="addHeroAction"><Plus :size="14" />添加按钮</button>
+          <button class="button button--quiet" type="button" :disabled="hero.actions.length >= 2" @click="addHeroAction"><Plus :size="14" />添加按钮</button>
         </div>
         <p v-if="!hero.actions.length" class="empty-mini">还没有行动按钮。</p>
         <div v-for="(action, index) in hero.actions" :key="`hero-action-${index}`" class="block-fields__item">

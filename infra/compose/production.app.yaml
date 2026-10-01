@@ -6,6 +6,7 @@ name: ${AIRTEK_APP_PROJECT_NAME:-airtek-app}
 # artifacts instead of rebuilding from the production checkout.
 services:
   flyway-migrate:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_MIGRATIONS_IMAGE:?set AIRTEK_MIGRATIONS_IMAGE to an immutable image reference}
     command: ["migrate"]
     environment:
@@ -17,6 +18,7 @@ services:
     restart: "no"
 
   platform-maintenance:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_PLATFORM_IMAGE:?set AIRTEK_PLATFORM_IMAGE to an immutable image reference}
     entrypoint: ["/usr/local/bin/airtek-maintenance"]
     command: ["prepare-runtime"]
@@ -29,6 +31,7 @@ services:
     restart: "no"
 
   platform-api:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_PLATFORM_IMAGE:?set AIRTEK_PLATFORM_IMAGE to an immutable image reference}
     environment:
       AIRTEK_API_HOST: 0.0.0.0
@@ -66,6 +69,7 @@ services:
     restart: unless-stopped
 
   platform-worker:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_PLATFORM_IMAGE:?set AIRTEK_PLATFORM_IMAGE to an immutable image reference}
     entrypoint: ["/usr/local/bin/airtek-worker"]
     environment:
@@ -94,6 +98,7 @@ services:
     restart: unless-stopped
 
   public-web:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_PUBLIC_WEB_IMAGE:?set AIRTEK_PUBLIC_WEB_IMAGE to an immutable image reference}
     environment:
       PUBLIC_API_INTERNAL_URL: http://platform-api:8080/api/public/v1
@@ -113,6 +118,7 @@ services:
     restart: unless-stopped
 
   admin-web:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_ADMIN_WEB_IMAGE:?set AIRTEK_ADMIN_WEB_IMAGE to an immutable image reference}
     environment:
       ADMIN_API_ORIGIN: ${AIRTEK_API_ORIGIN:?set AIRTEK_API_ORIGIN}
@@ -131,6 +137,7 @@ services:
     restart: unless-stopped
 
   gateway:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_GATEWAY_IMAGE:?set AIRTEK_GATEWAY_IMAGE to an immutable image reference}
     environment:
       PUBLIC_HOST: ${PUBLIC_HOST:?set PUBLIC_HOST}
@@ -159,6 +166,7 @@ services:
     restart: unless-stopped
 
   public-readiness:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_PLATFORM_IMAGE:?set AIRTEK_PLATFORM_IMAGE to an immutable image reference}
     entrypoint: ["/usr/local/bin/airtek-maintenance"]
     command: ["check-public-readiness"]

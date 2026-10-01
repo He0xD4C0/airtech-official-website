@@ -15,3 +15,17 @@ for (const variant of variants) {
   })
   console.log(`Compose configuration passed: ${variant.name}`)
 }
+
+// Platform selection must remain optional for existing host-native deployments.
+for (const platform of [undefined, '', 'linux/arm64', 'linux/amd64']) {
+  for (const variant of variants.filter(entry => entry.name.startsWith('production-'))) {
+    const environment = { ...process.env, COMPOSE_DISABLE_ENV_FILE: '1' }
+    delete environment.AIRTEK_TARGET_PLATFORM
+    if (platform !== undefined) environment.AIRTEK_TARGET_PLATFORM = platform
+    const config = JSON.parse(execFileSync('docker', ['compose', '--project-directory', '.', ...variant.args, 'config', '--format', 'json'], { env: environment, encoding: 'utf8' }))
+    for (const [name, service] of Object.entries(config.services)) {
+      if ((service.platform ?? '') !== (platform ?? '')) throw new Error(`${variant.name}/${name}: incorrect optional platform`)
+    }
+  }
+}
+console.log('Optional platform selection passed: unset, empty, ARM64, AMD64.')

@@ -33,11 +33,25 @@ pub(super) async fn validate_published_media(
                 reference.asset_id
             )));
         }
+        if draft.kind == airtek_domain::models::CmsContentKind::Home
+            && label.starts_with("Hero block")
+        {
+            let media_type: String = row.try_get("media_type")?;
+            if !valid_banner_type(&media_type) {
+                return Err(publication_blocked(
+                    "Homepage banners require PNG, JPEG, or WebP images.".to_owned(),
+                ));
+            }
+        }
         if label == "The site icon" {
             validate_site_icon(&row, reference.asset_id)?;
         }
     }
     Ok(())
+}
+
+fn valid_banner_type(media_type: &str) -> bool {
+    matches!(media_type, "image/png" | "image/jpeg" | "image/webp")
 }
 
 fn validate_site_icon(row: &sqlx::postgres::PgRow, asset_id: Uuid) -> Result<()> {
@@ -114,7 +128,17 @@ fn push_media(
 
 #[cfg(test)]
 mod tests {
-    use super::valid_site_icon_properties;
+    use super::{valid_banner_type, valid_site_icon_properties};
+
+    #[test]
+    fn banners_accept_only_supported_images() {
+        for value in ["image/png", "image/jpeg", "image/webp"] {
+            assert!(valid_banner_type(value));
+        }
+        for value in ["application/pdf", "image/svg+xml", "video/mp4"] {
+            assert!(!valid_banner_type(value));
+        }
+    }
 
     #[test]
     fn site_icon_requires_a_supported_square_image_at_least_512_pixels() {
