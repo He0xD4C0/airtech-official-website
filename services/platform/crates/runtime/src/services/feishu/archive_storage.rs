@@ -145,7 +145,7 @@ pub(super) async fn existing_assets(
         {
             return Err(ApiError::bad_request("Invalid archived object checksum."));
         }
-        let row = sqlx::query("SELECT id,storage_key,preview_storage_key,checksum,media_type,byte_size FROM media_assets WHERE checksum=$1 AND byte_size=$2 AND scan_status='clean' AND access_level='public' AND deleted_at IS NULL ORDER BY created_at,id LIMIT 1")
+        let row = sqlx::query("SELECT id,storage_key,preview_storage_key,checksum,media_type,byte_size FROM media_assets WHERE checksum=$1 AND byte_size=$2 AND access_level='public' AND deleted_at IS NULL ORDER BY created_at,id LIMIT 1")
             .bind(&object.sha256).bind(object.byte_size).fetch_optional(&state.pool).await?
             .ok_or_else(|| ApiError::conflict("Archived attachment has no matching validated website object."))?;
         output.push(StoredSourceAsset {
@@ -282,7 +282,7 @@ async fn existing_by_checksum(
     state: &AppState,
     object: &ArchiveObject,
 ) -> Result<Option<(Uuid, String, Option<String>, String, String, i64)>, ApiError> {
-    sqlx::query("SELECT id,storage_key,preview_storage_key,checksum,media_type,byte_size FROM media_assets WHERE checksum=$1 AND byte_size=$2 AND scan_status='clean' AND access_level='public' AND deleted_at IS NULL ORDER BY created_at,id LIMIT 1")
+    sqlx::query("SELECT id,storage_key,preview_storage_key,checksum,media_type,byte_size FROM media_assets WHERE checksum=$1 AND byte_size=$2 AND access_level='public' AND deleted_at IS NULL ORDER BY created_at,id LIMIT 1")
         .bind(&object.sha256)
         .bind(object.byte_size)
         .fetch_optional(&state.pool)
