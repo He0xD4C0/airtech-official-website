@@ -172,4 +172,14 @@ mod cases {
         assert!(!session.contains("Domain="));
         assert!(!csrf.contains("Domain="));
     }
+
+    #[tokio::test]
+    pub(super) async fn http_acceptance_cookie_remains_browser_storable() {
+        let mut config = crate::Config::for_test();
+        config.admin_origin = "http://admin.10.211.55.33.sslip.io:8088".into();
+        config.database_url = Some("postgresql://localhost/unused".into());
+        let state = AppState::new(config).unwrap();
+        assert!(!session_cookie(&state, "token", 60).contains("Secure"));
+        assert!(!csrf_cookie(&state, "csrf", 60).contains("Secure"));
+    }
 }

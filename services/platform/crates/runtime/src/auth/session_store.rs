@@ -169,7 +169,7 @@ pub(super) fn csrf_cookie(state: &AppState, value: &str, max_age: i64) -> String
 }
 
 pub(super) fn secure_attribute(state: &AppState) -> &'static str {
-    if state.config.production || state.config.admin_origin.starts_with("https://") {
+    if state.config.admin_origin.starts_with("https://") {
         "; Secure"
     } else {
         ""
