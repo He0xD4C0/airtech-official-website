@@ -61,6 +61,7 @@ const adminDockerfile = read('infra/docker/Dockerfile.admin')
 forbidMatch(publicDockerfile, /VITE_PUBLIC_(?:ORIGIN|API_BASE_URL)/u, 'Public production images must remain domain-neutral.')
 forbidMatch(adminDockerfile, /VITE_ADMIN_API_BASE_URL/u, 'Admin production images must remain domain-neutral.')
 requireMatch(adminDockerfile, /40-airtek-runtime-config\.sh/u, 'Admin must generate runtime configuration during container startup.')
+requireMatch(ci, /-e ADMIN_MEDIA_IMAGE_SOURCES=https:/u, 'Admin Nginx validation must resolve its media CSP template variable.')
 
 const compose = read('infra/compose/production.app.yaml')
 requireMatch(compose, /PUBLIC_API_BROWSER_ORIGIN:\s*\$\{AIRTEK_API_ORIGIN:\?/u, 'Production Public must receive the runtime API origin.')

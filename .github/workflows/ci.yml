@@ -396,6 +396,7 @@ jobs:
         run: >-
           docker run --rm
           -e ADMIN_API_ORIGIN=http://api.localhost:8088
+          -e ADMIN_MEDIA_IMAGE_SOURCES=https:
           -v "$PWD/apps/admin/deploy/nginx.conf:/etc/nginx/templates/default.conf.template:ro"
           nginx:1.27-alpine nginx -t
       - name: Validate gateway Nginx template
