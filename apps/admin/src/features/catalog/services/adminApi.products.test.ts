@@ -13,6 +13,7 @@ describe('admin product API', () => {
       ...product('10000000-0000-4000-8000-000000000001'),
       sourceKind: 'verifiedCsv',
       missingAssets: [],
+      sourceWarnings: [],
       presentation: null,
     }
     const fetchMock = vi.fn(async (input: string | URL | Request) => {
@@ -44,7 +45,7 @@ describe('admin product API', () => {
           indexable: false, sortOrder: 0, relatedContentIds: [], mediaGallery: [], revision: 5, publishedRevision: null,
           updatedAt: '2026-09-02T00:00:00Z',
         },
-        sourceKind: 'verifiedCsv', missingAssets: [],
+        sourceKind: 'verifiedCsv', missingAssets: [], sourceWarnings: [],
       }, { ETag: '"revision-5"' })
     })
     vi.stubGlobal('fetch', fetchMock)
