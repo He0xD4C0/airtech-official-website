@@ -27,8 +27,8 @@ services:
       MINIO_ROOT_USER: airtek
       MINIO_ROOT_PASSWORD: local-development-only
     ports:
-      - "127.0.0.1:${AIRTEK_OBJECT_STORE_HOST_PORT:-19000}:9000"
-      - "127.0.0.1:${AIRTEK_OBJECT_STORE_CONSOLE_HOST_PORT:-19001}:9001"
+      - "${AIRTEK_OBJECT_STORE_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_OBJECT_STORE_HOST_PORT:-19000}:9000"
+      - "${AIRTEK_OBJECT_STORE_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_OBJECT_STORE_CONSOLE_HOST_PORT:-19001}:9001"
     volumes:
       - object-data:/data
     healthcheck:

@@ -45,6 +45,7 @@ const environment = {
   AIRTEK_ADMIN_HOST_PORT: adminPort,
   AIRTEK_API_HOST_PORT: apiPort,
   AIRTEK_GATEWAY_HOST_PORT: gatewayPort,
+  AIRTEK_OBJECT_STORE_BIND_ADDRESS: '0.0.0.0',
   AIRTEK_OBJECT_STORE_HOST_PORT: minioPort,
   AIRTEK_OBJECT_STORE_CONSOLE_HOST_PORT: minioConsolePort,
   AIRTEK_COMPOSE_PUBLIC_ORIGIN: publicOrigin,
@@ -133,6 +134,33 @@ async function waitForSuccessfulJobs(services, timeoutMs = 300_000) {
   return 0
 }
 
+async function waitForReadyServices(services, timeoutMs = 300_000) {
+  const deadline = Date.now() + timeoutMs
+  const pending = new Set(services)
+  while (pending.size > 0 && Date.now() < deadline) {
+    for (const service of pending) {
+      const listed = await capture('docker', ['compose', '--project-directory', '.', 'ps', '--all', '--quiet', service])
+      const containerId = listed.stdout.trim()
+      if (listed.status !== 0 || !containerId) continue
+      const inspected = await capture('docker', [
+        'inspect', '--format', '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}', containerId,
+      ])
+      const [status, health] = inspected.stdout.trim().split(/\s+/)
+      if (['dead', 'exited'].includes(status)) {
+        console.error(`${service} stopped before becoming ready.`)
+        return 1
+      }
+      if (status === 'running' && ['healthy', 'none'].includes(health)) pending.delete(service)
+    }
+    if (pending.size > 0) await new Promise((resolve) => setTimeout(resolve, 500))
+  }
+  if (pending.size > 0) {
+    console.error(`Timed out waiting for healthy services: ${[...pending].join(', ')}`)
+    return 1
+  }
+  return 0
+}
+
 let testStatus = 1
 let owned = false
 try {
@@ -146,8 +174,7 @@ try {
     ? await waitForSuccessfulJobs(['flyway-migrate', 'platform-maintenance', 'minio-create-bucket'])
     : launchStatus
   const readyStatus = initStatus === 0
-    ? await run('docker', [
-        'compose', '--project-directory', '.', 'up', '--detach', '--wait', '--wait-timeout', '300', '--no-deps',
+    ? await waitForReadyServices([
         'postgres', 'minio', 'platform-api', 'platform-worker', 'public-web', 'admin-web', 'gateway',
       ])
     : initStatus
