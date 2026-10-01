@@ -1,14 +1,18 @@
 #!/bin/sh
 set -eu
 
-release_id=${1:-}
+release_tag=${1:-}
 image_prefix=${2:-}
 source_compose=${3:-./infra/compose/production.app.yaml}
 deploy_root=${AIRTEK_DEPLOY_ROOT:-/opt/airtek/app}
 production_env=${AIRTEK_PRODUCTION_ENV:-/etc/airtek/production.env}
 
-if ! printf '%s' "$release_id" | grep -Eq '^[0-9a-f]{40}$'; then
-  echo "Release ID must be a full lowercase Git commit SHA." >&2
+if ! printf '%s' "$release_tag" | grep -Eq '^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$'; then
+  echo "Release tag must be a valid OCI image tag." >&2
+  exit 2
+fi
+if [ "$(printf '%s' "$release_tag" | tr '[:upper:]' '[:lower:]')" = latest ]; then
+  echo "The mutable tag 'latest' is not a valid release identifier." >&2
   exit 2
 fi
 case "$image_prefix" in
@@ -34,17 +38,17 @@ if [ "${AIRTEK_DEPLOY_LOCKED:-0}" != 1 ]; then
   exec flock -n -E 75 "$lock_file" "$0" "$@"
 fi
 
-release_dir="$deploy_root/releases/$release_id"
+release_dir="$deploy_root/releases/$release_tag"
 mkdir -p "$release_dir"
 # Release snapshots have a stable name independent of the repository layout.
 cp "$source_compose" "$release_dir/compose.production.yaml"
 
 cat >"$release_dir/images.env" <<EOF
-AIRTEK_PUBLIC_WEB_IMAGE=$image_prefix-public-web:$release_id
-AIRTEK_ADMIN_WEB_IMAGE=$image_prefix-admin-web:$release_id
-AIRTEK_PLATFORM_IMAGE=$image_prefix-platform:$release_id
-AIRTEK_MIGRATIONS_IMAGE=$image_prefix-migrations:$release_id
-AIRTEK_GATEWAY_IMAGE=$image_prefix-gateway:$release_id
+AIRTEK_PUBLIC_WEB_IMAGE=$image_prefix-public-web:$release_tag
+AIRTEK_ADMIN_WEB_IMAGE=$image_prefix-admin-web:$release_tag
+AIRTEK_PLATFORM_IMAGE=$image_prefix-platform:$release_tag
+AIRTEK_MIGRATIONS_IMAGE=$image_prefix-migrations:$release_tag
+AIRTEK_GATEWAY_IMAGE=$image_prefix-gateway:$release_tag
 EOF
 
 previous_release=
@@ -117,4 +121,4 @@ compose_release "$release_dir" run --rm --no-deps -e AIRTEK_READINESS_EXTERNAL=t
 
 ln -sfn "$release_dir" "$deploy_root/current"
 deployment_started=0
-echo "Application release $release_id is healthy."
+echo "Application release $release_tag is healthy."

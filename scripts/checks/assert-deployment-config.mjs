@@ -393,22 +393,22 @@ for (const variable of ['AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES', 'AIRTEK_ANALYTIC
   requireMatch(serviceBlock(productionCompose, 'platform-api'), new RegExp(`${variable}:\\s*\\$\\{${variable}`, 'u'), `Production API must receive ${variable}.`)
   requireMatch(productionEnv, new RegExp(`^${variable}=`, 'mu'), `Production environment example must declare ${variable}.`)
 }
-
-const productionRelease = read('.github/workflows/release-production.yml')
-requireMatch(productionRelease, /^\s+packages:\s+write$/mu, 'Production image publishing must grant the workflow package write permission.')
+const productionRelease = read('.github/workflows/ci.yml')
+requireMatch(productionRelease, /^\s+packages:\s+write$/mu, 'Production image publishing must grant its job package-write permission.')
 requireMatch(productionRelease, /registry:\s+ghcr\.io/u, 'Production images must publish to GHCR.')
 requireMatch(productionRelease, /password:\s*\$\{\{ github\.token \}\}/u, 'GHCR publishing must use the short-lived GitHub workflow token.')
-requireMatch(productionRelease, /tags:\s+\$\{\{ needs\.prepare\.outputs\.image_prefix \}\}-\$\{\{ matrix\.image \}\}:\$\{\{ needs\.prepare\.outputs\.release_sha \}\}/u, 'Published image tags must use the AIRTEKPOWER package prefix and full immutable SHA.')
+requireMatch(productionRelease, /tags:\s*\|[\s\S]*:\$\{\{ needs\.release-metadata\.outputs\.release_tag \}\}[\s\S]*:\s*latest/u, 'Published images must use the selected Git tag and latest alias.')
+requireMatch(productionRelease, /KEEP_RELEASE_VERSIONS:\s*'5'/u, 'Production publishing must retain the five newest GHCR release images.')
+requireMatch(productionRelease, /run:\s*bash scripts\/maintenance\/prune-ghcr-versions\.sh/u, 'Production publishing must prune GHCR through the checked-in retention script.')
 forbidMatch(productionRelease, /ACR_/u, 'Production release workflow must not retain Alibaba Container Registry configuration.')
-requireMatch(productionRelease, /^\s+workflow_dispatch:\s*$/mu, 'The migration fallback release must require manual dispatch.')
-forbidMatch(productionRelease, /^  (?:workflow_run|push|pull_request):/mu, 'The migration fallback release must not publish automatically.')
-forbidMatch(productionRelease, /VITE_(?:PUBLIC|ADMIN).*ORIGIN|candidate/u, 'Production publishing must remain domain-neutral and use only full SHA tags.')
+requireMatch(productionRelease, /^\s+tags:\s*\n\s+- '\*'$/mu, 'Production publishing must be triggered by a Git tag push.')
+forbidMatch(productionRelease, /^\s+(?:workflow_dispatch|workflow_run|pull_request|schedule):/mu, 'No second workflow event may publish production images.')
+forbidMatch(productionRelease, /VITE_(?:PUBLIC|ADMIN).*ORIGIN|candidate/u, 'Production publishing must remain domain-neutral.')
 forbidMatch(productionRelease, /^  deploy:\s*$/mu, 'Image publishing must not contain a server deployment job.')
 forbidMatch(productionRelease, /ECS_|SSH_PRIVATE_KEY|deploy_after_publish/u, 'Image publishing must not accept server credentials or deployment controls.')
-
 const productionDeploy = read('infra/deploy/deploy-app.sh')
 requireMatch(productionDeploy, /compose_release "\$release_dir" run --rm flyway-migrate validate\ncompose_release "\$release_dir" run --rm platform-maintenance\n/u, 'Production deployment must prepare runtime data immediately after Flyway validation.')
-requireMatch(productionDeploy, /AIRTEK_PLATFORM_IMAGE=\$image_prefix-platform:\$release_id/u, 'Production deployment must reference the GHCR AIRTEKPOWER platform package.')
+requireMatch(productionDeploy, /AIRTEK_PLATFORM_IMAGE=\$image_prefix-platform:\$release_tag/u, 'Production deployment must reference the GHCR AIRTEKPOWER platform package by Git tag.')
 
 const localEnvExample = read('.env.example')
 for (const variable of [

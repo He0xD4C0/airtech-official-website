@@ -1,12 +1,43 @@
-name: CI
+name: Tag CI and GHCR publish
 
 on:
-  workflow_dispatch:
+  push:
+    tags:
+      - '*'
 
 permissions:
   contents: read
 
+concurrency:
+  group: tag-release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  release-metadata:
+    runs-on: ubuntu-latest
+    outputs:
+      image_prefix: ${{ steps.release.outputs.image_prefix }}
+      release_tag: ${{ steps.release.outputs.release_tag }}
+    steps:
+      - id: release
+        name: Validate the immutable release tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$RELEASE_TAG" | grep -Eq '^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$'; then
+            echo "Git tag must also be a valid OCI image tag." >&2
+            exit 1
+          fi
+          if [ "$(printf '%s' "$RELEASE_TAG" | tr '[:upper:]' '[:lower:]')" = latest ]; then
+            echo "The mutable tag 'latest' is not a valid release identifier." >&2
+            exit 1
+          fi
+          owner=$(printf '%s' "$REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "image_prefix=ghcr.io/$owner/airtekpower" >> "$GITHUB_OUTPUT"
+
   rust-msrv:
     runs-on: ubuntu-latest
     steps:
@@ -379,3 +410,95 @@ jobs:
             -e API_HOST=api.localhost \
             -e API_BROWSER_ORIGIN=http://api.localhost:8088 \
             airtek-gateway:ci nginx -t
+
+  publish-images:
+    needs:
+      - release-metadata
+      - rust-msrv
+      - contracts
+      - frontend
+      - browser-contracts
+      - rust
+      - deployment
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: public-web
+            dockerfile: infra/docker/Dockerfile.web
+          - image: admin-web
+            dockerfile: infra/docker/Dockerfile.admin
+          - image: platform
+            dockerfile: infra/docker/Dockerfile.platform
+          - image: migrations
+            dockerfile: infra/docker/Dockerfile.flyway
+          - image: gateway
+            dockerfile: infra/docker/Dockerfile.gateway
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - id: publish
+        name: Build and publish ${{ matrix.image }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: ${{ vars.PRODUCTION_CONTAINER_PLATFORM || 'linux/amd64' }}
+          push: true
+          tags: |
+            ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}:${{ needs.release-metadata.outputs.release_tag }}
+            ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ needs.release-metadata.outputs.release_tag }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+      - name: Record the immutable image digest
+        env:
+          IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}:${{ needs.release-metadata.outputs.release_tag }}
+          DIGEST: ${{ steps.publish.outputs.digest }}
+        run: |
+          printf '### `%s`\n\nDigest: `%s`\n' "$IMAGE" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"
+
+  prune-images:
+    needs:
+      - release-metadata
+      - publish-images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - public-web
+          - admin-web
+          - platform
+          - migrations
+          - gateway
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Keep the five newest release images
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_OWNER: ${{ github.repository_owner }}
+          PACKAGE_NAME: airtekpower-${{ matrix.image }}
+          KEEP_RELEASE_VERSIONS: '5'
+        run: bash scripts/maintenance/prune-ghcr-versions.sh

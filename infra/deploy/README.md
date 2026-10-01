@@ -147,19 +147,28 @@ activated when a core route, CMS shell, CORS preflight, canonical URL,
 sitemap, manifest, icon, or origin contract fails, or when published
 development placeholders are present. A missing custom icon is warning-only.
 
-## Jenkins application release
+## Git tag application release
 
-The Jenkins multibranch job polls `main` and `cicd`. Both branches run the same
-CI gates. `main` stops after CI; `cicd` builds and pushes the five domain-neutral
-images to GHCR using the full 40-character Git SHA. With `CD_ENABLED=false`, the
-run ends as `PUBLISHED_NOT_DEPLOYED` and never attempts SSH. The target host
-keeps runtime origins in `/etc/airtek/production.env`, so a released SHA can be
-reapplied under different reviewed domains without rebuilding.
+A pushed Git tag is the only CI and image-publication trigger. The tag must also
+be a valid OCI image tag; the name `latest` is reserved for the mutable alias.
+The single `.github/workflows/ci.yml` workflow runs the MSRV,
+generated-contract, frontend, browser, Rust/PostgreSQL and
+deployment-configuration gates first. Only after every gate succeeds does its
+publishing matrix build the five domain-neutral images and push them to GHCR
+with both the exact Git tag and the `latest` alias.
 
-`.github/workflows/release-production.yml` is retained only as a migration-time
-manual publishing fallback. It requires an explicit full commit SHA, publishes
-the same immutable tags, accepts no deployment credentials, and has no server
-deployment job.
+Create an annotated release tag on the reviewed commit and push only that tag:
+
+```sh
+git tag -a v1.0.0 -m "AIRTEKPOWER v1.0.0"
+git push origin v1.0.0
+```
+
+The images record the source commit SHA as OCI metadata and include provenance
+and SBOM attestations. Repository operations must protect release tags from
+deletion or retargeting so a tag continues to identify one reviewed source
+commit and one released image set. Ordinary branch pushes do not run this
+release workflow, and no manual or secondary image-publishing workflow exists.
 
 The server keeps `/etc/airtek/production.env` and its registry pull credential.
 The publishing workflow never receives PostgreSQL superuser, object-storage,
@@ -170,20 +179,23 @@ reversed.
 The optional `PRODUCTION_CONTAINER_PLATFORM` GitHub repository variable defaults
 to `linux/amd64`. Runtime domains are deliberately absent from image publishing.
 
-Image publishing uses the workflow's short-lived `GITHUB_TOKEN` with
-`packages: write`; no external registry credentials are required. Images use
+Image publishing uses the publishing job's short-lived `GITHUB_TOKEN` with
+`packages: write`; no external registry credentials are required. After all
+five images publish successfully, a retention job keeps the five newest
+Git-tagged versions of each package and deletes older release versions. The
+`latest` alias points at the newest release and does not consume another slot;
+untagged provenance and SBOM artifacts are excluded from the five-version count.
+Images use
 the names `ghcr.io/<owner>/airtekpower-{public-web,admin-web,platform,migrations,gateway}`
-and the full release commit SHA.
+and the exact release Git tag plus `latest`. No additional SHA tag is published.
 
-Before a later deployment, authenticate the server's Docker client to `ghcr.io` with a
+Deployment is intentionally outside GitHub Actions. On the target server, run
+`deploy-app.sh <release-tag> <image-prefix> <production-compose-path>` after
+authenticating its Docker client to `ghcr.io` with a
 dedicated read-only GitHub token that has `read:packages`. Keep that credential
 only in the server's Docker credential store; never add it to the repository or
 the workflow. Public packages may be pulled anonymously if their visibility is
 deliberately changed after review.
-
-Jenkins deployment credentials are added only after the target host and
-operational controls are ready. They remain in Jenkins Credentials and are not
-serialized by JCasC or committed to the repository.
 
 ## Deployment order
 
