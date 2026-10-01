@@ -5,8 +5,8 @@ export function contractObjectStore(name, run, capture) {
     throw new Error('Object-storage tests require an isolated test container name.')
   }
   let owned = false
-  const minio = 'quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e'
-  const mc = 'docker.io/minio/mc:RELEASE.2025-08-13T08-35-41Z@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727'
+  const minio = 'airtek/minio:RELEASE.2025-09-07T16-13-09Z'
+  const mc = 'airtek/minio-mc:RELEASE.2025-08-13T08-35-41Z'
   async function checked(args) {
     if (await run('docker', args) !== 0) throw new Error('Disposable object-storage setup failed.')
   }
@@ -14,6 +14,8 @@ export function contractObjectStore(name, run, capture) {
     async start() {
       const existing = await capture('docker', ['container', 'ls', '--all', '--quiet', '--filter', `name=^/${name}$`])
       if (existing.status !== 0 || existing.stdout.trim()) throw new Error('Object-storage container name is already in use.')
+      await checked(['build', '--file', 'infra/docker/Dockerfile.minio', '--tag', minio, '.'])
+      await checked(['build', '--file', 'infra/docker/Dockerfile.minio-mc', '--tag', mc, '.'])
       owned = true
       await checked(['run', '--detach', '--name', name, '--publish', '127.0.0.1::9000', '--tmpfs', '/data:rw',
         '-e', 'MINIO_ROOT_USER=airtek', '-e', 'MINIO_ROOT_PASSWORD=local-contract-only', minio, 'server', '/data'])
