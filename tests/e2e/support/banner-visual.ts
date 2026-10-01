@@ -17,7 +17,7 @@ function chunk(type: string, data: Buffer): Buffer {
 }
 
 /** Synthetic bright field and machine-like grid; deliberately not a company asset. */
-export function bannerVisualImage(): Buffer {
+export function bannerVisualImage(compressionLevel = 6): Buffer {
   const width = 1920, height = 900
   const header = Buffer.alloc(13)
   header.writeUInt32BE(width, 0); header.writeUInt32BE(height, 4)
@@ -33,7 +33,7 @@ export function bannerVisualImage(): Buffer {
       pixels[offset] = rgb[0]!; pixels[offset + 1] = rgb[1]!; pixels[offset + 2] = rgb[2]!
     }
   }
-  return Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), chunk('IHDR', header), chunk('IDAT', deflateSync(pixels)), chunk('IEND', Buffer.alloc(0))])
+  return Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), chunk('IHDR', header), chunk('IDAT', deflateSync(pixels, { level: compressionLevel })), chunk('IEND', Buffer.alloc(0))])
 }
 
 function luminance(rgb: number[]): number {

@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { bannerVisualImage } from './support/banner-visual'
 import {
   absolute,
   adminOrigin,
@@ -189,6 +190,21 @@ test.describe('direct public media upload', () => {
       status: 409,
       type: 'https://api.airtekpower.example/problems/media_idempotency_conflict',
     })
+  })
+
+  test('uploads a full-resolution image larger than the gateway default limit', async ({ page, request }, testInfo) => {
+    await page.goto(absolute(adminOrigin, '/media'))
+    // A valid uncompressed raster exercises real multipart transport above 1 MiB.
+    const bytes = bannerVisualImage(0)
+    expect(bytes.length).toBeGreaterThan(1024 * 1024)
+    const key = `e2e-large-image-${testInfo.workerIndex}-${Date.now().toString(36)}`
+    const result = await uploadFromBrowser(page, key, `${key}.png`, bytes)
+    expect(result.status).toBe(201)
+    const asset = result.body as MediaAsset
+    expect(asset.byteSize).toBe(bytes.length)
+    const original = await request.get(hostReadableUrl(asset.publicUrl))
+    expect(original.status()).toBe(200)
+    expect((await original.body()).equals(bytes)).toBe(true)
   })
 
   test('rejects forged image bytes and keeps the media page usable', async ({ page }) => {
