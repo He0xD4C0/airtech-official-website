@@ -3,8 +3,11 @@ import { createHash, randomUUID } from 'node:crypto'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import type { CmsPrivateDraft, CmsPublishedContent } from '../../packages/contracts/src/generated/openapi'
+import { verifyBannerMotion } from './support/banner-motion'
+import { bannerVisualImage, verifyBannerVisuals } from './support/banner-visual'
 import { absolute, adminOrigin, adminStorageStatePath, apiOrigin, publicOrigin, isolatedStack } from './support/environment'
 
+const VISUAL_IMAGE = bannerVisualImage()
 const IMAGE = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEklEQVR4nGP4z8DAAMH///8HACDtBftEyeG3AAAAAElFTkSuQmCC', 'base64')
 
 async function adminApi<T>(page: Page, path: string, method = 'GET', body?: unknown, version?: number): Promise<T> {
@@ -58,7 +61,7 @@ test.describe('CMS-managed homepage banners', () => {
         if (index > 1) await editor.getByRole('button', { name: '添加 Banner 页面' }).click()
         await editor.getByLabel('主标题', { exact: true }).fill(`E2E Banner ${index}`)
         await editor.getByLabel('引导文案', { exact: true }).fill(`Controlled banner text ${index}`)
-        await editor.locator('input[type=file]').setInputFiles({ name: `banner-${randomUUID()}.png`, mimeType: 'image/png', buffer: IMAGE })
+        await editor.locator('input[type=file]').setInputFiles({ name: `banner-${randomUUID()}.png`, mimeType: 'image/png', buffer: index === 1 ? IMAGE : VISUAL_IMAGE })
         await editor.locator('.media-field__alt input').fill(`Banner image ${index}`)
       }
       await editor.getByRole('button', { name: '添加 Banner 页面' }).click()
@@ -66,7 +69,7 @@ test.describe('CMS-managed homepage banners', () => {
       await editor.getByRole('button', { name: '上移 Banner 3', exact: true }).click()
       await page.getByRole('button', { name: '本地预览', exact: true }).click()
       const preview = page.getByRole('region', { name: '编辑器内存预览' })
-      await preview.getByRole('button', { name: '下一页 Banner', exact: true }).click()
+      await preview.getByRole('button', { name: '显示 Banner 2', exact: true }).click()
       await expect(preview.locator('.banner-carousel__slide:not([aria-hidden])')).toContainText('E2E Banner 3')
       await page.getByRole('button', { name: '保存', exact: true }).click()
       await expect(page.locator('.save-state')).toContainText('已保存', { timeout: 20_000 })
@@ -81,7 +84,7 @@ test.describe('CMS-managed homepage banners', () => {
         const url = new URL(asset.publicUrl); url.hostname = '127.0.0.1'
         const object = await page.request.get(url.toString())
         expect(object.ok()).toBe(true)
-        expect(createHash('sha256').update(await object.body()).digest('hex')).toBe(createHash('sha256').update(IMAGE).digest('hex'))
+        expect(createHash('sha256').update(await object.body()).digest('hex')).toBe(createHash('sha256').update(hero.heading === 'E2E Banner 1' ? IMAGE : VISUAL_IMAGE).digest('hex'))
       }
       await page.reload()
       await expect(page.getByRole('region', { name: '首页 Banner 管理' })).toContainText('3 页')
@@ -135,6 +138,18 @@ test.describe('CMS-managed homepage banners', () => {
       await expect(banner.locator('.banner-carousel__slide:not([aria-hidden]) img')).toHaveCount(0)
       await expect(heading()).toHaveText('E2E Banner 1')
       await expect(banner.locator('.banner-carousel__gradient').first()).toBeVisible()
+      await visitor.unroute('**/airtek-media/**')
+      const visualDraft = await adminApi<CmsPrivateDraft>(page, `/published-content/${home.contentId}/drafts`, 'POST')
+      const visualDocument = { ...visualDraft.document, composition: { blocks: visualDraft.document.composition.blocks.map(block => block.type === 'hero'
+        ? { ...block, heading: 'Redefining Airflow with Smart, Green Technology',
+          lead: 'Explore published fan records, compare verified fields, and send operating requirements for engineering review.',
+          actions: [{ label: 'Explore products', target: { targetType: 'route', path: '/en/products' } },
+            { label: 'Request a quote', target: { targetType: 'route', path: '/en/request-a-quote' } }], media: heroes[1]!.media }
+        : block) } }
+      const visualSaved = await adminApi<CmsPrivateDraft>(page, `/content-drafts/${visualDraft.draftId}`, 'PATCH', visualDocument, visualDraft.draftVersion)
+      await adminApi(page, `/content-drafts/${visualSaved.draftId}/submit`, 'POST', undefined, visualSaved.draftVersion)
+      await verifyBannerMotion(visitor)
+      await verifyBannerVisuals(visitor, testInfo)
     } finally {
       const restored = await adminApi<CmsPrivateDraft>(page, `/published-content/${home.contentId}/drafts`, 'POST')
       const saved = await adminApi<CmsPrivateDraft>(page, `/content-drafts/${restored.draftId}`, 'PATCH', { ...original, draftVersion: restored.draftVersion }, restored.draftVersion)

@@ -38,7 +38,7 @@
     "check:deployment": "node scripts/checks/assert-compose-origin-contract.mjs && node scripts/checks/assert-deployment-config.mjs && node scripts/checks/assert-jenkins-config.mjs && node scripts/checks/assert-production-infrastructure.mjs && node scripts/checks/assert-public-readiness-deployment.mjs && node scripts/checks/assert-media-csp.mjs",
     "check:public-readiness": "node scripts/checks/check-public-readiness.mjs",
     "check:media-boundary": "node scripts/checks/assert-direct-media-boundary.mjs",
-    "lint:css": "stylelint 'packages/ui/src/**/*.css' 'packages/content-renderer/src/**/*.vue' 'apps/admin/src/**/*.{css,vue}'",
+    "lint:css": "stylelint 'packages/ui/src/**/*.css' 'packages/content-renderer/src/**/*.{css,vue}' 'apps/admin/src/**/*.{css,vue}'",
     "check:css": "pnpm lint:css && node scripts/checks/assert-css-architecture.mjs",
     "check:isolation": "node scripts/testing/smoke-isolation.mjs",
     "clean:local": "node scripts/maintenance/clean-local-artifacts.mjs",

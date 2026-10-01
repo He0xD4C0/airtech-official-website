@@ -70,7 +70,7 @@ p { color: var(--airtek-muted); }
 .page-hero h1 { max-width: 15ch; margin-bottom: 1.4rem; font-size: clamp(2.5rem, 5vw, 4.8rem); }
 .hero-description { max-width: 49rem; font-size: clamp(1.05rem, 1.7vw, 1.35rem); line-height: 1.7; }
 /* Public legacy typography is unlayered; retain the banner's white text here. */
-.banner-carousel h1, .banner-carousel h2 { color: #fff; font-size: clamp(2.5rem, 5vw, 4.8rem); }
+.banner-carousel h1, .banner-carousel h2 { color: #fff; font-size: var(--banner-heading-size); line-height: 1.12; }
 .banner-carousel p { color: #fff; }
 
 .hero-note { margin-top: 1.4rem; padding-left: 1rem; border-left: 3px solid var(--airtek-green); font-size: .9rem; }

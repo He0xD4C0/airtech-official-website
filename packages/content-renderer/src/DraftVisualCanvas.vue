@@ -132,6 +132,7 @@ function referenceTitle(block: ContentBlock): string {
   .draft-canvas__header { background: linear-gradient(135deg, var(--airtek-blue-soft), var(--airtek-white)); }
   .draft-canvas h1 { max-width: 18ch; margin: 0; font-size: clamp(2rem, 5vw, 4rem); }
   .draft-canvas h2 { margin: 0 0 var(--space-3); font-size: clamp(1.4rem, 3vw, 2.2rem); }
+  .draft-canvas :deep(.banner-carousel h1), .draft-canvas :deep(.banner-carousel h2) { max-width: var(--banner-copy-width); margin: 0 0 1.25rem; color: white; font-size: var(--banner-heading-size); line-height: 1.12; }
   .draft-canvas h3 { margin: var(--space-2) 0; }
   .draft-canvas p { line-height: 1.7; }
   .draft-canvas__eyebrow { color: var(--airtek-blue); font-size: 0.75rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }

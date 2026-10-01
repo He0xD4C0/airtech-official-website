@@ -11,7 +11,10 @@ export interface BannerSlide {
 </script>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import BannerIcon from './BannerIcon.vue'
+import { useBannerTransition } from './useBannerTransition'
+import './banner-carousel.css'
 
 const props = withDefaults(defineProps<{
   slides: BannerSlide[]
@@ -19,40 +22,51 @@ const props = withDefaults(defineProps<{
 }>(), { preview: false })
 
 const carousel = ref<HTMLElement | null>(null)
-const active = ref(0)
+const dots = ref<HTMLElement | null>(null)
 const paused = ref(false)
 const hovered = ref(false)
 const focused = ref(false)
 const hidden = ref(false)
 const reduced = ref(false)
+const motionPlay = ref(false)
+const playbackPaused = computed(() => paused.value || (reduced.value && !motionPlay.value))
 const failedImages = ref<Record<string, string>>({})
-const multiple = computed(() => props.slides.length > 1)
+const count = computed(() => props.slides.length)
+const multiple = computed(() => count.value > 1)
+const { active, outgoing, direction, phase, go: move, step: moveStep, reset, transitionEnd } = useBannerTransition(count, reduced)
 const playing = computed(() => multiple.value && !props.preview && !paused.value
-  && !hovered.value && !focused.value && !hidden.value && !reduced.value)
+  && !hovered.value && !focused.value && !hidden.value && (!reduced.value || motionPlay.value))
 let timer: ReturnType<typeof setInterval> | undefined
 let motion: MediaQueryList | undefined
 let touchStart: { x: number; y: number } | undefined
 
 function go(index: number): void {
-  const count = props.slides.length
-  active.value = count ? (index + count) % count : 0
+  move(index)
+  restartTimer()
+}
+function step(movement: number): void {
+  moveStep(movement)
   restartTimer()
 }
 
 function restartTimer(): void {
   if (timer) clearInterval(timer)
-  timer = playing.value ? setInterval(() => go(active.value + 1), 6000) : undefined
+  timer = playing.value ? setInterval(() => step(1), 6000) : undefined
 }
 
 function visibility(): void { hidden.value = document.hidden }
-function motionChange(): void { reduced.value = motion?.matches ?? false }
+function motionChange(): void { reduced.value = motion?.matches ?? false; motionPlay.value = false }
+function togglePlayback(): void {
+  paused.value = !playbackPaused.value
+  if (reduced.value && !paused.value) motionPlay.value = true
+}
 function focusOut(event: FocusEvent): void {
   focused.value = Boolean(event.relatedTarget && (event.currentTarget as HTMLElement).contains(event.relatedTarget as Node))
 }
 function keydown(event: KeyboardEvent): void {
   if (!multiple.value || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return
   event.preventDefault()
-  go(active.value + (event.key === 'ArrowRight' ? 1 : -1))
+  step(event.key === 'ArrowRight' ? 1 : -1)
 }
 function startTouch(event: TouchEvent): void {
   const point = event.touches[0]
@@ -63,13 +77,20 @@ function endTouch(event: TouchEvent): void {
   if (multiple.value && point && touchStart) {
     const dx = point.clientX - touchStart.x
     const dy = point.clientY - touchStart.y
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) go(active.value + (dx < 0 ? 1 : -1))
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) step(dx < 0 ? 1 : -1)
   }
   touchStart = undefined
 }
 
 watch(playing, restartTimer)
-watch(() => props.slides.map(slide => slide.id).join(','), () => go(0))
+watch(() => props.slides.map(slide => slide.id).join(','), () => { reset(); restartTimer() })
+watch(active, async () => {
+  await nextTick()
+  const button = dots.value?.querySelector<HTMLElement>('[aria-current=true]')
+  if (!button || !dots.value) return
+  const left = button.offsetLeft
+  dots.value.scrollLeft = Math.max(left - (dots.value.clientWidth - button.offsetWidth) / 2, 0)
+})
 onMounted(() => {
   // An SSR image can fail before hydration attaches its error listener.
   for (const image of carousel.value?.querySelectorAll<HTMLImageElement>('img[data-banner-id]') ?? []) {
@@ -93,19 +114,21 @@ onBeforeUnmount(() => {
 
 <template>
   <section v-if="slides.length" ref="carousel" class="banner-carousel" role="region"
+    :class="{ 'is-preparing': phase === 'prepare', 'is-moving': phase === 'moving' }" :style="{ '--banner-direction': direction }"
     :aria-label="preview ? '首页 Banner 预览' : 'Homepage banner'" aria-roledescription="carousel"
     tabindex="0" @keydown="keydown" @mouseenter="hovered = true" @mouseleave="hovered = false"
     @focusin="focused = true" @focusout="focusOut" @touchstart.passive="startTouch" @touchend.passive="endTouch">
-    <div class="banner-carousel__track" :style="{ transform: `translateX(-${active * 100}%)` }">
+    <div class="banner-carousel__track">
       <article v-for="(slide, index) in slides" :key="slide.id" class="banner-carousel__slide"
+        :class="{ 'is-active': index === active, 'is-outgoing': index === outgoing }" @transitionend="transitionEnd"
         :inert="index !== active ? true : undefined" :aria-hidden="index !== active ? 'true' : undefined"
         role="group" aria-roledescription="slide" :aria-label="`${index + 1} / ${slides.length}`">
         <img v-if="slide.image && failedImages[slide.id] !== slide.image" class="banner-carousel__image"
-          :data-banner-id="slide.id" :src="slide.image" :alt="slide.alt" :loading="index === 0 ? 'eager' : 'lazy'"
+          :data-banner-id="slide.id" :src="slide.image" :alt="slide.alt" :loading="index === active || index === (active + 1) % count || index === (active + count - 1) % count ? 'eager' : 'lazy'"
           :fetchpriority="index === 0 ? 'high' : 'auto'" decoding="async"
           @error="failedImages[slide.id] = slide.image" />
         <div class="banner-carousel__gradient" aria-hidden="true" />
-        <div class="banner-carousel__copy shell">
+        <div class="banner-carousel__copy">
           <p v-if="slide.eyebrow" class="banner-carousel__eyebrow">{{ slide.eyebrow }}</p>
           <component :is="index === active ? 'h1' : 'h2'">{{ slide.heading }}</component>
           <p v-if="slide.lead" class="banner-carousel__lead">{{ slide.lead }}</p>
@@ -116,43 +139,22 @@ onBeforeUnmount(() => {
         </div>
       </article>
     </div>
-    <div v-if="multiple" class="banner-carousel__controls">
-      <button type="button" :aria-label="preview ? '上一页 Banner' : 'Previous banner'" @click="go(active - 1)">←</button>
-      <button v-for="(slide, index) in slides" :key="slide.id" type="button"
-        :aria-label="preview ? `显示 Banner ${index + 1}` : `Show banner ${index + 1}`"
-        :aria-current="index === active ? 'true' : undefined" @click="go(index)">{{ index + 1 }}</button>
-      <button type="button" :aria-label="preview ? '下一页 Banner' : 'Next banner'" @click="go(active + 1)">→</button>
-      <button v-if="!preview" type="button" :aria-label="paused || reduced ? 'Play banners' : 'Pause banners'"
-        @click="paused = !(paused || reduced); reduced = false">{{ paused || reduced ? '▶' : 'Ⅱ' }}</button>
-      <span class="banner-carousel__status" :aria-live="playing ? 'off' : 'polite'">{{ active + 1 }} / {{ slides.length }}</span>
-    </div>
+    <template v-if="multiple">
+      <button class="banner-carousel__arrow banner-carousel__arrow--previous" type="button"
+        :aria-label="preview ? '上一页 Banner' : 'Previous banner'" @click="step(-1)"><BannerIcon kind="previous" /></button>
+      <button class="banner-carousel__arrow banner-carousel__arrow--next" type="button"
+        :aria-label="preview ? '下一页 Banner' : 'Next banner'" @click="step(1)"><BannerIcon kind="next" /></button>
+      <div class="banner-carousel__controls">
+        <div ref="dots" class="banner-carousel__dots">
+          <button v-for="(slide, index) in slides" :key="slide.id" class="banner-carousel__dot" type="button"
+            :aria-label="preview ? `显示 Banner ${index + 1}` : `Show banner ${index + 1}`"
+            :aria-current="index === active ? 'true' : undefined" @click="go(index)" />
+        </div>
+        <button v-if="!preview" class="banner-carousel__play" type="button"
+          :aria-label="playbackPaused ? 'Play banners' : 'Pause banners'"
+          @click="togglePlayback"><BannerIcon :kind="playbackPaused ? 'play' : 'pause'" /></button>
+        <span class="banner-carousel__status" :aria-live="playing ? 'off' : 'polite'">{{ active + 1 }} / {{ slides.length }}</span>
+      </div>
+    </template>
   </section>
 </template>
-
-<style scoped>
-@layer components {
-  .banner-carousel { position: relative; overflow: hidden; background: #092e39; color: white; touch-action: pan-y; }
-  .banner-carousel:focus-visible { outline: 3px solid var(--airtek-green); outline-offset: -3px; }
-  .banner-carousel__track { display: flex; align-items: stretch; transition: transform 450ms ease; }
-  .banner-carousel__slide { position: relative; isolation: isolate; flex: 0 0 100%; min-width: 0; background: #092e39; }
-  .banner-carousel__image { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  .banner-carousel__gradient { position: absolute; z-index: 1; inset: 0; background: linear-gradient(90deg, rgb(9 46 57 / 98%) 0%, rgb(9 46 57 / 92%) 45%, rgb(9 46 57 / 80%) 65%, rgb(9 46 57 / 0%) 100%); }
-  .banner-carousel__copy { position: relative; z-index: 2; box-sizing: border-box; width: min(100% - 3rem, 1200px); margin-inline: auto; padding-block: clamp(3.5rem, 7vw, 7rem) 6rem; }
-  .banner-carousel__eyebrow { margin: 0 0 1rem; color: white; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-  .banner-carousel h1, .banner-carousel h2 { max-width: 15ch; margin: 0 0 1.4rem; color: white; font-size: clamp(2.5rem, 5vw, 4.8rem); line-height: 1.08; }
-  .banner-carousel__lead { max-width: min(49rem, 65%); margin: 0; color: white; font-size: clamp(1.05rem, 1.7vw, 1.35rem); line-height: 1.7; }
-  .banner-carousel__actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.75rem; }
-  .banner-carousel__actions a { display: inline-flex; align-items: center; min-height: 44px; padding: .65rem 1.15rem; border: 1px solid white; border-radius: 6px; background: white; color: #092e39; font-weight: 700; text-decoration: none; }
-  .banner-carousel__actions a + a { background: #092e39; color: white; }
-  .banner-carousel__controls { position: absolute; z-index: 3; bottom: 1rem; left: 50%; display: flex; gap: .35rem; align-items: center; max-width: calc(100% - 2rem); overflow-x: auto; transform: translateX(-50%); }
-  .banner-carousel__controls button { flex: 0 0 auto; width: 44px; height: 44px; padding: 0; border: 1px solid white; border-radius: 50%; background: #092e39; color: white; cursor: pointer; }
-  .banner-carousel__controls button[aria-current='true'] { background: white; color: #092e39; }
-  .banner-carousel button:focus-visible, .banner-carousel a:focus-visible { outline: 3px solid white; outline-offset: 3px; }
-  .banner-carousel__status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  @media (max-width: 700px) {
-    .banner-carousel__gradient { background: linear-gradient(90deg, rgb(9 46 57 / 98%), rgb(9 46 57 / 85%)); }
-    .banner-carousel__lead { max-width: 100%; }
-  }
-  @media (prefers-reduced-motion: reduce) { .banner-carousel__track { transition: none; } }
-}
-</style>
