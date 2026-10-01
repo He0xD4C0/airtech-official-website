@@ -21,6 +21,7 @@ fn mapping() -> FeishuTableMapping {
                 field_type: 1,
             },
         )]),
+        source_fields: vec![],
         attachments: vec![],
         private_fields: vec![MappedFeishuField {
             id: "fld-price".into(),

@@ -42,7 +42,7 @@ try {
     '-e', `FLYWAY_URL=jdbc:postgresql://127.0.0.1:5432/${isolated.POSTGRES_DB}`,
     '-e', 'FLYWAY_USER=airtek', '-e', 'FLYWAY_PASSWORD=airtek-test-only',
     '-e', 'FLYWAY_PLACEHOLDERS_RUNTIME_ROLE=airtek', '-e', 'AIRTEK_FLYWAY_ALLOW_SHARED_ROLE=true',
-    '-e', 'AIRTEK_FLYWAY_TARGET=27', flywayImage, 'migrate'])
+    '-e', 'AIRTEK_FLYWAY_TARGET=28', flywayImage, 'migrate'])
   const cargo = ['--manifest-path', 'services/platform/Cargo.toml']
   await checked('cargo', ['run', ...cargo, '-p', 'airtek-maintenance', '--bin', 'airtek-maintenance', '--', 'prepare-runtime'])
   await checked(postgres[0], [...postgres[1], '-c', `CREATE DATABASE airtek_test_template TEMPLATE ${isolated.POSTGRES_DB}`])

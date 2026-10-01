@@ -138,6 +138,8 @@ mod development_admin;
 #[cfg(feature = "devtools")]
 #[path = "postgres_contract/development_public_site.rs"]
 mod development_public_site;
+#[path = "postgres_contract/feishu_archive_asset_storage.rs"]
+mod feishu_archive_asset_storage;
 #[path = "postgres_contract/feishu_asset_storage.rs"]
 mod feishu_asset_storage;
 #[path = "postgres_contract/feishu_reconciliation.rs"]

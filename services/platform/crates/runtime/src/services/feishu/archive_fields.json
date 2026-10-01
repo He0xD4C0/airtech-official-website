@@ -1,0 +1,862 @@
+{
+  "tblzksABQBk6rdB6": [
+    {
+      "field_id": "fldfeqn6Sw",
+      "field_name": "文本",
+      "type": 20,
+      "is_primary": true
+    },
+    {
+      "field_id": "fldpreKbHa",
+      "field_name": "一级分类_Product #1",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldhSvt3EJ",
+      "field_name": "二级类_Product #2",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldjq4VB5w",
+      "field_name": "产品型号(Model）",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldXCwyCB7",
+      "field_name": "电压(Voltage)",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "flde8oQBqK",
+      "field_name": "频率(Frequency)",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldGU3Hnx2",
+      "field_name": "直径  Diameter",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldvziN31h",
+      "field_name": "电流（Current）",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldz2khJh8",
+      "field_name": "转速(Speed)",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "flds2Oot4x",
+      "field_name": "风量(Air Flow)",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld69b7ihP",
+      "field_name": "风压(AIr Pressure)",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldXSelRhk",
+      "field_name": "功率(Power)",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld3Nrhkoz",
+      "field_name": "噪声(Noise Level)",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldvU1Ttf0",
+      "field_name": "风轮材质(Material)",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "flddNT0ESK",
+      "field_name": "防护等级Protection Class",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldRKAMmq9",
+      "field_name": "绝缘等级Insulation class",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldHi3eaGJ",
+      "field_name": "Amb.Temp",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldeiHXbzF",
+      "field_name": "曲线图 PQcurve",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld65felPd",
+      "field_name": "图纸Drawing",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldFdH8IrX",
+      "field_name": "曲线图(excle）",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldGINWKpE",
+      "field_name": "产品尺寸 Dimension",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld0eQIRzc",
+      "field_name": "包装数据Package data",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldEdnmi7l",
+      "field_name": "样品报价（sample）",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldKA3ze3L",
+      "field_name": "100～500 pcs",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldjXJ5MVU",
+      "field_name": "500～1000pcs",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld24z51k1",
+      "field_name": "1000～5000pcs",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldD7yItvY",
+      "field_name": "≥5000pcs",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldRUs0UjP",
+      "field_name": "重量weight(kg)",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldA7bt28B",
+      "field_name": "规格书（.doc)",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldZDm4nMw",
+      "field_name": "规格书(.PDF)",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldSLQvOKt",
+      "field_name": "2D图纸",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld0gjm1jB",
+      "field_name": "3D图纸",
+      "type": 17,
+      "is_primary": false
+    }
+  ],
+  "tblJjxOgBFL0FD0N": [
+    {
+      "field_id": "fldfeqn6Sw",
+      "field_name": "文本",
+      "type": 20,
+      "is_primary": true
+    },
+    {
+      "field_id": "fldpreKbHa",
+      "field_name": "1级分类_category#1",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldhSvt3EJ",
+      "field_name": "2级分类_category#2",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldjq4VB5w",
+      "field_name": "产品型号(Model）",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldfLW5xYR",
+      "field_name": "直径Diameter",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldXCwyCB7",
+      "field_name": "电压(Voltage)",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "flde8oQBqK",
+      "field_name": "频率(Frequency)",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldz2khJh8",
+      "field_name": "转速(Speed)",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldgdOnjgd",
+      "field_name": "电流(Current）",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldXSelRhk",
+      "field_name": "功率(Power)",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "flds2Oot4x",
+      "field_name": "风量(Air Flow)",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld9iYBuoE",
+      "field_name": "风量(CFM)",
+      "type": 20,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld69b7ihP",
+      "field_name": "风压(AIr Pressure)",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld3Nrhkoz",
+      "field_name": "噪声(Noise Level)",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldHi3eaGJ",
+      "field_name": "Amb.Temp",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldFkx6x0Q",
+      "field_name": "产品净重",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldvU1Ttf0",
+      "field_name": "风叶材质(Material)",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "flddNT0ESK",
+      "field_name": "防护等级Protection Class",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldRKAMmq9",
+      "field_name": "绝缘等级Insulation class",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld65felPd",
+      "field_name": "图纸Drawing",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldeiHXbzF",
+      "field_name": "曲线图 PQcurve",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldFdH8IrX",
+      "field_name": "曲线图(excle）",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldGINWKpE",
+      "field_name": "产品尺寸 Dimension",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld0eQIRzc",
+      "field_name": "包装尺寸Package data",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldEdnmi7l",
+      "field_name": "样品1-3pcs（sample）",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldKA3ze3L",
+      "field_name": "100～500pcs",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldjXJ5MVU",
+      "field_name": "500～1000pcs",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld24z51k1",
+      "field_name": "1000～5000pcs",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldD7yItvY",
+      "field_name": "批≥5000pcs",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldBu7ozE8",
+      "field_name": "规格书(.doc)",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldIF5W4Xm",
+      "field_name": "规格书(.pdf)",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldRYXdJRm",
+      "field_name": "2D图纸",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldbTnPAlS",
+      "field_name": "3D图纸",
+      "type": 17,
+      "is_primary": false
+    }
+  ],
+  "tblOtUU5MaxEnZI7": [
+    {
+      "field_id": "fldfeqn6Sw",
+      "field_name": "文本",
+      "type": 20,
+      "is_primary": true
+    },
+    {
+      "field_id": "fldpreKbHa",
+      "field_name": "1级分类_category#1",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldhSvt3EJ",
+      "field_name": "2级分类_category#2",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldAMoRWS1",
+      "field_name": "供应商型号",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldjq4VB5w",
+      "field_name": "产品型号(Model）",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldfLW5xYR",
+      "field_name": "直径Diameter",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldXCwyCB7",
+      "field_name": "电压(Voltage)",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "flde8oQBqK",
+      "field_name": "频率(Frequency)",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldz2khJh8",
+      "field_name": "转速(Speed)",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldXSelRhk",
+      "field_name": "功率(Power)",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "flds2Oot4x",
+      "field_name": "风量(Air Flow)",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld3Nrhkoz",
+      "field_name": "噪声(Noise Level)",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld9iYBuoE",
+      "field_name": "风量(CFM)",
+      "type": 20,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldHi3eaGJ",
+      "field_name": "Amb.Temp",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldFkx6x0Q",
+      "field_name": "产品净重",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "flddNT0ESK",
+      "field_name": "防护等级Protection Class",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldRKAMmq9",
+      "field_name": "绝缘等级Insulation class",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld65felPd",
+      "field_name": "图纸Drawing",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldeiHXbzF",
+      "field_name": "曲线图 PQcurve",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldFdH8IrX",
+      "field_name": "曲线图(excle）",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldGINWKpE",
+      "field_name": "产品尺寸 Dimension",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld0eQIRzc",
+      "field_name": "包装尺寸Package data",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldEdnmi7l",
+      "field_name": "样品1-3pcs（sample）",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldKA3ze3L",
+      "field_name": "100～500pcs",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldjXJ5MVU",
+      "field_name": "500～1000pcs",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld24z51k1",
+      "field_name": "1000～5000pcs",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldD7yItvY",
+      "field_name": "批≥5000pcs",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldBu7ozE8",
+      "field_name": "规格书(.doc)",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldIF5W4Xm",
+      "field_name": "规格书(.pdf)",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldRYXdJRm",
+      "field_name": "2D图纸",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldbTnPAlS",
+      "field_name": "3D图纸",
+      "type": 17,
+      "is_primary": false
+    }
+  ],
+  "tbl3hCDkvVIs2ZSi": [
+    {
+      "field_id": "fldfeqn6Sw",
+      "field_name": "ID",
+      "type": 20,
+      "is_primary": true
+    },
+    {
+      "field_id": "fldpreKbHa",
+      "field_name": "产品一级分类",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldhSvt3EJ",
+      "field_name": "产品二级分类",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld8By732k",
+      "field_name": "供应商型号",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldjAaBY2N",
+      "field_name": "AIRTEK型号",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldXCwyCB7",
+      "field_name": "电压(Voltage)",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldNng05qD",
+      "field_name": "电流   Current",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldz2khJh8",
+      "field_name": "转速(Speed)",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld69b7ihP",
+      "field_name": "风压(AIr Pressure)",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldE6A1NRW",
+      "field_name": "风压（*系数）Air Pressure",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "flds2Oot4x",
+      "field_name": "风量(Air Flow)",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldkXIAbtZ",
+      "field_name": "风量(*系数）Airflow",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld3Nrhkoz",
+      "field_name": "噪声(Noise Level)",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "flde6bTwpk",
+      "field_name": "风轮类型",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldbMRrA1O",
+      "field_name": "叶轮直径 Diameter",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldkxsyMge",
+      "field_name": "叶轮长度 Length",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldua3cSCb",
+      "field_name": "尺寸:A",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldi78S812",
+      "field_name": "尺寸:B",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldF3GTEEh",
+      "field_name": "尺寸:C",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldPTZM4uB",
+      "field_name": "当前状态",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld51Hfk2a",
+      "field_name": "对应目录册页码",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldXSelRhk",
+      "field_name": "功率(Power)",
+      "type": 1,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldvU1Ttf0",
+      "field_name": "风轮材质(Material)",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldHi3eaGJ",
+      "field_name": "Amb.Temp",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "flddNT0ESK",
+      "field_name": "防护等级Protection Class",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldRKAMmq9",
+      "field_name": "绝缘等级Insulation class",
+      "type": 3,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldeiHXbzF",
+      "field_name": "曲线图(源文件）PQcurve",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldkXWS55g",
+      "field_name": "曲线图",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldQDKew9l",
+      "field_name": "图纸截图",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldBdCyE0B",
+      "field_name": "规格书",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld1co58rY",
+      "field_name": "2D图纸",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld4gJeTcN",
+      "field_name": "3D图纸",
+      "type": 17,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldjjmm19o",
+      "field_name": "单套包装数量（pcs）",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldbS3Zceh",
+      "field_name": "单套包装：长",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldrOhW04s",
+      "field_name": "单套包装：宽",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldQAP1pbK",
+      "field_name": "单套包装：高",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld236Glee",
+      "field_name": "单套包装：毛重",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld8Z2mjTl",
+      "field_name": "整箱装箱数量",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldrPO7dFE",
+      "field_name": "整箱包装：长",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld2UDvS8h",
+      "field_name": "整箱包装：宽",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld0eQIRzc",
+      "field_name": "整箱包装：高",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldEdnmi7l",
+      "field_name": "样品报价（sample）",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldKA3ze3L",
+      "field_name": "批量100～500件",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldjXJ5MVU",
+      "field_name": "批量500～1000件",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fld24z51k1",
+      "field_name": "批量1000～5000件",
+      "type": 2,
+      "is_primary": false
+    },
+    {
+      "field_id": "fldD7yItvY",
+      "field_name": "批量≥5000",
+      "type": 2,
+      "is_primary": false
+    }
+  ]
+}

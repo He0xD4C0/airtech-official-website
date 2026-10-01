@@ -18,7 +18,9 @@ pub async fn deliver_media_asset(
 ) -> Result<Response, ApiError> {
     let row = sqlx::query(
         r#"SELECT public_url,preview_public_url,media_type
-           FROM media_assets WHERE id=$1 AND deleted_at IS NULL"#,
+           FROM media_assets
+           WHERE id=$1 AND deleted_at IS NULL
+             AND scan_status='clean' AND access_level='public'"#,
     )
     .bind(asset_id)
     .fetch_optional(&state.pool)

@@ -119,6 +119,8 @@ pub fn required_permission(path: &str, method: &axum::http::Method) -> Option<&'
         })
     } else if path.contains("/products/") && path.ends_with("/private-pricing") {
         Some("product.pricing.read")
+    } else if path.ends_with("/source-metadata") {
+        Some("product.read")
     } else if path.contains("/products/") && path.ends_with("/publish") {
         Some("product.publish")
     } else if path.ends_with("/products") || path.contains("/products/") {

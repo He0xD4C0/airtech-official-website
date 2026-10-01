@@ -132,7 +132,7 @@ jobs:
       FLYWAY_USER: airtek
       FLYWAY_PASSWORD: airtek
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: airtek_runtime
-      AIRTEK_FLYWAY_TARGET: 27
+      AIRTEK_FLYWAY_TARGET: 28
     steps:
       - uses: actions/checkout@v4
       - name: Generate a temporary CI-only runtime database password

@@ -79,6 +79,7 @@ fn product(state: FactState, points: Vec<CurvePoint>) -> Product {
         related_content_ids: Vec::new(),
         media_gallery: Vec::new(),
         specifications: vec![],
+        source_facts: vec![],
         performance_curves: vec![PerformanceCurve {
             airflow_unit: "m3/h".into(),
             pressure_unit: "Pa".into(),

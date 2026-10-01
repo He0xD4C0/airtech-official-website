@@ -21,7 +21,7 @@ const product: Product = {
   sortOrder: 0,
   relatedContentIds: [],
   mediaGallery: [],
-  specifications: [],
+  specifications: [], sourceFacts: [],
   performanceCurves: [{
     airflowUnit: 'm3/h',
     pressureUnit: 'Pa',

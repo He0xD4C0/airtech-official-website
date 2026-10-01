@@ -187,7 +187,7 @@ serialized by JCasC or committed to the repository.
 
 ## Deployment order
 
-The current schema target is V27. Deploy the migration artifact first, then the
+The current schema target is V28. Deploy the migration artifact first, then the
 API and ordinary Worker, and finally Admin and Public Web. V17 introduces
 private drafts and review, V18 removes persisted content history, and V19 adds
 current-state query indexes. V20 moves application-side object-storage settings
@@ -201,8 +201,9 @@ plaintext PostgreSQL columns; database operators and backups are therefore part
 of the trusted boundary. V26 adds dynamic selected sources, independent interval
 and daily schedules, connection-test revisions, and frozen run configuration.
 V27 adds explicit source ownership, per-table reconciliation, durable product
-purge/object compensation, and removes Feishu rollback/conflict state. Before
-promotion, verify both a fresh database and a V21 database migrate to V27, and a
+purge/object compensation, and removes Feishu rollback/conflict state. V28 adds
+admin-only supplier and brand archive provenance. Before promotion, verify both
+a fresh database and a V21 database migrate to V28, and a
 controlled legacy SQLx v1-v10 database passes
 `baseline -> migrate -> validate`.
 

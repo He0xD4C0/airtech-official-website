@@ -52,6 +52,7 @@ pub fn router() -> Router<AppState> {
                 .layer(DefaultBodyLimit::max(16 * 1024 * 1024 + 64 * 1024)),
         )
         .route("/products/imports/{id}", get(get_product_import))
+        .route("/source-metadata", get(list_source_metadata))
         .route("/products/{id}", get(get_admin_product))
         .route("/products/{id}/private-pricing", get(get_private_pricing))
         .route(
@@ -118,6 +119,9 @@ impl AnalyticsQuery {
 #[path = "admin_data/product_imports.rs"]
 mod product_imports;
 use product_imports::*;
+#[path = "admin_data/source_metadata.rs"]
+mod source_metadata;
+use source_metadata::*;
 #[path = "admin_data/product_presentation.rs"]
 mod product_presentation;
 use product_presentation::*;

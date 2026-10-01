@@ -6,6 +6,23 @@
 import type { operations } from '../operations'
 
 export interface PathsPart04 {
+"/api/public/v1/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List published products */
+        get: operations["listPublishedProducts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/public/v1/products/{slug}": {
         parameters: {
             query?: never;

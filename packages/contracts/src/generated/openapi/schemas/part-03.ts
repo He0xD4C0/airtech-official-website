@@ -338,6 +338,7 @@ Product: {
             seo: components["schemas"]["SeoMetadata"];
             slug: string;
             sortOrder: number;
+            sourceFacts: components["schemas"]["SourceFact"][];
             sourceRevision: string;
             /** Format: uuid */
             sourceSnapshotId: string;

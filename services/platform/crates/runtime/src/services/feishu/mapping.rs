@@ -10,6 +10,13 @@ use airtek_domain::models::FeishuSource;
 
 use super::{FeishuClient, FeishuField};
 
+#[path = "mapping_definitions.rs"]
+mod mapping_definitions;
+use mapping_definitions::{definitions, Definition};
+#[path = "mapping_archived.rs"]
+mod mapping_archived;
+use mapping_archived::discover_archived_table;
+
 #[derive(Clone, Debug)]
 pub struct DiscoveredSource {
     pub source: FeishuSource,
@@ -28,6 +35,8 @@ pub struct VersionedFeishuMapping {
 #[serde(rename_all = "camelCase")]
 pub struct FeishuTableMapping {
     pub fields: BTreeMap<String, MappedFeishuField>,
+    #[serde(default)]
+    pub source_fields: Vec<MappedFeishuField>,
     pub attachments: Vec<MappedFeishuField>,
     #[serde(default)]
     pub private_fields: Vec<MappedFeishuField>,
@@ -133,7 +142,9 @@ pub fn discover_mapping(
 ) -> Result<VersionedFeishuMapping, ApiError> {
     let mut tables = BTreeMap::new();
     for source in sources {
-        let table = discover_table(&source.fields)?;
+        let table = discover_archived_table(&source.source.table_id, &source.fields)?
+            .map(Ok)
+            .unwrap_or_else(|| discover_table(&source.fields))?;
         tables.insert(source_identity_key(&source.source), table);
     }
     Ok(VersionedFeishuMapping {
@@ -266,6 +277,7 @@ fn discover_table(fields: &[FeishuField]) -> Result<FeishuTableMapping, ApiError
         .collect();
     Ok(FeishuTableMapping {
         fields: mapped,
+        source_fields: fields.iter().map(mapped_field).collect(),
         attachments,
         private_fields,
     })
@@ -287,6 +299,12 @@ fn is_pricing_field(name: &str) -> bool {
             | "100500pcs"
             | "5001000pcs"
             | "10005000pcs"
+            | "样品13pcssample"
+            | "批5000pcs"
+            | "批量100500件"
+            | "批量5001000件"
+            | "批量10005000件"
+            | "批量5000"
     )
 }
 
@@ -296,145 +314,6 @@ fn mapped_field(field: &FeishuField) -> MappedFeishuField {
         name: field.field_name.clone(),
         field_type: field.field_type,
     }
-}
-
-struct Definition {
-    key: &'static str,
-    required: bool,
-    aliases: &'static [&'static str],
-}
-
-impl Definition {
-    fn match_score(&self, candidate: &str) -> Option<usize> {
-        let candidate = normalized_name(candidate);
-        self.aliases
-            .iter()
-            .map(|alias| normalized_name(alias))
-            .filter_map(|alias| {
-                let length = alias.chars().count();
-                if candidate == alias {
-                    Some(10_000 + length)
-                } else if length >= 3 && candidate.contains(&alias) {
-                    Some(length)
-                } else {
-                    None
-                }
-            })
-            .max()
-    }
-}
-
-fn definitions() -> Vec<Definition> {
-    vec![
-        Definition {
-            key: "model",
-            required: true,
-            aliases: &[
-                "产品型号(Model）",
-                "产品型号(Model)",
-                "AIRTEK型号",
-                "产品型号",
-                "型号",
-            ],
-        },
-        Definition {
-            key: "category",
-            required: false,
-            aliases: &[
-                "产品分类（大类）",
-                "产品分类",
-                "产品类别",
-                "类别",
-                "分类",
-                "系列",
-            ],
-        },
-        Definition {
-            key: "voltage",
-            required: false,
-            aliases: &["额定电压", "电压(V)", "电压"],
-        },
-        Definition {
-            key: "frequency",
-            required: false,
-            aliases: &["额定频率", "频率(Hz)", "频率"],
-        },
-        Definition {
-            key: "speed",
-            required: false,
-            aliases: &["转速(rpm)", "转速", "额定转速"],
-        },
-        Definition {
-            key: "current",
-            required: false,
-            aliases: &["电流(A)", "电流", "额定电流"],
-        },
-        Definition {
-            key: "power",
-            required: false,
-            aliases: &["功率(W)", "输入功率", "额定功率", "功率"],
-        },
-        Definition {
-            key: "airflow",
-            required: false,
-            aliases: &["风量(m³/h)", "风量(m3/h)", "最大风量", "风量"],
-        },
-        Definition {
-            key: "pressure",
-            required: false,
-            aliases: &["风压(Pa)", "静压", "最大风压", "风压"],
-        },
-        Definition {
-            key: "diameter",
-            required: false,
-            aliases: &["直径(mm)", "叶轮直径", "直径"],
-        },
-        Definition {
-            key: "material",
-            required: false,
-            aliases: &["材质", "材料"],
-        },
-        Definition {
-            key: "protection",
-            required: false,
-            aliases: &["防护等级", "IP等级", "防护"],
-        },
-        Definition {
-            key: "insulation",
-            required: false,
-            aliases: &["绝缘等级", "绝缘"],
-        },
-        Definition {
-            key: "ambientTemperature",
-            required: false,
-            aliases: &["环境温度", "工作温度", "使用温度"],
-        },
-        Definition {
-            key: "productDimensions",
-            required: false,
-            aliases: &["产品尺寸", "外形尺寸", "尺寸"],
-        },
-        Definition {
-            key: "packageDimensions",
-            required: false,
-            aliases: &["包装尺寸", "包装规格"],
-        },
-        Definition {
-            key: "status",
-            required: false,
-            aliases: &["当前状态", "产品状态", "状态"],
-        },
-        Definition {
-            key: "noise",
-            required: false,
-            aliases: &["噪声", "噪音", "声压级"],
-        },
-        Definition {
-            key: "testCondition",
-            required: false,
-            aliases: &["测试条件", "测试工况", "工况"],
-        },
-    ]
 }
 
 fn normalized_name(value: &str) -> String {

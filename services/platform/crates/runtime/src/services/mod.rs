@@ -1,6 +1,7 @@
 pub mod admin_analytics;
 pub mod admin_product_query;
 pub mod admin_products;
+pub mod admin_source_metadata;
 pub mod admin_sync;
 pub mod audit_log;
 pub mod audit_query;

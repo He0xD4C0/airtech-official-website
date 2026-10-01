@@ -20,6 +20,7 @@ fn mapping() -> FeishuTableMapping {
             ("testCondition".into(), field("condition-id", "测试条件")),
             ("status".into(), field("status-id", "当前状态")),
         ]),
+        source_fields: vec![],
         attachments: vec![],
         private_fields: vec![field("price-id", "报价")],
     }
@@ -198,6 +199,68 @@ fn pricing_checksum_is_private_and_does_not_change_public_facts() {
     assert_eq!(first.source_checksum, second.source_checksum);
     assert_ne!(first.confidential_checksum, second.confidential_checksum);
     assert!(!first.normalized_payload.to_string().contains("100"));
+}
+
+#[test]
+fn source_facts_exclude_pricing_and_management_only_metadata() {
+    let mut mapping = mapping();
+    mapping.source_fields = vec![
+        field("model-id", "型号"),
+        field("supplier-model-id", "供应商型号"),
+        field("supplier-name-id", "供应商名称"),
+        field("brand-name-id", "品牌名称"),
+        field("price-id", "报价"),
+        field("airflow-note-id", "风量备注"),
+    ];
+    let normalized = normalize_record(
+        &source(ProductFamily::Axial),
+        &mapping,
+        &record(Map::from_iter([
+            ("型号".into(), json!("AX-1")),
+            ("供应商型号".into(), json!("SUP-AX-1")),
+            ("供应商名称".into(), json!("Supplier A")),
+            ("品牌名称".into(), json!("Brand B")),
+            ("报价".into(), json!("100")),
+            ("风量备注".into(), json!("500 m3/h at 50 Hz")),
+        ])),
+    );
+    let facts = normalized.normalized_payload["sourceFacts"]
+        .as_array()
+        .unwrap();
+    assert_eq!(facts.len(), 1);
+    assert_eq!(facts[0]["fieldName"], "风量备注");
+    assert_eq!(facts[0]["rawValue"], "500 m3/h at 50 Hz");
+    assert!(!normalized.normalized_payload.to_string().contains("100"));
+    assert!(!normalized
+        .normalized_payload
+        .to_string()
+        .contains("Supplier A"));
+    assert!(!normalized
+        .normalized_payload
+        .to_string()
+        .contains("Brand B"));
+}
+
+#[test]
+fn duplicate_model_warning_is_visible_without_merging_the_record() {
+    let mut normalized = normalize_record(
+        &source(ProductFamily::Axial),
+        &mapping(),
+        &record(Map::from_iter([("型号".into(), json!("AX-1"))])),
+    );
+    let before_checksum = normalized.source_checksum.clone();
+    set_source_warnings(
+        &mut normalized,
+        vec![json!({
+            "code": "duplicateModel",
+            "detail": "Model `AX-1` appears in 2 source records."
+        })],
+    );
+    assert_eq!(
+        normalized.normalized_payload["sourceWarnings"][0]["code"],
+        "duplicateModel"
+    );
+    assert_ne!(normalized.source_checksum, before_checksum);
 }
 
 #[test]

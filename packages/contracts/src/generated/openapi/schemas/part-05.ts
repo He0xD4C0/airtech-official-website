@@ -6,6 +6,62 @@
 import type { components } from '../components'
 
 export interface SchemasPart05 {
+SyncRun: {
+            assetsCopied: number;
+            assetsFailed: number;
+            assetsReused: number;
+            assetsSeen: number;
+            completedAt: string | null;
+            connectorId?: string | null;
+            /** @constant */
+            dryRun: false;
+            error?: string | null;
+            /** Format: uuid */
+            id: string;
+            mappingVersion: string;
+            recordsApplied: number;
+            recordsDeleted: number;
+            recordsFailed: number;
+            recordsSeen: number;
+            recordsValid: number;
+            resumeCursor: string | null;
+            /** Format: int64 */
+            settingsRevision: number;
+            /** @constant */
+            source: "feishu";
+            sources: components["schemas"]["FeishuSource"][];
+            /** Format: date-time */
+            startedAt: string;
+            status: components["schemas"]["SyncRunStatus"];
+            trigger: components["schemas"]["FeishuSyncTrigger"];
+        };
+SyncRunPage: {
+            items: components["schemas"]["SyncRun"][];
+            nextCursor: string | null;
+        };
+/** @enum {string} */
+        SyncRunStatus: "queued" | "fetching" | "validating" | "readyToPublish" | "completed" | "completedWithErrors" | "failed";
+TaxonomyTypeFields: {
+            key?: string | null;
+        };
+TemporaryOverride: {
+            /** Format: date-time */
+            createdAt: string;
+            expired: boolean;
+            /** Format: date-time */
+            expiresAt: string;
+            fieldPath: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            productId: string;
+            reason: string;
+            value: unknown;
+        };
+TemporaryOverridePage: {
+            items: components["schemas"]["TemporaryOverride"][];
+            nextCursor: string | null;
+        };
 TiptapCodeBlockAttrs: {
             language?: string;
         };

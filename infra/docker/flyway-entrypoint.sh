@@ -5,9 +5,9 @@ runtime_role=${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:-}
 allow_shared_role=${AIRTEK_FLYWAY_ALLOW_SHARED_ROLE:-false}
 schema_target=${AIRTEK_FLYWAY_TARGET:-}
 case "$schema_target" in
-  27 ) ;;
+  28 ) ;;
   * )
-    echo "AIRTEK_FLYWAY_TARGET must be 27." >&2
+    echo "AIRTEK_FLYWAY_TARGET must be 28." >&2
     exit 64
     ;;
 esac

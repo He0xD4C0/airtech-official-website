@@ -234,13 +234,15 @@ getSiteSingletonState: {
             };
         };
     };
-listUserInvitations: {
+listProductSourceMetadata: {
         parameters: {
             query?: {
                 /** @description Opaque endpoint-scoped cursor returned by the previous page. */
                 cursor?: string;
+                kind?: components["schemas"]["SourceMetadataKind"];
                 /** @description Page size; values outside 1 through 100 return Problem Details 400. */
                 limit?: number;
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -248,13 +250,13 @@ listUserInvitations: {
         };
         requestBody?: never;
         responses: {
-            /** @description User invitations */
+            /** @description Product source metadata */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserInvitationPage"];
+                    "application/json": components["schemas"]["ProductSourceMetadataPage"];
                 };
             };
             /** @description Malformed request */
@@ -349,29 +351,27 @@ listUserInvitations: {
             };
         };
     };
-inviteAdminUser: {
+listUserInvitations: {
         parameters: {
-            query?: never;
-            header: {
-                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
-                "Idempotency-Key": string;
+            query?: {
+                /** @description Opaque endpoint-scoped cursor returned by the previous page. */
+                cursor?: string;
+                /** @description Page size; values outside 1 through 100 return Problem Details 400. */
+                limit?: number;
             };
+            header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["InviteAdminUser"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description User invitation created */
-            201: {
+            /** @description User invitations */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserInvitation"];
+                    "application/json": components["schemas"]["UserInvitationPage"];
                 };
             };
             /** @description Malformed request */

@@ -14,7 +14,7 @@ services:
       FLYWAY_USER: ${FLYWAY_USER:?set the migration role}
       FLYWAY_PASSWORD: ${FLYWAY_PASSWORD:?set the migration role password from the secret manager}
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: ${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:?set the existing API and Worker database role}
-      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:?set AIRTEK_FLYWAY_TARGET=27}
+      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:?set AIRTEK_FLYWAY_TARGET=28}
     restart: "no"
 
   platform-maintenance:
@@ -24,7 +24,10 @@ services:
     command: ["prepare-runtime"]
     environment:
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
+      AIRTEK_ARCHIVE_OBJECT_ROOT: /var/lib/airtek/archive
       RUST_LOG: ${RUST_LOG:-airtek_runtime=info,airtek_http=info,airtek_jobs=info}
+    volumes:
+      - "${AIRTEK_ARCHIVE_DIR:-/srv/airtek/archive}:/var/lib/airtek/archive:ro,Z"
     depends_on:
       flyway-migrate:
         condition: service_completed_successfully

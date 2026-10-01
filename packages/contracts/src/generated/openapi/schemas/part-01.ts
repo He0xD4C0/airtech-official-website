@@ -31,6 +31,7 @@ AdminProductDetail: components["schemas"]["Product"] & {
             missingAssets: components["schemas"]["MissingAssetReference"][];
             presentation: components["schemas"]["ProductPresentation"] | null;
             sourceKind: components["schemas"]["DataClass"];
+            sourceWarnings: components["schemas"]["ProductSourceWarning"][];
         };
 AdminProductPage: {
             dataStateCounts: components["schemas"]["ProductFacetCount"][];

@@ -7,6 +7,59 @@ use super::super::support::*;
 /// Adds management-platform data schemas.
 pub(super) fn add(s: &mut Map<String, Value>) {
     s.insert(
+        "SourceMetadataKind".into(),
+        string_enum(&["supplier", "brand"]),
+    );
+    s.insert(
+        "ProductSourceMetadata".into(),
+        object(
+            &[
+                "id",
+                "kind",
+                "label",
+                "sourceTable",
+                "sourceRecordId",
+                "archiveSha256",
+                "attributes",
+                "rawFields",
+                "capturedAt",
+                "importedAt",
+            ],
+            json!({
+                "id": uuid(),
+                "kind": r("SourceMetadataKind"),
+                "label": {"type": "string", "minLength": 1, "maxLength": 300},
+                "sourceTable": {"type": "string", "minLength": 1, "maxLength": 100},
+                "sourceRecordId": {"type": "string", "minLength": 1, "maxLength": 200},
+                "archiveSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+                "attributes": {"type": "object", "additionalProperties": true},
+                "rawFields": {"type": "object", "additionalProperties": true},
+                "capturedAt": timestamp(),
+                "importedAt": timestamp()
+            }),
+        ),
+    );
+    s.insert(
+        "ProductSourceMetadataPage".into(),
+        object(
+            &["items", "nextCursor"],
+            json!({
+                "items": array(r("ProductSourceMetadata")),
+                "nextCursor": nullable(json!({"type": "string"}))
+            }),
+        ),
+    );
+    s.insert(
+        "ProductSourceWarning".into(),
+        object(
+            &["code", "detail"],
+            json!({
+                "code": {"type": "string", "minLength": 1},
+                "detail": {"type": "string", "minLength": 1}
+            }),
+        ),
+    );
+    s.insert(
         "RevisionRequest".into(),
         object(
             &["revision", "reason"],
@@ -195,10 +248,11 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             "allOf": [
                 r("Product"),
                 object(
-                    &["sourceKind", "missingAssets", "presentation"],
+                    &["sourceKind", "missingAssets", "sourceWarnings", "presentation"],
                     json!({
                         "sourceKind": r("DataClass"),
                         "missingAssets": array(r("MissingAssetReference")),
+                        "sourceWarnings": array(r("ProductSourceWarning")),
                         "presentation": nullable(r("ProductPresentation"))
                     })
                 )

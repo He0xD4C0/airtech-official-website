@@ -19,6 +19,7 @@ function product(overrides: Partial<BackendProduct> = {}): BackendProduct {
       key: 'airflow', label: 'Airflow', value: 100, unit: 'm3/h', operatingCondition: 'Recorded condition',
       state: 'verified', sourceReference: 'source-cell',
     }],
+    sourceFacts: [],
     performanceCurves: [],
     sourceSnapshotId: '20000000-0000-4000-8000-000000000001',
     sourceRevision: 'source-revision-1',

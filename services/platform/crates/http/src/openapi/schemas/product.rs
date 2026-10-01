@@ -25,6 +25,27 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         json!({"key": {"type": "string"}, "label": {"type": "string"}, "value": nullable(json!({})), "unit": nullable(json!({"type": "string"})), "operatingCondition": nullable(json!({"type": "string"})), "state": r("FactState"), "sourceReference": nullable(json!({"type": "string"}))})
     ));
     s.insert(
+        "SourceFact".into(),
+        object(
+            &[
+                "fieldName",
+                "rawValue",
+                "sourceReference",
+                "state",
+                "unit",
+                "operatingCondition",
+            ],
+            json!({
+                "fieldName": {"type": "string", "minLength": 1},
+                "rawValue": {"type": "string"},
+                "sourceReference": {"type": "string", "minLength": 1},
+                "state": r("FactState"),
+                "unit": nullable(json!({"type": "string"})),
+                "operatingCondition": nullable(json!({"type": "string"}))
+            }),
+        ),
+    );
+    s.insert(
         "PerformancePoint".into(),
         object(
             &["airflow", "pressure"],
@@ -79,14 +100,14 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         json!({"productId": uuid(), "productRevision": revision(), "items": array(r("ProductSourceAsset"))})
     ));
     s.insert("Product".into(), object(
-        &["id", "stableId", "model", "slug", "locale", "family", "subtype", "motorTechnology", "title", "summary", "seo", "sortOrder", "relatedContentIds", "mediaGallery", "specifications", "performanceCurves", "sourceSnapshotId", "sourceRevision", "currentRevision", "publishedRevision", "status", "indexable", "updatedAt"],
+        &["id", "stableId", "model", "slug", "locale", "family", "subtype", "motorTechnology", "title", "summary", "seo", "sortOrder", "relatedContentIds", "mediaGallery", "specifications", "sourceFacts", "performanceCurves", "sourceSnapshotId", "sourceRevision", "currentRevision", "publishedRevision", "status", "indexable", "updatedAt"],
         json!({
             "id": uuid(), "stableId": {"type": "string"}, "model": nullable(json!({"type": "string"})), "slug": slug(), "locale": {"type": "string"},
             "family": r("ProductFamily"), "subtype": nullable(json!({"type": "string"})), "motorTechnology": nullable(json!({"type": "string"})),
             "title": {"type": "string"}, "summary": nullable(json!({"type": "string"})), "seo": r("SeoMetadata"),
             "sortOrder": {"type": "integer"}, "relatedContentIds": array(uuid()),
             "mediaGallery": {"type": "array", "maxItems": 12, "items": r("ProductMediaGalleryItem")},
-            "specifications": array(r("SpecValue")), "performanceCurves": array(r("PerformanceCurve")),
+            "specifications": array(r("SpecValue")), "sourceFacts": array(r("SourceFact")), "performanceCurves": array(r("PerformanceCurve")),
             "sourceSnapshotId": uuid(), "sourceRevision": {"type": "string"}, "currentRevision": revision(), "publishedRevision": nullable(revision()),
             "status": r("PublicationStatus"), "indexable": {"type": "boolean"}, "updatedAt": timestamp()
         })

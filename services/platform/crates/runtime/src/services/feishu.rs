@@ -24,6 +24,9 @@ pub use credentials::{credentials_configured, load_client};
 #[path = "feishu/mapping.rs"]
 mod mapping;
 pub use mapping::*;
+#[path = "feishu/archive.rs"]
+mod archive;
+pub use archive::{import_local_archive, refresh_existing_archive};
 #[path = "feishu/settings.rs"]
 mod settings;
 pub use settings::*;

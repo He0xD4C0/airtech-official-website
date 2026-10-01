@@ -235,6 +235,11 @@ onBeforeUnmount(() => deferredMedia.clear())
       </dl>
     </section>
 
+    <section v-if="product.sourceWarnings?.length" class="panel product-detail-section" aria-labelledby="source-warnings-heading">
+      <header class="panel__header"><div><p class="eyebrow">SOURCE WARNINGS</p><h2 id="source-warnings-heading">来源记录警告</h2></div><StatusBadge :label="`${product.sourceWarnings?.length ?? 0} 条`" tone="warning" /></header>
+      <div class="data-table-wrap"><table class="data-table"><thead><tr><th scope="col">代码</th><th scope="col">说明</th></tr></thead><tbody><tr v-for="warning in product.sourceWarnings ?? []" :key="`${warning.code}-${warning.detail}`"><th scope="row"><code>{{ warning.code }}</code></th><td>{{ warning.detail }}</td></tr></tbody></table></div>
+    </section>
+
     <section class="panel product-detail-section" aria-labelledby="specifications-heading">
       <header class="panel__header"><div><p class="eyebrow">PRODUCT FACTS</p><h2 id="specifications-heading">规格与 Fact state</h2></div><span class="inline-note">{{ product.specifications.length }} 条来源事实</span></header>
       <ProductFactsTable :specifications="product.specifications" />

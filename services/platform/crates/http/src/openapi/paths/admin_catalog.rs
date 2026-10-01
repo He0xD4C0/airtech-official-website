@@ -151,6 +151,39 @@ pub(super) fn add_publication_and_sync(paths: &mut Map<String, Value>) {
 pub(super) fn add_management(paths: &mut Map<String, Value>) {
     add(
         paths,
+        "/api/admin/v1/source-metadata",
+        "get",
+        admin(
+            params(
+                op(
+                    "listProductSourceMetadata",
+                    "List admin-only supplier and brand source metadata",
+                    "adminProductImports",
+                    [(
+                        "200",
+                        json_response("Product source metadata", r("ProductSourceMetadataPage")),
+                    )],
+                ),
+                {
+                    let mut parameters = admin_pagination_params();
+                    parameters.push(query_param("kind", false, r("SourceMetadataKind")));
+                    parameters.push(query_param(
+                        "q",
+                        false,
+                        serde_json::json!({
+                            "type": "string",
+                            "maxLength": 200,
+                            "description": "Case-insensitive source label or record id search."
+                        }),
+                    ));
+                    parameters
+                },
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
         "/api/admin/v1/products/imports",
         "get",
         admin(

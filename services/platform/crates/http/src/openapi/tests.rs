@@ -78,6 +78,7 @@ fn documents_every_production_route() {
         "/api/admin/v1/settings",
         "/api/admin/v1/settings/object-storage",
         "/api/admin/v1/settings/object-storage/test",
+        "/api/admin/v1/source-metadata",
         "/api/admin/v1/user-invitations",
         "/api/admin/v1/user-invitations/{id}/revoke",
         "/api/admin/v1/users",

@@ -35,6 +35,17 @@ pub struct SpecValue {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+pub struct SourceFact {
+    pub field_name: String,
+    pub raw_value: String,
+    pub source_reference: String,
+    pub state: FactState,
+    pub unit: Option<String>,
+    pub operating_condition: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct CurvePoint {
     pub airflow: f64,
     pub pressure: f64,
@@ -105,6 +116,8 @@ pub struct Product {
     #[serde(default)]
     pub media_gallery: Vec<ProductMediaGalleryItem>,
     pub specifications: Vec<SpecValue>,
+    #[serde(default)]
+    pub source_facts: Vec<SourceFact>,
     pub performance_curves: Vec<PerformanceCurve>,
     pub source_snapshot_id: Uuid,
     pub source_revision: String,

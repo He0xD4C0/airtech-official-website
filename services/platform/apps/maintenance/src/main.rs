@@ -36,6 +36,50 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some("check-public-readiness") => {
             serde_json::to_value(public_readiness::check(&pool).await?)?
         }
+        Some("refresh-product-archive") => {
+            let args: Vec<_> = std::env::args().skip(2).collect();
+            let apply =
+                match args.as_slice() {
+                    [_] => None,
+                    [_, flag, digest] if flag == "--apply" => Some(digest.as_str()),
+                    _ => return Err(
+                        "usage: airtek-maintenance refresh-product-archive FILE [--apply SHA256]"
+                            .into(),
+                    ),
+                };
+            let bytes = std::fs::read(&args[0])?;
+            let state = airtek_runtime::state::AppState::with_pool(
+                airtek_runtime::config::Config::from_env()?,
+                pool.clone(),
+            );
+            airtek_runtime::services::feishu::refresh_existing_archive(&state, &bytes, apply)
+                .await?
+        }
+        Some("import-local-product-archive") => {
+            let args: Vec<_> = std::env::args().skip(2).collect();
+            let apply = match args.as_slice() {
+                [_] => None,
+                [_, flag, digest] if flag == "--apply" => Some(digest.as_str()),
+                _ => return Err(
+                    "usage: airtek-maintenance import-local-product-archive FILE [--apply SHA256]"
+                        .into(),
+                ),
+            };
+            let bytes = std::fs::read(&args[0])?;
+            let object_root = std::env::var("AIRTEK_ARCHIVE_OBJECT_ROOT")
+                .unwrap_or_else(|_| "/var/lib/airtek/archive".into());
+            let state = airtek_runtime::state::AppState::with_pool(
+                airtek_runtime::config::Config::from_env()?,
+                pool.clone(),
+            );
+            airtek_runtime::services::feishu::import_local_archive(
+                &state,
+                &bytes,
+                apply,
+                std::path::Path::new(&object_root),
+            )
+            .await?
+        }
         #[cfg(feature = "devtools")]
         Some("prepare-development-runtime") => {
             let runtime = runtime_preparation::prepare(&pool).await?;
@@ -77,7 +121,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn validate_command(command: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     match command {
-        Some("prepare-runtime" | "check-public-readiness" | "inspect-public-site") => Ok(()),
+        Some(
+            "prepare-runtime"
+            | "check-public-readiness"
+            | "inspect-public-site"
+            | "refresh-product-archive"
+            | "import-local-product-archive",
+        ) => Ok(()),
         #[cfg(feature = "devtools")]
         Some("prepare-development-runtime" | "reset-development-admin") => Ok(()),
         _ => Err(usage().into()),
@@ -87,11 +137,11 @@ fn validate_command(command: Option<&str>) -> Result<(), Box<dyn std::error::Err
 fn usage() -> &'static str {
     #[cfg(feature = "devtools")]
     {
-        "usage: airtek-maintenance prepare-runtime|inspect-public-site|check-public-readiness|prepare-development-runtime|reset-development-admin"
+        "usage: airtek-maintenance prepare-runtime|inspect-public-site|check-public-readiness|refresh-product-archive|import-local-product-archive|prepare-development-runtime|reset-development-admin"
     }
     #[cfg(not(feature = "devtools"))]
     {
-        "usage: airtek-maintenance prepare-runtime|inspect-public-site|check-public-readiness"
+        "usage: airtek-maintenance prepare-runtime|inspect-public-site|check-public-readiness|refresh-product-archive|import-local-product-archive"
     }
 }
 

@@ -86,7 +86,16 @@ pub struct AdminProductDetail {
     pub product: Product,
     pub source_kind: DataClass,
     pub missing_assets: Vec<MissingAssetReference>,
+    #[serde(default)]
+    pub source_warnings: Vec<ProductSourceWarning>,
     pub presentation: Option<ProductPresentation>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProductSourceWarning {
+    pub code: String,
+    pub detail: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]

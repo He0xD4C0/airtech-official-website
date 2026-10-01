@@ -125,6 +125,7 @@ async fn product_publish_requires_an_atomic_accepted_postgres_evidence_chain() {
         related_content_ids: Vec::new(),
         media_gallery: Vec::new(),
         specifications: vec![],
+        source_facts: vec![],
         performance_curves: vec![],
         source_snapshot_id: snapshot_id,
         source_revision: source_revision.clone(),

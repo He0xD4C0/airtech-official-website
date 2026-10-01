@@ -20,6 +20,7 @@ export type UserInvitation = ContractUserInvitation
 export type BackendProduct = ContractProduct & {
   sourceKind?: ContractAdminProductDetail['sourceKind']
   missingAssets?: ContractAdminProductDetail['missingAssets']
+  sourceWarnings?: ContractAdminProductDetail['sourceWarnings']
   presentation?: ContractAdminProductDetail['presentation']
 }
 export type ProductPresentationPayload = ContractUpdateProductPresentation

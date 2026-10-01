@@ -1,6 +1,6 @@
 {
   "generatedFrom": "packages/contracts/openapi/openapi.production.json",
-  "operationCount": 85,
+  "operationCount": 86,
   "operations": [
     {
       "method": "GET",
@@ -3051,6 +3051,47 @@
         "required": false
       },
       "frontendConsumer": "apps/admin/src/features/content/services/contentApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/source-metadata",
+      "operationId": "listProductSourceMetadata",
+      "permission": "product.read",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit",
+          "kind",
+          "q"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ProductSourceMetadataPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/features/catalog/services/adminProductApi.ts"
     },
     {
       "method": "GET",

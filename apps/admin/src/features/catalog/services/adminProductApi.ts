@@ -10,6 +10,11 @@ export interface ProductListRequest extends CursorPageRequest {
   dataState?: 'verified' | 'pending'
 }
 
+export interface SourceMetadataListRequest extends CursorPageRequest {
+  kind?: 'supplier' | 'brand'
+  q?: string
+}
+
 export const adminProductApi = {
   async listProducts(request: ProductListRequest = {}): Promise<AdminProductPage> {
     const result = await adminContractClient.get('/api/admin/v1/products', {
@@ -92,6 +97,19 @@ export const adminProductApi = {
   async listProductImports(pagination?: CursorPageRequest): Promise<CursorPage<ProductImportResult>> {
     const result = await adminContractClient.get('/api/admin/v1/products/imports', {
       parameters: { query: cursorQuery(pagination) },
+    })
+    return result.data
+  },
+
+  async listSourceMetadata(request: SourceMetadataListRequest = {}) {
+    const result = await adminContractClient.get('/api/admin/v1/source-metadata', {
+      parameters: {
+        query: {
+          ...cursorQuery(request),
+          ...(request.kind ? { kind: request.kind } : {}),
+          ...(request.q?.trim() ? { q: request.q.trim() } : {}),
+        },
+      },
     })
     return result.data
   },

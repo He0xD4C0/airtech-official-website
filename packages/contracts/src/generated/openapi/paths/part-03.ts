@@ -213,6 +213,23 @@ export interface PathsPart03 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/source-metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List admin-only supplier and brand source metadata */
+        get: operations["listProductSourceMetadata"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/user-invitations": {
         parameters: {
             query?: never;
@@ -462,23 +479,6 @@ export interface PathsPart03 {
         };
         /** Get one published News record */
         get: operations["getPublishedNews"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/products": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List published products */
-        get: operations["listPublishedProducts"];
         put?: never;
         post?: never;
         delete?: never;

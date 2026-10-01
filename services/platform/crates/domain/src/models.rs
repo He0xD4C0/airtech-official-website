@@ -34,6 +34,9 @@ pub use identity::*;
 #[path = "models/product_admin.rs"]
 mod product_admin;
 pub use product_admin::*;
+#[path = "models/source_metadata.rs"]
+mod source_metadata;
+pub use source_metadata::*;
 #[path = "models/operations.rs"]
 mod operations;
 pub use operations::*;

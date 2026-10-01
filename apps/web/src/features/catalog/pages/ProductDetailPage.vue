@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import type { PerformanceCurve, ProductSourceAsset, SpecValue } from '@airtek/contracts'
+import type { PerformanceCurve, ProductSourceAsset, SourceFact, SpecValue } from '@airtek/contracts'
 import PageHero from '@/shared/components/common/PageHero.vue'
 import DataNotice from '@/shared/components/common/DataNotice.vue'
 import PqCurve from '@/features/catalog/components/PqCurve.vue'
@@ -113,6 +113,10 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KiB`
   return `${(bytes / 1024 ** 2).toFixed(1)} MiB`
 }
+
+function sourceFactState(fact: SourceFact): string {
+  return fact.state === 'verified' ? 'Source value' : factState(fact.state)
+}
 </script>
 
 <template>
@@ -167,6 +171,7 @@ function formatBytes(bytes: number): string {
       <div v-if="product?.specifications.length" id="product-panel-overview" class="tab-panel" role="tabpanel" :aria-labelledby="tabs.length > 1 ? 'product-tab-overview' : undefined" :hidden="enhancedTabs && activeTab !== 'overview'">
         <h2>Structured specifications</h2>
         <section v-for="group in specificationGroups" :key="group.key" class="specification-group"><h3>{{ group.title }}</h3><div class="table-scroll"><table><tbody><tr v-for="spec in group.items" :key="spec.key"><th scope="row">{{ spec.label }}</th><td><span>{{ spec.value === undefined || spec.value === null ? factState(spec.state) : displayValue(spec.value) }} {{ spec.unit || '' }}</span><small>{{ factState(spec.state) }}<template v-if="spec.operatingCondition"> · {{ spec.operatingCondition }}</template></small></td></tr></tbody></table></div></section>
+        <section v-if="product.sourceFacts.length" class="source-facts" aria-labelledby="source-facts-title"><h3 id="source-facts-title">Original technical source values</h3><p class="muted">Values are shown in the source format. Units and operating conditions are not inferred.</p><div class="table-scroll"><table><thead><tr><th scope="col">Source field</th><th scope="col">Original value</th><th scope="col">State</th></tr></thead><tbody><tr v-for="fact in product.sourceFacts" :key="`${fact.sourceReference}:${fact.fieldName}`"><th scope="row">{{ fact.fieldName }}</th><td>{{ fact.rawValue }}<small v-if="fact.unit || fact.operatingCondition">{{ [fact.unit, fact.operatingCondition].filter(Boolean).join(' · ') }}</small></td><td>{{ sourceFactState(fact) }}</td></tr></tbody></table></div></section>
       </div>
       <div v-if="verifiedCurves.length" id="product-panel-performance" class="tab-panel" role="tabpanel" :aria-labelledby="tabs.length > 1 ? 'product-tab-performance' : undefined" :hidden="enhancedTabs && activeTab !== 'performance'">
         <h2>Airflow and pressure</h2>
@@ -197,6 +202,9 @@ function formatBytes(bytes: number): string {
 .specification-group,.performance-curve { margin-block: var(--space-5); }
 .specification-group td { display: grid; gap: .25rem; }
 .specification-group td small { color: var(--color-text-muted); }
+.source-facts { margin-block: var(--space-6); }
+.source-facts .muted,.source-facts td small { color: var(--color-text-muted); }
+.source-facts td small { display: block; margin-top: .25rem; }
 .source-asset-card { overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--airtek-radius-md); background: var(--color-surface); }
 .source-asset-card > img,.source-asset-card__type { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
 .source-asset-card__type { display: grid; place-items: center; background: var(--color-surface-subtle); font: 700 1.5rem/1 monospace; letter-spacing: .08em; }
