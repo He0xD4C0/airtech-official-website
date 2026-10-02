@@ -6,6 +6,10 @@
 import type { components } from '../components'
 
 export interface SchemasPart03 {
+GeneralInformationRevisionPage: {
+            items: components["schemas"]["GeneralInformationRevision"][];
+            nextCursor: string | null;
+        };
 GeneralInformationTypeFields: {
             brandLine?: string | null;
             contact: components["schemas"]["ContactInformationInput"];
@@ -86,6 +90,10 @@ HeroBlock: {
         };
 /** @enum {string} */
         HeroVariant: "standard" | "splitMedia" | "minimal";
+IntegrationTestResult: {
+            delivered: boolean;
+            verified: boolean;
+        };
 InvitationAcceptance: {
             /** Format: date-time */
             acceptedAt: string;
@@ -141,6 +149,21 @@ LoginRequest: {
             otp?: string | null;
             /** Format: password */
             password: string;
+        };
+MailSettings: {
+            configured: boolean;
+            fromAddress: string;
+            fromName: string;
+            host: string;
+            port: number;
+            /** @enum {string} */
+            protocol: "starttls" | "tls";
+            /** Format: int64 */
+            revision: number;
+            username: string;
+        };
+MailTestRequest: {
+            to?: string | null;
         };
 MediaAsset: {
             byteSize: number;
@@ -471,25 +494,5 @@ ProductPresentation: {
             title: string;
             /** Format: date-time */
             updatedAt: string;
-        };
-ProductPrivatePricing: {
-            readonly pricingFields: {
-                [key: string]: string;
-            };
-            /** Format: uuid */
-            productId: string;
-            sourceRowNumber: number;
-            stableId: string;
-        };
-/** @enum {string} */
-        ProductPublicationAction: "publish";
-ProductPublicationReport: {
-            allowedActions: components["schemas"]["ProductPublicationAction"][];
-            /** Format: int64 */
-            currentRevision: number;
-            issues: components["schemas"]["ValidationIssue"][];
-            /** Format: uuid */
-            productId: string;
-            ready: boolean;
         };
 }

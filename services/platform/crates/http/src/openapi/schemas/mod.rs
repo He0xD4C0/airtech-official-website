@@ -5,6 +5,7 @@ mod analytics;
 mod cms_v2;
 mod common;
 mod content;
+mod integrations;
 mod management;
 mod media;
 mod product;
@@ -25,6 +26,7 @@ pub(super) fn build() -> Value {
     site::add(&mut schemas);
     analytics::add(&mut schemas);
     management::add(&mut schemas);
+    integrations::add(&mut schemas);
     media::add(&mut schemas);
     admin::add(&mut schemas);
     Value::Object(schemas)

@@ -6,6 +6,26 @@
 import type { components } from '../components'
 
 export interface SchemasPart04 {
+ProductPrivatePricing: {
+            readonly pricingFields: {
+                [key: string]: string;
+            };
+            /** Format: uuid */
+            productId: string;
+            sourceRowNumber: number;
+            stableId: string;
+        };
+/** @enum {string} */
+        ProductPublicationAction: "publish";
+ProductPublicationReport: {
+            allowedActions: components["schemas"]["ProductPublicationAction"][];
+            /** Format: int64 */
+            currentRevision: number;
+            issues: components["schemas"]["ValidationIssue"][];
+            /** Format: uuid */
+            productId: string;
+            ready: boolean;
+        };
 ProductRfqContext: {
             additionalMessage?: string;
             application: string;
@@ -446,6 +466,20 @@ SiteBootstrap: {
             navigation: components["schemas"]["PublicContentProjection"] | null;
             productFamilies: components["schemas"]["ProductFamilyPresentation"][];
         };
+SmsSettings: {
+            accessKeyId: string;
+            configured: boolean;
+            /** @constant */
+            provider: "aliyun";
+            region: string;
+            /** Format: int64 */
+            revision: number;
+            signName: string;
+            templateCode: string;
+        };
+SmsTestRequest: {
+            phone: string;
+        };
 SocialLinkInput: {
             service: string;
             /** Format: uri */
@@ -461,39 +495,4 @@ SourceFact: {
         };
 /** @enum {string} */
         SourceMetadataKind: "supplier" | "brand";
-SpecValue: {
-            key: string;
-            label: string;
-            operatingCondition: string | null;
-            sourceReference: string | null;
-            state: components["schemas"]["FactState"];
-            unit: string | null;
-            value: unknown | null;
-        };
-/** @enum {string} */
-        StableProblemCode: "media_idempotency_conflict" | "media_decode_failed" | "content_dependency_conflict";
-/**
-         * Format: uri
-         * @enum {string}
-         */
-        StableProblemType: "https://api.airtekpower.example/problems/media_idempotency_conflict" | "https://api.airtekpower.example/problems/media_decode_failed" | "https://api.airtekpower.example/problems/content_dependency_conflict";
-StagingRecord: {
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: uuid */
-            id: string;
-            normalizedPayload: unknown | null;
-            sourceRecordId: string;
-            /** Format: uuid */
-            sourceSnapshotId: string;
-            /** Format: uuid */
-            syncRunId: string;
-            validationErrors: components["schemas"]["ValidationIssue"][];
-            validationStatus: components["schemas"]["StagingValidationStatus"];
-        };
-StagingRecordPage: {
-            items: components["schemas"]["StagingRecord"][];
-            nextCursor: string | null;
-            total: number;
-        };
 }

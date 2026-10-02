@@ -6,27 +6,25 @@
 import type { components } from '../components'
 
 export interface OperationsPart28 {
-selectProducts: {
+downloadPublicMediaAsset: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                assetId: string;
+            };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SelectorRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description Selector evaluation */
-            200: {
+            /** @description Redirect to the immutable external media URL */
+            308: {
                 headers: {
+                    /** @description Stored external media URL */
+                    Location?: string;
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["SelectorResponse"];
-                };
+                content?: never;
             };
             /** @description Malformed request */
             400: {
@@ -120,9 +118,13 @@ selectProducts: {
             };
         };
     };
-getSiteBootstrap: {
+listPublishedNews: {
         parameters: {
             query?: {
+                category?: string;
+                /** @description Opaque base64url v2 keyset cursor; a legacy News UUID is accepted for one compatibility release. */
+                cursor?: string;
+                limit?: number;
                 locale?: "en";
             };
             header?: never;
@@ -131,13 +133,13 @@ getSiteBootstrap: {
         };
         requestBody?: never;
         responses: {
-            /** @description Published site bootstrap */
+            /** @description Published News records */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SiteBootstrap"];
+                    "application/json": components["schemas"]["NewsPage"];
                 };
             };
             /** @description Malformed request */
@@ -232,22 +234,28 @@ getSiteBootstrap: {
             };
         };
     };
-getLiveness: {
+getPublishedNews: {
         parameters: {
-            query?: never;
+            query?: {
+                locale?: "en";
+            };
             header?: never;
-            path?: never;
+            path: {
+                slug: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Service is alive */
+            /** @description Published News record */
             200: {
                 headers: {
+                    /** @description Immutable published revision tag */
+                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HealthStatus"];
+                    "application/json": components["schemas"]["NewsEntry"];
                 };
             };
             /** @description Malformed request */
@@ -342,22 +350,30 @@ getLiveness: {
             };
         };
     };
-getInternalMetrics: {
+listPublishedProducts: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Opaque base64url v3 keyset cursor bound to normalized q, family, and motorTechnology; v2 is accepted only without q for one compatibility release. */
+                cursor?: string;
+                family?: components["schemas"]["ProductFamily"];
+                /** @description Page size; values outside 1 through 100 return Problem Details 400. */
+                limit?: number;
+                motorTechnology?: string;
+                q?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description OpenMetrics telemetry */
+            /** @description Published products */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/openmetrics-text": string;
+                    "application/json": components["schemas"]["ProductPage"];
                 };
             };
             /** @description Malformed request */

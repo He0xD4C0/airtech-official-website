@@ -6,6 +6,21 @@
 import type { components } from '../components'
 
 export interface SchemasPart02 {
+ContentDraftInput: {
+            body: components["schemas"]["RichTextDocument"];
+            /** @default false */
+            isPlaceholder?: boolean;
+            kind: components["schemas"]["ContentKind"];
+            /**
+             * @default en
+             * @enum {string}
+             */
+            locale?: "en";
+            seo?: components["schemas"]["SeoMetadataInput"];
+            slug: string;
+            summary?: string | null;
+            title: string;
+        };
 ContentDraftV2: {
             body?: components["schemas"]["TiptapDocument"] | null;
             composition: components["schemas"]["PageComposition"];
@@ -480,8 +495,4 @@ GeneralInformationPayload: {
         };
 /** @description Immutable General Information revision payload. */
         GeneralInformationRevision: components["schemas"]["GeneralInformation"];
-GeneralInformationRevisionPage: {
-            items: components["schemas"]["GeneralInformationRevision"][];
-            nextCursor: string | null;
-        };
 }

@@ -133,6 +133,21 @@ pub fn router() -> Router<AppState> {
             "/settings/object-storage/test",
             post(test_object_storage_settings),
         )
+        .route(
+            "/settings/mail",
+            get(get_mail_settings).put(update_mail_settings),
+        )
+        .route("/settings/mail/test", post(test_mail_settings))
+        .route(
+            "/settings/sms",
+            get(get_sms_settings).put(update_sms_settings),
+        )
+        .route("/settings/sms/test", post(test_sms_settings))
+        .route(
+            "/settings/captcha",
+            get(get_captcha_settings).put(update_captcha_settings),
+        )
+        .route("/settings/captcha/test", post(test_captcha_settings))
         .route("/operations/{id}", get(get_operation))
         .route("/operations/{id}/events", get(operation_events))
         .route("/audit", get(list_audit))

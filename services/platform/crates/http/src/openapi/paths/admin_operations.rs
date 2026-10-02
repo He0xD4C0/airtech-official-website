@@ -240,4 +240,118 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
             false,
         ),
     );
+    for (
+        path,
+        collect_title,
+        collect_id,
+        update_title,
+        update_id,
+        get_schema,
+        update_schema,
+        test_request,
+        test_id,
+    ) in [
+        (
+            "mail",
+            "Get administration email settings",
+            "getMailSettings",
+            "Save administration email settings",
+            "updateMailSettings",
+            "MailSettings",
+            "UpdateMailSettings",
+            "MailTestRequest",
+            "testMailSettings",
+        ),
+        (
+            "sms",
+            "Get administration SMS settings",
+            "getSmsSettings",
+            "Save administration SMS settings",
+            "updateSmsSettings",
+            "SmsSettings",
+            "UpdateSmsSettings",
+            "SmsTestRequest",
+            "testSmsSettings",
+        ),
+        (
+            "captcha",
+            "Get CAPTCHA settings",
+            "getCaptchaSettings",
+            "Save CAPTCHA settings",
+            "updateCaptchaSettings",
+            "CaptchaSettings",
+            "UpdateCaptchaSettings",
+            "CaptchaTestRequest",
+            "testCaptchaSettings",
+        ),
+    ] {
+        add(
+            paths,
+            &format!("/api/admin/v1/settings/{path}"),
+            "get",
+            admin(
+                op(
+                    collect_id,
+                    collect_title,
+                    "adminSettings",
+                    [(
+                        "200",
+                        response_header(
+                            json_response("Integration settings", r(get_schema)),
+                            "ETag",
+                            "Current settings revision",
+                        ),
+                    )],
+                ),
+                false,
+            ),
+        );
+        add(
+            paths,
+            &format!("/api/admin/v1/settings/{path}"),
+            "put",
+            admin(
+                params(
+                    body(
+                        op(
+                            update_id,
+                            update_title,
+                            "adminSettings",
+                            [(
+                                "200",
+                                response_header(
+                                    json_response("Integration settings updated", r(get_schema)),
+                                    "ETag",
+                                    "New settings revision",
+                                ),
+                            )],
+                        ),
+                        r(update_schema),
+                    ),
+                    vec![if_match_param()],
+                ),
+                true,
+            ),
+        );
+        add(
+            paths,
+            &format!("/api/admin/v1/settings/{path}/test"),
+            "post",
+            admin(
+                body(
+                    op(
+                        test_id,
+                        "Send or verify a test using the stored settings",
+                        "adminSettings",
+                        [(
+                            "200",
+                            json_response("Integration test result", r("IntegrationTestResult")),
+                        )],
+                    ),
+                    r(test_request),
+                ),
+                true,
+            ),
+        );
+    }
 }

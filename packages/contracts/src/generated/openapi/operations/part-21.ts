@@ -6,7 +6,7 @@
 import type { components } from '../components'
 
 export interface OperationsPart21 {
-getObjectStorageSettings: {
+getCaptchaSettings: {
         parameters: {
             query?: never;
             header?: never;
@@ -15,17 +15,15 @@ getObjectStorageSettings: {
         };
         requestBody?: never;
         responses: {
-            /** @description Object storage settings */
+            /** @description Integration settings */
             200: {
                 headers: {
-                    /** @description private, no-store, max-age=0 */
-                    "Cache-Control"?: string;
-                    /** @description Current object storage settings revision */
+                    /** @description Current settings revision */
                     ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ObjectStorageSettings"];
+                    "application/json": components["schemas"]["CaptchaSettings"];
                 };
             };
             /** @description Malformed request */
@@ -120,7 +118,7 @@ getObjectStorageSettings: {
             };
         };
     };
-updateObjectStorageSettings: {
+updateCaptchaSettings: {
         parameters: {
             query?: never;
             header: {
@@ -132,21 +130,19 @@ updateObjectStorageSettings: {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateObjectStorageSettings"];
+                "application/json": components["schemas"]["UpdateCaptchaSettings"];
             };
         };
         responses: {
-            /** @description Object storage settings updated */
+            /** @description Integration settings updated */
             200: {
                 headers: {
-                    /** @description private, no-store, max-age=0 */
-                    "Cache-Control"?: string;
-                    /** @description New object storage settings revision */
+                    /** @description New settings revision */
                     ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ObjectStorageSettings"];
+                    "application/json": components["schemas"]["CaptchaSettings"];
                 };
             };
             /** @description Malformed request */
@@ -241,7 +237,7 @@ updateObjectStorageSettings: {
             };
         };
     };
-testObjectStorageSettings: {
+testCaptchaSettings: {
         parameters: {
             query?: never;
             header?: never;
@@ -250,17 +246,17 @@ testObjectStorageSettings: {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ObjectStorageSettingsInput"];
+                "application/json": components["schemas"]["CaptchaTestRequest"];
             };
         };
         responses: {
-            /** @description Object storage test result */
+            /** @description Integration test result */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ObjectStorageTestResult"];
+                    "application/json": components["schemas"]["IntegrationTestResult"];
                 };
             };
             /** @description Malformed request */
@@ -355,26 +351,24 @@ testObjectStorageSettings: {
             };
         };
     };
-getSiteSingletonState: {
+getMailSettings: {
         parameters: {
-            query: {
-                locale: string;
-            };
+            query?: never;
             header?: never;
-            path: {
-                kind: "generalInformation" | "navigation" | "footer";
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Site singleton state */
+            /** @description Integration settings */
             200: {
                 headers: {
+                    /** @description Current settings revision */
+                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CmsSiteSingletonState"];
+                    "application/json": components["schemas"]["MailSettings"];
                 };
             };
             /** @description Malformed request */

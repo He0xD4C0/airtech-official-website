@@ -346,6 +346,17 @@ BusinessStatusHistoryEntry: {
             reason: string | null;
             toStatus: components["schemas"]["BusinessInboxStatus"];
         };
+CaptchaSettings: {
+            configured: boolean;
+            /** @enum {string} */
+            provider: "turnstile" | "recaptcha" | "hcaptcha";
+            /** Format: int64 */
+            revision: number;
+            siteKey: string;
+        };
+CaptchaTestRequest: {
+            token: string;
+        };
 CaseStudyTypeFields: {
             industry?: string | null;
             location?: string | null;
@@ -481,19 +492,4 @@ ContactInformationInput: {
 ContentBlock: components["schemas"]["HeroBlock"] | components["schemas"]["BodyBlock"] | components["schemas"]["MediaBlock"] | components["schemas"]["FeatureGridBlock"] | components["schemas"]["EvidenceBlock"] | components["schemas"]["CtaBlock"] | components["schemas"]["RelationCollectionBlock"] | components["schemas"]["FaqCollectionBlock"] | components["schemas"]["DownloadAssetBlock"] | components["schemas"]["ContactBlock"];
 /** @enum {string} */
         ContentBlockKind: "hero" | "body" | "media" | "featureGrid" | "evidence" | "cta" | "relationCollection" | "faqCollection" | "downloadAsset" | "contactBlock";
-ContentDraftInput: {
-            body: components["schemas"]["RichTextDocument"];
-            /** @default false */
-            isPlaceholder?: boolean;
-            kind: components["schemas"]["ContentKind"];
-            /**
-             * @default en
-             * @enum {string}
-             */
-            locale?: "en";
-            seo?: components["schemas"]["SeoMetadataInput"];
-            slug: string;
-            summary?: string | null;
-            title: string;
-        };
 }

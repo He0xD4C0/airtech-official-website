@@ -6,6 +6,41 @@
 import type { components } from '../components'
 
 export interface SchemasPart05 {
+SpecValue: {
+            key: string;
+            label: string;
+            operatingCondition: string | null;
+            sourceReference: string | null;
+            state: components["schemas"]["FactState"];
+            unit: string | null;
+            value: unknown | null;
+        };
+/** @enum {string} */
+        StableProblemCode: "media_idempotency_conflict" | "media_decode_failed" | "content_dependency_conflict";
+/**
+         * Format: uri
+         * @enum {string}
+         */
+        StableProblemType: "https://api.airtekpower.example/problems/media_idempotency_conflict" | "https://api.airtekpower.example/problems/media_decode_failed" | "https://api.airtekpower.example/problems/content_dependency_conflict";
+StagingRecord: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            normalizedPayload: unknown | null;
+            sourceRecordId: string;
+            /** Format: uuid */
+            sourceSnapshotId: string;
+            /** Format: uuid */
+            syncRunId: string;
+            validationErrors: components["schemas"]["ValidationIssue"][];
+            validationStatus: components["schemas"]["StagingValidationStatus"];
+        };
+StagingRecordPage: {
+            items: components["schemas"]["StagingRecord"][];
+            nextCursor: string | null;
+            total: number;
+        };
 /** @enum {string} */
         StagingValidationStatus: "pending" | "valid" | "invalid";
 SyncMapping: {
@@ -198,6 +233,13 @@ UpdateBusinessStatusRequest: {
             reason: string;
             status: components["schemas"]["BusinessInboxStatus"];
         };
+UpdateCaptchaSettings: {
+            /** @enum {string} */
+            provider: "turnstile" | "recaptcha" | "hcaptcha";
+            reason: string;
+            secretKey?: string | null;
+            siteKey: string;
+        };
 UpdateFeishuSettings: {
             appId: string;
             appSecret: string;
@@ -208,6 +250,18 @@ UpdateFeishuSettings: {
             intervalEnabled: boolean;
             intervalMinutes: number;
             sources: components["schemas"]["FeishuSource"][];
+        };
+UpdateMailSettings: {
+            /** Format: email */
+            fromAddress: string;
+            fromName: string;
+            host: string;
+            password?: string | null;
+            port: number;
+            /** @enum {string} */
+            protocol: "starttls" | "tls";
+            reason: string;
+            username?: string | null;
         };
 UpdateObjectStorageSettings: components["schemas"]["ObjectStorageSettingsInput"] & {
             adoptLegacyAssets: boolean;
@@ -233,6 +287,16 @@ UpdateProductPresentation: {
             sortOrder: number;
             summary?: string | null;
             title: string;
+        };
+UpdateSmsSettings: {
+            accessKeyId?: string | null;
+            accessKeySecret?: string | null;
+            /** @constant */
+            provider: "aliyun";
+            reason: string;
+            region: string;
+            signName: string;
+            templateCode: string;
         };
 UserAdminSummary: components["schemas"]["AdminUserRecord"];
 UserInvitation: {

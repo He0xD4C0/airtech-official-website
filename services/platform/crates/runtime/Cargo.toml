@@ -19,6 +19,7 @@ chrono.workspace = true
 data-encoding.workspace = true
 futures-util.workspace = true
 hmac.workspace = true
+lettre.workspace = true
 image.workspace = true
 kamadak-exif.workspace = true
 serde.workspace = true
