@@ -232,10 +232,11 @@ pnpm db:info
 pnpm db:validate
 ```
 
-Compose runs `airtek-maintenance prepare-runtime` once after Flyway and before
-the API/Worker. For a non-Compose deployment, run the same command from the
-Platform image after `flyway migrate`; API and Worker startup fails closed when
-its versioned preparation marker is absent.
+Compose runs the migration artifact's `release` command and then
+`airtek-maintenance prepare-runtime` once before the API/Worker. For a
+non-Compose deployment, run the same commands from the Migrations and Platform
+images in that order; API and Worker startup fails closed when the versioned
+preparation marker is absent.
 
 The checked-in local Compose stack explicitly permits its historical single
 `airtek` owner role for development-volume compatibility. That shared-role
@@ -280,12 +281,18 @@ new empty database must not be baselined; initialize it only with
 
 `infra/compose/production.app.yaml` is a provider-neutral, image-only deployment
 boundary. It requires five separate immutable references for Public Web, Admin
-Web, Platform, Migrations, and Gateway. The non-root Flyway migration artifact
-is independent from the Rust Platform artifact. Only the Gateway is exposed to
-the outer TLS ingress; ports `3000`, `3100`, and `8080` stay internal. This
-permits Public and Admin to be promoted or rolled back independently. Start from
-`infra/deploy/production.env.example`; replace every example image, host,
-origin, database URL, and secret through the deployment platform before use.
+Web, Platform, Migrations, and Gateway. Registry, owner, image prefix, release
+stream and the optional read-only pull credential come from the
+`AIRTEK_REGISTRY*` variables documented in `.env.example`; no script or workflow
+hard-codes a package owner. The non-root Flyway migration artifact is
+independent from the Rust Platform artifact, and its default `release` command
+dumps a database only when migrations are pending, then restores that dump and
+keeps a retained failure record when the migration fails. Only the Gateway is
+exposed to the outer TLS ingress; ports `3000`, `3100`, and `8080` stay internal.
+This permits Public and Admin to be promoted or rolled back independently.
+Start from `infra/deploy/production.env.example`; replace every example image,
+host, origin, database URL, and secret through the deployment platform before
+use.
 
 The Public and Admin images are domain-neutral. At container start, the Public
 server reads `PUBLIC_ORIGIN` and `PUBLIC_API_BROWSER_ORIGIN`, while the Admin

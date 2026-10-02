@@ -5,7 +5,7 @@ set -euo pipefail
 : "${AIRTEK_DEPLOY_USER:?set AIRTEK_DEPLOY_USER}"
 : "${AIRTEK_KNOWN_HOSTS:?set AIRTEK_KNOWN_HOSTS}"
 release_sha=${GIT_COMMIT:-$(git rev-parse HEAD)}
-image_prefix=${AIRTEK_IMAGE_PREFIX:-ghcr.io/he0xd4c0/airtekpower}
+image_prefix=${AIRTEK_IMAGE_PREFIX:?set AIRTEK_IMAGE_PREFIX from .env or the release pipeline}
 remote_dir="/tmp/airtek-release-$release_sha"
 ssh_options=(-o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$AIRTEK_KNOWN_HOSTS")
 

@@ -1,12 +1,64 @@
 name: CI
 
 on:
+  push:
+    tags:
+      - 'dev-arm64-*'
+      - 'release-x86-*'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  release-metadata:
+    runs-on: ubuntu-latest
+    outputs:
+      image_prefix: ${{ steps.release.outputs.image_prefix }}
+      release_tag: ${{ steps.release.outputs.release_tag }}
+      tag_prefix: ${{ steps.release.outputs.tag_prefix }}
+      target_platform: ${{ steps.release.outputs.target_platform }}
+      runner: ${{ steps.release.outputs.runner }}
+      image_suffix: ${{ steps.release.outputs.image_suffix }}
+    steps:
+      - id: release
+        name: Resolve the release tag, platform and runner
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          CONFIGURED_IMAGE_PREFIX: ${{ vars.AIRTEK_IMAGE_PREFIX }}
+          CONFIGURED_ARM64_RUNNER: ${{ vars.AIRTEK_ARM64_RUNNER }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$RELEASE_TAG" | grep -Eq '^(dev-arm64|release-x86)-[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$'; then
+            echo "Release tags must match dev-arm64-* or release-x86-* and stay OCI-safe." >&2
+            exit 1
+          fi
+          owner=$(printf '%s' "$REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          prefix=${CONFIGURED_IMAGE_PREFIX:-ghcr.io/$owner/airtekpower}
+          case "$RELEASE_TAG" in
+            dev-arm64-*)
+              platform=linux/arm64
+              tag_prefix=dev-arm64-
+              runner=${CONFIGURED_ARM64_RUNNER:-ubuntu-24.04-arm}
+              suffix=-dev
+              ;;
+            *)
+              platform=linux/amd64
+              tag_prefix=release-x86-
+              runner=ubuntu-latest
+              suffix=
+              ;;
+          esac
+          {
+            echo "release_tag=$RELEASE_TAG"
+            echo "image_prefix=$prefix"
+            echo "tag_prefix=$tag_prefix"
+            echo "target_platform=$platform"
+            echo "runner=$runner"
+            echo "image_suffix=$suffix"
+          } >> "$GITHUB_OUTPUT"
+
   rust-msrv:
     runs-on: ubuntu-latest
     steps:
@@ -352,6 +404,7 @@ jobs:
       - run: node scripts/checks/assert-production-infrastructure.mjs
       - name: Validate every supported Compose combination
         run: node scripts/checks/assert-compose-configs.mjs
+      - run: node scripts/checks/assert-migration-release-config.mjs
       - run: docker compose --project-directory . config --quiet
       - name: Validate opt-in debug port override
         run: docker compose --project-directory . -f compose.yaml -f infra/compose/debug.yaml --profile object-storage config --quiet
@@ -379,3 +432,103 @@ jobs:
             -e API_HOST=api.localhost \
             -e API_BROWSER_ORIGIN=http://api.localhost:8088 \
             airtek-gateway:ci nginx -t
+
+  publish-images:
+    if: github.ref_type == 'tag'
+    needs:
+      - release-metadata
+      - rust-msrv
+      - contracts
+      - frontend
+      - browser-contracts
+      - rust
+      - deployment
+    runs-on: ${{ needs.release-metadata.outputs.runner }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: public-web
+            dockerfile: infra/docker/Dockerfile.web
+          - image: admin-web
+            dockerfile: infra/docker/Dockerfile.admin
+          - image: platform
+            dockerfile: infra/docker/Dockerfile.platform
+          - image: migrations
+            dockerfile: infra/docker/Dockerfile.flyway
+          - image: gateway
+            dockerfile: infra/docker/Dockerfile.gateway
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Refuse to overwrite an already published release image
+        env:
+          IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
+        run: |
+          if docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "Refusing to overwrite the published image $IMAGE; a release tag is immutable." >&2
+            exit 1
+          fi
+      - id: publish
+        name: Build and publish ${{ matrix.image }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: ${{ needs.release-metadata.outputs.target_platform }}
+          push: true
+          tags: ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ needs.release-metadata.outputs.release_tag }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ needs.release-metadata.outputs.target_platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ needs.release-metadata.outputs.target_platform }}
+      - name: Record the immutable image digest
+        env:
+          IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
+          DIGEST: ${{ steps.publish.outputs.digest }}
+        run: |
+          printf '### `%s`\n\nDigest: `%s`\n' "$IMAGE" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"
+
+  prune-images:
+    if: github.ref_type == 'tag'
+    needs:
+      - release-metadata
+      - publish-images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - public-web
+          - admin-web
+          - platform
+          - migrations
+          - gateway
+    steps:
+      - uses: actions/checkout@v4
+      - name: Keep the five newest release images
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_OWNER: ${{ github.repository_owner }}
+          PACKAGE_NAME: airtekpower-${{ matrix.image }}${{ needs.release-metadata.outputs.image_suffix }}
+          KEEP_RELEASE_VERSIONS: '5'
+          RETENTION_TAG_PREFIX: ${{ needs.release-metadata.outputs.tag_prefix }}
+        run: bash scripts/maintenance/prune-ghcr-versions.sh

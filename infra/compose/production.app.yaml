@@ -8,13 +8,18 @@ services:
   flyway-migrate:
     platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_MIGRATIONS_IMAGE:?set AIRTEK_MIGRATIONS_IMAGE to an immutable image reference}
-    command: ["migrate"]
+    command: ["release"]
     environment:
       FLYWAY_URL: ${FLYWAY_URL:?set FLYWAY_URL to a JDBC PostgreSQL URL}
       FLYWAY_USER: ${FLYWAY_USER:?set the migration role}
       FLYWAY_PASSWORD: ${FLYWAY_PASSWORD:?set the migration role password from the secret manager}
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: ${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:?set the existing API and Worker database role}
       AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:?set AIRTEK_FLYWAY_TARGET=28}
+      AIRTEK_RELEASE_TAG: ${AIRTEK_RELEASE_TAG:?set AIRTEK_RELEASE_TAG to the deployed release tag}
+      AIRTEK_IMAGE_REVISION: ${AIRTEK_IMAGE_REVISION:-unknown}
+      AIRTEK_MIGRATION_STATE_DIR: /var/lib/airtek/migration-state
+    volumes:
+      - "${AIRTEK_MIGRATION_STATE_DIR:-/srv/airtek/migration-state}:/var/lib/airtek/migration-state:Z"
     restart: "no"
 
   platform-maintenance:

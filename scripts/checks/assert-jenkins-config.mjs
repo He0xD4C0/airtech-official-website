@@ -21,7 +21,8 @@ function forbidMatch(body, pattern, failure) {
 
 const ci = read('.github/workflows/ci.yml')
 requireMatch(ci, /^\s+workflow_dispatch:\s*$/mu, 'GitHub CI must remain available through manual dispatch.')
-forbidMatch(ci, /^  (?:push|pull_request):/mu, 'GitHub CI automatic triggers must remain disabled during Jenkins migration.')
+requireMatch(ci, /^\s+- 'dev-arm64-\*'\n\s+- 'release-x86-\*'/mu, 'GitHub CI must trigger on the reviewed release tag prefixes.')
+forbidMatch(ci, /pull_request:|^  push:\n\s+branches:/mu, 'GitHub CI must never run on pull requests or branch pushes.')
 
 const pipeline = read('Jenkinsfile')
 requireMatch(pipeline, /disableConcurrentBuilds/u, 'Jenkins must prevent concurrent builds of one branch.')

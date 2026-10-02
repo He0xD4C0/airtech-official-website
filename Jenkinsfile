@@ -15,7 +15,9 @@ pipeline {
   }
 
   environment {
-    AIRTEK_IMAGE_PREFIX = 'ghcr.io/he0xd4c0/airtekpower'
+    AIRTEK_REGISTRY = 'ghcr.io'
+    AIRTEK_REGISTRY_OWNER = 'he0xd4c0'
+    AIRTEK_IMAGE_PREFIX = "${AIRTEK_REGISTRY}/${AIRTEK_REGISTRY_OWNER}/airtekpower"
     CARGO_HOME = '/var/cache/airtek/cargo'
     PNPM_HOME = '/var/cache/airtek/pnpm'
     PLAYWRIGHT_BROWSERS_PATH = '/var/cache/airtek/playwright'

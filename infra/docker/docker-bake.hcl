@@ -1,5 +1,5 @@
 variable "AIRTEK_IMAGE_PREFIX" {
-  default = "ghcr.io/he0xd4c0/airtekpower"
+  default = ""
 }
 
 variable "AIRTEK_IMAGE_TAG" {
@@ -10,17 +10,25 @@ variable "AIRTEK_IMAGE_REVISION" {
   default = "unknown"
 }
 
+variable "AIRTEK_IMAGE_SOURCE" {
+  default = ""
+}
+
+variable "AIRTEK_TARGET_PLATFORM" {
+  default = "linux/amd64"
+}
+
 group "default" {
   targets = ["public-web", "admin-web", "platform", "migrations", "gateway"]
 }
 
 target "base" {
   context = "."
-  platforms = ["linux/amd64"]
-  labels = {
-    "org.opencontainers.image.source" = "https://github.com/He0xD4C0/airtech-official-website"
-    "org.opencontainers.image.revision" = AIRTEK_IMAGE_REVISION
-  }
+  platforms = [AIRTEK_TARGET_PLATFORM]
+  labels = merge(
+    { "org.opencontainers.image.revision" = AIRTEK_IMAGE_REVISION },
+    AIRTEK_IMAGE_SOURCE == "" ? {} : { "org.opencontainers.image.source" = AIRTEK_IMAGE_SOURCE },
+  )
 }
 
 target "public-web" {

@@ -1,0 +1,12 @@
+# Local development VM overrides. The on-host CD agent applies this file after
+# infra/compose/production.app.yaml on the Rocky development VM; the ECS
+# production stack never loads it.
+#
+# The VM publishes plaintext HTTP on its own address without an outer TLS
+# terminator, so only this development override may let public readiness accept
+# http origins. Media origins come from PUBLIC_MEDIA_ORIGIN and AIRTEK_API_ORIGIN
+# in /etc/airtek/production.env.
+services:
+  public-readiness:
+    environment:
+      AIRTEK_READINESS_ALLOW_HTTP: 'true'

@@ -1,10 +1,17 @@
 ARG FLYWAY_BASE_IMAGE=flyway/flyway:13.4.0-alpine
 FROM ${FLYWAY_BASE_IMAGE}
 
+USER root
+# PostgreSQL 17 client tools back the release wrapper's dump/restore contract;
+# jq renders the retained failure record without hand-escaped JSON.
+RUN apk add --no-cache postgresql17-client jq \
+    && install -d -o 10001 -g 10001 -m 0755 /var/lib/airtek/migration-state
+
 COPY services/platform/flyway.toml /flyway/project/flyway.toml
 COPY services/platform/migrations /flyway/project/migrations
 COPY services/platform/flyway/callbacks /flyway/project/flyway/callbacks
 COPY --chmod=0555 infra/docker/flyway-entrypoint.sh /usr/local/bin/airtek-flyway
+COPY --chmod=0555 infra/docker/flyway-release.sh /usr/local/bin/airtek-flyway-release
 
 ENV HOME=/tmp
 WORKDIR /flyway/project

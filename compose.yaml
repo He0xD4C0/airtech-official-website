@@ -84,16 +84,20 @@ services:
       dockerfile: infra/docker/Dockerfile.flyway
       args:
         FLYWAY_BASE_IMAGE: ${AIRTEK_FLYWAY_BASE_IMAGE:-flyway/flyway:13.4.0-alpine}
-    command: ["migrate"]
+    command: ["release"]
     environment:
       FLYWAY_URL: ${FLYWAY_URL:-jdbc:postgresql://postgres:5432/airtek}
       FLYWAY_USER: ${FLYWAY_USER:-airtek}
       FLYWAY_PASSWORD: ${FLYWAY_PASSWORD:-airtek}
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: ${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:-airtek}
       AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:-28}
+      AIRTEK_RELEASE_TAG: ${AIRTEK_IMAGE_TAG:-local}
+      AIRTEK_MIGRATION_STATE_DIR: /var/lib/airtek/migration-state
       # Local compatibility for the existing single-role development volume.
       # The production boundary cannot pass this override.
       AIRTEK_FLYWAY_ALLOW_SHARED_ROLE: "true"
+    volumes:
+      - migration-state:/var/lib/airtek/migration-state
     depends_on:
       postgres:
         condition: service_healthy
@@ -312,6 +316,7 @@ services:
 volumes:
   postgres-data:
   object-data:
+  migration-state:
 
 networks:
   default:

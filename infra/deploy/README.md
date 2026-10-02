@@ -147,43 +147,43 @@ activated when a core route, CMS shell, CORS preflight, canonical URL,
 sitemap, manifest, icon, or origin contract fails, or when published
 development placeholders are present. A missing custom icon is warning-only.
 
-## Jenkins application release
+## Tag-triggered application release
 
-The Jenkins multibranch job polls `main` and `cicd`. Both branches run the same
-CI gates. `main` stops after CI; `cicd` builds and pushes the five domain-neutral
-images to GHCR using the full 40-character Git SHA. With `CD_ENABLED=false`, the
-run ends as `PUBLISHED_NOT_DEPLOYED` and never attempts SSH. The target host
-keeps runtime origins in `/etc/airtek/production.env`, so a released SHA can be
-reapplied under different reviewed domains without rebuilding.
+Pushing a release tag runs the full CI gate set and then publishes five
+domain-neutral images to GHCR. Only two prefixes are accepted: `dev-arm64-*`
+builds `linux/arm64` for the development VM, and `release-x86-*` builds
+`linux/amd64` for production. Tags must carry a lexically sortable suffix, for
+example `dev-arm64-20261002-01`, because the on-host agent resolves the newest
+release from registry tag names. The publishing job keeps the newest five
+versions per package and never publishes a mutable `latest` tag.
 
-`.github/workflows/release-production.yml` is retained only as a migration-time
-manual publishing fallback. It requires an explicit full commit SHA, publishes
-the same immutable tags, accepts no deployment credentials, and has no server
-deployment job.
+The two streams never share a container package: development images publish to
+`airtekpower-<component>-dev` while release images keep
+`airtekpower-<component>`. A development release therefore cannot overwrite or
+evict a release artifact, and retention pruning is scoped to the publishing
+stream. The packages are public by owner decision, so target hosts may pull them
+anonymously.
 
-The server keeps `/etc/airtek/production.env` and its registry pull credential.
-The publishing workflow never receives PostgreSQL superuser, object-storage,
-or server access secrets. The separate deployment script retains its application
-health rollback; schema migrations are forward-only and are never automatically
-reversed.
+Set the repository variable `AIRTEK_IMAGE_PREFIX` when the package owner is not
+the default `ghcr.io/<repository-owner>/airtekpower`, and `AIRTEK_ARM64_RUNNER`
+when the native arm64 runner is unavailable; the `ubuntu-latest` fallback builds
+ARM64 through QEMU and is substantially slower. Publishing uses the workflow's
+short-lived `GITHUB_TOKEN` with `packages: write`, so no registry secret is
+stored in the repository. Images are named
+`${AIRTEK_IMAGE_PREFIX}-{public-web,admin-web,platform,migrations,gateway}` with
+the exact release tag. Runtime domains are deliberately absent from publishing.
 
-The optional `PRODUCTION_CONTAINER_PLATFORM` GitHub repository variable defaults
-to `linux/amd64`. Runtime domains are deliberately absent from image publishing.
+The `airtek-cd-agent` on each target host pulls the published tag, checks out
+the same tag, runs Compose and gates the release on readiness. It keeps its
+state and failure records under `/opt/airtek/cd`. The server keeps runtime
+origins in `/etc/airtek/production.env` and its read-only pull credential in
+`/etc/airtek/cd.env` (mode 0600), so a released tag can be redeployed under
+different reviewed domains without rebuilding. Publishing never receives
+PostgreSQL superuser, object-storage, or server access secrets.
 
-Image publishing uses the workflow's short-lived `GITHUB_TOKEN` with
-`packages: write`; no external registry credentials are required. Images use
-the names `ghcr.io/<owner>/airtekpower-{public-web,admin-web,platform,migrations,gateway}`
-and the full release commit SHA.
-
-Before a later deployment, authenticate the server's Docker client to `ghcr.io` with a
-dedicated read-only GitHub token that has `read:packages`. Keep that credential
-only in the server's Docker credential store; never add it to the repository or
-the workflow. Public packages may be pulled anonymously if their visibility is
-deliberately changed after review.
-
-Jenkins deployment credentials are added only after the target host and
-operational controls are ready. They remain in Jenkins Credentials and are not
-serialized by JCasC or committed to the repository.
+The Jenkins pipeline remains in the repository for the current development VM
+but no longer owns deployment; keep `CD_ENABLED` false and retire the pipeline
+after the agent has served several releases.
 
 ## Deployment order
 
@@ -207,10 +207,15 @@ a fresh database and a V21 database migrate to V28, and a
 controlled legacy SQLx v1-v10 database passes
 `baseline -> migrate -> validate`.
 
-Run the non-root `flyway-migrate` artifact as a one-shot task before API and
-Worker start; both services wait for its successful completion. Database schema
-changes must remain compatible with the currently running Public/API release
-during a rolling update.
+Compose runs the non-root `flyway-migrate` artifact's `release` command before
+API and Worker start; both services wait for its successful completion. That
+command writes a custom-format dump into `/srv/airtek/migration-state` only when
+migrations are pending, removes it after a successful promotion, and restores
+it when the migration fails. A restored failure exits `2`, writes a retained
+JSON record under `migration-state/failures`, and inserts a `migrationApply`
+failure row into `operation_runs`; an unrestorable failure exits `3` and keeps
+the dump. Database schema changes must remain compatible with the currently
+running Public/API release during a rolling update (expand/contract).
 
 For a new empty production database, run only the migrations artifact with
 `migrate`. For an existing database with SQLx versions 1 through 10, confirm the
