@@ -179,7 +179,7 @@ jobs:
     permissions:
       contents: read
       packages: read
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.release-metadata.outputs.runner }}
     timeout-minutes: 35
     env:
       E2E_PUBLIC_ORIGIN: http://www.airtek.test:8088
@@ -235,7 +235,7 @@ jobs:
     permissions:
       contents: read
       packages: read
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.release-metadata.outputs.runner }}
     services:
       postgres:
         image: postgres:17-alpine
@@ -477,6 +477,11 @@ jobs:
 
   deployment:
     runs-on: ubuntu-latest
+    env:
+      # Compose interpolates profile-gated services even when the profile is
+      # inactive, so the configuration checks need placeholder image references.
+      AIRTEK_OBJECT_STORE_IMAGE: ghcr.io/validation-only/airtekpower-minio:validation
+      AIRTEK_OBJECT_STORE_MC_IMAGE: ghcr.io/validation-only/airtekpower-minio-mc:validation
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
