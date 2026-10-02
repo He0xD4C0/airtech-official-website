@@ -37,6 +37,20 @@ pub(super) fn parse_totp_encryption_key(value: &str) -> Result<TotpEncryptionKey
         .map_err(|_| ConfigError::InvalidTotpEncryptionKey)
 }
 
+pub(super) fn parse_admin_recovery_key_mode() -> Result<AdminRecoveryKeyMode, ConfigError> {
+    match env::var("AIRTEK_ADMIN_RECOVERY_KEY_MODE")
+        .unwrap_or_else(|_| "auto".into())
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "auto" => Ok(AdminRecoveryKeyMode::Auto),
+        "generate" => Ok(AdminRecoveryKeyMode::Generate),
+        "load" => Ok(AdminRecoveryKeyMode::Load),
+        _ => Err(ConfigError::InvalidAdminRecoveryKeyMode),
+    }
+}
+
 pub(super) fn parse_invitation_replay_encryption_key(
     value: &str,
 ) -> Result<InvitationReplayEncryptionKey, ConfigError> {

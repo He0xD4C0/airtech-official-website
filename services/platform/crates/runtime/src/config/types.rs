@@ -3,6 +3,25 @@ use super::*;
 pub const API_PORT: u16 = 8080;
 pub const DEVELOPMENT_ADMIN_EMAIL: &str = "local-admin@airtek.invalid";
 
+/// How the deployment-supplied administrator recovery key file is treated at
+/// startup. `Auto` generates a key only when the file is missing or empty.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AdminRecoveryKeyMode {
+    Auto,
+    Generate,
+    Load,
+}
+
+impl AdminRecoveryKeyMode {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Auto => "auto",
+            Self::Generate => "generate",
+            Self::Load => "load",
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct FeishuCredentials {
     app_id: String,
@@ -94,6 +113,16 @@ pub struct Config {
     /// Explicit local-only convenience for the fixed seeded administrator.
     /// Production builds reject the corresponding environment variable.
     pub development_admin_password_only: bool,
+    /// Initial administrator credentials. They are applied only while the user
+    /// table is empty (or while renaming the reserved development account) and
+    /// are ignored entirely on an initialized database.
+    pub admin_email: Option<String>,
+    pub admin_display_name: Option<String>,
+    pub admin_password: Option<String>,
+    /// Host directory mounted at a fixed container path that holds the
+    /// administrator recovery key file.
+    pub admin_recovery_key_dir: Option<String>,
+    pub admin_recovery_key_mode: AdminRecoveryKeyMode,
 }
 
 impl Config {
@@ -157,6 +186,17 @@ impl fmt::Debug for Config {
             .field(
                 "development_admin_password_only",
                 &self.development_admin_password_only,
+            )
+            .field("admin_email", &self.admin_email)
+            .field("admin_display_name", &self.admin_display_name)
+            .field(
+                "admin_password",
+                &self.admin_password.as_ref().map(|_| "[configured]"),
+            )
+            .field("admin_recovery_key_dir", &self.admin_recovery_key_dir)
+            .field(
+                "admin_recovery_key_mode",
+                &self.admin_recovery_key_mode.label(),
             )
             .finish()
     }

@@ -67,6 +67,15 @@ impl Config {
                 .unwrap_or_default(),
         )?;
         let development_admin_password_only = development_admin_password_only()?;
+        let admin_email =
+            non_empty_env("AIRTEK_ADMIN_EMAIL").map(|value| value.to_ascii_lowercase());
+        let admin_display_name = non_empty_env("AIRTEK_ADMIN_DISPLAY_NAME");
+        let admin_password = non_empty_env("AIRTEK_ADMIN_PASSWORD");
+        let admin_recovery_key_dir = non_empty_env("AIRTEK_ADMIN_RECOVERY_KEY_DIR");
+        let admin_recovery_key_mode = parse_admin_recovery_key_mode()?;
+        if production && admin_recovery_key_dir.is_none() {
+            return Err(ConfigError::MissingAdminRecoveryKeyDir);
+        }
         let media = MediaSettings::disabled();
         if admin_bootstrap_token
             .as_ref()
@@ -107,6 +116,11 @@ impl Config {
             media,
             production,
             development_admin_password_only,
+            admin_email,
+            admin_display_name,
+            admin_password,
+            admin_recovery_key_dir,
+            admin_recovery_key_mode,
         })
     }
 
@@ -141,6 +155,11 @@ impl Config {
             media: MediaSettings::disabled(),
             production: false,
             development_admin_password_only: false,
+            admin_email: Some("local-admin@airtek.invalid".into()),
+            admin_display_name: Some("Local Administrator".into()),
+            admin_password: Some("Local-Admin-Password-2026".into()),
+            admin_recovery_key_dir: Some(".local/admin-recovery-key".into()),
+            admin_recovery_key_mode: AdminRecoveryKeyMode::Auto,
         }
     }
 

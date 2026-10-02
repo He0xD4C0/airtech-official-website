@@ -203,6 +203,12 @@ const router = createRouter({
       meta: { title: '接受邀请' },
     },
     {
+      path: '/onboarding',
+      name: 'onboarding',
+      component: () => import('@/features/auth/views/OnboardingView.vue'),
+      meta: { title: '首次安全设置', requiresAuth: true },
+    },
+    {
       path: '/forbidden',
       name: 'forbidden',
       component: () => import('@/app/views/ForbiddenView.vue'),
@@ -238,8 +244,8 @@ router.beforeEach(async (to) => {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
 
-  if (auth.requiresOnboarding && to.name !== 'account-security') {
-    return { name: 'account-security' }
+  if (auth.requiresOnboarding && to.name !== 'onboarding') {
+    return { name: 'onboarding' }
   }
 
   if ((to.name === 'login' || to.name === 'setup') && auth.isAuthenticated) {

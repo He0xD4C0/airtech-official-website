@@ -14,6 +14,48 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         "properties": {"email": {"type": "string", "format": "email"}, "password": {"type": "string", "format": "password", "writeOnly": true}, "otp": nullable(json!({"type": "string", "description": "A six-digit TOTP or one unused recovery code.", "pattern": "^(?:[0-9]{6}|[A-HJ-NP-Za-hj-np-z2-9]{4}(?:-[A-HJ-NP-Za-hj-np-z2-9]{4}){3})$", "writeOnly": true}))}
     }));
     s.insert(
+        "ChangePasswordRequest".into(),
+        object(
+            &["currentPassword", "newPassword"],
+            json!({
+                "currentPassword": {"type": "string", "format": "password", "writeOnly": true},
+                "newPassword": {"type": "string", "format": "password", "minLength": 12, "maxLength": 256, "writeOnly": true}
+            }),
+        ),
+    );
+    s.insert(
+        "RecoveryRequest".into(),
+        object(
+            &["email", "recoveryKey", "newPassword"],
+            json!({
+                "email": {"type": "string", "format": "email"},
+                "recoveryKey": {"type": "string", "minLength": 52, "maxLength": 52, "pattern": "^[A-Z2-7]{52}$", "writeOnly": true},
+                "newPassword": {"type": "string", "format": "password", "minLength": 12, "maxLength": 256, "writeOnly": true}
+            }),
+        ),
+    );
+    s.insert(
+        "RecoveryKeyState".into(),
+        object(
+            &["origin", "confirmed"],
+            json!({
+                "origin": {"type": "string", "enum": ["generated", "provided"]},
+                "confirmed": {"type": "boolean"},
+                "recoveryKey": {"type": "string", "readOnly": true}
+            }),
+        ),
+    );
+    s.insert(
+        "RecoveryKeyRotationResult".into(),
+        object(
+            &["recoveryKey", "rotatedAt"],
+            json!({
+                "recoveryKey": {"type": "string", "readOnly": true},
+                "rotatedAt": timestamp()
+            }),
+        ),
+    );
+    s.insert(
         "AcceptInvitationRequest".into(),
         object(
             &["token", "password"],

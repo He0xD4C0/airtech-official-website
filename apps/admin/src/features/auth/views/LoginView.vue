@@ -20,7 +20,7 @@ async function submit(): Promise<void> {
   try {
     await auth.login(email.value.trim(), password.value, otp.value || undefined)
     if (auth.requiresOnboarding) {
-      await router.replace('/account/security')
+      await router.replace('/onboarding')
       return
     }
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'

@@ -166,6 +166,24 @@ RecoveryCodeSet: {
             generatedAt: string;
             readonly recoveryCodes: string[];
         };
+RecoveryKeyRotationResult: {
+            readonly recoveryKey: string;
+            /** Format: date-time */
+            rotatedAt: string;
+        };
+RecoveryKeyState: {
+            confirmed: boolean;
+            /** @enum {string} */
+            origin: "generated" | "provided";
+            readonly recoveryKey?: string;
+        };
+RecoveryRequest: {
+            /** Format: email */
+            email: string;
+            /** Format: password */
+            newPassword: string;
+            recoveryKey: string;
+        };
 RelationCollectionBlock: {
             heading?: string | null;
             /** Format: uuid */
@@ -477,23 +495,5 @@ StagingRecordPage: {
             items: components["schemas"]["StagingRecord"][];
             nextCursor: string | null;
             total: number;
-        };
-/** @enum {string} */
-        StagingValidationStatus: "pending" | "valid" | "invalid";
-SyncMapping: {
-            active: boolean;
-            /** Format: uuid */
-            connectorId: string;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: uuid */
-            id: string;
-            mapping: unknown;
-            schemaVersion: number;
-            version: string;
-        };
-SyncMappingPage: {
-            items: components["schemas"]["SyncMapping"][];
-            nextCursor: string | null;
         };
 }

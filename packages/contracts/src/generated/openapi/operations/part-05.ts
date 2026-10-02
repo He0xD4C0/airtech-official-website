@@ -6,33 +6,26 @@
 import type { components } from '../components'
 
 export interface OperationsPart05 {
-assignContactInboxItem: {
+confirmTotpEnrollment: {
         parameters: {
             query?: never;
-            header: {
-                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
-                "Idempotency-Key": string;
-                /** @description Current entity ETag, formatted as revision-N. */
-                "If-Match": string;
-            };
-            path: {
-                id: string;
-            };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AssignBusinessInboxRequest"];
+                "application/json": components["schemas"]["TotpCodeRequest"];
             };
         };
         responses: {
-            /** @description Business workflow result */
+            /** @description One-time recovery codes */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BusinessInboxItem"];
+                    "application/json": components["schemas"]["RecoveryCodeSet"];
                 };
             };
             /** @description Malformed request */
@@ -127,33 +120,22 @@ assignContactInboxItem: {
             };
         };
     };
-createContactInternalNote: {
+startTotpEnrollment: {
         parameters: {
             query?: never;
-            header: {
-                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
-                "Idempotency-Key": string;
-                /** @description Current entity ETag, formatted as revision-N. */
-                "If-Match": string;
-            };
-            path: {
-                id: string;
-            };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateBusinessNoteRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description Business workflow result */
-            201: {
+            /** @description TOTP enrollment details */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BusinessInboxDetail"];
+                    "application/json": components["schemas"]["TotpEnrollment"];
                 };
             };
             /** @description Malformed request */
@@ -248,7 +230,125 @@ createContactInternalNote: {
             };
         };
     };
-getContactPii: {
+listContactInboxItems: {
+        parameters: {
+            query?: {
+                assignedTo?: string;
+                /** @description Opaque endpoint-scoped cursor returned by the previous page. */
+                cursor?: string;
+                /** @description Page size; values outside 1 through 100 return Problem Details 400. */
+                limit?: number;
+                q?: string;
+                status?: components["schemas"]["BusinessInboxStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Business inbox page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessInboxPage"];
+                };
+            };
+            /** @description Malformed request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Admin session required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Permission, CSRF, origin, or TOTP check failed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Resource or route not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Concurrent or domain conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Required service is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+getContactInboxItem: {
         parameters: {
             query?: never;
             header?: never;
@@ -259,135 +359,13 @@ getContactPii: {
         };
         requestBody?: never;
         responses: {
-            /** @description Explicit PII detail */
-            200: {
-                headers: {
-                    "Cache-Control"?: "private, no-store, max-age=0";
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BusinessPii"];
-                };
-            };
-            /** @description Malformed request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Admin session required */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Permission, CSRF, origin, or TOTP check failed */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Resource or route not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Concurrent or domain conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Validation failed */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description If-Match precondition required */
-            428: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Authentication rate limit exceeded */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Required service is unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-        };
-    };
-updateContactInboxStatus: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
-                "Idempotency-Key": string;
-                /** @description Current entity ETag, formatted as revision-N. */
-                "If-Match": string;
-            };
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateBusinessStatusRequest"];
-            };
-        };
-        responses: {
-            /** @description Business workflow result */
+            /** @description Business inbox detail */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BusinessInboxItem"];
+                    "application/json": components["schemas"]["BusinessInboxDetail"];
                 };
             };
             /** @description Malformed request */

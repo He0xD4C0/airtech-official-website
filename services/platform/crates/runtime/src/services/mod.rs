@@ -1,6 +1,7 @@
 pub mod admin_analytics;
 pub mod admin_product_query;
 pub mod admin_products;
+pub mod admin_provisioning;
 pub mod admin_source_metadata;
 pub mod admin_sync;
 pub mod audit_log;
@@ -25,6 +26,7 @@ pub mod product_publication;
 pub mod public_content;
 pub mod public_readiness;
 pub mod public_site_inventory;
+pub mod recovery_key;
 pub mod request_metrics;
 pub mod runtime_preparation;
 pub mod selector;

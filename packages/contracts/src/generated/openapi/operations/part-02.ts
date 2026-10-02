@@ -346,7 +346,7 @@ logoutAdministrator: {
             };
         };
     };
-regenerateRecoveryCodes: {
+changeAdministratorPassword: {
         parameters: {
             query?: never;
             header?: never;
@@ -355,18 +355,16 @@ regenerateRecoveryCodes: {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TotpCodeRequest"];
+                "application/json": components["schemas"]["ChangePasswordRequest"];
             };
         };
         responses: {
-            /** @description Replacement recovery codes */
-            200: {
+            /** @description Password changed */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["RecoveryCodeSet"];
-                };
+                content?: never;
             };
             /** @description Malformed request */
             400: {

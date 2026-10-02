@@ -126,6 +126,37 @@ pub struct TotpCodeRequest {
     pub(super) code: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ChangePasswordRequest {
+    pub(super) current_password: String,
+    pub(super) new_password: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RecoveryRequest {
+    pub(super) email: String,
+    pub(super) recovery_key: String,
+    pub(super) new_password: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecoveryKeyState {
+    pub(super) origin: String,
+    pub(super) confirmed: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) recovery_key: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecoveryKeyRotationResult {
+    pub(super) recovery_key: String,
+    pub(super) rotated_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TotpEnrollment {

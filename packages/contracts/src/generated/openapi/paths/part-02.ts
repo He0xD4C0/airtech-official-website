@@ -6,6 +6,74 @@
 import type { operations } from '../operations'
 
 export interface PathsPart02 {
+"/api/admin/v1/content-drafts/{draftId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a clean saved draft for review or automatic publication */
+        post: operations["submitPrivateContentDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/content-drafts/{draftId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw an owned pending draft */
+        post: operations["withdrawPrivateContentDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/content-drafts/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List controlled CMS templates */
+        get: operations["listContentDraftTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/content-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the current review queue */
+        get: operations["listContentReviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/content-reviews/{draftId}/approve": {
         parameters: {
             query?: never;
@@ -413,74 +481,6 @@ export interface PathsPart02 {
         put?: never;
         /** Validate and import an authoritative Product Master CSV */
         post: operations["importProductMaster"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/products/imports/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get one Product Master import report */
-        get: operations["getProductImportRun"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/published-content": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List company current published content */
-        get: operations["listCurrentPublishedContent"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/published-content/{contentId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read company current published content */
-        get: operations["getCurrentPublishedContent"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/published-content/{contentId}/drafts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Copy current published content to the user's new private draft */
-        post: operations["copyPublishedContentToPrivateDraft"];
         delete?: never;
         options?: never;
         head?: never;

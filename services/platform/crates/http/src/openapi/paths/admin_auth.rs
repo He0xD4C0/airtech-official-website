@@ -36,6 +36,71 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
     );
     add(
         paths,
+        "/api/admin/v1/auth/password",
+        "post",
+        admin(
+            body(
+                op(
+                    "changeAdministratorPassword",
+                    "Change the current administrator password and revoke other sessions",
+                    "adminAuth",
+                    [("204", empty_response("Password changed"))],
+                ),
+                r("ChangePasswordRequest"),
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/auth/recovery",
+        "post",
+        body(
+            op(
+                "recoverAdministratorWithKey",
+                "Reset the root administrator with the offline recovery key and rotate it",
+                "adminAuth",
+                [(
+                    "200",
+                    json_response("Rotated recovery key", r("RecoveryKeyRotationResult")),
+                )],
+            ),
+            r("RecoveryRequest"),
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/auth/recovery-key",
+        "get",
+        admin(
+            op(
+                "getAdministratorRecoveryKey",
+                "Read recovery-key state; plaintext is returned only before first confirmation",
+                "adminAuth",
+                [(
+                    "200",
+                    json_response("Recovery key state", r("RecoveryKeyState")),
+                )],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/auth/recovery-key/confirm",
+        "post",
+        admin(
+            op(
+                "confirmAdministratorRecoveryKey",
+                "Record that the administrator stored the recovery key offline",
+                "adminAuth",
+                [("204", empty_response("Recovery key confirmed"))],
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
         "/api/admin/v1/auth/invitations/accept",
         "post",
         body(

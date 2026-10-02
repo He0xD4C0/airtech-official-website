@@ -56,4 +56,8 @@ pub enum ConfigError {
     InvalidMediaSettings(String),
     #[error("a devtools build requires DATABASE_URL or AIRTEK_ADMIN_BOOTSTRAP_TOKEN so an authenticated administrator can be established")]
     MissingDevtoolsAuthentication,
+    #[error("AIRTEK_ADMIN_RECOVERY_KEY_MODE must be auto, generate or load")]
+    InvalidAdminRecoveryKeyMode,
+    #[error("AIRTEK_ADMIN_RECOVERY_KEY_DIR is required in production builds")]
+    MissingAdminRecoveryKeyDir,
 }

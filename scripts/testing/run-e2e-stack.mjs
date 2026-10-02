@@ -67,6 +67,10 @@ const environment = {
   AIRTEK_FLYWAY_TARGET: String(latestMigrationVersion),
   AIRTEK_ADMIN_BOOTSTRAP_TOKEN: process.env.E2E_ADMIN_BOOTSTRAP_TOKEN
     ?? 'airtek-e2e-bootstrap-token-change-me',
+  AIRTEK_ADMIN_EMAIL: process.env.E2E_ADMIN_EMAIL ?? 'e2e-admin@airtek.invalid',
+  AIRTEK_ADMIN_DISPLAY_NAME: 'AIRTEK E2E Administrator',
+  AIRTEK_ADMIN_PASSWORD: process.env.E2E_ADMIN_PASSWORD ?? 'Airtek-E2E-Admin-123!',
+  AIRTEK_ADMIN_RECOVERY_KEY_MODE: 'auto',
   AIRTEK_TOTP_ENCRYPTION_KEY: process.env.AIRTEK_TOTP_ENCRYPTION_KEY
     ?? Buffer.alloc(32, 0x42).toString('base64'),
   AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: process.env.AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY

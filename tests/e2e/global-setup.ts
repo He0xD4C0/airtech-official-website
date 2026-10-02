@@ -233,6 +233,9 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
   })
   let api: ApiContext | undefined
   try {
+    // The isolated stack provisions the initial administrator from
+    // AIRTEK_ADMIN_* at startup, so `/auth/setup` is already closed. Fall back
+    // to a normal password login with the same credentials.
     const setup = await setupApi.post('/api/admin/v1/auth/setup', {
       data: {
         displayName: administrator.displayName,
@@ -241,13 +244,18 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
         bootstrapToken: administrator.bootstrapToken,
       },
     })
-    if (setup.status() !== 201) {
-      throw new Error(`Unable to create the isolated E2E administrator (${setup.status()}): ${await setup.text()}`)
+    const sessionResponse = setup.status() === 201
+      ? setup
+      : await setupApi.post('/api/admin/v1/auth/login', {
+          data: { email: administrator.email, password: administrator.password },
+        })
+    if (sessionResponse.status() !== 201 && sessionResponse.status() !== 200) {
+      throw new Error(`Unable to establish the isolated E2E administrator (${sessionResponse.status()}): ${await sessionResponse.text()}`)
     }
-    const csrf = setup.headers()['x-csrf-token']
-    if (!csrf) throw new Error('Initial setup did not return the CSRF token required for TOTP enrollment.')
+    let csrf = sessionResponse.headers()['x-csrf-token']
+    if (!csrf) throw new Error('Administrator login did not return the CSRF token required for onboarding.')
     const cookieHostname = new URL(apiOrigin).hostname
-    let productionCookies = secureHostOnlyCookies(setup, cookieHostname)
+    let productionCookies = secureHostOnlyCookies(sessionResponse, cookieHostname)
     api = await request.newContext({
       baseURL: apiControlOrigin,
       extraHTTPHeaders: {
@@ -255,6 +263,31 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
         Cookie: cookieRequestHeader(productionCookies),
       },
     })
+    // Complete the first-login onboarding: rotate the initial password and
+    // confirm the generated recovery key before any business route is allowed.
+    const passwordChange = await api.post('/api/admin/v1/auth/password', {
+      headers: { 'X-CSRF-Token': csrf },
+      data: { currentPassword: administrator.password, newPassword: administrator.password },
+    })
+    if (!passwordChange.ok()) {
+      throw new Error(`Unable to change the E2E administrator password (${passwordChange.status()}): ${await passwordChange.text()}`)
+    }
+    const rotatedSession = await api.get('/api/admin/v1/auth/session')
+    if (!rotatedSession.ok()) {
+      throw new Error(`Unable to refresh the onboarded E2E session (${rotatedSession.status()}): ${await rotatedSession.text()}`)
+    }
+    const rotatedCsrf = rotatedSession.headers()['x-csrf-token']
+    if (!rotatedCsrf) throw new Error('Onboarding did not return a rotated CSRF token.')
+    csrf = rotatedCsrf
+    const recoveryState = await api.get('/api/admin/v1/auth/recovery-key')
+    if (recoveryState.ok()) {
+      const confirmation = await api.post('/api/admin/v1/auth/recovery-key/confirm', {
+        headers: { 'X-CSRF-Token': csrf },
+      })
+      if (!confirmation.ok()) {
+        throw new Error(`Unable to confirm the E2E recovery key (${confirmation.status()}): ${await confirmation.text()}`)
+      }
+    }
     const enrollment = await api.post('/api/admin/v1/auth/totp/enrollment', {
       headers: { 'X-CSRF-Token': csrf },
     })

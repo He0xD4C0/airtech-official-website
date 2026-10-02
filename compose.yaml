@@ -124,6 +124,11 @@ services:
       AIRTEK_DEV_ADMIN_DISPLAY_NAME: AIRTEK Local Administrator
       AIRTEK_DEV_ADMIN_EMAIL: local-admin@airtek.invalid
       AIRTEK_DEV_ADMIN_PASSWORD: Airtek-Local-Admin-20260917!
+      AIRTEK_ADMIN_EMAIL: ${AIRTEK_ADMIN_EMAIL:-}
+      AIRTEK_ADMIN_DISPLAY_NAME: ${AIRTEK_ADMIN_DISPLAY_NAME:-}
+      AIRTEK_ADMIN_PASSWORD: ${AIRTEK_ADMIN_PASSWORD:-}
+      AIRTEK_ADMIN_RECOVERY_KEY_DIR: /var/lib/airtek/admin-recovery-key
+      AIRTEK_ADMIN_RECOVERY_KEY_MODE: ${AIRTEK_ADMIN_RECOVERY_KEY_MODE:-auto}
       AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.airtek.localhost:8088}
       AIRTEK_ADMIN_ORIGIN: ${AIRTEK_COMPOSE_ADMIN_ORIGIN:-http://admin.airtek.localhost:8088}
       AIRTEK_API_ORIGIN: ${AIRTEK_COMPOSE_API_ORIGIN:-http://api.airtek.localhost:8088}
@@ -134,6 +139,8 @@ services:
       ADMIN_HOST: ${ADMIN_HOST:-admin.airtek.localhost}
       API_HOST: ${API_HOST:-api.airtek.localhost}
       RUST_LOG: ${RUST_LOG:-airtek_runtime=info,airtek_http=info,airtek_jobs=info}
+    volumes:
+      - admin-recovery-key:/var/lib/airtek/admin-recovery-key
     depends_on:
       flyway-migrate:
         condition: service_completed_successfully
@@ -155,6 +162,11 @@ services:
       AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_COMPOSE_PUBLIC_ORIGIN:-http://www.airtek.localhost:8088}
       AIRTEK_ADMIN_ORIGIN: ${AIRTEK_COMPOSE_ADMIN_ORIGIN:-http://admin.airtek.localhost:8088}
       AIRTEK_DEV_ADMIN_PASSWORD_ONLY: ${AIRTEK_DEV_ADMIN_PASSWORD_ONLY:-true}
+      AIRTEK_ADMIN_EMAIL: ${AIRTEK_ADMIN_EMAIL:-}
+      AIRTEK_ADMIN_DISPLAY_NAME: ${AIRTEK_ADMIN_DISPLAY_NAME:-}
+      AIRTEK_ADMIN_PASSWORD: ${AIRTEK_ADMIN_PASSWORD:-}
+      AIRTEK_ADMIN_RECOVERY_KEY_DIR: /var/lib/airtek/admin-recovery-key
+      AIRTEK_ADMIN_RECOVERY_KEY_MODE: ${AIRTEK_ADMIN_RECOVERY_KEY_MODE:-auto}
       AIRTEK_ADMIN_BOOTSTRAP_TOKEN: ${AIRTEK_ADMIN_BOOTSTRAP_TOKEN:-local-development-bootstrap-change-me}
       AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:-}
       AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: ${AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY:-}
@@ -178,6 +190,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
       - "media.localhost:host-gateway"
+    volumes:
+      - admin-recovery-key:/var/lib/airtek/admin-recovery-key
     depends_on:
       platform-maintenance:
         condition: service_completed_successfully
@@ -317,6 +331,7 @@ volumes:
   postgres-data:
   object-data:
   migration-state:
+  admin-recovery-key:
 
 networks:
   default:

@@ -31,7 +31,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             airtek_runtime::services::public_site_inventory::inspect(&pool).await?
         }
         Some("prepare-runtime") => {
-            serde_json::to_value(runtime_preparation::prepare(&pool).await?)?
+            let runtime = runtime_preparation::prepare(&pool).await?;
+            let config = airtek_runtime::config::Config::from_env()?;
+            let admin_provisioning =
+                airtek_runtime::services::admin_provisioning::ensure(&pool, &config).await?;
+            serde_json::json!({
+                "runtime": runtime,
+                "adminProvisioning": admin_provisioning,
+            })
+        }
+        Some("rotate-recovery-key") => {
+            let config = airtek_runtime::config::Config::from_env()?;
+            serde_json::to_value(
+                airtek_runtime::services::admin_provisioning::rotate_recovery_key(&pool, &config)
+                    .await?,
+            )?
         }
         Some("check-public-readiness") => {
             serde_json::to_value(public_readiness::check(&pool).await?)?
@@ -123,6 +137,7 @@ fn validate_command(command: Option<&str>) -> Result<(), Box<dyn std::error::Err
     match command {
         Some(
             "prepare-runtime"
+            | "rotate-recovery-key"
             | "check-public-readiness"
             | "inspect-public-site"
             | "refresh-product-archive"

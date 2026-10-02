@@ -125,6 +125,40 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/auth/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change the current administrator password and revoke other sessions */
+        post: operations["changeAdministratorPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/auth/recovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset the root administrator with the offline recovery key and rotate it */
+        post: operations["recoverAdministratorWithKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/auth/recovery-codes/regenerate": {
         parameters: {
             query?: never;
@@ -136,6 +170,40 @@ export interface PathsPart01 {
         put?: never;
         /** Invalidate prior recovery codes and return a new one-time set */
         post: operations["regenerateRecoveryCodes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/auth/recovery-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read recovery-key state; plaintext is returned only before first confirmation */
+        get: operations["getAdministratorRecoveryKey"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/auth/recovery-key/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record that the administrator stored the recovery key offline */
+        post: operations["confirmAdministratorRecoveryKey"];
         delete?: never;
         options?: never;
         head?: never;
@@ -409,74 +477,6 @@ export interface PathsPart01 {
         get?: never;
         /** Replace read-only draft shares */
         put: operations["setPrivateContentDraftShares"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content-drafts/{draftId}/submit": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Submit a clean saved draft for review or automatic publication */
-        post: operations["submitPrivateContentDraft"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content-drafts/{draftId}/withdraw": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Withdraw an owned pending draft */
-        post: operations["withdrawPrivateContentDraft"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content-drafts/templates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List controlled CMS templates */
-        get: operations["listContentDraftTemplates"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content-reviews": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List the current review queue */
-        get: operations["listContentReviews"];
-        put?: never;
         post?: never;
         delete?: never;
         options?: never;

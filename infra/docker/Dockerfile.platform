@@ -28,7 +28,8 @@ FROM debian:bookworm-slim
 RUN apt-get update \
     && apt-get install --no-install-recommends -y ca-certificates curl \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --system --uid 10001 --create-home airtek
+    && useradd --system --uid 10001 --create-home airtek \
+    && install -d -o 10001 -g 10001 -m 0750 /var/lib/airtek/admin-recovery-key
 COPY --from=build /workspace/services/platform/target/release/airtek-api /usr/local/bin/airtek-api
 COPY --from=build /workspace/services/platform/target/release/airtek-worker /usr/local/bin/airtek-worker
 COPY --from=build /workspace/services/platform/target/release/airtek-maintenance /usr/local/bin/airtek-maintenance

@@ -6,6 +6,24 @@
 import type { components } from '../components'
 
 export interface SchemasPart05 {
+/** @enum {string} */
+        StagingValidationStatus: "pending" | "valid" | "invalid";
+SyncMapping: {
+            active: boolean;
+            /** Format: uuid */
+            connectorId: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            mapping: unknown;
+            schemaVersion: number;
+            version: string;
+        };
+SyncMappingPage: {
+            items: components["schemas"]["SyncMapping"][];
+            nextCursor: string | null;
+        };
 SyncRun: {
             assetsCopied: number;
             assetsFailed: number;

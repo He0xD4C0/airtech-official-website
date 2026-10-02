@@ -39,9 +39,15 @@ services:
       AIRTEK_APPROVED_PRODUCT_MASTER_VALID_ROWS: ${AIRTEK_APPROVED_PRODUCT_MASTER_VALID_ROWS:?set the approved Product Master valid-row count}
       AIRTEK_APPROVED_PRODUCT_MASTER_ERROR_ROWS: ${AIRTEK_APPROVED_PRODUCT_MASTER_ERROR_ROWS:?set the approved Product Master error-row count}
       AIRTEK_ARCHIVE_OBJECT_ROOT: /var/lib/airtek/archive
+      AIRTEK_ADMIN_EMAIL: ${AIRTEK_ADMIN_EMAIL:?set the initial administrator email}
+      AIRTEK_ADMIN_DISPLAY_NAME: ${AIRTEK_ADMIN_DISPLAY_NAME:?set the initial administrator display name}
+      AIRTEK_ADMIN_PASSWORD: ${AIRTEK_ADMIN_PASSWORD:?set the initial administrator password from the secret manager}
+      AIRTEK_ADMIN_RECOVERY_KEY_DIR: /var/lib/airtek/admin-recovery-key
+      AIRTEK_ADMIN_RECOVERY_KEY_MODE: ${AIRTEK_ADMIN_RECOVERY_KEY_MODE:-auto}
       RUST_LOG: ${RUST_LOG:-airtek_runtime=info,airtek_http=info,airtek_jobs=info}
     volumes:
       - "${AIRTEK_ARCHIVE_DIR:-/srv/airtek/archive}:/var/lib/airtek/archive:ro,Z"
+      - "${AIRTEK_ADMIN_RECOVERY_KEY_DIR:-/srv/airtek/keys/admin-recovery-key}:/var/lib/airtek/admin-recovery-key:Z"
     depends_on:
       flyway-migrate:
         condition: service_completed_successfully
@@ -55,6 +61,11 @@ services:
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
       AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:?set AIRTEK_PUBLIC_ORIGIN}
       AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:?set AIRTEK_ADMIN_ORIGIN}
+      AIRTEK_ADMIN_EMAIL: ${AIRTEK_ADMIN_EMAIL:?set the initial administrator email}
+      AIRTEK_ADMIN_DISPLAY_NAME: ${AIRTEK_ADMIN_DISPLAY_NAME:?set the initial administrator display name}
+      AIRTEK_ADMIN_PASSWORD: ${AIRTEK_ADMIN_PASSWORD:?set the initial administrator password from the secret manager}
+      AIRTEK_ADMIN_RECOVERY_KEY_DIR: /var/lib/airtek/admin-recovery-key
+      AIRTEK_ADMIN_RECOVERY_KEY_MODE: ${AIRTEK_ADMIN_RECOVERY_KEY_MODE:-auto}
       AIRTEK_ADMIN_BOOTSTRAP_TOKEN: ${AIRTEK_ADMIN_BOOTSTRAP_TOKEN:-}
       AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:?set AIRTEK_TOTP_ENCRYPTION_KEY from the secret manager}
       AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: ${AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY:?set AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY from the secret manager}
@@ -74,6 +85,8 @@ services:
       RUST_LOG: ${RUST_LOG:-airtek_runtime=info,airtek_http=info,airtek_jobs=info,tower_http=info}
     expose:
       - "8080"
+    volumes:
+      - "${AIRTEK_ADMIN_RECOVERY_KEY_DIR:-/srv/airtek/keys/admin-recovery-key}:/var/lib/airtek/admin-recovery-key:Z"
     depends_on:
       platform-maintenance:
         condition: service_completed_successfully

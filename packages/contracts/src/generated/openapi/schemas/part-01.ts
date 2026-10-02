@@ -350,6 +350,12 @@ CaseStudyTypeFields: {
             industry?: string | null;
             location?: string | null;
         };
+ChangePasswordRequest: {
+            /** Format: password */
+            currentPassword: string;
+            /** Format: password */
+            newPassword: string;
+        };
 /** @enum {string} */
         CmsBodyPolicy: "required" | "optional" | "forbidden";
 /** @enum {string} */
