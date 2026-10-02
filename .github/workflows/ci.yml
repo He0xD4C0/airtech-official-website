@@ -236,9 +236,6 @@ jobs:
       contents: read
       packages: read
     runs-on: ubuntu-latest
-    env:
-      AIRTEK_OBJECT_STORE_IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-minio${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
-      AIRTEK_OBJECT_STORE_MC_IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-minio-mc${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
     services:
       postgres:
         image: postgres:17-alpine
@@ -262,6 +259,8 @@ jobs:
       FLYWAY_PASSWORD: airtek
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: airtek_runtime
       AIRTEK_FLYWAY_TARGET: 28
+      AIRTEK_OBJECT_STORE_IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-minio${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
+      AIRTEK_OBJECT_STORE_MC_IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-minio-mc${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
     steps:
       - uses: actions/checkout@v4
       - name: Log in to GHCR for the private object-storage images
