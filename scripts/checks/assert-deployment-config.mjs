@@ -287,7 +287,7 @@ for (const variable of ['AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY', 'AIRTEK_ANALYTI
 forbidMatch(serviceBlock(compose, 'postgres'), /^\s+ports:/mu, 'Base Compose must not publish PostgreSQL to the host.')
 requireMatch(serviceBlock(compose, 'minio'), /profiles:\s*\["minio"\]/u, 'Local MinIO must be controlled by the minio Compose profile.')
 requireMatch(serviceBlock(compose, 'minio-create-bucket'), /profiles:\s*\["minio"\]/u, 'Local bucket initialization must use the minio Compose profile.')
-requireMatch(serviceBlock(compose, 'minio'), /127\.0\.0\.1:\$\{AIRTEK_OBJECT_STORE_HOST_PORT:-19000\}:9000[\s\S]*127\.0\.0\.1:\$\{AIRTEK_OBJECT_STORE_CONSOLE_HOST_PORT:-19001\}:9001/u, 'Profiled MinIO ports must be configurable and loopback-only.')
+requireMatch(serviceBlock(compose, 'minio'), /\$\{AIRTEK_OBJECT_STORE_BIND_ADDRESS:-127\.0\.0\.1\}:\$\{AIRTEK_OBJECT_STORE_HOST_PORT:-19000\}:9000[\s\S]*\$\{AIRTEK_OBJECT_STORE_BIND_ADDRESS:-127\.0\.0\.1\}:\$\{AIRTEK_OBJECT_STORE_CONSOLE_HOST_PORT:-19001\}:9001/u, 'Profiled MinIO ports must be configurable and loopback-only by default.')
 requireMatch(serviceBlock(compose, 'minio-create-bucket'), /mc mb --ignore-existing/u, 'Local object storage must create its media bucket idempotently.')
 requireMatch(serviceBlock(compose, 'minio'), /image:\s*\$\{AIRTEK_OBJECT_STORE_IMAGE:\?/u, 'Local MinIO must pull the repository source-built image from a configured reference.')
 requireMatch(serviceBlock(compose, 'minio'), /healthcheck:[\s\S]*\/minio\/health\/live/u, 'Local MinIO must expose a container healthcheck.')

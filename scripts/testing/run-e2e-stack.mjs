@@ -49,6 +49,9 @@ const environment = {
   AIRTEK_GATEWAY_HOST_PORT: gatewayPort,
   AIRTEK_OBJECT_STORE_HOST_PORT: minioPort,
   AIRTEK_OBJECT_STORE_CONSOLE_HOST_PORT: minioConsolePort,
+  // The API validates object storage through the host gateway, so the isolated
+  // stack publishes MinIO beyond loopback for the duration of the run.
+  AIRTEK_OBJECT_STORE_BIND_ADDRESS: '0.0.0.0',
   AIRTEK_COMPOSE_PUBLIC_ORIGIN: publicOrigin,
   AIRTEK_COMPOSE_ADMIN_ORIGIN: adminOrigin,
   AIRTEK_COMPOSE_API_ORIGIN: apiOrigin,
