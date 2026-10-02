@@ -37,7 +37,7 @@ test('uses tmpfs, a dynamic loopback port, and removes only its owned container'
   const store = contractObjectStore(name, run, capture)
   assert.equal(await store.start(), 'http://127.0.0.1:19099')
   assert.ok(calls[0].args.includes('127.0.0.1::9000'))
-  assert.ok(calls[0].args.includes('/data:rw'))
+  assert.ok(calls[0].args.includes('/data:rw,uid=10001,gid=10001'))
   assert.ok(calls[1].args.includes(`container:${name}`))
   assert.equal(await store.cleanup(), true)
   assert.deepEqual(calls.at(-1), { command: 'docker', args: ['rm', '--force', name], options: { cleanup: true } })
