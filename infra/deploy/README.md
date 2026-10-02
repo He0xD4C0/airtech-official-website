@@ -161,8 +161,11 @@ The two streams never share a container package: development images publish to
 `airtekpower-<component>-dev` while release images keep
 `airtekpower-<component>`. A development release therefore cannot overwrite or
 evict a release artifact, and retention pruning is scoped to the publishing
-stream. Every package is private, so target hosts must authenticate with a
-`read:packages` token before pulling.
+stream. Packages published from this public repository default to public
+visibility, which is the current state, so target hosts pull anonymously. To
+make them private, change each package's visibility in GitHub and add a
+`read:packages` token to `/etc/airtek/cd.env`; the on-host agent already
+supports that credential.
 
 MinIO withdrew its public images and prebuilt binaries, so the release also
 publishes `airtekpower-minio[-dev]` and `airtekpower-minio-mc[-dev]` built from
