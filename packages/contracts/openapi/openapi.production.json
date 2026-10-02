@@ -8210,30 +8210,6 @@
         ],
         "type": "object"
       },
-      "RecoveryCodeSet": {
-        "additionalProperties": false,
-        "properties": {
-          "generatedAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "recoveryCodes": {
-            "items": {
-              "pattern": "^[A-HJ-NP-Z2-9]{4}(?:-[A-HJ-NP-Z2-9]{4}){3}$",
-              "type": "string"
-            },
-            "maxItems": 10,
-            "minItems": 10,
-            "readOnly": true,
-            "type": "array"
-          }
-        },
-        "required": [
-          "recoveryCodes",
-          "generatedAt"
-        ],
-        "type": "object"
-      },
       "RecoveryKeyRotationResult": {
         "additionalProperties": false,
         "properties": {
@@ -12947,143 +12923,6 @@
         ]
       }
     },
-    "/api/admin/v1/auth/recovery-codes/regenerate": {
-      "post": {
-        "operationId": "regenerateRecoveryCodes",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TotpCodeRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecoveryCodeSet"
-                }
-              }
-            },
-            "description": "Replacement recovery codes"
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "security": [
-          {
-            "adminSession": [],
-            "csrfToken": []
-          }
-        ],
-        "summary": "Invalidate prior recovery codes and return a new one-time set",
-        "tags": [
-          "adminAuth"
-        ]
-      }
-    },
     "/api/admin/v1/auth/recovery-key": {
       "get": {
         "operationId": "getAdministratorRecoveryKey",
@@ -13889,15 +13728,8 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecoveryCodeSet"
-                }
-              }
-            },
-            "description": "One-time recovery codes"
+          "204": {
+            "description": "TOTP enabled"
           },
           "400": {
             "content": {
@@ -14006,7 +13838,7 @@
             "csrfToken": []
           }
         ],
-        "summary": "Verify enrollment and return a one-time recovery-code set",
+        "summary": "Verify the enrollment code and enable TOTP for the account",
         "tags": [
           "adminAuth"
         ]

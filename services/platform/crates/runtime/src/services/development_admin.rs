@@ -95,10 +95,6 @@ pub async fn reset(
 
     let role_id = ensure_super_admin_role(&mut transaction).await?;
     assign_role(&mut transaction, user_id, role_id).await?;
-    sqlx::query("DELETE FROM recovery_codes WHERE user_id=$1")
-        .bind(user_id)
-        .execute(&mut *transaction)
-        .await?;
     sqlx::query("UPDATE sessions SET revoked_at=now() WHERE user_id=$1 AND revoked_at IS NULL")
         .bind(user_id)
         .execute(&mut *transaction)

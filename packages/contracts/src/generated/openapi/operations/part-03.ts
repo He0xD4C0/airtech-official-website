@@ -340,26 +340,22 @@ recoverAdministratorWithKey: {
             };
         };
     };
-regenerateRecoveryCodes: {
+getAdministratorRecoveryKey: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TotpCodeRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description Replacement recovery codes */
+            /** @description Recovery key state */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RecoveryCodeSet"];
+                    "application/json": components["schemas"]["RecoveryKeyState"];
                 };
             };
             /** @description Malformed request */

@@ -32,7 +32,7 @@ pub async fn login(
         return Err(ApiError::unauthorized("Email or password is incorrect."));
     }
     let user = user.expect("valid login has a user");
-    let second_factor = if user.totp_enabled {
+    let totp_satisfied = if user.totp_enabled {
         let Some(code) = request
             .otp
             .as_deref()
@@ -40,19 +40,15 @@ pub async fn login(
             .filter(|code| !code.is_empty())
         else {
             record_auth_failures(&state, &rate_keys).await?;
-            return Err(ApiError::unauthorized(
-                "A valid TOTP or recovery code is required.",
-            ));
+            return Err(ApiError::unauthorized("A valid TOTP code is required."));
         };
-        let Some(method) = verify_login_second_factor(&state, &user, code).await? else {
+        if !verify_login_second_factor(&state, &user, code).await? {
             record_auth_failures(&state, &rate_keys).await?;
-            return Err(ApiError::unauthorized(
-                "A valid TOTP or recovery code is required.",
-            ));
-        };
-        Some(method)
+            return Err(ApiError::unauthorized("A valid TOTP code is required."));
+        }
+        true
     } else {
-        None
+        false
     };
     let issue = create_session(&state, user).await?;
     record_auth_audit(
@@ -60,9 +56,7 @@ pub async fn login(
         &issue.principal.email,
         "auth.login",
         issue.principal.user_id,
-        json!({"secondFactor": second_factor.map(SecondFactorMethod::label).unwrap_or(
-            "none"
-        )}),
+        json!({"secondFactor": if totp_satisfied { "totp" } else { "none" }}),
         &headers,
     )
     .await?;
@@ -186,64 +180,18 @@ pub async fn confirm_totp_enrollment(
         .clone()
         .try_acquire_owned()
         .map_err(|_| ApiError::too_many_requests("Authentication capacity is temporarily full."))?;
-    let (codes, hashes) = new_recovery_code_set()?;
-    persist_confirmed_totp(&state, principal.user_id, &hashes).await?;
+    persist_confirmed_totp(&state, principal.user_id).await?;
     clear_auth_rate_limits(&state, &rate_keys).await?;
     record_auth_audit(
         &state,
         &principal.email,
         "auth.totp.enabled",
         principal.user_id,
-        json!({"totpEnabled": true, "recoveryCodeCount": codes.len()}),
+        json!({"totpEnabled": true}),
         &headers,
     )
     .await?;
-    Ok(sensitive_json(RecoveryCodeSet {
-        recovery_codes: codes,
-        generated_at: Utc::now(),
-    }))
-}
-
-pub async fn regenerate_recovery_codes(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    Json(request): Json<TotpCodeRequest>,
-) -> Result<Response, ApiError> {
-    let principal = authenticate_with_csrf(&state, &headers).await?;
-    if !principal.totp_enabled {
-        return Err(ApiError::forbidden(
-            "TOTP must be enabled before recovery codes can be regenerated.",
-        ));
-    }
-    let rate_keys = rate_limit_keys("totp-regenerate", "authenticated-session", &principal.email);
-    check_auth_rate_limits(&state, &rate_keys).await?;
-    if !verify_principal_totp(&state, &principal, request.code.trim()).await? {
-        record_auth_failures(&state, &rate_keys).await?;
-        return Err(ApiError::unauthorized(
-            "The TOTP code is invalid or expired.",
-        ));
-    }
-    let _hash_slot = state
-        .auth_hash_slots
-        .clone()
-        .try_acquire_owned()
-        .map_err(|_| ApiError::too_many_requests("Authentication capacity is temporarily full."))?;
-    let (codes, hashes) = new_recovery_code_set()?;
-    replace_recovery_codes(&state, principal.user_id, &hashes).await?;
-    clear_auth_rate_limits(&state, &rate_keys).await?;
-    record_auth_audit(
-        &state,
-        &principal.email,
-        "auth.recovery_codes.regenerated",
-        principal.user_id,
-        json!({"recoveryCodeCount": codes.len()}),
-        &headers,
-    )
-    .await?;
-    Ok(sensitive_json(RecoveryCodeSet {
-        recovery_codes: codes,
-        generated_at: Utc::now(),
-    }))
+    Ok(StatusCode::NO_CONTENT.into_response())
 }
 
 pub async fn list_sessions(

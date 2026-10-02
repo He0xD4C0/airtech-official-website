@@ -4,7 +4,7 @@ import { devtoolsPermissions } from 'virtual:devtools-routes'
 import type { Permission, SessionUser } from '@/shared/types/domain'
 import { clearAdminCsrfToken } from '@/shared/services/adminCsrf'
 import { adminContractClient } from '@/shared/services/adminApiTransport'
-import type { AcceptInvitationRequest, AdminSession, IdentifyResponse, InvitationAcceptance, LoginStep, RecoveryCodeSet, RecoveryKeyState, TotpEnrollment } from '@/shared/services/adminApiTypes'
+import type { AcceptInvitationRequest, AdminSession, IdentifyResponse, InvitationAcceptance, LoginStep, RecoveryKeyState, TotpEnrollment } from '@/shared/services/adminApiTypes'
 
 function sessionEnvironment(value: string): SessionUser['environment'] {
   switch (value) {
@@ -177,16 +177,8 @@ export const adminAuthApi = {
     return result.data
   },
 
-  async confirmTotpEnrollment(code: string): Promise<RecoveryCodeSet> {
-    const result = await adminContractClient.post('/api/admin/v1/auth/totp/confirm', { body: { code } })
-    return result.data
-  },
-
-  async regenerateRecoveryCodes(code: string): Promise<RecoveryCodeSet> {
-    const result = await adminContractClient.post('/api/admin/v1/auth/recovery-codes/regenerate', {
-      body: { code },
-    })
-    return result.data
+  async confirmTotpEnrollment(code: string): Promise<void> {
+    await adminContractClient.post('/api/admin/v1/auth/totp/confirm', { body: { code } })
   },
 
   async listSessions(): Promise<AdminSession[]> {

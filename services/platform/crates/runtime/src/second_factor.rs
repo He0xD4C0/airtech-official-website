@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use ring::{
     aead::{self, Aad, LessSafeKey, Nonce, UnboundKey},
     rand::{SecureRandom, SystemRandom},
@@ -14,9 +12,6 @@ use crate::error::ApiError;
 const SECRET_BYTES: usize = 20;
 const NONCE_BYTES: usize = 12;
 const CIPHERTEXT_VERSION: u8 = 1;
-const RECOVERY_CODE_COUNT: usize = 10;
-const RECOVERY_CODE_CHARACTERS: usize = 16;
-const RECOVERY_ALPHABET: &[u8; 32] = b"ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 pub struct EnrollmentSecret {
     raw: Vec<u8>,
@@ -147,46 +142,6 @@ fn create_totp(secret: &[u8], account: &str) -> Result<TOTP, ApiError> {
     .map_err(|_| ApiError::internal("TOTP configuration is invalid."))
 }
 
-pub fn generate_recovery_codes() -> Result<Vec<String>, ApiError> {
-    let random = SystemRandom::new();
-    let mut codes = Vec::with_capacity(RECOVERY_CODE_COUNT);
-    let mut canonical_codes = HashSet::with_capacity(RECOVERY_CODE_COUNT);
-    while codes.len() < RECOVERY_CODE_COUNT {
-        let mut bytes = [0_u8; RECOVERY_CODE_CHARACTERS];
-        random
-            .fill(&mut bytes)
-            .map_err(|_| ApiError::internal("Secure recovery-code generation failed."))?;
-        let canonical = bytes
-            .iter()
-            .map(|byte| RECOVERY_ALPHABET[(byte & 31) as usize] as char)
-            .collect::<String>();
-        if !canonical_codes.insert(canonical.clone()) {
-            continue;
-        }
-        codes.push(format!(
-            "{}-{}-{}-{}",
-            &canonical[0..4],
-            &canonical[4..8],
-            &canonical[8..12],
-            &canonical[12..16]
-        ));
-    }
-    Ok(codes)
-}
-
-pub fn normalize_recovery_code(value: &str) -> Option<String> {
-    let normalized = value
-        .chars()
-        .filter(|character| !matches!(character, '-' | ' '))
-        .flat_map(char::to_uppercase)
-        .collect::<String>();
-    (normalized.len() == RECOVERY_CODE_CHARACTERS
-        && normalized
-            .bytes()
-            .all(|byte| RECOVERY_ALPHABET.contains(&byte)))
-    .then_some(normalized)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -211,24 +166,5 @@ mod tests {
         assert!(secret.verify_at(&code, 59, "admin@example.com").unwrap());
         assert!(secret.verify_at(&code, 89, "admin@example.com").unwrap());
         assert!(!secret.verify_at(&code, 120, "admin@example.com").unwrap());
-    }
-
-    #[test]
-    fn recovery_codes_are_high_entropy_unique_and_normalized() {
-        let codes = generate_recovery_codes().unwrap();
-        assert_eq!(codes.len(), RECOVERY_CODE_COUNT);
-        assert_eq!(
-            codes.iter().collect::<HashSet<_>>().len(),
-            RECOVERY_CODE_COUNT
-        );
-        for code in codes {
-            let normalized = normalize_recovery_code(&code).expect("valid generated code");
-            assert_eq!(normalized.len(), RECOVERY_CODE_CHARACTERS);
-            assert_eq!(
-                normalize_recovery_code(&code.to_ascii_lowercase()),
-                Some(normalized)
-            );
-        }
-        assert!(normalize_recovery_code("not-a-code").is_none());
     }
 }

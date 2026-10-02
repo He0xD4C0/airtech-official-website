@@ -169,13 +169,6 @@ pub struct TotpEnrollment {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RecoveryCodeSet {
-    pub(super) recovery_codes: Vec<String>,
-    pub(super) generated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct SessionSummary {
     pub(super) id: Uuid,
     pub(super) current: bool,
@@ -188,19 +181,4 @@ pub(super) struct SessionIssue {
     pub(super) principal: AdminPrincipal,
     pub(super) session_token: String,
     pub(super) csrf_token: String,
-}
-
-#[derive(Clone, Copy)]
-pub(super) enum SecondFactorMethod {
-    Totp,
-    RecoveryCode,
-}
-
-impl SecondFactorMethod {
-    pub(super) fn label(self) -> &'static str {
-        match self {
-            Self::Totp => "totp",
-            Self::RecoveryCode => "recoveryCode",
-        }
-    }
 }

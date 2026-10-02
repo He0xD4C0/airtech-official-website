@@ -2,8 +2,7 @@ use airtek_runtime::{
     auth::{
         accept_invitation, attempt, change_password, confirm_recovery_key, confirm_totp_enrollment,
         identify, list_sessions, login, logout, recover_with_key, recovery_key_state,
-        regenerate_recovery_codes, revoke_session_by_id, session, setup, start_totp_enrollment,
-        verify,
+        revoke_session_by_id, session, setup, start_totp_enrollment, verify,
     },
     AppState,
 };
@@ -28,10 +27,6 @@ pub fn router() -> Router<AppState> {
         .route("/auth/logout", post(logout))
         .route("/auth/totp/enrollment", post(start_totp_enrollment))
         .route("/auth/totp/confirm", post(confirm_totp_enrollment))
-        .route(
-            "/auth/recovery-codes/regenerate",
-            post(regenerate_recovery_codes),
-        )
         .route("/auth/sessions", get(list_sessions))
         .route(
             "/auth/sessions/{id}",

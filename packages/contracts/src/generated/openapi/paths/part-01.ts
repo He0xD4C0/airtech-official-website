@@ -193,23 +193,6 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/auth/recovery-codes/regenerate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Invalidate prior recovery codes and return a new one-time set */
-        post: operations["regenerateRecoveryCodes"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 "/api/admin/v1/auth/recovery-key": {
         parameters: {
             query?: never;
@@ -321,7 +304,7 @@ export interface PathsPart01 {
         };
         get?: never;
         put?: never;
-        /** Verify enrollment and return a one-time recovery-code set */
+        /** Verify the enrollment code and enable TOTP for the account */
         post: operations["confirmTotpEnrollment"];
         delete?: never;
         options?: never;
@@ -481,6 +464,24 @@ export interface PathsPart01 {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/content-drafts/{draftId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a visible private draft */
+        get: operations["getPrivateContentDraft"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Explicitly save an owned editing draft */
+        patch: operations["savePrivateContentDraft"];
         trace?: never;
     };
 }

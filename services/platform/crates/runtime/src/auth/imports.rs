@@ -20,8 +20,6 @@ pub(super) use subtle::ConstantTimeEq;
 pub(super) use uuid::Uuid;
 
 pub(super) use crate::error::ApiError;
-pub(super) use crate::second_factor::{
-    generate_recovery_codes, normalize_recovery_code, EnrollmentSecret,
-};
+pub(super) use crate::second_factor::EnrollmentSecret;
 pub(super) use crate::state::AppState;
 pub(super) use airtek_domain::models::AuditEvent;

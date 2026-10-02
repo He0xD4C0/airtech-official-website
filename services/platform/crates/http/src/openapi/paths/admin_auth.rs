@@ -226,32 +226,9 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
             body(
                 op(
                     "confirmTotpEnrollment",
-                    "Verify enrollment and return a one-time recovery-code set",
+                    "Verify the enrollment code and enable TOTP for the account",
                     "adminAuth",
-                    [(
-                        "200",
-                        json_response("One-time recovery codes", r("RecoveryCodeSet")),
-                    )],
-                ),
-                r("TotpCodeRequest"),
-            ),
-            true,
-        ),
-    );
-    add(
-        paths,
-        "/api/admin/v1/auth/recovery-codes/regenerate",
-        "post",
-        admin(
-            body(
-                op(
-                    "regenerateRecoveryCodes",
-                    "Invalidate prior recovery codes and return a new one-time set",
-                    "adminAuth",
-                    [(
-                        "200",
-                        json_response("Replacement recovery codes", r("RecoveryCodeSet")),
-                    )],
+                    [("204", empty_response("TOTP enabled"))],
                 ),
                 r("TotpCodeRequest"),
             ),

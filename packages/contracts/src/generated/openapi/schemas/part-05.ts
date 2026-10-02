@@ -6,17 +6,6 @@
 import type { components } from '../components'
 
 export interface SchemasPart05 {
-SmsSettings: {
-            accessKeyId: string;
-            configured: boolean;
-            /** @constant */
-            provider: "aliyun";
-            region: string;
-            /** Format: int64 */
-            revision: number;
-            signName: string;
-            templateCode: string;
-        };
 SmsTestRequest: {
             phone: string;
         };

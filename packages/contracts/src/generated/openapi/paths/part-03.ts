@@ -6,24 +6,6 @@
 import type { operations } from '../operations'
 
 export interface PathsPart03 {
-"/api/admin/v1/products/{id}/temporary-overrides": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List temporary source-field overrides */
-        get: operations["listTemporaryOverrides"];
-        put?: never;
-        /** Create an expiring source-field override */
-        post: operations["createTemporaryOverride"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 "/api/admin/v1/products/{id}/validation-report": {
         parameters: {
             query?: never;
@@ -487,6 +469,23 @@ export interface PathsPart03 {
         put?: never;
         /** Revoke a pending management user invitation */
         post: operations["revokeUserInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List management users and role assignments */
+        get: operations["listAdminUsers"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

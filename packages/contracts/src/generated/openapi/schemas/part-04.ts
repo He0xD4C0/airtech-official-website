@@ -205,11 +205,6 @@ PublicSearchPage: {
 ReasonRequest: {
             reason: string;
         };
-RecoveryCodeSet: {
-            /** Format: date-time */
-            generatedAt: string;
-            readonly recoveryCodes: string[];
-        };
 RecoveryKeyRotationResult: {
             readonly recoveryKey: string;
             /** Format: date-time */
@@ -489,5 +484,16 @@ SiteBootstrap: {
             motorTechnologies: string[];
             navigation: components["schemas"]["PublicContentProjection"] | null;
             productFamilies: components["schemas"]["ProductFamilyPresentation"][];
+        };
+SmsSettings: {
+            accessKeyId: string;
+            configured: boolean;
+            /** @constant */
+            provider: "aliyun";
+            region: string;
+            /** Format: int64 */
+            revision: number;
+            signName: string;
+            templateCode: string;
         };
 }

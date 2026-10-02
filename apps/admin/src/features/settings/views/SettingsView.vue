@@ -3,7 +3,7 @@ import { settingsApi } from '@/features/settings/services/settingsApi'
 import { adminAuthApi } from '@/shared/services/adminAuthApi'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Check, Cookie, Copy, Database, Globe2, KeyRound, LockKeyhole, LogOut, Save, Server, Settings, ShieldCheck, TimerReset } from 'lucide-vue-next'
+import { Check, Cookie, Database, Globe2, KeyRound, LockKeyhole, LogOut, Save, Server, Settings, ShieldCheck, TimerReset } from 'lucide-vue-next'
 import DataStatePanel from '@/shared/components/DataStatePanel.vue'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import ObjectStorageSettingsPanel from '@/features/settings/components/ObjectStorageSettingsPanel.vue'
@@ -32,8 +32,6 @@ const settingsState = ref<'loading' | 'ready' | 'error' | 'forbidden'>(accountSe
 const settingsError = ref('')
 const enrollment = ref<TotpEnrollment | null>(null)
 const confirmationCode = ref('')
-const recoveryCodes = ref<string[]>([])
-const regenerationCode = ref('')
 const sessions = ref<AdminSession[]>([])
 const securityLoading = ref(false)
 
@@ -144,7 +142,6 @@ async function loadSessions(): Promise<void> {
 
 async function startEnrollment(): Promise<void> {
   securityLoading.value = true
-  recoveryCodes.value = []
   try {
     enrollment.value = await adminAuthApi.startTotpEnrollment()
     ui.toast('TOTP 密钥已生成', '请将密钥加入验证器，并用当前验证码完成确认。', 'success')
@@ -158,36 +155,16 @@ async function startEnrollment(): Promise<void> {
 async function confirmEnrollment(): Promise<void> {
   securityLoading.value = true
   try {
-    const result = await adminAuthApi.confirmTotpEnrollment(confirmationCode.value.trim())
-    recoveryCodes.value = result.recoveryCodes
+    await adminAuthApi.confirmTotpEnrollment(confirmationCode.value.trim())
     confirmationCode.value = ''
     enrollment.value = null
     await auth.refresh()
-    ui.toast('TOTP 已启用', '恢复码只显示这一次，请立即保存到安全位置。', 'success')
+    ui.toast('TOTP 已启用', '该账号登录时将要求输入验证器验证码。', 'success')
   } catch (error) {
     ui.toast('验证码确认失败', problemMessage(error), 'danger')
   } finally {
     securityLoading.value = false
   }
-}
-
-async function regenerateCodes(): Promise<void> {
-  securityLoading.value = true
-  try {
-    const result = await adminAuthApi.regenerateRecoveryCodes(regenerationCode.value.trim())
-    recoveryCodes.value = result.recoveryCodes
-    regenerationCode.value = ''
-    ui.toast('恢复码已重新生成', '旧恢复码已全部失效，新码只显示这一次。', 'success')
-  } catch (error) {
-    ui.toast('恢复码生成失败', problemMessage(error), 'danger')
-  } finally {
-    securityLoading.value = false
-  }
-}
-
-async function copyRecoveryCodes(): Promise<void> {
-  await navigator.clipboard.writeText(recoveryCodes.value.join('\n'))
-  ui.toast('已复制恢复码', '请保存到受保护的密码管理器中。', 'success')
 }
 
 async function revokeSession(session: AdminSession): Promise<void> {
@@ -275,15 +252,6 @@ void loadSettings()
               <label class="field"><span>OTPAuth URI</span><textarea :value="enrollment.otpAuthUri" readonly rows="3" autocomplete="off" /></label>
               <label class="field field--compact"><span>当前 6 位验证码</span><input v-model="confirmationCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" /></label>
               <button class="button button--primary" type="button" :disabled="confirmationCode.length !== 6 || securityLoading" @click="confirmEnrollment">确认并启用</button>
-            </div>
-            <div v-if="auth.user?.totpEnabled" class="security-regenerate">
-              <label class="field field--compact"><span>用当前 TOTP 重新生成恢复码</span><input v-model="regenerationCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" /></label>
-              <button class="button button--secondary" type="button" :disabled="regenerationCode.length !== 6 || securityLoading" @click="regenerateCodes">使旧恢复码失效并生成新码</button>
-            </div>
-            <div v-if="recoveryCodes.length" class="recovery-code-panel" role="status">
-              <div><strong>一次性恢复码</strong><button class="button button--secondary" type="button" @click="copyRecoveryCodes"><Copy :size="15" />复制全部</button></div>
-              <p>关闭或刷新页面后不会再次显示。</p>
-              <code v-for="code in recoveryCodes" :key="code">{{ code }}</code>
             </div>
           </div>
         </template>

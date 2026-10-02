@@ -170,13 +170,6 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             }),
         ),
     );
-    s.insert("RecoveryCodeSet".into(), object(
-        &["recoveryCodes", "generatedAt"],
-        json!({
-            "recoveryCodes": {"type": "array", "minItems": 10, "maxItems": 10, "readOnly": true, "items": {"type": "string", "pattern": "^[A-HJ-NP-Z2-9]{4}(?:-[A-HJ-NP-Z2-9]{4}){3}$"}},
-            "generatedAt": timestamp()
-        })
-    ));
     s.insert("AdminSession".into(), object(
         &["id", "current", "createdAt", "lastSeenAt", "expiresAt"],
         json!({"id": uuid(), "current": {"type": "boolean"}, "createdAt": timestamp(), "lastSeenAt": timestamp(), "expiresAt": timestamp()})
