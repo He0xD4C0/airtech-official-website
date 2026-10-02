@@ -104,6 +104,11 @@ credentials there. The main configuration groups are:
 | Feishu Product Master | App ID, write-only App Secret, selected source tables and schedules are PostgreSQL settings managed through Admin; no Feishu credential environment variables are accepted |
 | Reserved external adapters | GA4 placeholder only; a blank value does not enable the adapter |
 
+The source-built object-storage server runs as UID `10001`, so a local
+`object-data` volume created by the withdrawn public MinIO image must be removed
+once (`docker volume rm <project>_object-data`) to pick up the new ownership;
+local development media data is disposable.
+
 Application image builds use the official npm and crates.io sources by default.
 `AIRTEK_NPM_REGISTRY` optionally selects the Web/Admin npm registry;
 `AIRTEK_CARGO_MIRROR` optionally installs a Cargo `replace-with` registry index

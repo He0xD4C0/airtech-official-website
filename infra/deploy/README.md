@@ -171,6 +171,10 @@ the pinned upstream source commits in `infra/docker/Dockerfile.minio` and
 application images and is retained as a legacy path; the tag workflow is the
 only publisher of the object-storage images.
 
+The source-built server runs as UID `10001`, so a host media directory created
+for the previous root-running public image must be reassigned once before the
+first GitHub-backed media release: `chown -R 10001:10001 /srv/airtek/data/minio`.
+
 Set the repository variable `AIRTEK_IMAGE_PREFIX` when the package owner is not
 the default `ghcr.io/<repository-owner>/airtekpower`, and `AIRTEK_ARM64_RUNNER`
 when the native arm64 runner is unavailable; the `ubuntu-latest` fallback builds

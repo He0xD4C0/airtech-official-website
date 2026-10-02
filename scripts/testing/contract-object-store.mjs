@@ -26,7 +26,9 @@ export function contractObjectStore(name, run, capture) {
       const existing = await capture('docker', ['container', 'ls', '--all', '--quiet', '--filter', `name=^/${name}$`])
       if (existing.status !== 0 || existing.stdout.trim()) throw new Error('Object-storage container name is already in use.')
       owned = true
-      await checked(['run', '--detach', '--name', name, '--publish', '127.0.0.1::9000', '--tmpfs', '/data:rw',
+      // The source-built server runs as UID 10001, so its tmpfs data directory
+      // must belong to that user instead of the default root-owned mount.
+      await checked(['run', '--detach', '--name', name, '--publish', '127.0.0.1::9000', '--tmpfs', '/data:rw,uid=10001,gid=10001',
         '-e', 'MINIO_ROOT_USER=airtek', '-e', 'MINIO_ROOT_PASSWORD=local-contract-only', minio, 'server', '/data'])
       let healthy = false
       for (let attempt = 0; attempt < 60; attempt++) {
