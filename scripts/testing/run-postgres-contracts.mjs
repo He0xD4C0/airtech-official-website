@@ -1,11 +1,12 @@
 import { isolatedTestEnvironment } from './isolated-test-environment.mjs'
 import { testProcess } from './test-process.mjs'
 import { contractObjectStore } from './contract-object-store.mjs'
+import { repositoryDotenv } from './dotenv.mjs'
 
 const isolated = isolatedTestEnvironment()
 const name = isolated.COMPOSE_PROJECT_NAME + '-postgres'
 const env = {
-  ...process.env, ...isolated,
+  ...repositoryDotenv(), ...process.env, ...isolated,
   AIRTEK_TEST_TEMPLATE_DATABASE: 'airtek_test_template',
 }
 const { run, capture } = testProcess(env)

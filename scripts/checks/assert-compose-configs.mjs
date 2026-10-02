@@ -1,6 +1,13 @@
 import { execFileSync } from 'node:child_process'
 import { isolatedTestEnvironment } from '../testing/isolated-test-environment.mjs'
 
+// The image-only object-storage references are required by Compose, so the
+// syntax check supplies placeholders instead of depending on a developer .env.
+const objectStorageImages = {
+  AIRTEK_OBJECT_STORE_IMAGE: process.env.AIRTEK_OBJECT_STORE_IMAGE ?? 'ghcr.io/validation-only/airtekpower-minio:validation',
+  AIRTEK_OBJECT_STORE_MC_IMAGE: process.env.AIRTEK_OBJECT_STORE_MC_IMAGE ?? 'ghcr.io/validation-only/airtekpower-minio-mc:validation',
+}
+
 const variants = [
   { name: 'local', args: ['-f', 'compose.yaml'] },
   { name: 'debug', args: ['-f', 'compose.yaml', '-f', 'infra/compose/debug.yaml', '--profile', 'object-storage'] },
@@ -11,7 +18,7 @@ const variants = [
 ]
 for (const variant of variants) {
   execFileSync('docker', ['compose', '--project-directory', '.', ...variant.args, 'config', '--quiet'], {
-    env: { ...process.env, ...variant.environment }, stdio: 'inherit',
+    env: { ...objectStorageImages, ...process.env, ...variant.environment }, stdio: 'inherit',
   })
   console.log(`Compose configuration passed: ${variant.name}`)
 }

@@ -59,6 +59,60 @@ jobs:
             echo "image_suffix=$suffix"
           } >> "$GITHUB_OUTPUT"
 
+  object-storage-images:
+    needs:
+      - release-metadata
+    runs-on: ${{ needs.release-metadata.outputs.runner }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: minio
+            dockerfile: infra/docker/Dockerfile.minio
+          - image: minio-mc
+            dockerfile: infra/docker/Dockerfile.mc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Refuse to overwrite an already published release image
+        env:
+          IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
+        run: |
+          if docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "Refusing to overwrite the published image $IMAGE; a release tag is immutable." >&2
+            exit 1
+          fi
+      - id: publish
+        name: Build and publish ${{ matrix.image }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: ${{ needs.release-metadata.outputs.target_platform }}
+          push: true
+          tags: ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
+          build-args: |
+            GOPROXY=${{ vars.AIRTEK_GOPROXY || 'https://proxy.golang.org,direct' }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ needs.release-metadata.outputs.target_platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ needs.release-metadata.outputs.target_platform }}
+      - name: Record the immutable image digest
+        env:
+          IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
+          DIGEST: ${{ steps.publish.outputs.digest }}
+        run: |
+          printf '### `%s`\n\nDigest: `%s`\n' "$IMAGE" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"
+
   rust-msrv:
     runs-on: ubuntu-latest
     steps:
@@ -119,14 +173,28 @@ jobs:
       - run: pnpm check:media-boundary
 
   browser-contracts:
+    needs:
+      - release-metadata
+      - object-storage-images
+    permissions:
+      contents: read
+      packages: read
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
       E2E_PUBLIC_ORIGIN: http://www.airtek.test:8088
       E2E_ADMIN_ORIGIN: http://admin.airtek.test:8088
       E2E_API_ORIGIN: http://api.airtek.test:8088
+      AIRTEK_OBJECT_STORE_IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-minio${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
+      AIRTEK_OBJECT_STORE_MC_IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-minio-mc${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
     steps:
       - uses: actions/checkout@v4
+      - name: Log in to GHCR for the private object-storage images
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
       - uses: pnpm/action-setup@v4
         with:
           version: 11.19.0
@@ -161,7 +229,16 @@ jobs:
           retention-days: 7
 
   rust:
+    needs:
+      - release-metadata
+      - object-storage-images
+    permissions:
+      contents: read
+      packages: read
     runs-on: ubuntu-latest
+    env:
+      AIRTEK_OBJECT_STORE_IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-minio${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
+      AIRTEK_OBJECT_STORE_MC_IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-minio-mc${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
     services:
       postgres:
         image: postgres:17-alpine
@@ -187,6 +264,12 @@ jobs:
       AIRTEK_FLYWAY_TARGET: 28
     steps:
       - uses: actions/checkout@v4
+      - name: Log in to GHCR for the private object-storage images
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
       - name: Generate a temporary CI-only runtime database password
         run: |
           runtime_password="$(openssl rand -hex 32)"
@@ -405,6 +488,7 @@ jobs:
       - name: Validate every supported Compose combination
         run: node scripts/checks/assert-compose-configs.mjs
       - run: node scripts/checks/assert-migration-release-config.mjs
+      - run: node scripts/checks/assert-object-storage-build.mjs
       - run: docker compose --project-directory . config --quiet
       - name: Validate opt-in debug port override
         run: docker compose --project-directory . -f compose.yaml -f infra/compose/debug.yaml --profile object-storage config --quiet
@@ -510,6 +594,7 @@ jobs:
     needs:
       - release-metadata
       - publish-images
+      - object-storage-images
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -523,6 +608,8 @@ jobs:
           - platform
           - migrations
           - gateway
+          - minio
+          - minio-mc
     steps:
       - uses: actions/checkout@v4
       - name: Keep the five newest release images

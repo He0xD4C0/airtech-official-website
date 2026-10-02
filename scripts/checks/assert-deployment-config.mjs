@@ -234,8 +234,6 @@ requireMatch(gatewayDockerfile, /^USER\s+nginx$/mu, 'Gateway runtime must use th
 requireMatch(gatewayDockerfile, /^EXPOSE\s+8088$/mu, 'Gateway image must expose its unprivileged port 8088.')
 
 const compose = read('compose.yaml')
-const minioImage = 'quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e'
-const minioMcImage = 'quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727'
 requireMatch(compose, /^\s{2}flyway-migrate:\s*$/mu, 'Compose must define the one-shot Flyway migration service.')
 requireMatch(compose, /^\s{2}platform-maintenance:\s*$/mu, 'Compose must define one-shot runtime data preparation.')
 requireMatch(serviceBlock(compose, 'flyway-migrate'), /dockerfile:\s*infra\/docker\/Dockerfile\.flyway/u, 'Compose migration service must build the Flyway image.')
@@ -291,9 +289,9 @@ requireMatch(serviceBlock(compose, 'minio'), /profiles:\s*\["minio"\]/u, 'Local 
 requireMatch(serviceBlock(compose, 'minio-create-bucket'), /profiles:\s*\["minio"\]/u, 'Local bucket initialization must use the minio Compose profile.')
 requireMatch(serviceBlock(compose, 'minio'), /127\.0\.0\.1:\$\{AIRTEK_OBJECT_STORE_HOST_PORT:-19000\}:9000[\s\S]*127\.0\.0\.1:\$\{AIRTEK_OBJECT_STORE_CONSOLE_HOST_PORT:-19001\}:9001/u, 'Profiled MinIO ports must be configurable and loopback-only.')
 requireMatch(serviceBlock(compose, 'minio-create-bucket'), /mc mb --ignore-existing/u, 'Local object storage must create its media bucket idempotently.')
-requireMatch(serviceBlock(compose, 'minio'), new RegExp(`image:\\s*${escapeRegExp(minioImage)}`, 'u'), 'Local MinIO must use the reviewed multi-architecture manifest digest.')
+requireMatch(serviceBlock(compose, 'minio'), /image:\s*\$\{AIRTEK_OBJECT_STORE_IMAGE:\?/u, 'Local MinIO must pull the repository source-built image from a configured reference.')
 requireMatch(serviceBlock(compose, 'minio'), /healthcheck:[\s\S]*\/minio\/health\/live/u, 'Local MinIO must expose a container healthcheck.')
-requireMatch(serviceBlock(compose, 'minio-create-bucket'), new RegExp(`image:\\s*${escapeRegExp(minioMcImage)}`, 'u'), 'Local mc must use the reviewed multi-architecture manifest digest.')
+requireMatch(serviceBlock(compose, 'minio-create-bucket'), /image:\s*\$\{AIRTEK_OBJECT_STORE_MC_IMAGE:\?/u, 'Local mc must pull the repository source-built client image from a configured reference.')
 requireMatch(serviceBlock(compose, 'minio-create-bucket'), /mc anonymous set download/u, 'Local media objects must be anonymously readable through their immutable URLs.')
 requireMatch(serviceBlock(compose, 'minio-create-bucket'), /depends_on:[\s\S]*minio:[\s\S]*condition:\s*service_healthy/u, 'Local bucket initialization must wait for a healthy MinIO server.')
 forbidMatch(serviceBlock(compose, 'platform-worker'), /^\s+(?:ports|expose):/mu, 'Worker must not expose or publish a listening port.')

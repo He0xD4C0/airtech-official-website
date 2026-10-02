@@ -1,3 +1,14 @@
+function requireObjectStoreImage(variable) {
+  const value = process.env[variable]
+  if (!value) {
+    throw new Error(
+      `${variable} must reference the source-built object-storage image. ` +
+      'Set it in the repository .env and run `docker login ghcr.io` with a read:packages token.',
+    )
+  }
+  return value
+}
+
 // Tests own this tmpfs-backed container and its random loopback port. Never use
 // the development bucket or the fixed subnet of an existing Compose project.
 export function contractObjectStore(name, run, capture) {
@@ -5,8 +16,8 @@ export function contractObjectStore(name, run, capture) {
     throw new Error('Object-storage tests require an isolated test container name.')
   }
   let owned = false
-  const minio = 'quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e'
-  const mc = 'quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727'
+  const minio = requireObjectStoreImage('AIRTEK_OBJECT_STORE_IMAGE')
+  const mc = requireObjectStoreImage('AIRTEK_OBJECT_STORE_MC_IMAGE')
   async function checked(args) {
     if (await run('docker', args) !== 0) throw new Error('Disposable object-storage setup failed.')
   }

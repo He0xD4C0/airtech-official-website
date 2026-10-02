@@ -1,5 +1,6 @@
 import { isolatedTestEnvironment } from './isolated-test-environment.mjs'
 import { testProcess } from './test-process.mjs'
+import { repositoryDotenv } from './dotenv.mjs'
 import { createHash } from 'node:crypto'
 import { readdirSync } from 'node:fs'
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
@@ -38,6 +39,7 @@ const latestMigrationVersion = Math.max(...readdirSync('services/platform/migrat
   .filter(Boolean)
   .map((match) => Number(match[1])))
 const environment = {
+  ...repositoryDotenv(),
   ...process.env,
   ...isolation,
   COMPOSE_PROFILES: 'minio',

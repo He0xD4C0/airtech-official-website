@@ -161,8 +161,15 @@ The two streams never share a container package: development images publish to
 `airtekpower-<component>-dev` while release images keep
 `airtekpower-<component>`. A development release therefore cannot overwrite or
 evict a release artifact, and retention pruning is scoped to the publishing
-stream. The packages are public by owner decision, so target hosts may pull them
-anonymously.
+stream. Every package is private, so target hosts must authenticate with a
+`read:packages` token before pulling.
+
+MinIO withdrew its public images and prebuilt binaries, so the release also
+publishes `airtekpower-minio[-dev]` and `airtekpower-minio-mc[-dev]` built from
+the pinned upstream source commits in `infra/docker/Dockerfile.minio` and
+`infra/docker/Dockerfile.mc`. The Jenkins pipeline still publishes only the five
+application images and is retained as a legacy path; the tag workflow is the
+only publisher of the object-storage images.
 
 Set the repository variable `AIRTEK_IMAGE_PREFIX` when the package owner is not
 the default `ghcr.io/<repository-owner>/airtekpower`, and `AIRTEK_ARM64_RUNNER`

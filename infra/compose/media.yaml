@@ -1,0 +1,31 @@
+# Local development object-storage stack. The on-host CD agent reconciles this
+# project alongside the application project; ECS production uses external S3 and
+# never loads this file.
+name: ${AIRTEK_MEDIA_PROJECT_NAME:-airtek-media}
+services:
+  minio:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
+    image: ${AIRTEK_OBJECT_STORE_IMAGE:?set AIRTEK_OBJECT_STORE_IMAGE to the source-built MinIO server image}
+    env_file: ${AIRTEK_MEDIA_ENV_FILE:-/etc/airtek/media.env}
+    command: server /data --console-address :9001
+    ports:
+      - "${AIRTEK_MEDIA_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_MEDIA_HOST_PORT:-19000}:9000"
+      - "127.0.0.1:${AIRTEK_MEDIA_CONSOLE_HOST_PORT:-19001}:9001"
+    volumes:
+      - "${AIRTEK_MEDIA_DATA_DIR:-/srv/airtek/data/minio}:/data:Z"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  default:
+    external: true
+    name: ${AIRTEK_PRODUCTION_NETWORK:-airtek-production}

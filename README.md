@@ -94,6 +94,7 @@ credentials there. The main configuration groups are:
 | Build network | `AIRTEK_NPM_REGISTRY`, `AIRTEK_CARGO_MIRROR`, `AIRTEK_BUILD_PROXY`; host `NO_PROXY` is forwarded to application image builds |
 | Browser and security origins | `PUBLIC_HOST`, `ADMIN_HOST`, `API_HOST`, `AIRTEK_*_ORIGIN`, `VITE_*_BASE_URL`, `PUBLIC_API_BROWSER_ORIGIN` |
 | Local persistence | `POSTGRES_*`, `AIRTEK_DATABASE_URL_INTERNAL`, host-side `DATABASE_URL`; `COMPOSE_PROFILES=minio` enables bundled MinIO |
+| Object storage images | `AIRTEK_OBJECT_STORE_IMAGE`, `AIRTEK_OBJECT_STORE_MC_IMAGE` pin the source-built MinIO server and `mc` images in private GHCR; run `docker login ghcr.io` once, and set `AIRTEK_GOPROXY` only when a build needs a Go module mirror |
 | Schema migration | `AIRTEK_FLYWAY_BASE_IMAGE`, JDBC `FLYWAY_URL`, `FLYWAY_USER`/`FLYWAY_PASSWORD`, and `FLYWAY_PLACEHOLDERS_RUNTIME_ROLE` |
 | Authentication, private staging and network trust | setup-only `AIRTEK_ADMIN_BOOTSTRAP_TOKEN`, independent TOTP/Product Staging/Analytics HMAC/invitation replay keys, gateway subnet/address, exact trusted-proxy CIDRs |
 | Data lifecycle | `AIRTEK_GUEST_RAW_RETENTION_DAYS`, `AIRTEK_GUEST_AGGREGATE_RETENTION_MONTHS`, `AIRTEK_PRODUCT_IMPORT_MAPPING_VERSION` |

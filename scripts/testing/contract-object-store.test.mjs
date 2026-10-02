@@ -4,6 +4,22 @@ import { contractObjectStore } from './contract-object-store.mjs'
 
 const name = 'airtek-e2e-0123456789ab-postgres-objects'
 
+process.env.AIRTEK_OBJECT_STORE_IMAGE = 'ghcr.io/example/airtekpower-minio:test'
+process.env.AIRTEK_OBJECT_STORE_MC_IMAGE = 'ghcr.io/example/airtekpower-minio-mc:test'
+
+test('requires the configured source-built object-storage images', () => {
+  const configured = process.env.AIRTEK_OBJECT_STORE_IMAGE
+  delete process.env.AIRTEK_OBJECT_STORE_IMAGE
+  try {
+    assert.throws(
+      () => contractObjectStore(name, async () => 0, async () => ({ status: 0, stdout: '' })),
+      /AIRTEK_OBJECT_STORE_IMAGE must reference the source-built object-storage image/u,
+    )
+  } finally {
+    process.env.AIRTEK_OBJECT_STORE_IMAGE = configured
+  }
+})
+
 test('refuses arbitrary container targets', () => {
   assert.throws(() => contractObjectStore('business-minio'), /isolated test container/)
 })
