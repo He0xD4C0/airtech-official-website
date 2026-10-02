@@ -12,8 +12,6 @@ pub enum ConfigError {
     WeakBootstrapToken,
     #[error("AIRTEK_TOTP_ENCRYPTION_KEY must be Base64 for exactly 32 bytes")]
     InvalidTotpEncryptionKey,
-    #[error("AIRTEK_TOTP_ENCRYPTION_KEY is required in production builds")]
-    MissingTotpEncryptionKey,
     #[error("AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY must be Base64 for exactly 32 bytes")]
     InvalidInvitationReplayEncryptionKey,
     #[error("AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY is required in production builds")]

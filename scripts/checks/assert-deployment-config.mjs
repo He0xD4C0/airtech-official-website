@@ -369,7 +369,7 @@ for (const origin of ['AIRTEK_PUBLIC_ORIGIN=https://', 'AIRTEK_ADMIN_ORIGIN=http
 }
 requireMatch(productionEnv, flywayTargetPattern, `Production must target schema V${latestMigration}.`)
 forbidMatch(productionEnv, /^(?:AIRTEK_MEDIA_|AIRTEK_MINIO_|MINIO_|S3_)/mu, 'Production environment examples must not contain S3 or MinIO settings.')
-requireMatch(productionCompose, /AIRTEK_TOTP_ENCRYPTION_KEY:\s*\$\{AIRTEK_TOTP_ENCRYPTION_KEY:\?/u, 'Production must require a secret-manager TOTP encryption key.')
+requireMatch(productionCompose, /AIRTEK_TOTP_ENCRYPTION_KEY:\s*\$\{AIRTEK_TOTP_ENCRYPTION_KEY:-\}/u, 'Production must pass the optional TOTP encryption key so enrolment can be disabled without failing startup.')
 requireMatch(productionEnv, /^AIRTEK_TOTP_ENCRYPTION_KEY=REPLACE_/mu, 'Production environment example must declare the TOTP key placeholder.')
 for (const variable of ['FLYWAY_URL', 'FLYWAY_USER', 'FLYWAY_PASSWORD', 'FLYWAY_PLACEHOLDERS_RUNTIME_ROLE']) {
   requireMatch(serviceBlock(productionCompose, 'flyway-migrate'), new RegExp(`${variable}:\\s*\\$\\{${variable}:\\?`, 'u'), `Production Flyway must require ${variable}.`)

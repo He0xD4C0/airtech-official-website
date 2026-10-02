@@ -25,6 +25,17 @@ pub async fn verify(pool: &PgPool) -> Result<(), ApiError> {
 
 async fn verify_current_postgres(pool: &PgPool) -> Result<RuntimePreparationReport, ApiError> {
     let status = flyway::read_status(pool).await?;
+    if status.failed_migrations > 0 {
+        return Err(ApiError::service_unavailable(format!(
+            "PostgreSQL has {} failed migration record(s); inspect the migration state directory and the recorded failure before starting.",
+            status.failed_migrations
+        )));
+    }
+    if status.is_ahead_of(flyway::REQUIRED_SCHEMA_VERSION) {
+        return Err(ApiError::service_unavailable(
+            "The PostgreSQL schema is newer than this application image. Roll forward with the matching release or restore the retained pre-migration dump.",
+        ));
+    }
     if !status.is_current() {
         return Err(ApiError::service_unavailable(
             "PostgreSQL is reachable but Flyway migrations are not current.",

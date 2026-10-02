@@ -17,12 +17,21 @@ impl FlywayStatus {
         self.is_current_through(REQUIRED_SCHEMA_VERSION)
     }
 
+    /// True when the database was migrated by a newer application image. The
+    /// binary must refuse to serve instead of running against a schema it does
+    /// not know, and the operator must roll forward or restore the retained
+    /// pre-migration dump.
+    pub fn is_ahead_of(&self, required_version: i64) -> bool {
+        self.current_version
+            .is_some_and(|version| version > required_version)
+    }
+
     pub fn is_current_through(&self, required_version: i64) -> bool {
         if !(1..=REQUIRED_SCHEMA_VERSION).contains(&required_version) {
             return false;
         }
         self.current_version
-            .is_some_and(|version| version >= required_version)
+            .is_some_and(|version| version == required_version)
             && self.failed_migrations == 0
             && self.covered_required_versions >= required_version
     }
@@ -128,6 +137,19 @@ mod tests {
         assert!(!FlywayStatus {
             covered_required_versions: REQUIRED_SCHEMA_VERSION - 1,
             ..current
+        }
+        .is_current());
+        assert!(FlywayStatus {
+            current_version: Some(REQUIRED_SCHEMA_VERSION + 1),
+            covered_required_versions: REQUIRED_SCHEMA_VERSION + 1,
+            ..current.clone()
+        }
+        .is_ahead_of(REQUIRED_SCHEMA_VERSION));
+        assert!(!FlywayStatus {
+            current_version: Some(REQUIRED_SCHEMA_VERSION + 1),
+            covered_required_versions: REQUIRED_SCHEMA_VERSION + 1,
+            failed_migrations: 0,
+            legacy_baseline_present: false,
         }
         .is_current());
     }

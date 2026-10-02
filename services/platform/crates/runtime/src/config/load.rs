@@ -90,7 +90,6 @@ impl Config {
         require_production_database(production, database_url.as_deref())?;
         require_production_keys(
             production,
-            totp_encryption_key.as_ref(),
             invitation_replay_encryption_key.as_ref(),
             product_staging_encryption_key.as_ref(),
             analytics_token_hmac_key.as_ref(),

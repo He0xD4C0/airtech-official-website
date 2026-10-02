@@ -78,30 +78,25 @@ mod cases {
 
     #[test]
     pub(super) fn production_requires_product_staging_and_analytics_keys() {
-        let totp = TotpEncryptionKey([1; 32]);
         let invitation = InvitationReplayEncryptionKey([5; 32]);
         let product = ProductStagingEncryptionKey([3; 32]);
         let analytics = AnalyticsTokenHmacKey([4; 32]);
         assert!(matches!(
-            require_production_keys(true, Some(&totp), Some(&invitation), None, Some(&analytics)),
+            require_production_keys(true, Some(&invitation), None, Some(&analytics)),
             Err(ConfigError::MissingProductStagingEncryptionKey)
         ));
         assert!(matches!(
-            require_production_keys(true, Some(&totp), Some(&invitation), Some(&product), None),
+            require_production_keys(true, Some(&invitation), Some(&product), None),
             Err(ConfigError::MissingAnalyticsTokenHmacKey)
         ));
         assert!(matches!(
-            require_production_keys(true, Some(&totp), None, Some(&product), Some(&analytics)),
+            require_production_keys(true, None, Some(&product), Some(&analytics)),
             Err(ConfigError::MissingInvitationReplayEncryptionKey)
         ));
-        assert!(require_production_keys(
-            true,
-            Some(&totp),
-            Some(&invitation),
-            Some(&product),
-            Some(&analytics)
-        )
-        .is_ok());
+        assert!(
+            require_production_keys(true, Some(&invitation), Some(&product), Some(&analytics))
+                .is_ok()
+        );
     }
 
     #[test]

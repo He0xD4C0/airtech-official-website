@@ -99,14 +99,13 @@ pub(super) fn decode_32_byte_key(value: &str) -> Result<[u8; 32], ()> {
 
 pub(super) fn require_production_keys(
     production: bool,
-    totp_encryption_key: Option<&TotpEncryptionKey>,
     invitation_replay_encryption_key: Option<&InvitationReplayEncryptionKey>,
     product_staging_encryption_key: Option<&ProductStagingEncryptionKey>,
     analytics_token_hmac_key: Option<&AnalyticsTokenHmacKey>,
 ) -> Result<(), ConfigError> {
-    if production && totp_encryption_key.is_none() {
-        return Err(ConfigError::MissingTotpEncryptionKey);
-    }
+    // TOTP is optional, so its encryption key is only needed once an
+    // administrator actually enrolls; enrollment returns a clear
+    // "unavailable" error while the key is absent.
     if production && invitation_replay_encryption_key.is_none() {
         return Err(ConfigError::MissingInvitationReplayEncryptionKey);
     }
