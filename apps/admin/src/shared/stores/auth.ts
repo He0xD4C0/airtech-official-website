@@ -11,8 +11,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => Boolean(user.value))
   const isDevelopment = computed(() => user.value?.environment === 'development')
-  const requiresTotpEnrollment = computed(() => Boolean(
-    user.value && !user.value.totpEnabled && user.value.permissions.length === 0,
+  const isSuperAdmin = computed(() => Boolean(user.value?.roleKeys.includes('super-admin')))
+  const requiresOnboarding = computed(() => Boolean(
+    user.value && (user.value.mustChangePassword || user.value.mustConfirmRecoveryKey),
   ))
 
   function hasPermission(permission?: Permission): boolean {
@@ -64,7 +65,8 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     isAuthenticated,
     isDevelopment,
-    requiresTotpEnrollment,
+    isSuperAdmin,
+    requiresOnboarding,
     hasPermission,
     initialize,
     refresh,

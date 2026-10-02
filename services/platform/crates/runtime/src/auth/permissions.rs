@@ -18,8 +18,12 @@ pub(super) fn super_admin_permissions() -> Vec<String> {
         "rfq.assign",
         "analytics.read",
         "identity.manage",
+        "identity.roles.manage",
         "audit.read",
         "settings.manage",
+        "mail.manage",
+        "sms.manage",
+        "captcha.manage",
     ]
     .into_iter()
     .map(str::to_owned)
@@ -143,6 +147,14 @@ pub fn required_permission(path: &str, method: &axum::http::Method) -> Option<&'
         Some(if write { "rfq.assign" } else { "rfq.read" })
     } else if path.contains("/analytics") {
         Some("analytics.read")
+    } else if (path.ends_with("/roles") || path.contains("/roles/")) && write {
+        Some("identity.roles.manage")
+    } else if path.contains("/settings/mail") {
+        Some("mail.manage")
+    } else if path.contains("/settings/sms") {
+        Some("sms.manage")
+    } else if path.contains("/settings/captcha") {
+        Some("captcha.manage")
     } else if path.ends_with("/users")
         || path.contains("/users/")
         || path.ends_with("/roles")

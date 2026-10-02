@@ -332,6 +332,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "key",
                 "displayName",
                 "systemRole",
+                "isPreset",
                 "revision",
                 "permissions",
             ],
@@ -340,6 +341,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "key": {"type": "string"},
                 "displayName": {"type": "string"},
                 "systemRole": {"type": "boolean"},
+                "isPreset": {"type": "boolean"},
                 "revision": revision(),
                 "permissions": array(json!({"type": "string"}))
             }),
@@ -367,6 +369,27 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             json!({
                 "displayName": {"type": "string", "minLength": 1, "maxLength": 120},
                 "permissions": array(json!({"type": "string"})),
+                "reason": {"type": "string", "minLength": 10}
+            }),
+        ),
+    );
+    s.insert(
+        "CreateAdminRole".into(),
+        object(
+            &["key", "displayName", "permissions", "reason"],
+            json!({
+                "key": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 64,
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                },
+                "displayName": {"type": "string", "minLength": 1, "maxLength": 120},
+                "permissions": {
+                    "type": "array",
+                    "maxItems": 128,
+                    "items": {"type": "string"}
+                },
                 "reason": {"type": "string", "minLength": 10}
             }),
         ),

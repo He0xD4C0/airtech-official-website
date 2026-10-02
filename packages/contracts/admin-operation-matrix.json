@@ -1,6 +1,6 @@
 {
   "generatedFrom": "packages/contracts/openapi/openapi.production.json",
-  "operationCount": 86,
+  "operationCount": 88,
   "operations": [
     {
       "method": "GET",
@@ -2740,6 +2740,84 @@
       "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
     },
     {
+      "method": "POST",
+      "path": "/api/admin/v1/roles",
+      "operationId": "createAdminRole",
+      "permission": "identity.roles.manage",
+      "request": {
+        "parameters": [
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "CreateAdminRole"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 201,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "AdminRoleRecord"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "createAdminRole"
+      },
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/v1/roles/{id}",
+      "operationId": "deleteAdminRole",
+      "permission": "identity.roles.manage",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "reason"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 204,
+          "types": []
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "deleteAdminRole"
+      },
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
+    },
+    {
       "method": "GET",
       "path": "/api/admin/v1/roles/{id}",
       "operationId": "getAdminRole",
@@ -2779,7 +2857,7 @@
       "method": "PATCH",
       "path": "/api/admin/v1/roles/{id}",
       "operationId": "updateAdminRole",
-      "permission": "identity.manage",
+      "permission": "identity.roles.manage",
       "request": {
         "parameters": [
           "id",

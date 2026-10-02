@@ -142,7 +142,7 @@ pub async fn list_roles(
     };
     let total = role_count(state, search).await?;
     let rows = sqlx::query(
-        r#"SELECT role.id,role.key,role.display_name,role.system_role,role.revision,
+        r#"SELECT role.id,role.key,role.display_name,role.system_role,role.is_preset,role.revision,
                   COALESCE(array_agg(permission.permission_key ORDER BY permission.permission_key)
                     FILTER (WHERE permission.permission_key IS NOT NULL),ARRAY[]::text[]) AS permissions
            FROM roles role LEFT JOIN role_permissions permission ON permission.role_id=role.id
@@ -252,6 +252,9 @@ async fn role_count(state: &AppState, search: Option<&str>) -> Result<i64, ApiEr
 #[path = "identity/storage.rs"]
 mod storage;
 pub use storage::*;
+#[path = "identity/grants.rs"]
+mod grants;
+pub use grants::*;
 #[path = "identity/invitations.rs"]
 mod invitations;
 pub use invitations::*;

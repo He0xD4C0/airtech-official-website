@@ -14,6 +14,35 @@ use sqlx::{
 };
 use uuid::Uuid;
 
+use airtek_runtime::auth::AdminPrincipal;
+
+/// Shared authenticated principal for PostgreSQL contract tests. Role keys are
+/// authoritative; the display string mirrors what production derives from the
+/// role table.
+pub fn admin_principal(
+    user_id: Uuid,
+    display_name: &str,
+    email: String,
+    role_key: &str,
+    permissions: Vec<String>,
+) -> AdminPrincipal {
+    AdminPrincipal {
+        user_id,
+        display_name: display_name.into(),
+        email,
+        role: role_key.into(),
+        role_keys: vec![role_key.into()],
+        permissions,
+        session_id: Uuid::new_v4(),
+        session_token_hash: vec![1; 32],
+        csrf_hash: vec![2; 32],
+        totp_enabled: true,
+        must_change_password: false,
+        must_confirm_recovery_key: false,
+        phone_verified: false,
+    }
+}
+
 static DATABASE_CLONE_SLOTS: OnceLock<Arc<tokio::sync::Semaphore>> = OnceLock::new();
 static MIGRATION_SANDBOX_CREATE_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 

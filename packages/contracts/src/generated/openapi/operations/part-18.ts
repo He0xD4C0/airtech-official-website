@@ -243,21 +243,26 @@ listAdminRoles: {
             };
         };
     };
-getAdminRole: {
+createAdminRole: {
         parameters: {
             query?: never;
-            header?: never;
-            path: {
-                id: string;
+            header: {
+                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
+                "Idempotency-Key": string;
             };
+            path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAdminRole"];
+            };
+        };
         responses: {
-            /** @description Role definition */
-            200: {
+            /** @description Role definition created */
+            201: {
                 headers: {
-                    /** @description Current role revision tag */
+                    /** @description New role revision tag */
                     ETag?: string;
                     [name: string]: unknown;
                 };
@@ -357,30 +362,21 @@ getAdminRole: {
             };
         };
     };
-updateAdminRole: {
+getAdminRole: {
         parameters: {
             query?: never;
-            header: {
-                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
-                "Idempotency-Key": string;
-                /** @description Current entity ETag, formatted as revision-N. */
-                "If-Match": string;
-            };
+            header?: never;
             path: {
                 id: string;
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateAdminRole"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description Role definition updated */
+            /** @description Role definition */
             200: {
                 headers: {
-                    /** @description New role revision tag */
+                    /** @description Current role revision tag */
                     ETag?: string;
                     [name: string]: unknown;
                 };

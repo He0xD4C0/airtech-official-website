@@ -60,7 +60,7 @@ async fn role_row(
     id: Uuid,
 ) -> Result<Option<sqlx::postgres::PgRow>, sqlx::Error> {
     sqlx::query(
-        r#"SELECT role.id,role.key,role.display_name,role.system_role,role.revision,
+        r#"SELECT role.id,role.key,role.display_name,role.system_role,role.is_preset,role.revision,
                   COALESCE(array_agg(permission.permission_key ORDER BY permission.permission_key)
                     FILTER (WHERE permission.permission_key IS NOT NULL),ARRAY[]::text[]) AS permissions
            FROM roles role LEFT JOIN role_permissions permission ON permission.role_id=role.id
@@ -113,6 +113,7 @@ pub fn decode_admin_role(row: sqlx::postgres::PgRow) -> Result<AdminRoleRecord, 
         key: row.try_get("key")?,
         display_name: row.try_get("display_name")?,
         system_role: row.try_get("system_role")?,
+        is_preset: row.try_get("is_preset")?,
         revision: row.try_get("revision")?,
         permissions: row.try_get("permissions")?,
     })

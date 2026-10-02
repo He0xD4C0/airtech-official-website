@@ -19,7 +19,7 @@ async function submit(): Promise<void> {
   errorMessage.value = ''
   try {
     await auth.login(email.value.trim(), password.value, otp.value || undefined)
-    if (auth.requiresTotpEnrollment) {
+    if (auth.requiresOnboarding) {
       await router.replace('/account/security')
       return
     }

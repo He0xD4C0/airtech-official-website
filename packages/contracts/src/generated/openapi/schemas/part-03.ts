@@ -6,6 +6,19 @@
 import type { components } from '../components'
 
 export interface SchemasPart03 {
+GeneralInformationTypeFields: {
+            brandLine?: string | null;
+            contact: components["schemas"]["ContactInformationInput"];
+            copyrightTemplate?: string | null;
+            defaultSeo: components["schemas"]["SeoInputV2"];
+            footerStatement?: string | null;
+            homePath?: string | null;
+            navigationCta?: components["schemas"]["EditorialAction"] | null;
+            organizationName?: string | null;
+            productCategories: components["schemas"]["ProductCategoryPresentationInput"][];
+            siteIcon?: components["schemas"]["AssetVersionReference"] | null;
+            socialLinks: components["schemas"]["SocialLinkInput"][];
+        };
 GuestSourceDaily: {
             /** Format: date */
             bucketDate: string;
@@ -478,22 +491,5 @@ ProductPublicationReport: {
             /** Format: uuid */
             productId: string;
             ready: boolean;
-        };
-ProductRfqContext: {
-            additionalMessage?: string;
-            application: string;
-            electrical?: components["schemas"]["RfqElectricalContext"];
-            environment?: string;
-            /** @enum {string} */
-            priority?: "efficiency" | "noise" | "size" | "headroom";
-            quantity?: components["schemas"]["RfqQuantity"];
-        };
-ProductRfqProductContext: {
-            model: string;
-            /** Format: uuid */
-            productId: string;
-            /** Format: int64 */
-            publishedRevision: number;
-            stableId: string;
         };
 }

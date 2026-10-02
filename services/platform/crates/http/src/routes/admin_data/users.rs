@@ -89,6 +89,28 @@ pub(super) async fn update_user(
         let mut transaction = pool.begin().await?;
         let target =
             airtek_runtime::services::identity::prepare_user_update(&mut transaction, id).await?;
+        airtek_runtime::services::identity::validate_user_manage_scope(
+            &mut transaction,
+            principal.is_super_admin(),
+            &principal.permissions,
+            id,
+        )
+        .await?;
+        if update.role_keys.is_some() && id == principal.user_id {
+            transaction.rollback().await?;
+            return Err(ApiError::conflict(
+                "The current administrator cannot change their own role assignment.",
+            ));
+        }
+        if let Some(role_keys) = &update.role_keys {
+            airtek_runtime::services::identity::validate_role_grant(
+                &mut transaction,
+                principal.is_super_admin(),
+                &principal.permissions,
+                role_keys,
+            )
+            .await?;
+        }
         let current_status = target.status;
         let is_super_admin = target.is_super_admin;
         let target_status_is_active =

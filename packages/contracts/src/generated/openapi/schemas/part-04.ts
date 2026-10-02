@@ -6,6 +6,23 @@
 import type { components } from '../components'
 
 export interface SchemasPart04 {
+ProductRfqContext: {
+            additionalMessage?: string;
+            application: string;
+            electrical?: components["schemas"]["RfqElectricalContext"];
+            environment?: string;
+            /** @enum {string} */
+            priority?: "efficiency" | "noise" | "size" | "headroom";
+            quantity?: components["schemas"]["RfqQuantity"];
+        };
+ProductRfqProductContext: {
+            model: string;
+            /** Format: uuid */
+            productId: string;
+            /** Format: int64 */
+            publishedRevision: number;
+            stableId: string;
+        };
 ProductRfqRequest: {
             /** @enum {boolean} */
             consent: true;
@@ -386,8 +403,12 @@ SessionUser: {
             environment: string;
             /** Format: uuid */
             id: string;
+            mustChangePassword: boolean;
+            mustConfirmRecoveryKey: boolean;
             permissions: string[];
+            phoneVerified: boolean;
             role: string;
+            roleKeys: string[];
             totpEnabled: boolean;
         };
 SetupRequest: {

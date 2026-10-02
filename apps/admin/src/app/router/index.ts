@@ -238,7 +238,7 @@ router.beforeEach(async (to) => {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
 
-  if (auth.requiresTotpEnrollment && to.name !== 'account-security') {
+  if (auth.requiresOnboarding && to.name !== 'account-security') {
     return { name: 'account-security' }
   }
 

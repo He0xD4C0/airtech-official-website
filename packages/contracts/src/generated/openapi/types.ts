@@ -74,6 +74,7 @@ export type ContentTemplateDefinitionPage = components['schemas']['ContentTempla
 export type ContentTemplateKey = components['schemas']['ContentTemplateKey'];
 export type ContentTypeFields = components['schemas']['ContentTypeFields'];
 export type ContentWidth = components['schemas']['ContentWidth'];
+export type CreateAdminRole = components['schemas']['CreateAdminRole'];
 export type CreateAnalyticsConsent = components['schemas']['CreateAnalyticsConsent'];
 export type CreateAnalyticsEvent = components['schemas']['CreateAnalyticsEvent'];
 export type CreateBusinessNoteRequest = components['schemas']['CreateBusinessNoteRequest'];

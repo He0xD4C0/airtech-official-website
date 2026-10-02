@@ -33,6 +33,7 @@ pub struct AdminRoleRecord {
     pub key: String,
     pub display_name: String,
     pub system_role: bool,
+    pub is_preset: bool,
     pub revision: i64,
     pub permissions: Vec<String>,
 }
@@ -50,6 +51,15 @@ pub struct AdminRolePage {
 pub struct UpdateAdminRole {
     pub display_name: Option<String>,
     pub permissions: Option<Vec<String>>,
+    pub reason: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CreateAdminRole {
+    pub key: String,
+    pub display_name: String,
+    pub permissions: Vec<String>,
     pub reason: String,
 }
 

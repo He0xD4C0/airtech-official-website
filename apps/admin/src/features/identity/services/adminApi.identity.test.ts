@@ -87,7 +87,7 @@ describe('admin identity API', () => {
   })
 
   it('updates roles with the exact revision ETag and audit reason', async () => {
-    const role = { id: '92000000-0000-4000-8000-000000000001', key: 'publisher', displayName: 'Publisher', systemRole: true, permissions: ['content.publish'], revision: 5 }
+    const role = { id: '92000000-0000-4000-8000-000000000001', key: 'publisher', displayName: 'Publisher', systemRole: true, isPreset: true, permissions: ['content.publish'], revision: 5 }
     const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       void input
       void init

@@ -90,7 +90,7 @@ services:
       FLYWAY_USER: ${FLYWAY_USER:-airtek}
       FLYWAY_PASSWORD: ${FLYWAY_PASSWORD:-airtek}
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: ${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:-airtek}
-      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:-28}
+      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:-29}
       AIRTEK_RELEASE_TAG: ${AIRTEK_IMAGE_TAG:-local}
       AIRTEK_MIGRATION_STATE_DIR: /var/lib/airtek/migration-state
       # Local compatibility for the existing single-role development volume.

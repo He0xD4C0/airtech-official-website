@@ -118,7 +118,8 @@ export interface PathsPart03 {
         /** List role definitions and their permission matrices */
         get: operations["listAdminRoles"];
         put?: never;
-        post?: never;
+        /** Create a custom administrator role */
+        post: operations["createAdminRole"];
         delete?: never;
         options?: never;
         head?: never;
@@ -136,7 +137,8 @@ export interface PathsPart03 {
         get: operations["getAdminRole"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete an unassigned custom administrator role */
+        delete: operations["deleteAdminRole"];
         options?: never;
         head?: never;
         /** Update a role display name or permission matrix */

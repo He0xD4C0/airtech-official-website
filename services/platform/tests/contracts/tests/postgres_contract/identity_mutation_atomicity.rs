@@ -57,18 +57,13 @@ async fn identity_mutations_are_idempotent_and_commit_with_their_audit_records()
         .await
         .unwrap();
 
-    let principal = AdminPrincipal {
-        user_id: actor_id,
-        display_name: "TEST ONLY Identity Actor".into(),
-        email: actor_label.clone(),
-        role: "super-admin".into(),
-        permissions: vec!["identity.manage".into()],
-        session_id: Uuid::new_v4(),
-        session_token_hash: vec![1; 32],
-        csrf_hash: vec![2; 32],
-        totp_enabled: true,
-        development_password_only: false,
-    };
+    let principal = support::admin_principal(
+        actor_id,
+        "TEST ONLY Identity Actor",
+        actor_label.clone(),
+        "super-admin",
+        vec!["identity.manage".into(), "identity.roles.manage".into()],
+    );
     let app = airtek_http::routes::admin_data::router()
         .layer(Extension(principal))
         .with_state(postgres_state(sandbox.connection_url()));

@@ -45,6 +45,7 @@ AdminRoleRecord: {
             displayName: string;
             /** Format: uuid */
             id: string;
+            isPreset: boolean;
             key: string;
             permissions: string[];
             /** Format: int64 */

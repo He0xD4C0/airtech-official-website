@@ -258,7 +258,7 @@ jobs:
       FLYWAY_USER: airtek
       FLYWAY_PASSWORD: airtek
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: airtek_runtime
-      AIRTEK_FLYWAY_TARGET: 28
+      AIRTEK_FLYWAY_TARGET: 29
       AIRTEK_OBJECT_STORE_IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-minio${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
       AIRTEK_OBJECT_STORE_MC_IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-minio-mc${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
     steps:

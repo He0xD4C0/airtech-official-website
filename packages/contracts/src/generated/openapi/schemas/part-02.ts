@@ -148,6 +148,12 @@ ContentTypeFields: {
         };
 /** @enum {string} */
         ContentWidth: "narrow" | "standard" | "wide";
+CreateAdminRole: {
+            displayName: string;
+            key: string;
+            permissions: string[];
+            reason: string;
+        };
 CreateAnalyticsConsent: {
             analyticsAllowed: boolean;
             /** Format: uuid */
@@ -477,18 +483,5 @@ GeneralInformationPayload: {
 GeneralInformationRevisionPage: {
             items: components["schemas"]["GeneralInformationRevision"][];
             nextCursor: string | null;
-        };
-GeneralInformationTypeFields: {
-            brandLine?: string | null;
-            contact: components["schemas"]["ContactInformationInput"];
-            copyrightTemplate?: string | null;
-            defaultSeo: components["schemas"]["SeoInputV2"];
-            footerStatement?: string | null;
-            homePath?: string | null;
-            navigationCta?: components["schemas"]["EditorialAction"] | null;
-            organizationName?: string | null;
-            productCategories: components["schemas"]["ProductCategoryPresentationInput"][];
-            siteIcon?: components["schemas"]["AssetVersionReference"] | null;
-            socialLinks: components["schemas"]["SocialLinkInput"][];
         };
 }

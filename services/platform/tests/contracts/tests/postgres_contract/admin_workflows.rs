@@ -8,6 +8,7 @@ fn workflow_principal(user_id: Uuid, email: String) -> AdminPrincipal {
         display_name: "TEST ONLY Workflow Admin".into(),
         email,
         role: "super-admin".into(),
+        role_keys: vec!["super-admin".into()],
         permissions: vec![
             "analytics.read".into(),
             "audit.read".into(),
@@ -23,7 +24,9 @@ fn workflow_principal(user_id: Uuid, email: String) -> AdminPrincipal {
         session_token_hash: vec![1; 32],
         csrf_hash: vec![2; 32],
         totp_enabled: true,
-        development_password_only: false,
+        must_change_password: false,
+        must_confirm_recovery_key: false,
+        phone_verified: false,
     }
 }
 

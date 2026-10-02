@@ -73,12 +73,15 @@ fn fixture_principal(user_id: Uuid, email: &str) -> AdminPrincipal {
         display_name: "Development public-site fixture".into(),
         email: email.into(),
         role: "super-admin".into(),
+        role_keys: vec!["super-admin".into()],
         permissions: vec!["content.publish".into()],
         session_id: Uuid::nil(),
         session_token_hash: Vec::new(),
         csrf_hash: Vec::new(),
         totp_enabled: true,
-        development_password_only: false,
+        must_change_password: false,
+        must_confirm_recovery_key: false,
+        phone_verified: false,
     }
 }
 

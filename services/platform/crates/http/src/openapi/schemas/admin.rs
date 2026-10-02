@@ -47,8 +47,8 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         ),
     );
     s.insert("SessionUser".into(), object(
-        &["id", "displayName", "email", "role", "permissions", "environment", "totpEnabled"],
-        json!({"id": uuid(), "displayName": {"type": "string"}, "email": {"type": "string", "format": "email"}, "role": {"type": "string"}, "permissions": array(json!({"type": "string"})), "environment": {"type": "string"}, "totpEnabled": {"type": "boolean"}})
+        &["id", "displayName", "email", "role", "roleKeys", "permissions", "environment", "totpEnabled", "phoneVerified", "mustChangePassword", "mustConfirmRecoveryKey"],
+        json!({"id": uuid(), "displayName": {"type": "string"}, "email": {"type": "string", "format": "email"}, "role": {"type": "string"}, "roleKeys": array(json!({"type": "string"})), "permissions": array(json!({"type": "string"})), "environment": {"type": "string"}, "totpEnabled": {"type": "boolean"}, "phoneVerified": {"type": "boolean"}, "mustChangePassword": {"type": "boolean"}, "mustConfirmRecoveryKey": {"type": "boolean"}})
     ));
     s.insert(
         "TotpCodeRequest".into(),

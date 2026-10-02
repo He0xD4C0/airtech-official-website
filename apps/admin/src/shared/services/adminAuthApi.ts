@@ -34,8 +34,12 @@ function permission(value: string): Permission | undefined {
     case 'rfq.assign':
     case 'analytics.read':
     case 'identity.manage':
+    case 'identity.roles.manage':
     case 'audit.read':
     case 'settings.manage':
+    case 'mail.manage':
+    case 'sms.manage':
+    case 'captcha.manage':
       return value
     default:
       return devtoolsPermissions.find((candidate) => candidate === value)

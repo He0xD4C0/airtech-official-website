@@ -17,9 +17,9 @@ use uuid::Uuid;
 
 use crate::routes::{actor, etag, parse_if_match};
 use airtek_domain::models::{
-    AdminProductDetail, AdminRoleRecord, AdminUserRecord, AuditEvent, CursorPage, GuestSourceDaily,
-    InviteAdminUser, ProductImportRequest, ProductImportResult, UpdateAdminRole, UpdateAdminUser,
-    UpdateProductPresentation, UserInvitation,
+    AdminProductDetail, AdminRoleRecord, AdminUserRecord, AuditEvent, CreateAdminRole, CursorPage,
+    GuestSourceDaily, InviteAdminUser, ProductImportRequest, ProductImportResult, UpdateAdminRole,
+    UpdateAdminUser, UpdateProductPresentation, UserInvitation,
 };
 use airtek_runtime::auth::AdminPrincipal;
 use airtek_runtime::error::{json_hash, ApiError};
@@ -65,8 +65,11 @@ pub fn router() -> Router<AppState> {
         .route("/users/{id}/sessions", delete(revoke_user_sessions))
         .route("/user-invitations", get(list_invitations).post(invite_user))
         .route("/user-invitations/{id}/revoke", post(revoke_invitation))
-        .route("/roles", get(list_roles))
-        .route("/roles/{id}", get(get_role).patch(update_role))
+        .route("/roles", get(list_roles).post(create_role))
+        .route(
+            "/roles/{id}",
+            get(get_role).patch(update_role).delete(delete_role),
+        )
 }
 
 #[derive(Debug, Deserialize, Serialize)]

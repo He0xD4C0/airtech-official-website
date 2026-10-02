@@ -112,10 +112,14 @@ pub(super) async fn create_initial_super_admin(
         email: normalized_email,
         password_hash,
         role: "Super Admin".into(),
+        role_keys: vec!["super-admin".into()],
         permissions: super_admin_permissions(),
         active: true,
         totp_enabled: false,
         totp_secret_ciphertext: None,
+        must_change_password: false,
+        must_confirm_recovery_key: false,
+        phone_verified: false,
     })
 }
 
@@ -125,35 +129,45 @@ pub(super) async fn find_user_by_email(
 ) -> Result<Option<StoredUser>, ApiError> {
     let pool = &state.pool;
     let row = sqlx::query(
-            "SELECT id, display_name, email, password_hash, status, totp_confirmed_at, totp_secret_ciphertext FROM users WHERE lower(email)=lower($1)",
+            "SELECT id, display_name, email, password_hash, status, totp_confirmed_at, totp_secret_ciphertext, must_change_password, phone_verified_at, recovery_key_hash, recovery_key_confirmed_at FROM users WHERE lower(email)=lower($1)",
         )
         .bind(email)
         .fetch_optional(pool)
         .await?;
     let Some(row) = row else { return Ok(None) };
     let id: Uuid = row.try_get("id")?;
-    let (role, permissions) = load_roles_and_permissions(pool, id).await?;
+    let (role, role_keys, permissions) = load_roles_and_permissions(pool, id).await?;
+    let recovery_key_hash: Option<String> = row.try_get("recovery_key_hash")?;
+    let recovery_key_confirmed_at: Option<DateTime<Utc>> =
+        row.try_get("recovery_key_confirmed_at")?;
     Ok(Some(StoredUser {
         id,
         display_name: row.try_get("display_name")?,
         email: row.try_get("email")?,
         password_hash: row.try_get("password_hash")?,
         role,
+        role_keys,
         permissions,
         active: row.try_get::<String, _>("status")? == "active",
         totp_enabled: row
             .try_get::<Option<DateTime<Utc>>, _>("totp_confirmed_at")?
             .is_some(),
         totp_secret_ciphertext: row.try_get("totp_secret_ciphertext")?,
+        must_change_password: row.try_get("must_change_password")?,
+        must_confirm_recovery_key: recovery_key_hash.is_some()
+            && recovery_key_confirmed_at.is_none(),
+        phone_verified: row
+            .try_get::<Option<DateTime<Utc>>, _>("phone_verified_at")?
+            .is_some(),
     }))
 }
 
 pub(super) async fn load_roles_and_permissions(
     pool: &sqlx::PgPool,
     user_id: Uuid,
-) -> Result<(String, Vec<String>), ApiError> {
+) -> Result<(String, Vec<String>, Vec<String>), ApiError> {
     let role_rows = sqlx::query(
-        "SELECT role.display_name FROM roles AS role JOIN user_roles ON user_roles.role_id=role.id WHERE user_roles.user_id=$1 ORDER BY role.display_name",
+        "SELECT role.display_name, role.key FROM roles AS role JOIN user_roles ON user_roles.role_id=role.id WHERE user_roles.user_id=$1 ORDER BY role.display_name",
     )
     .bind(user_id)
     .fetch_all(pool)
@@ -163,6 +177,10 @@ pub(super) async fn load_roles_and_permissions(
         .filter_map(|row| row.try_get::<String, _>("display_name").ok())
         .collect::<Vec<_>>()
         .join(" · ");
+    let role_keys = role_rows
+        .iter()
+        .filter_map(|row| row.try_get::<String, _>("key").ok())
+        .collect();
     let permission_rows = sqlx::query(
         r#"SELECT DISTINCT role_permission.permission_key
            FROM role_permissions AS role_permission
@@ -176,5 +194,5 @@ pub(super) async fn load_roles_and_permissions(
         .iter()
         .filter_map(|row| row.try_get::<String, _>("permission_key").ok())
         .collect();
-    Ok((role, permissions))
+    Ok((role, role_keys, permissions))
 }
