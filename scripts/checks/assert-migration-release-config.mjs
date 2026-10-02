@@ -85,8 +85,16 @@ for (const marker of [
 }
 requireMatch(wrapper, /exit_code=2/, 'Release wrapper must report a restored migration failure as exit code 2.')
 requireMatch(wrapper, /exit_code=3/, 'Release wrapper must report an unrecoverable failure as exit code 3.')
-forbidMatch(deploy, /run --rm flyway-migrate/u, 'Deployment must let the Compose dependency graph own migration execution.')
-forbidMatch(deploy, /run --rm platform-maintenance/u, 'Deployment must let the Compose dependency graph own runtime preparation.')
+requireMatch(
+  deploy,
+  /stop gateway[\s\S]*?stop platform-api platform-worker public-web admin-web[\s\S]*?run --rm --no-deps flyway-migrate release[\s\S]*?run --rm --no-deps platform-maintenance prepare-runtime[\s\S]*?up -d --no-deps/u,
+  'Deployment must stop the entry point, promote the schema with the migration artifact, prepare runtime state, and only then start the new revision.',
+)
+requireMatch(
+  deploy,
+  /latest-migration-dump/u,
+  'Deployment rollback must reference the retained pre-migration dump.',
+)
 requireMatch(deploy, /AIRTEK_RELEASE_TAG=\$release_id/u, 'Deployment must stamp the release tag for migration failure records.')
 
 const localEnvironment = read('.env.example')

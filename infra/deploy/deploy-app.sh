@@ -69,6 +69,11 @@ rollback() {
     return
   fi
   echo "Application health check failed; restoring previous application images." >&2
+  retained_dump_file="${AIRTEK_MIGRATION_STATE_DIR:-/srv/airtek/migration-state}/latest-migration-dump"
+  if [ -f "$retained_dump_file" ]; then
+    echo "A pre-migration dump was retained at $(cat "$retained_dump_file" 2>/dev/null)." >&2
+    echo "If this release promoted the schema, restore that dump with pg_restore before the previous images can serve." >&2
+  fi
   compose_release "$previous_release" up -d --no-deps --remove-orphans --wait --wait-timeout 180 \
     platform-api platform-worker public-web admin-web gateway
   ln -sfn "$previous_release" "$deploy_root/current"
@@ -104,6 +109,15 @@ compose_release "$release_dir" config --quiet
 compose_release "$release_dir" pull
 
 deployment_started=1
+# A schema-promoting release needs a short full-site interruption: stop the
+# entry point and application containers, promote the schema with the dedicated
+# migration artifact, prepare runtime state, then start the new revision. The
+# migration artifact retains its pre-migration dump so this release can be
+# rolled back at the database level if the new containers fail to become healthy.
+compose_release "$release_dir" stop gateway >/dev/null 2>&1 || true
+compose_release "$release_dir" stop platform-api platform-worker public-web admin-web >/dev/null 2>&1 || true
+compose_release "$release_dir" run --rm --no-deps flyway-migrate release
+compose_release "$release_dir" run --rm --no-deps platform-maintenance prepare-runtime
 compose_release "$release_dir" up -d --no-deps --remove-orphans --wait --wait-timeout 180 \
   platform-api platform-worker public-web admin-web gateway
 

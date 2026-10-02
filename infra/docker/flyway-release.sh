@@ -108,6 +108,11 @@ fi
 mkdir -p "$state_dir/failures" 2>/dev/null || true
 dump="$state_dir/pre-migrate-$release_tag.dump"
 migration_log="$state_dir/flyway-$release_tag.log"
+retained_marker="$state_dir/latest-migration-dump"
+previous_dump=''
+if [ -f "$retained_marker" ]; then
+  previous_dump=$(cat "$retained_marker" 2>/dev/null || true)
+fi
 rm -f "$dump"
 if ! "$pg_dump_bin" --format=custom --no-owner --no-acl --file "$dump"; then
   log 'pre-migration dump failed; refusing to migrate'
@@ -119,8 +124,15 @@ dump_bytes=$(wc -c < "$dump" | tr -d ' ')
 log "pre-migration dump written for pending V$pending"
 
 if "$entrypoint_bin" migrate >"$migration_log" 2>&1; then
-  rm -f "$dump" "$migration_log"
-  log "migration succeeded through V$latest_local; pre-migration dump removed"
+  rm -f "$migration_log"
+  # Retain this dump so an application rollout that fails after a successful
+  # migration can restore the exact previous database. The dump from the
+  # previous release is pruned only now, after this migration succeeded.
+  printf '%s\n' "$dump" >"$retained_marker"
+  if [ -n "$previous_dump" ] && [ "$previous_dump" != "$dump" ] && [ -f "$previous_dump" ]; then
+    rm -f "$previous_dump"
+  fi
+  log "migration succeeded through V$latest_local; pre-migration dump retained at $dump"
   exit 0
 else
   migration_status=$?
