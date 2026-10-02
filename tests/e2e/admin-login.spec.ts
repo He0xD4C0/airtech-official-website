@@ -28,7 +28,15 @@ test.describe('Admin browser login', () => {
       await expect(page.getByRole('region', { name: '关键指标' })).toBeVisible()
       const cookies = await context.cookies()
       expect(cookies.filter((cookie) => cookie.httpOnly).length).toBeGreaterThan(0)
-      expect(cookies.filter((cookie) => cookie.httpOnly).every((cookie) => cookie.secure && cookie.sameSite === 'Strict')).toBe(true)
+      // The API scopes the Secure attribute to the configured Admin origin, so the
+      // http E2E stack must receive browser-storable cookies while an https
+      // deployment keeps them Secure.
+      const requiresSecureCookie = adminOrigin.startsWith('https://')
+      expect(
+        cookies
+          .filter((cookie) => cookie.httpOnly)
+          .every((cookie) => cookie.secure === requiresSecureCookie && cookie.sameSite === 'Strict'),
+      ).toBe(true)
       await page.reload()
       await expect(page).toHaveURL(absolute(adminOrigin, '/'))
       await expect(page.getByRole('region', { name: '关键指标' })).toBeVisible()
