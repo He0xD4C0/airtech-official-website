@@ -6,6 +6,8 @@
 import type { components } from '../components'
 
 export interface SchemasPart03 {
+/** @description Immutable General Information revision payload. */
+        GeneralInformationRevision: components["schemas"]["GeneralInformation"];
 GeneralInformationRevisionPage: {
             items: components["schemas"]["GeneralInformationRevision"][];
             nextCursor: string | null;
@@ -90,6 +92,17 @@ HeroBlock: {
         };
 /** @enum {string} */
         HeroVariant: "standard" | "splitMedia" | "minimal";
+IdentifyRequest: {
+            /** Format: email */
+            email: string;
+        };
+IdentifyResponse: {
+            captchaProvider?: string | null;
+            captchaRequired: boolean;
+            captchaSiteKey?: string | null;
+            readonly flowToken: string;
+            methods: string[];
+        };
 IntegrationTestResult: {
             delivered: boolean;
             verified: boolean;
@@ -149,6 +162,11 @@ LoginRequest: {
             otp?: string | null;
             /** Format: password */
             password: string;
+        };
+LoginStepResponse: {
+            factor?: ("emailCode" | "smsCode" | "riskSms" | "totp") | null;
+            /** @enum {string} */
+            status: "codeSent" | "factorRequired";
         };
 MailSettings: {
             configured: boolean;
@@ -470,29 +488,5 @@ ProductMediaGalleryItem: {
             altText: string;
             /** Format: uuid */
             assetId: string;
-        };
-ProductPage: {
-            familyCounts: components["schemas"]["ProductFacetCount"][];
-            items: components["schemas"]["Product"][];
-            motorTechnologyCounts: components["schemas"]["ProductFacetCount"][];
-            /** @description Opaque base64url v3 keyset cursor bound to normalized query and filters; v2 is accepted only when q is absent for one compatibility release. */
-            nextCursor: string | null;
-            total: number;
-        };
-ProductPresentation: {
-            indexable: boolean;
-            locale: string;
-            mediaGallery: components["schemas"]["ProductMediaGalleryItem"][];
-            publishedRevision: number | null;
-            relatedContentIds: string[];
-            /** Format: int64 */
-            revision: number;
-            seo: components["schemas"]["SeoMetadata"];
-            slug: string;
-            sortOrder: number;
-            summary: string | null;
-            title: string;
-            /** Format: date-time */
-            updatedAt: string;
         };
 }

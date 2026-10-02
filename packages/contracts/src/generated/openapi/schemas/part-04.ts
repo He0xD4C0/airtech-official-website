@@ -6,6 +6,30 @@
 import type { components } from '../components'
 
 export interface SchemasPart04 {
+ProductPage: {
+            familyCounts: components["schemas"]["ProductFacetCount"][];
+            items: components["schemas"]["Product"][];
+            motorTechnologyCounts: components["schemas"]["ProductFacetCount"][];
+            /** @description Opaque base64url v3 keyset cursor bound to normalized query and filters; v2 is accepted only when q is absent for one compatibility release. */
+            nextCursor: string | null;
+            total: number;
+        };
+ProductPresentation: {
+            indexable: boolean;
+            locale: string;
+            mediaGallery: components["schemas"]["ProductMediaGalleryItem"][];
+            publishedRevision: number | null;
+            relatedContentIds: string[];
+            /** Format: int64 */
+            revision: number;
+            seo: components["schemas"]["SeoMetadata"];
+            slug: string;
+            sortOrder: number;
+            summary: string | null;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
 ProductPrivatePricing: {
             readonly pricingFields: {
                 [key: string]: string;
@@ -466,33 +490,4 @@ SiteBootstrap: {
             navigation: components["schemas"]["PublicContentProjection"] | null;
             productFamilies: components["schemas"]["ProductFamilyPresentation"][];
         };
-SmsSettings: {
-            accessKeyId: string;
-            configured: boolean;
-            /** @constant */
-            provider: "aliyun";
-            region: string;
-            /** Format: int64 */
-            revision: number;
-            signName: string;
-            templateCode: string;
-        };
-SmsTestRequest: {
-            phone: string;
-        };
-SocialLinkInput: {
-            service: string;
-            /** Format: uri */
-            url: string;
-        };
-SourceFact: {
-            fieldName: string;
-            operatingCondition: string | null;
-            rawValue: string;
-            sourceReference: string;
-            state: components["schemas"]["FactState"];
-            unit: string | null;
-        };
-/** @enum {string} */
-        SourceMetadataKind: "supplier" | "brand";
 }

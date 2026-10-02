@@ -53,6 +53,60 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
     );
     add(
         paths,
+        "/api/admin/v1/auth/identify",
+        "post",
+        body(
+            op(
+                "identifyAdministrator",
+                "Start a multi-step administrator sign-in without revealing whether the account exists",
+                "adminAuth",
+                [(
+                    "200",
+                    json_response("Sign-in methods and CAPTCHA requirement", r("IdentifyResponse")),
+                )],
+            ),
+            r("IdentifyRequest"),
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/auth/attempt",
+        "post",
+        body(
+            op(
+                "attemptAdministratorSignIn",
+                "Verify the password or send an email or SMS verification code",
+                "adminAuth",
+                [(
+                    "202",
+                    json_response("Next sign-in step", r("LoginStepResponse")),
+                )],
+            ),
+            r("AttemptRequest"),
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/auth/verify",
+        "post",
+        body(
+            op(
+                "verifyAdministratorSignIn",
+                "Complete a sign-in factor; the final factor returns the admin session",
+                "adminAuth",
+                [
+                    ("200", session_response("Authenticated admin session")),
+                    (
+                        "202",
+                        json_response("Another factor is required", r("LoginStepResponse")),
+                    ),
+                ],
+            ),
+            r("VerifyRequest"),
+        ),
+    );
+    add(
+        paths,
         "/api/admin/v1/auth/recovery",
         "post",
         body(

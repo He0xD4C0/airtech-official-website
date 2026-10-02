@@ -74,6 +74,40 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/auth/attempt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify the password or send an email or SMS verification code */
+        post: operations["attemptAdministratorSignIn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/auth/identify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a multi-step administrator sign-in without revealing whether the account exists */
+        post: operations["identifyAdministrator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/auth/invitations/accept": {
         parameters: {
             query?: never;
@@ -312,6 +346,23 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/auth/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete a sign-in factor; the final factor returns the admin session */
+        post: operations["verifyAdministratorSignIn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/contacts": {
         parameters: {
             query?: never;
@@ -426,58 +477,6 @@ export interface PathsPart01 {
         put?: never;
         /** Create a new private draft */
         post: operations["createPrivateContentDraft"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content-drafts/{draftId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read a visible private draft */
-        get: operations["getPrivateContentDraft"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Explicitly save an owned editing draft */
-        patch: operations["savePrivateContentDraft"];
-        trace?: never;
-    };
-"/api/admin/v1/content-drafts/{draftId}/claim": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Claim an unassigned migrated draft as Super Admin */
-        post: operations["claimUnassignedPrivateContentDraft"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content-drafts/{draftId}/shares": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Replace read-only draft shares */
-        put: operations["setPrivateContentDraftShares"];
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;

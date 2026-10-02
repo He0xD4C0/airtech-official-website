@@ -41,6 +41,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  function apply(next: SessionUser | null): void {
+    user.value = next
+  }
+
   async function refresh(): Promise<void> {
     user.value = await adminAuthApi.session()
   }
@@ -71,6 +75,7 @@ export const useAuthStore = defineStore('auth', () => {
     initialize,
     refresh,
     login,
+    apply,
     setup,
     logout,
   }

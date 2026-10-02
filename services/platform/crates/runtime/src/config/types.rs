@@ -22,6 +22,24 @@ impl AdminRecoveryKeyMode {
     }
 }
 
+/// Behaviour when the CAPTCHA provider is unreachable. Fail-open keeps every
+/// sign-in method available; fail-closed restricts sign-in to the password
+/// method so a broken provider cannot lock every administrator out.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CaptchaFailureMode {
+    FailOpen,
+    FailClosed,
+}
+
+impl CaptchaFailureMode {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::FailOpen => "fail-open",
+            Self::FailClosed => "fail-closed",
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct FeishuCredentials {
     app_id: String,
@@ -123,6 +141,7 @@ pub struct Config {
     /// administrator recovery key file.
     pub admin_recovery_key_dir: Option<String>,
     pub admin_recovery_key_mode: AdminRecoveryKeyMode,
+    pub captcha_failure_mode: CaptchaFailureMode,
 }
 
 impl Config {
@@ -198,6 +217,7 @@ impl fmt::Debug for Config {
                 "admin_recovery_key_mode",
                 &self.admin_recovery_key_mode.label(),
             )
+            .field("captcha_failure_mode", &self.captcha_failure_mode.label())
             .finish()
     }
 }

@@ -6,7 +6,7 @@
 import type { components } from '../components'
 
 export interface OperationsPart22 {
-updateMailSettings: {
+updateCaptchaSettings: {
         parameters: {
             query?: never;
             header: {
@@ -18,7 +18,7 @@ updateMailSettings: {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateMailSettings"];
+                "application/json": components["schemas"]["UpdateCaptchaSettings"];
             };
         };
         responses: {
@@ -30,7 +30,7 @@ updateMailSettings: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MailSettings"];
+                    "application/json": components["schemas"]["CaptchaSettings"];
                 };
             };
             /** @description Malformed request */
@@ -125,7 +125,7 @@ updateMailSettings: {
             };
         };
     };
-testMailSettings: {
+testCaptchaSettings: {
         parameters: {
             query?: never;
             header?: never;
@@ -134,7 +134,7 @@ testMailSettings: {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["MailTestRequest"];
+                "application/json": components["schemas"]["CaptchaTestRequest"];
             };
         };
         responses: {
@@ -239,7 +239,7 @@ testMailSettings: {
             };
         };
     };
-getObjectStorageSettings: {
+getMailSettings: {
         parameters: {
             query?: never;
             header?: never;
@@ -248,17 +248,15 @@ getObjectStorageSettings: {
         };
         requestBody?: never;
         responses: {
-            /** @description Object storage settings */
+            /** @description Integration settings */
             200: {
                 headers: {
-                    /** @description private, no-store, max-age=0 */
-                    "Cache-Control"?: string;
-                    /** @description Current object storage settings revision */
+                    /** @description Current settings revision */
                     ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ObjectStorageSettings"];
+                    "application/json": components["schemas"]["MailSettings"];
                 };
             };
             /** @description Malformed request */
@@ -353,7 +351,7 @@ getObjectStorageSettings: {
             };
         };
     };
-updateObjectStorageSettings: {
+updateMailSettings: {
         parameters: {
             query?: never;
             header: {
@@ -365,21 +363,19 @@ updateObjectStorageSettings: {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateObjectStorageSettings"];
+                "application/json": components["schemas"]["UpdateMailSettings"];
             };
         };
         responses: {
-            /** @description Object storage settings updated */
+            /** @description Integration settings updated */
             200: {
                 headers: {
-                    /** @description private, no-store, max-age=0 */
-                    "Cache-Control"?: string;
-                    /** @description New object storage settings revision */
+                    /** @description New settings revision */
                     ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ObjectStorageSettings"];
+                    "application/json": components["schemas"]["MailSettings"];
                 };
             };
             /** @description Malformed request */

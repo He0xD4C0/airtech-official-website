@@ -24,6 +24,58 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         ),
     );
     s.insert(
+        "IdentifyRequest".into(),
+        object(
+            &["email"],
+            json!({"email": {"type": "string", "format": "email"}}),
+        ),
+    );
+    s.insert(
+        "AttemptRequest".into(),
+        object(
+            &["flowToken", "method"],
+            json!({
+                "flowToken": {"type": "string"},
+                "method": {"type": "string", "enum": ["password", "emailCode", "smsCode"]},
+                "password": nullable(json!({"type": "string", "format": "password", "writeOnly": true})),
+                "captchaToken": nullable(json!({"type": "string", "writeOnly": true}))
+            }),
+        ),
+    );
+    s.insert(
+        "VerifyRequest".into(),
+        object(
+            &["flowToken", "code"],
+            json!({
+                "flowToken": {"type": "string"},
+                "code": {"type": "string", "writeOnly": true}
+            }),
+        ),
+    );
+    s.insert(
+        "IdentifyResponse".into(),
+        object(
+            &["flowToken", "captchaRequired", "methods"],
+            json!({
+                "flowToken": {"type": "string", "readOnly": true},
+                "captchaRequired": {"type": "boolean"},
+                "captchaSiteKey": nullable(json!({"type": "string"})),
+                "captchaProvider": nullable(json!({"type": "string"})),
+                "methods": {"type": "array", "items": {"type": "string"}}
+            }),
+        ),
+    );
+    s.insert(
+        "LoginStepResponse".into(),
+        object(
+            &["status"],
+            json!({
+                "status": {"type": "string", "enum": ["codeSent", "factorRequired"]},
+                "factor": nullable(json!({"type": "string", "enum": ["emailCode", "smsCode", "riskSms", "totp"]}))
+            }),
+        ),
+    );
+    s.insert(
         "RecoveryRequest".into(),
         object(
             &["email", "recoveryKey", "newPassword"],

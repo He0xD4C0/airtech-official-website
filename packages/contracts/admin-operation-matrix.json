@@ -1,6 +1,6 @@
 {
   "generatedFrom": "packages/contracts/openapi/openapi.production.json",
-  "operationCount": 101,
+  "operationCount": 104,
   "operations": [
     {
       "method": "GET",
@@ -171,6 +171,86 @@
         "required": false
       },
       "frontendConsumer": "apps/admin/src/features/audit/services/auditApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/auth/attempt",
+      "operationId": "attemptAdministratorSignIn",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "AttemptRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 202,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "LoginStepResponse"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "attemptAdministratorSignIn"
+      },
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/auth/identify",
+      "operationId": "identifyAdministrator",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "IdentifyRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "IdentifyResponse"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "identifyAdministrator"
+      },
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
     },
     {
       "method": "POST",
@@ -671,6 +751,55 @@
       "audit": {
         "required": true,
         "action": "startTotpEnrollment"
+      },
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/auth/verify",
+      "operationId": "verifyAdministratorSignIn",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "VerifyRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "SessionUser"
+            }
+          ]
+        },
+        {
+          "status": 202,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "LoginStepResponse"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "verifyAdministratorSignIn"
       },
       "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
     },

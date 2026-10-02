@@ -6,22 +6,26 @@
 import type { components } from '../components'
 
 export interface OperationsPart31 {
-getInternalMetrics: {
+selectProducts: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelectorRequest"];
+            };
+        };
         responses: {
-            /** @description OpenMetrics telemetry */
+            /** @description Selector evaluation */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/openmetrics-text": string;
+                    "application/json": components["schemas"]["SelectorResponse"];
                 };
             };
             /** @description Malformed request */
@@ -116,22 +120,24 @@ getInternalMetrics: {
             };
         };
     };
-getOpenApiDocument: {
+getSiteBootstrap: {
         parameters: {
-            query?: never;
+            query?: {
+                locale?: "en";
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description OpenAPI document */
+            /** @description Published site bootstrap */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OpenApiDocument"];
+                    "application/json": components["schemas"]["SiteBootstrap"];
                 };
             };
             /** @description Malformed request */
@@ -226,7 +232,7 @@ getOpenApiDocument: {
             };
         };
     };
-getReadiness: {
+getLiveness: {
         parameters: {
             query?: never;
             header?: never;
@@ -235,7 +241,7 @@ getReadiness: {
         };
         requestBody?: never;
         responses: {
-            /** @description Service is ready */
+            /** @description Service is alive */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -336,7 +342,7 @@ getReadiness: {
             };
         };
     };
-getApiRobots: {
+getInternalMetrics: {
         parameters: {
             query?: never;
             header?: never;
@@ -345,13 +351,13 @@ getApiRobots: {
         };
         requestBody?: never;
         responses: {
-            /** @description Crawler policy */
+            /** @description OpenMetrics telemetry */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/plain": string;
+                    "application/openmetrics-text": string;
                 };
             };
             /** @description Malformed request */

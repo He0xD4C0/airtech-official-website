@@ -73,6 +73,7 @@ impl Config {
         let admin_password = non_empty_env("AIRTEK_ADMIN_PASSWORD");
         let admin_recovery_key_dir = non_empty_env("AIRTEK_ADMIN_RECOVERY_KEY_DIR");
         let admin_recovery_key_mode = parse_admin_recovery_key_mode()?;
+        let captcha_failure_mode = parse_captcha_failure_mode()?;
         if production && admin_recovery_key_dir.is_none() {
             return Err(ConfigError::MissingAdminRecoveryKeyDir);
         }
@@ -121,6 +122,7 @@ impl Config {
             admin_password,
             admin_recovery_key_dir,
             admin_recovery_key_mode,
+            captcha_failure_mode,
         })
     }
 
@@ -160,6 +162,7 @@ impl Config {
             admin_password: Some("Local-Admin-Password-2026".into()),
             admin_recovery_key_dir: Some(".local/admin-recovery-key".into()),
             admin_recovery_key_mode: AdminRecoveryKeyMode::Auto,
+            captcha_failure_mode: CaptchaFailureMode::FailOpen,
         }
     }
 

@@ -11,6 +11,9 @@ pub use bootstrap::{accept_invitation, setup};
 #[path = "auth/login_sessions.rs"]
 mod login_sessions;
 pub use login_sessions::*;
+#[path = "auth/login_flow.rs"]
+mod login_flow;
+pub use login_flow::*;
 #[path = "auth/password_reset.rs"]
 mod password_reset;
 pub use password_reset::*;

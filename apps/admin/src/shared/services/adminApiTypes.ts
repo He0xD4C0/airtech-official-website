@@ -35,6 +35,19 @@ export type TotpEnrollment = ContractTotpEnrollment
 export type RecoveryCodeSet = ContractRecoveryCodeSet
 export type RecoveryKeyState = ContractRecoveryKeyState
 export type RecoveryKeyRotationResult = ContractRecoveryKeyRotationResult
+
+export interface IdentifyResponse {
+  flowToken: string
+  captchaRequired: boolean
+  captchaSiteKey?: string | null
+  captchaProvider?: string | null
+  methods: string[]
+}
+
+export interface LoginStep {
+  status: 'codeSent' | 'factorRequired'
+  factor?: 'emailCode' | 'smsCode' | 'riskSms' | 'totp' | null
+}
 export type AdminSession = ContractAdminSession
 export type PlatformSettings = ContractPlatformSettings
 export type UpdatePlatformSettings = ContractUpdatePlatformSettings

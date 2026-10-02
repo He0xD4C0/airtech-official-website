@@ -6,6 +6,58 @@
 import type { operations } from '../operations'
 
 export interface PathsPart02 {
+"/api/admin/v1/content-drafts/{draftId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a visible private draft */
+        get: operations["getPrivateContentDraft"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Explicitly save an owned editing draft */
+        patch: operations["savePrivateContentDraft"];
+        trace?: never;
+    };
+"/api/admin/v1/content-drafts/{draftId}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Claim an unassigned migrated draft as Super Admin */
+        post: operations["claimUnassignedPrivateContentDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/content-drafts/{draftId}/shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace read-only draft shares */
+        put: operations["setPrivateContentDraftShares"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/content-drafts/{draftId}/submit": {
         parameters: {
             query?: never;
@@ -428,59 +480,6 @@ export interface PathsPart02 {
         put?: never;
         /** Publish a validated product revision */
         post: operations["publishProductRevision"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/products/{id}/temporary-overrides": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List temporary source-field overrides */
-        get: operations["listTemporaryOverrides"];
-        put?: never;
-        /** Create an expiring source-field override */
-        post: operations["createTemporaryOverride"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/products/{id}/validation-report": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read the stable product publication validation report */
-        get: operations["getProductValidationReport"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/products/imports": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Product Master import reports */
-        get: operations["listProductImportRuns"];
-        put?: never;
-        /** Validate and import an authoritative Product Master CSV */
-        post: operations["importProductMaster"];
         delete?: never;
         options?: never;
         head?: never;

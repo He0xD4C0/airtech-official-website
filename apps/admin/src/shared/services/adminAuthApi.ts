@@ -4,7 +4,7 @@ import { devtoolsPermissions } from 'virtual:devtools-routes'
 import type { Permission, SessionUser } from '@/shared/types/domain'
 import { clearAdminCsrfToken } from '@/shared/services/adminCsrf'
 import { adminContractClient } from '@/shared/services/adminApiTransport'
-import type { AcceptInvitationRequest, AdminSession, InvitationAcceptance, RecoveryCodeSet, RecoveryKeyState, TotpEnrollment } from '@/shared/services/adminApiTypes'
+import type { AcceptInvitationRequest, AdminSession, IdentifyResponse, InvitationAcceptance, LoginStep, RecoveryCodeSet, RecoveryKeyState, TotpEnrollment } from '@/shared/services/adminApiTypes'
 
 function sessionEnvironment(value: string): SessionUser['environment'] {
   switch (value) {
@@ -57,6 +57,45 @@ function sessionUser(session: ContractSessionUser): SessionUser {
   }
 }
 
+function isLoginStep(value: unknown): value is LoginStep {
+  return typeof value === 'object' && value !== null && 'status' in value
+}
+
+function decodeIdentify(value: unknown): IdentifyResponse {
+  const record = (value ?? {}) as Record<string, unknown>
+  return {
+    flowToken: String(record.flowToken ?? ''),
+    captchaRequired: Boolean(record.captchaRequired),
+    captchaSiteKey: typeof record.captchaSiteKey === 'string' ? record.captchaSiteKey : null,
+    captchaProvider: typeof record.captchaProvider === 'string' ? record.captchaProvider : null,
+    methods: Array.isArray(record.methods) ? record.methods.map(String) : [],
+  }
+}
+
+function decodeSessionUser(value: unknown): SessionUser {
+  const record = (value ?? {}) as Record<string, unknown>
+  return {
+    id: String(record.id ?? ''),
+    displayName: String(record.displayName ?? ''),
+    email: String(record.email ?? ''),
+    role: String(record.role ?? ''),
+    roleKeys: Array.isArray(record.roleKeys) ? record.roleKeys.map(String) : [],
+    permissions: (Array.isArray(record.permissions) ? record.permissions : []).flatMap((candidate) => {
+      const mapped = permission(String(candidate))
+      return mapped ? [mapped] : []
+    }),
+    environment: sessionEnvironment(String(record.environment ?? 'production')),
+    totpEnabled: Boolean(record.totpEnabled),
+    phoneVerified: Boolean(record.phoneVerified),
+    mustChangePassword: Boolean(record.mustChangePassword),
+    mustConfirmRecoveryKey: Boolean(record.mustConfirmRecoveryKey),
+  }
+}
+
+function loginResult(value: unknown): LoginStep | SessionUser {
+  return isLoginStep(value) ? value : decodeSessionUser(value)
+}
+
 export const adminAuthApi = {
   async session(): Promise<SessionUser | null> {
     try {
@@ -74,6 +113,28 @@ export const adminAuthApi = {
       body: { email, password, ...(otp === undefined ? {} : { otp }) },
     })
     return sessionUser(result.data)
+  },
+
+  async identify(email: string): Promise<IdentifyResponse> {
+    const result = await adminContractClient.post('/api/admin/v1/auth/identify', { body: { email } })
+    return decodeIdentify(result.data)
+  },
+
+  async attempt(payload: {
+    flowToken: string
+    method: 'password' | 'emailCode' | 'smsCode'
+    password?: string
+    captchaToken?: string
+  }): Promise<LoginStep | SessionUser> {
+    const result = await adminContractClient.post('/api/admin/v1/auth/attempt', { body: payload })
+    return loginResult(result.data)
+  },
+
+  async verify(flowToken: string, code: string): Promise<LoginStep | SessionUser> {
+    const result = await adminContractClient.post('/api/admin/v1/auth/verify', {
+      body: { flowToken, code },
+    })
+    return loginResult(result.data)
   },
 
   async setup(displayName: string, email: string, password: string, bootstrapToken: string): Promise<SessionUser> {

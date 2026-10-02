@@ -225,6 +225,13 @@ AssignBusinessInboxRequest: {
             assignedTo: string | null;
             reason: string;
         };
+AttemptRequest: {
+            captchaToken?: string | null;
+            flowToken: string;
+            /** @enum {string} */
+            method: "password" | "emailCode" | "smsCode";
+            password?: string | null;
+        };
 AuditEvent: {
             action: string;
             actor: string;
@@ -489,7 +496,4 @@ ContactInformationInput: {
             postalCode?: string | null;
             region?: string | null;
         };
-ContentBlock: components["schemas"]["HeroBlock"] | components["schemas"]["BodyBlock"] | components["schemas"]["MediaBlock"] | components["schemas"]["FeatureGridBlock"] | components["schemas"]["EvidenceBlock"] | components["schemas"]["CtaBlock"] | components["schemas"]["RelationCollectionBlock"] | components["schemas"]["FaqCollectionBlock"] | components["schemas"]["DownloadAssetBlock"] | components["schemas"]["ContactBlock"];
-/** @enum {string} */
-        ContentBlockKind: "hero" | "body" | "media" | "featureGrid" | "evidence" | "cta" | "relationCollection" | "faqCollection" | "downloadAsset" | "contactBlock";
 }

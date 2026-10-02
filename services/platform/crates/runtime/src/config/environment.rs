@@ -51,6 +51,19 @@ pub(super) fn parse_admin_recovery_key_mode() -> Result<AdminRecoveryKeyMode, Co
     }
 }
 
+pub(super) fn parse_captcha_failure_mode() -> Result<CaptchaFailureMode, ConfigError> {
+    match env::var("AIRTEK_CAPTCHA_FAILURE_MODE")
+        .unwrap_or_else(|_| "fail-open".into())
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "fail-open" => Ok(CaptchaFailureMode::FailOpen),
+        "fail-closed" => Ok(CaptchaFailureMode::FailClosed),
+        _ => Err(ConfigError::InvalidCaptchaFailureMode),
+    }
+}
+
 pub(super) fn parse_invitation_replay_encryption_key(
     value: &str,
 ) -> Result<InvitationReplayEncryptionKey, ConfigError> {

@@ -6,6 +6,9 @@
 import type { components } from '../components'
 
 export interface SchemasPart02 {
+ContentBlock: components["schemas"]["HeroBlock"] | components["schemas"]["BodyBlock"] | components["schemas"]["MediaBlock"] | components["schemas"]["FeatureGridBlock"] | components["schemas"]["EvidenceBlock"] | components["schemas"]["CtaBlock"] | components["schemas"]["RelationCollectionBlock"] | components["schemas"]["FaqCollectionBlock"] | components["schemas"]["DownloadAssetBlock"] | components["schemas"]["ContactBlock"];
+/** @enum {string} */
+        ContentBlockKind: "hero" | "body" | "media" | "featureGrid" | "evidence" | "cta" | "relationCollection" | "faqCollection" | "downloadAsset" | "contactBlock";
 ContentDraftInput: {
             body: components["schemas"]["RichTextDocument"];
             /** @default false */
@@ -493,6 +496,4 @@ GeneralInformationPayload: {
         } & {
             [key: string]: unknown;
         };
-/** @description Immutable General Information revision payload. */
-        GeneralInformationRevision: components["schemas"]["GeneralInformation"];
 }

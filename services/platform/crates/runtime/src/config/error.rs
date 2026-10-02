@@ -60,4 +60,6 @@ pub enum ConfigError {
     InvalidAdminRecoveryKeyMode,
     #[error("AIRTEK_ADMIN_RECOVERY_KEY_DIR is required in production builds")]
     MissingAdminRecoveryKeyDir,
+    #[error("AIRTEK_CAPTCHA_FAILURE_MODE must be fail-open or fail-closed")]
+    InvalidCaptchaFailureMode,
 }

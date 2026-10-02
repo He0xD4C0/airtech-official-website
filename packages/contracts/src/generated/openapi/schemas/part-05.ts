@@ -6,6 +6,35 @@
 import type { components } from '../components'
 
 export interface SchemasPart05 {
+SmsSettings: {
+            accessKeyId: string;
+            configured: boolean;
+            /** @constant */
+            provider: "aliyun";
+            region: string;
+            /** Format: int64 */
+            revision: number;
+            signName: string;
+            templateCode: string;
+        };
+SmsTestRequest: {
+            phone: string;
+        };
+SocialLinkInput: {
+            service: string;
+            /** Format: uri */
+            url: string;
+        };
+SourceFact: {
+            fieldName: string;
+            operatingCondition: string | null;
+            rawValue: string;
+            sourceReference: string;
+            state: components["schemas"]["FactState"];
+            unit: string | null;
+        };
+/** @enum {string} */
+        SourceMetadataKind: "supplier" | "brand";
 SpecValue: {
             key: string;
             label: string;
@@ -323,5 +352,9 @@ ValidationIssue: {
             code: string;
             detail: string;
             fieldPath: string;
+        };
+VerifyRequest: {
+            code: string;
+            flowToken: string;
         };
 }

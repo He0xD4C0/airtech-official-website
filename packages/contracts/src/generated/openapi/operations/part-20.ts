@@ -6,28 +6,29 @@
 import type { components } from '../components'
 
 export interface OperationsPart20 {
-deleteAdminRole: {
+listAdminRoles: {
         parameters: {
-            query: {
-                reason: string;
+            query?: {
+                /** @description Opaque endpoint-scoped cursor returned by the previous page. */
+                cursor?: string;
+                /** @description Page size; values outside 1 through 100 return Problem Details 400. */
+                limit?: number;
+                q?: string;
             };
-            header: {
-                /** @description Current entity ETag, formatted as revision-N. */
-                "If-Match": string;
-            };
-            path: {
-                id: string;
-            };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Role deleted */
-            204: {
+            /** @description Role definitions */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AdminRoleRecordPage"];
+                };
             };
             /** @description Malformed request */
             400: {
@@ -121,28 +122,24 @@ deleteAdminRole: {
             };
         };
     };
-updateAdminRole: {
+createAdminRole: {
         parameters: {
             query?: never;
             header: {
                 /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
                 "Idempotency-Key": string;
-                /** @description Current entity ETag, formatted as revision-N. */
-                "If-Match": string;
             };
-            path: {
-                id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateAdminRole"];
+                "application/json": components["schemas"]["CreateAdminRole"];
             };
         };
         responses: {
-            /** @description Role definition updated */
-            200: {
+            /** @description Role definition created */
+            201: {
                 headers: {
                     /** @description New role revision tag */
                     ETag?: string;
@@ -244,26 +241,26 @@ updateAdminRole: {
             };
         };
     };
-getPlatformSettings: {
+getAdminRole: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Platform settings */
+            /** @description Role definition */
             200: {
                 headers: {
-                    /** @description private, no-store, max-age=0 */
-                    "Cache-Control"?: string;
-                    /** @description Current settings revision tag */
+                    /** @description Current role revision tag */
                     ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PlatformSettings"];
+                    "application/json": components["schemas"]["AdminRoleRecord"];
                 };
             };
             /** @description Malformed request */
@@ -358,34 +355,28 @@ getPlatformSettings: {
             };
         };
     };
-updatePlatformSettings: {
+deleteAdminRole: {
         parameters: {
-            query?: never;
+            query: {
+                reason: string;
+            };
             header: {
                 /** @description Current entity ETag, formatted as revision-N. */
                 "If-Match": string;
             };
-            path?: never;
+            path: {
+                id: string;
+            };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdatePlatformSettings"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description Platform settings updated */
-            200: {
+            /** @description Role deleted */
+            204: {
                 headers: {
-                    /** @description private, no-store, max-age=0 */
-                    "Cache-Control"?: string;
-                    /** @description New settings revision tag */
-                    ETag?: string;
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["PlatformSettings"];
-                };
+                content?: never;
             };
             /** @description Malformed request */
             400: {
