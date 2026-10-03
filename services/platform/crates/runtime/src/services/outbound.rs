@@ -10,12 +10,30 @@ use serde::Deserialize;
 
 use crate::error::ApiError;
 use crate::services::integration_settings::{CaptchaTransport, MailTransport, SmsTransport};
+use crate::services::request_metrics::{CaptchaOutcome, DeliveryChannel, RequestMetrics};
+
+/// The only SMS endpoint in production. Development and acceptance stacks may
+/// redirect delivery to a local stub through `AIRTEK_SMS_ENDPOINT`, but only
+/// when `AIRTEK_SMS_ALLOW_ENDPOINT_OVERRIDE=true` is set explicitly.
+const ALIYUN_SMS_ENDPOINT: &str = "https://dysmsapi.aliyuncs.com/";
 
 fn delivery_failure(message: &str) -> ApiError {
     ApiError::service_unavailable(message.to_owned())
 }
 
 pub async fn send_mail(
+    metrics: &RequestMetrics,
+    transport: &MailTransport,
+    to: &str,
+    subject: &str,
+    body: &str,
+) -> Result<(), ApiError> {
+    let result = deliver_mail(transport, to, subject, body).await;
+    metrics.record_delivery(DeliveryChannel::Mail, result.is_ok());
+    result
+}
+
+async fn deliver_mail(
     transport: &MailTransport,
     to: &str,
     subject: &str,
@@ -43,12 +61,17 @@ pub async fn send_mail(
         .subject(subject)
         .body(body.to_owned())
         .map_err(|_| delivery_failure("The email message could not be built."))?;
-    let mut builder = if transport.protocol == "tls" {
+    let mut builder = if transport.protocol == "plain" {
+        // Credential-free plaintext relay, used by local development stacks and
+        // acceptance mail capture. `update_mail` refuses credentials here.
+        AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&transport.host)
+    } else if transport.protocol == "tls" {
         AsyncSmtpTransport::<Tokio1Executor>::relay(&transport.host)
+            .map_err(|_| delivery_failure("The SMTP transport could not be created."))?
     } else {
         AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&transport.host)
+            .map_err(|_| delivery_failure("The SMTP transport could not be created."))?
     }
-    .map_err(|_| delivery_failure("The SMTP transport could not be created."))?
     .port(u16::try_from(transport.port).unwrap_or(587));
     if !transport.username.is_empty() {
         builder = builder.credentials(Credentials::new(
@@ -90,7 +113,47 @@ fn nonce() -> Result<String, ApiError> {
 
 /// Sends a verification code through the Aliyun SMS RPC API. The signed query
 /// follows the documented HMAC-SHA1 canonicalisation.
-pub async fn send_sms(transport: &SmsTransport, phone: &str, code: &str) -> Result<(), ApiError> {
+pub async fn send_sms(
+    metrics: &RequestMetrics,
+    transport: &SmsTransport,
+    phone: &str,
+    code: &str,
+) -> Result<(), ApiError> {
+    let result = deliver_sms(transport, phone, code).await;
+    metrics.record_delivery(DeliveryChannel::Sms, result.is_ok());
+    result
+}
+
+pub(super) fn sms_endpoint(
+    override_endpoint: Option<&str>,
+    allow_override: Option<&str>,
+) -> String {
+    if allow_override != Some("true") {
+        return ALIYUN_SMS_ENDPOINT.to_owned();
+    }
+    let Some(endpoint) = override_endpoint.map(str::trim) else {
+        return ALIYUN_SMS_ENDPOINT.to_owned();
+    };
+    if !(endpoint.starts_with("http://") || endpoint.starts_with("https://")) {
+        return ALIYUN_SMS_ENDPOINT.to_owned();
+    }
+    tracing::warn!(
+        endpoint,
+        "AIRTEK_SMS_ENDPOINT is active; verification codes are delivered to the override endpoint"
+    );
+    endpoint.to_owned()
+}
+
+fn resolved_sms_endpoint() -> String {
+    sms_endpoint(
+        std::env::var("AIRTEK_SMS_ENDPOINT").ok().as_deref(),
+        std::env::var("AIRTEK_SMS_ALLOW_ENDPOINT_OVERRIDE")
+            .ok()
+            .as_deref(),
+    )
+}
+
+async fn deliver_sms(transport: &SmsTransport, phone: &str, code: &str) -> Result<(), ApiError> {
     let timestamp = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
     let parameters = [
         ("AccessKeyId", transport.access_key_id.clone()),
@@ -133,7 +196,7 @@ pub async fn send_sms(transport: &SmsTransport, phone: &str, code: &str) -> Resu
         .build()
         .map_err(|_| ApiError::internal("The SMS client could not be created."))?;
     let response = client
-        .post("https://dysmsapi.aliyuncs.com/")
+        .post(resolved_sms_endpoint())
         .form(&form)
         .send()
         .await
@@ -162,6 +225,21 @@ struct CaptchaResponse {
 /// token, and `Err` when the provider could not be reached at all. Callers
 /// decide the configured failure mode.
 pub async fn verify_captcha(
+    metrics: &RequestMetrics,
+    transport: &CaptchaTransport,
+    token: &str,
+    remote_ip: Option<&str>,
+) -> Result<bool, ApiError> {
+    let result = verify_captcha_token(transport, token, remote_ip).await;
+    metrics.record_captcha(match &result {
+        Ok(true) => CaptchaOutcome::Passed,
+        Ok(false) => CaptchaOutcome::Rejected,
+        Err(_) => CaptchaOutcome::Degraded,
+    });
+    result
+}
+
+async fn verify_captcha_token(
     transport: &CaptchaTransport,
     token: &str,
     remote_ip: Option<&str>,
@@ -201,4 +279,26 @@ pub async fn verify_captcha(
         .await
         .map_err(|_| delivery_failure("The CAPTCHA provider returned an invalid response."))?;
     Ok(parsed.success)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{sms_endpoint, ALIYUN_SMS_ENDPOINT};
+
+    #[test]
+    fn sms_endpoint_override_requires_the_explicit_flag_and_an_http_url() {
+        assert_eq!(sms_endpoint(Some("http://stub:8099/sms"), None), ALIYUN_SMS_ENDPOINT);
+        assert_eq!(
+            sms_endpoint(Some("http://stub:8099/sms"), Some("false")),
+            ALIYUN_SMS_ENDPOINT
+        );
+        assert_eq!(
+            sms_endpoint(Some("stub:8099"), Some("true")),
+            ALIYUN_SMS_ENDPOINT
+        );
+        assert_eq!(
+            sms_endpoint(Some(" http://stub:8099/sms "), Some("true")),
+            "http://stub:8099/sms"
+        );
+    }
 }

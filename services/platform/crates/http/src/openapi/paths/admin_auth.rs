@@ -161,6 +161,46 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
     );
     add(
         paths,
+        "/api/admin/v1/auth/phone/verification",
+        "post",
+        admin(
+            body(
+                op(
+                    "startAdministratorPhoneVerification",
+                    "Send a binding code to a new phone number after verifying the current password",
+                    "adminAuth",
+                    [(
+                        "202",
+                        json_response(
+                            "Binding code sent",
+                            r("PhoneVerificationStarted"),
+                        ),
+                    )],
+                ),
+                r("StartPhoneVerificationRequest"),
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/auth/phone/confirm",
+        "post",
+        admin(
+            body(
+                op(
+                    "confirmAdministratorPhoneVerification",
+                    "Confirm the binding code and mark the phone number verified",
+                    "adminAuth",
+                    [("204", empty_response("Phone number verified"))],
+                ),
+                r("ConfirmPhoneVerificationRequest"),
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
         "/api/admin/v1/auth/session",
         "get",
         admin(

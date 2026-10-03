@@ -63,6 +63,22 @@ export const adminIdentityApi = {
     })
   },
 
+  async resetUserPassword(id: string, reason: string): Promise<{ temporaryPassword: string }> {
+    const result = await adminContractClient.post('/api/admin/v1/users/{id}/password-reset', {
+      parameters: { path: { id }, header: { 'Idempotency-Key': randomRequestId() } },
+      body: { reason },
+    })
+    return result.data
+  },
+
+  async resetUserTotp(id: string, reason: string): Promise<{ user: AdminUserRecord }> {
+    const result = await adminContractClient.post('/api/admin/v1/users/{id}/totp-reset', {
+      parameters: { path: { id }, header: { 'Idempotency-Key': randomRequestId() } },
+      body: { reason },
+    })
+    return { user: result.data }
+  },
+
   async listRoles(request: Pick<IdentityListRequest, 'cursor' | 'limit' | 'q'> = {}): Promise<AdminRoleRecordPage> {
     const result = await adminContractClient.get('/api/admin/v1/roles', {
       parameters: { query: {

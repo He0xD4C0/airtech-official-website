@@ -80,6 +80,8 @@ AdminUserRecord: {
             lastLoginAt: string | null;
             locale: string;
             managerUserId: string | null;
+            phoneE164: string | null;
+            phoneVerified: boolean;
             /** Format: int64 */
             revision: number;
             roles: string[];
@@ -459,6 +461,9 @@ CmsSubmitResult: {
         };
 /** @enum {string} */
         CollectionPresentation: "cards" | "list" | "compact";
+ConfirmPhoneVerificationRequest: {
+            code: string;
+        };
 ConsentedAnalyticsEvent: {
             /** Format: uuid */
             anonymousSessionId: string;
@@ -487,13 +492,4 @@ ContactBlock: {
         };
 /** @enum {string} */
         ContactChannelKind: "email" | "phone" | "address" | "social";
-ContactInformationInput: {
-            addressLines: string[];
-            countryCode?: string | null;
-            email?: string | null;
-            locality?: string | null;
-            phone?: string | null;
-            postalCode?: string | null;
-            region?: string | null;
-        };
 }

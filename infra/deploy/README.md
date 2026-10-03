@@ -93,8 +93,13 @@ Before deployment:
 7. After Flyway succeeds, run the Platform image's one-shot
    `airtek-maintenance prepare-runtime` command with the runtime `DATABASE_URL`.
    Start API and Worker only after it exits successfully.
-8. Supply any initial setup token from a secret manager and remove it after the
-   first Super Admin has been created.
+8. Supply `AIRTEK_ADMIN_EMAIL`, `AIRTEK_ADMIN_DISPLAY_NAME`, and
+   `AIRTEK_ADMIN_PASSWORD` from the secret manager, plus
+   `AIRTEK_ADMIN_RECOVERY_KEY_DIR` pointing at a host directory that the
+   container user owns (`chmod 0700`, `chown -R 10001:10001`). The runtime reads
+   or generates `recovery-key` (mode `0600`) inside that directory; the database
+   keeps only its Argon2 hash. Set `AIRTEK_ADMIN_RECOVERY_KEY_MODE=load` when the
+   mount is read-only, and never point two replicas at one writable directory.
 9. Configure object storage after startup through Admin. Use a least-privilege
    identity and a reviewed public delivery base URL; do not place S3 fields or
    credentials in `production.env` or application Compose.
@@ -110,8 +115,12 @@ The fixed local-development administrator is not a deployment mechanism.
 Production images compile only the `production` feature and expose only the
 maintenance commands `prepare-runtime`, `inspect-public-site`, and
 `check-public-readiness`; they receive no `AIRTEK_DEV_ADMIN_*` configuration.
-A fresh production database therefore remains without users until the one-time
-setup flow is completed.
+An empty database is provisioned from the `AIRTEK_ADMIN_*` values at startup:
+the first Super Admin signs in with the supplied password, is forced through
+the onboarding wizard (password change plus recovery-key confirmation), and
+TOTP stays optional. Startup refuses to run when the database has no active
+Super Admin, when the recovery-key file contradicts the stored hash, or when a
+`local-admin@airtek.invalid` account cannot be renamed to `AIRTEK_ADMIN_EMAIL`.
 
 ## Direct media object identity
 
@@ -201,7 +210,14 @@ after the agent has served several releases.
 
 ## Deployment order
 
-The current schema target is V28. Deploy the migration artifact first, then the
+The release that introduces the login refactor stops the site for a short
+window: the CD agent (or `deploy-app.sh`) stops the gateway, stops API and
+Worker, runs `flyway-migrate release`, runs
+`platform-maintenance prepare-runtime`, and only then starts the new release.
+Public SSR returns errors while the API is down, so announce the window as a
+full-site interruption. The current schema target is V31: V29 adds the role and
+login foundation, V30 retires the legacy authentication schema and stored TOTP
+enrolments, and V31 adds account phone binding. Deploy the migration artifact first, then the
 API and ordinary Worker, and finally Admin and Public Web. V17 introduces
 private drafts and review, V18 removes persisted content history, and V19 adds
 current-state query indexes. V20 moves application-side object-storage settings
@@ -224,12 +240,31 @@ controlled legacy SQLx v1-v10 database passes
 Compose runs the non-root `flyway-migrate` artifact's `release` command before
 API and Worker start; both services wait for its successful completion. That
 command writes a custom-format dump into `/srv/airtek/migration-state` only when
-migrations are pending, removes it after a successful promotion, and restores
-it when the migration fails. A restored failure exits `2`, writes a retained
-JSON record under `migration-state/failures`, and inserts a `migrationApply`
-failure row into `operation_runs`; an unrestorable failure exits `3` and keeps
-the dump. Database schema changes must remain compatible with the currently
-running Public/API release during a rolling update (expand/contract).
+migrations are pending, retains it after a successful promotion (the next
+successful release prunes the previous file), and restores it when the migration
+fails. A restored failure exits `2`, writes a retained JSON record under
+`migration-state/failures`, and inserts a `migrationApply` failure row into
+`operation_runs`; an unrestorable failure exits `3` and keeps the dump. Database
+schema changes default to expand/contract because Public/API containers may keep
+serving during a migration window; a breaking migration is allowed only inside a
+documented stop-the-site window where the gateway and application containers
+stop first and the retained pre-migration dump stays recoverable.
+
+The path of the retained dump is written to
+`migration-state/latest-migration-dump`. To roll a release back at the database
+level, restore that dump before starting the previous image:
+
+```sh
+sudo docker compose --project-directory /opt/airtek/cd/repo \
+  --env-file /etc/airtek/production.env --env-file /opt/airtek/cd/images.env \
+  -f infra/compose/production.app.yaml \
+  run --rm --no-deps --entrypoint pg_restore flyway-migrate \
+  --clean --if-exists --no-owner --no-acl --dbname "$PGDATABASE" \
+  "$(cat /srv/airtek/migration-state/latest-migration-dump)"
+```
+
+Migration failure records under `/srv/airtek/migration-state/failures` and the
+matching `operation_runs` rows are audit evidence; never delete or edit them.
 
 For a new empty production database, run only the migrations artifact with
 `migrate`. For an existing database with SQLx versions 1 through 10, confirm the

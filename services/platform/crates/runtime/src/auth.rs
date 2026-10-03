@@ -14,6 +14,12 @@ pub use login_sessions::*;
 #[path = "auth/login_flow.rs"]
 mod login_flow;
 pub use login_flow::*;
+#[path = "auth/login_codes.rs"]
+mod login_codes;
+use login_codes::*;
+#[path = "auth/phone_binding.rs"]
+mod phone_binding;
+pub use phone_binding::*;
 #[path = "auth/password_reset.rs"]
 mod password_reset;
 pub use password_reset::*;

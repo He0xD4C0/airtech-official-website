@@ -119,6 +119,7 @@ pub(super) async fn test_mail_settings(
         .ok_or_else(|| ApiError::service_unavailable("Email delivery is not configured."))?;
     let recipient = input.to.unwrap_or_else(|| actor(&headers));
     airtek_runtime::services::outbound::send_mail(
+        &state.request_metrics,
         &transport,
         &recipient,
         "AIRTEKPOWER SMTP test",
@@ -176,7 +177,13 @@ pub(super) async fn test_sms_settings(
             char::from(b'0' + (byte[0] % 10))
         })
         .collect();
-    airtek_runtime::services::outbound::send_sms(&transport, input.phone.trim(), &code).await?;
+    airtek_runtime::services::outbound::send_sms(
+        &state.request_metrics,
+        &transport,
+        input.phone.trim(),
+        &code,
+    )
+    .await?;
     Ok(private_json(
         StatusCode::OK,
         &IntegrationTestResult {
@@ -222,8 +229,13 @@ pub(super) async fn test_captcha_settings(
     let transport = integration_settings::load_captcha(&state)
         .await?
         .ok_or_else(|| ApiError::service_unavailable("CAPTCHA verification is not configured."))?;
-    let verified =
-        airtek_runtime::services::outbound::verify_captcha(&transport, &input.token, None).await?;
+    let verified = airtek_runtime::services::outbound::verify_captcha(
+        &state.request_metrics,
+        &transport,
+        &input.token,
+        None,
+    )
+    .await?;
     Ok(private_json(
         StatusCode::OK,
         &IntegrationTestResult {

@@ -11,7 +11,6 @@ use crate::services::{integration_settings, outbound};
 const FLOW_MINUTES: i64 = 15;
 const CODE_MINUTES: i64 = 10;
 const MAX_CODE_ATTEMPTS: i32 = 5;
-const RESEND_SECONDS: i64 = 60;
 const RISK_THRESHOLD: i32 = 10;
 
 #[derive(Debug, Deserialize)]
@@ -78,7 +77,7 @@ fn step(status: &'static str, factor: Option<&str>) -> Response {
     response
 }
 
-fn six_digit_code() -> Result<String, ApiError> {
+pub(super) fn six_digit_code() -> Result<String, ApiError> {
     use ring::rand::{SecureRandom, SystemRandom};
     let mut bytes = [0_u8; 6];
     SystemRandom::new()
@@ -172,7 +171,14 @@ async fn captcha_guard(
         return Err(ApiError::forbidden("A CAPTCHA token is required."));
     };
     let remote_ip = request_source(state, headers, None);
-    match outbound::verify_captcha(&transport, token, Some(remote_ip.as_str())).await {
+    match outbound::verify_captcha(
+        &state.request_metrics,
+        &transport,
+        token,
+        Some(remote_ip.as_str()),
+    )
+    .await
+    {
         Ok(true) => Ok(true),
         Ok(false) => Err(ApiError::forbidden(
             "The CAPTCHA challenge was not accepted.",
@@ -230,7 +236,7 @@ pub async fn attempt(
                 }
             };
             if !valid {
-                record_auth_failures(&state, &rate_keys).await?;
+                record_login_failures(&state, &rate_keys).await?;
                 return Err(ApiError::unauthorized("Email or password is incorrect."));
             }
             let user = user.expect("valid password has a user");
@@ -243,10 +249,10 @@ pub async fn attempt(
             .bind(risk_required)
             .execute(&state.pool)
             .await?;
-            advance(&state, &flow, user, false).await
+            advance(&state, &flow, user, false, &rate_keys).await
         }
         "emailCode" | "smsCode" => {
-            send_primary_code(&state, &flow, user.as_ref(), method).await?;
+            send_primary_code(&state, flow.id, flow.last_sent_at, user.as_ref(), method).await?;
             Ok(step("codeSent", Some(method)))
         }
         _ => unreachable!("method was validated"),
@@ -272,73 +278,6 @@ async fn risk_applies(
     Ok(attempts.unwrap_or(0) >= RISK_THRESHOLD)
 }
 
-async fn send_primary_code(
-    state: &AppState,
-    flow: &FlowRow,
-    user: Option<&StoredUser>,
-    factor: &str,
-) -> Result<(), ApiError> {
-    let Some(user) = user else {
-        // Unknown account: pretend a code was sent so existence is not leaked.
-        tracing::info!(flow = %flow.id, "Sign-in code suppressed for an unknown account");
-        return Ok(());
-    };
-    if !user.active {
-        return Ok(());
-    }
-    if let Some(last) = flow.last_sent_at {
-        if last + Duration::seconds(RESEND_SECONDS) > Utc::now() {
-            return Err(ApiError::too_many_requests(
-                "A verification code was sent recently. Try again shortly.",
-            ));
-        }
-    }
-    let code = six_digit_code()?;
-    let hash = hash_password(&code)?;
-    let destination = if factor == "emailCode" {
-        Some(user.email.clone())
-    } else {
-        sqlx::query_scalar::<_, Option<String>>(
-            "SELECT phone_e164 FROM users WHERE id=$1 AND phone_verified_at IS NOT NULL",
-        )
-        .bind(user.id)
-        .fetch_optional(&state.pool)
-        .await?
-        .flatten()
-    };
-    let Some(destination) = destination else {
-        return Ok(());
-    };
-    if factor == "emailCode" {
-        if let Some(transport) = integration_settings::load_mail(state).await? {
-            outbound::send_mail(
-                &transport,
-                &destination,
-                "AIRTEKPOWER sign-in code",
-                &format!("Your AIRTEKPOWER sign-in code is {code}. It expires in 10 minutes."),
-            )
-            .await?;
-        }
-    } else if let Some(transport) = integration_settings::load_sms(state).await? {
-        outbound::send_sms(&transport, &destination, &code).await?;
-    }
-    sqlx::query(
-        r#"UPDATE auth_login_flows SET primary_method=$2, pending_factor=$2,
-             pending_destination=$3, code_hash=$4,
-             code_expires_at=now() + ($5::bigint * interval '1 minute'),
-             code_attempts=0, send_count=send_count+1, last_sent_at=now()
-           WHERE id=$1"#,
-    )
-    .bind(flow.id)
-    .bind(factor)
-    .bind(&destination)
-    .bind(&hash)
-    .bind(CODE_MINUTES)
-    .execute(&state.pool)
-    .await?;
-    Ok(())
-}
-
 pub async fn verify(
     State(state): State<AppState>,
     peer: Option<Extension<ConnectInfo<SocketAddr>>>,
@@ -351,6 +290,11 @@ pub async fn verify(
     let Some(factor) = flow.pending_factor.clone() else {
         return Err(ApiError::conflict("No verification step is pending."));
     };
+    let rate_keys = rate_limit_keys(
+        "login",
+        &request_source(&state, &headers, peer),
+        &flow.email,
+    );
     if factor == "totp" {
         let user = find_user_by_email(&state, &flow.email)
             .await?
@@ -365,7 +309,7 @@ pub async fn verify(
                 "The TOTP code is invalid or expired.",
             ));
         }
-        return advance(&state, &flow, user, true).await;
+        return advance(&state, &flow, user, true, &rate_keys).await;
     }
     let Some(hash) = flow.code_hash.as_deref() else {
         return Err(ApiError::conflict("No verification code is pending."));
@@ -381,17 +325,12 @@ pub async fn verify(
             "Too many incorrect verification codes.",
         ));
     }
-    let rate_keys = rate_limit_keys(
-        "login",
-        &request_source(&state, &headers, peer),
-        &flow.email,
-    );
     if !verify_password(hash, request.code.trim()) {
         sqlx::query("UPDATE auth_login_flows SET code_attempts=code_attempts+1 WHERE id=$1")
             .bind(flow.id)
             .execute(&state.pool)
             .await?;
-        record_auth_failures(&state, &rate_keys).await?;
+        record_login_failures(&state, &rate_keys).await?;
         return Err(ApiError::unauthorized(
             "The verification code is invalid or expired.",
         ));
@@ -405,7 +344,7 @@ pub async fn verify(
             .execute(&state.pool)
             .await?;
     }
-    advance(&state, &flow, user, false).await
+    advance(&state, &flow, user, false, &rate_keys).await
 }
 
 /// Applies the remaining factors and, when none are outstanding, issues the
@@ -416,6 +355,7 @@ async fn advance(
     flow: &FlowRow,
     user: StoredUser,
     totp_satisfied: bool,
+    rate_keys: &[String],
 ) -> Result<Response, ApiError> {
     let risk_required = if flow.primary_method.as_deref() == Some("smsCode") {
         false
@@ -439,8 +379,9 @@ async fn advance(
         };
         let code = six_digit_code()?;
         let hash = hash_password(&code)?;
+        state.request_metrics.record_risk_challenge();
         if let Some(transport) = integration_settings::load_sms(state).await? {
-            outbound::send_sms(&transport, &phone, &code).await?;
+            outbound::send_sms(&state.request_metrics, &transport, &phone, &code).await?;
         }
         sqlx::query(
             r#"UPDATE auth_login_flows SET pending_factor='riskSms', pending_destination=$2,
@@ -481,6 +422,6 @@ async fn advance(
         &HeaderMap::new(),
     )
     .await?;
-    clear_auth_rate_limits(state, &rate_limit_keys("login", "all-sources", &flow.email)).await?;
+    clear_auth_rate_limits(state, rate_keys).await?;
     Ok(session_response(state, issue, StatusCode::OK))
 }

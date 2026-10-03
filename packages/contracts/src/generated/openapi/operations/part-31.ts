@@ -6,22 +6,25 @@
 import type { components } from '../components'
 
 export interface OperationsPart31 {
-getLiveness: {
+resolvePublishedRoute: {
         parameters: {
-            query?: never;
+            query: {
+                locale?: "en";
+                path: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Service is alive */
+            /** @description Resolved public route */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HealthStatus"];
+                    "application/json": components["schemas"]["RouteResolution"];
                 };
             };
             /** @description Malformed request */
@@ -116,22 +119,27 @@ getLiveness: {
             };
         };
     };
-getInternalMetrics: {
+searchPublishedSite: {
         parameters: {
-            query?: never;
+            query?: {
+                cursor?: string;
+                limit?: number;
+                q?: string;
+                type?: components["schemas"]["PublicSearchType"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description OpenMetrics telemetry */
+            /** @description Published search results */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/openmetrics-text": string;
+                    "application/json": components["schemas"]["PublicSearchPage"];
                 };
             };
             /** @description Malformed request */
@@ -226,22 +234,26 @@ getInternalMetrics: {
             };
         };
     };
-getOpenApiDocument: {
+selectProducts: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelectorRequest"];
+            };
+        };
         responses: {
-            /** @description OpenAPI document */
+            /** @description Selector evaluation */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OpenApiDocument"];
+                    "application/json": components["schemas"]["SelectorResponse"];
                 };
             };
             /** @description Malformed request */
@@ -336,22 +348,24 @@ getOpenApiDocument: {
             };
         };
     };
-getReadiness: {
+getSiteBootstrap: {
         parameters: {
-            query?: never;
+            query?: {
+                locale?: "en";
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Service is ready */
+            /** @description Published site bootstrap */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HealthStatus"];
+                    "application/json": components["schemas"]["SiteBootstrap"];
                 };
             };
             /** @description Malformed request */

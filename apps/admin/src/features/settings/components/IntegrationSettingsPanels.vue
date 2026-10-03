@@ -20,7 +20,7 @@ const testToken = ref('')
 const mail = reactive<{
   host: string
   port: number
-  protocol: 'starttls' | 'tls'
+  protocol: 'starttls' | 'tls' | 'plain'
   username: string
   password: string
   fromAddress: string
@@ -211,13 +211,13 @@ watch(() => props.section, load)
       <div class="form-grid">
         <label class="field"><span>SMTP 主机</span><input v-model="mail.host" /></label>
         <label class="field"><span>端口</span><input v-model.number="mail.port" type="number" min="1" max="65535" /></label>
-        <label class="field"><span>加密协议</span><select v-model="mail.protocol"><option value="starttls">STARTTLS</option><option value="tls">TLS</option></select></label>
+        <label class="field"><span>加密协议</span><select v-model="mail.protocol"><option value="starttls">STARTTLS</option><option value="tls">TLS</option><option value="plain">明文（仅限本地中继，禁止认证）</option></select></label>
         <label class="field"><span>用户名</span><input v-model="mail.username" autocomplete="off" /></label>
         <label class="field"><span>密码 / 授权码</span><input v-model="mail.password" type="password" autocomplete="new-password" /></label>
         <label class="field"><span>发件地址</span><input v-model="mail.fromAddress" type="email" /></label>
         <label class="field"><span>发件人名称</span><input v-model="mail.fromName" /></label>
       </div>
-      <p class="inline-note">仅允许 STARTTLS 或 TLS；明文认证会被服务端拒绝。</p>
+      <p class="inline-note">STARTTLS/TLS 可携带账号密码；明文只允许无凭据的受信本地中继，明文认证会被服务端拒绝。</p>
       <label class="field field--compact"><span>测试收件地址（留空发给当前账号）</span><input v-model="testTarget" type="email" /></label>
     </template>
 

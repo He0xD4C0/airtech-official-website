@@ -83,6 +83,30 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         ),
     );
     s.insert(
+        "StartPhoneVerificationRequest".into(),
+        object(
+            &["phone", "currentPassword"],
+            json!({
+                "phone": {"type": "string", "pattern": "^\\+[1-9][0-9]{7,14}$"},
+                "currentPassword": {"type": "string", "format": "password", "writeOnly": true}
+            }),
+        ),
+    );
+    s.insert(
+        "ConfirmPhoneVerificationRequest".into(),
+        object(
+            &["code"],
+            json!({"code": {"type": "string", "pattern": "^[0-9]{6}$", "writeOnly": true}}),
+        ),
+    );
+    s.insert(
+        "PhoneVerificationStarted".into(),
+        object(
+            &["status"],
+            json!({"status": {"type": "string", "enum": ["codeSent"]}}),
+        ),
+    );
+    s.insert(
         "RecoveryKeyState".into(),
         object(
             &["origin", "confirmed"],

@@ -113,6 +113,55 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
     );
     add(
         paths,
+        "/api/admin/v1/users/{id}/password-reset",
+        "post",
+        admin(
+            params(
+                body(
+                    op(
+                        "resetAdminUserPassword",
+                        "Issue a one-time password, force a change and revoke every session of the account",
+                        "adminIdentity",
+                        [(
+                            "200",
+                            json_response(
+                                "One-time password for the account holder",
+                                r("TemporaryPasswordResult"),
+                            ),
+                        )],
+                    ),
+                    r("IdentityResetRequest"),
+                ),
+                vec![path_param("id", uuid()), idempotency_param()],
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/users/{id}/totp-reset",
+        "post",
+        admin(
+            params(
+                body(
+                    op(
+                        "resetAdminUserTotp",
+                        "Clear the TOTP enrolment and revoke every session of the account",
+                        "adminIdentity",
+                        [(
+                            "200",
+                            json_response("Management user updated", r("AdminUserRecord")),
+                        )],
+                    ),
+                    r("IdentityResetRequest"),
+                ),
+                vec![path_param("id", uuid()), idempotency_param()],
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
         "/api/admin/v1/user-invitations",
         "get",
         admin(

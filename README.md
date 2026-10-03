@@ -96,7 +96,7 @@ credentials there. The main configuration groups are:
 | Local persistence | `POSTGRES_*`, `AIRTEK_DATABASE_URL_INTERNAL`, host-side `DATABASE_URL`; `COMPOSE_PROFILES=minio` enables bundled MinIO |
 | Object storage images | `AIRTEK_OBJECT_STORE_IMAGE`, `AIRTEK_OBJECT_STORE_MC_IMAGE` pin the source-built MinIO server and `mc` images in private GHCR; run `docker login ghcr.io` once, and set `AIRTEK_GOPROXY` only when a build needs a Go module mirror |
 | Schema migration | `AIRTEK_FLYWAY_BASE_IMAGE`, JDBC `FLYWAY_URL`, `FLYWAY_USER`/`FLYWAY_PASSWORD`, and `FLYWAY_PLACEHOLDERS_RUNTIME_ROLE` |
-| Authentication, private staging and network trust | setup-only `AIRTEK_ADMIN_BOOTSTRAP_TOKEN`, independent TOTP/Product Staging/Analytics HMAC/invitation replay keys, gateway subnet/address, exact trusted-proxy CIDRs |
+| Authentication, private staging and network trust | `AIRTEK_ADMIN_EMAIL/DISPLAY_NAME/PASSWORD`, `AIRTEK_ADMIN_RECOVERY_KEY_DIR/MODE`, optional `AIRTEK_TOTP_ENCRYPTION_KEY`, independent Product Staging/Analytics HMAC/invitation replay keys, gateway subnet/address, exact trusted-proxy CIDRs |
 | Data lifecycle | `AIRTEK_GUEST_RAW_RETENTION_DAYS`, `AIRTEK_GUEST_AGGREGATE_RETENTION_MONTHS`, `AIRTEK_PRODUCT_IMPORT_MAPPING_VERSION` |
 | Analytics vocabulary | `AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES`, `AIRTEK_ANALYTICS_ALLOWED_UTM_MEDIUMS`, `AIRTEK_ANALYTICS_ALLOWED_UTM_CAMPAIGNS` register the only UTM identifiers the API may store; unknown free text is rejected |
 | Direct media | Endpoint, bucket, credentials, key prefix and public base URL are database settings managed through Admin; uploads retain the fixed 25 MiB limit |

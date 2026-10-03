@@ -6,6 +6,40 @@
 import type { components } from '../components'
 
 export interface SchemasPart04 {
+ProductImportResult: {
+            checksum: string;
+            /** Format: date-time */
+            createdAt: string;
+            errors: components["schemas"]["ProductImportRowError"][];
+            /** Format: uuid */
+            id: string;
+            malformedRows: number;
+            mappingVersion: string;
+            missingAssets: components["schemas"]["MissingAssetReference"][];
+            reused: boolean;
+            status: string;
+            totalRows: number;
+            validRows: number;
+        };
+ProductImportResultPage: {
+            items: components["schemas"]["ProductImportResult"][];
+            nextCursor: string | null;
+        };
+ProductImportRowError: {
+            code: string;
+            detail: string;
+            fieldName: string | null;
+            rowNumber: number;
+            /** @enum {string} */
+            severity: "warning" | "error";
+            stableId: string | null;
+        };
+ProductImportRun: components["schemas"]["ProductImportResult"];
+ProductMediaGalleryItem: {
+            altText: string;
+            /** Format: uuid */
+            assetId: string;
+        };
 ProductPage: {
             familyCounts: components["schemas"]["ProductFacetCount"][];
             items: components["schemas"]["Product"][];
@@ -452,48 +486,5 @@ SeoMetadataInput: {
             /** @default false */
             indexable: boolean;
             title?: string | null;
-        };
-SessionUser: {
-            displayName: string;
-            /** Format: email */
-            email: string;
-            environment: string;
-            /** Format: uuid */
-            id: string;
-            mustChangePassword: boolean;
-            mustConfirmRecoveryKey: boolean;
-            permissions: string[];
-            phoneVerified: boolean;
-            role: string;
-            roleKeys: string[];
-            totpEnabled: boolean;
-        };
-SiteBootstrap: {
-            footer: components["schemas"]["PublicContentProjection"] | null;
-            generalInformation: components["schemas"]["PublicContentProjection"] | null;
-            /** Format: date-time */
-            generatedAt: string;
-            motorTechnologies: string[];
-            navigation: components["schemas"]["PublicContentProjection"] | null;
-            productFamilies: components["schemas"]["ProductFamilyPresentation"][];
-        };
-SmsSettings: {
-            accessKeyId: string;
-            configured: boolean;
-            /** @constant */
-            provider: "aliyun";
-            region: string;
-            /** Format: int64 */
-            revision: number;
-            signName: string;
-            templateCode: string;
-        };
-SmsTestRequest: {
-            phone: string;
-        };
-SocialLinkInput: {
-            service: string;
-            /** Format: uri */
-            url: string;
         };
 }

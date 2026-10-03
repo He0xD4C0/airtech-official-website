@@ -6,6 +6,15 @@
 import type { components } from '../components'
 
 export interface SchemasPart02 {
+ContactInformationInput: {
+            addressLines: string[];
+            countryCode?: string | null;
+            email?: string | null;
+            locality?: string | null;
+            phone?: string | null;
+            postalCode?: string | null;
+            region?: string | null;
+        };
 ContentBlock: components["schemas"]["HeroBlock"] | components["schemas"]["BodyBlock"] | components["schemas"]["MediaBlock"] | components["schemas"]["FeatureGridBlock"] | components["schemas"]["EvidenceBlock"] | components["schemas"]["CtaBlock"] | components["schemas"]["RelationCollectionBlock"] | components["schemas"]["FaqCollectionBlock"] | components["schemas"]["DownloadAssetBlock"] | components["schemas"]["ContactBlock"];
 /** @enum {string} */
         ContentBlockKind: "hero" | "body" | "media" | "featureGrid" | "evidence" | "cta" | "relationCollection" | "faqCollection" | "downloadAsset" | "contactBlock";
@@ -475,25 +484,5 @@ GeneralInformationDraftInput: {
             /** @default en */
             locale?: string;
             payload: components["schemas"]["GeneralInformationPayload"];
-        };
-GeneralInformationPayload: {
-            brandLine: string | null;
-            brandName: string;
-            copyrightText: string | null;
-            defaultSeo: {
-                [key: string]: unknown;
-            };
-            footerStatement: string | null;
-            homePath: string;
-            navigationCta?: {
-                href?: string;
-                label?: string;
-            } | null;
-            organization: {
-                [key: string]: unknown;
-            };
-            productCategories?: components["schemas"]["ProductFamilyPresentation"][];
-        } & {
-            [key: string]: unknown;
         };
 }

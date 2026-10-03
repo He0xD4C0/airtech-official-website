@@ -6,6 +6,41 @@
 import type { operations } from '../operations'
 
 export interface PathsPart03 {
+"/api/admin/v1/products/{id}/temporary-overrides": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List temporary source-field overrides */
+        get: operations["listTemporaryOverrides"];
+        put?: never;
+        /** Create an expiring source-field override */
+        post: operations["createTemporaryOverride"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/products/{id}/validation-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the stable product publication validation report */
+        get: operations["getProductValidationReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/products/imports": {
         parameters: {
             query?: never;
@@ -456,41 +491,6 @@ export interface PathsPart03 {
         options?: never;
         head?: never;
         patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/users": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List management users and role assignments */
-        get: operations["listAdminUsers"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/users/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get one management user */
-        get: operations["getAdminUser"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Update a management user, status or role assignments */
-        patch: operations["updateAdminUser"];
         trace?: never;
     };
 }

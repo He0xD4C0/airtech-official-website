@@ -35,7 +35,7 @@
 .content-type-strip button > span { display: flex; align-items: center; gap: 0.45rem; font-size: 0.75rem; font-weight: 650; }.content-type-strip button strong { color: #8b9a98; font-size: 0.75rem; }.content-type-strip button.is-active { border-color: rgb(12 116 151 / 38%); background: var(--surface-info); color: var(--airtek-blue-dark); }.content-type-strip button.is-active strong { color: var(--airtek-blue); }
 
 .source-authority-banner { display: flex; align-items: center; gap: 0.75rem; padding: 0.78rem 0.9rem; border: 1px solid #cce2dc; border-radius: 11px; background: linear-gradient(100deg, #f2faf5, #f7fbfb); }
-.security-session-list, .security-enrollment, .security-regenerate { display: grid; gap: 0.75rem; margin-top: 0.9rem; }
+.security-session-list, .security-enrollment { display: grid; gap: 0.75rem; margin-top: 0.9rem; }
 .security-session-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.8rem 0; border-top: 1px solid var(--border-default); }
 .security-session-row span { display: grid; gap: 0.2rem; }
 .security-session-row small { color: var(--text-secondary); }

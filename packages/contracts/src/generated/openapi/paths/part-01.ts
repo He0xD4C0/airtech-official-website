@@ -176,6 +176,40 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/auth/phone/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm the binding code and mark the phone number verified */
+        post: operations["confirmAdministratorPhoneVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/auth/phone/verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a binding code to a new phone number after verifying the current password */
+        post: operations["startAdministratorPhoneVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/auth/recovery": {
         parameters: {
             query?: never;
@@ -443,41 +477,6 @@ export interface PathsPart01 {
         put?: never;
         /** Create a new private draft */
         post: operations["createPrivateContentDraft"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content-drafts/{draftId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read a visible private draft */
-        get: operations["getPrivateContentDraft"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Explicitly save an owned editing draft */
-        patch: operations["savePrivateContentDraft"];
-        trace?: never;
-    };
-"/api/admin/v1/content-drafts/{draftId}/claim": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Claim an unassigned migrated draft as Super Admin */
-        post: operations["claimUnassignedPrivateContentDraft"];
         delete?: never;
         options?: never;
         head?: never;

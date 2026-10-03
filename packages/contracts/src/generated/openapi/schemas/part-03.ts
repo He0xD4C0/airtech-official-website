@@ -6,6 +6,26 @@
 import type { components } from '../components'
 
 export interface SchemasPart03 {
+GeneralInformationPayload: {
+            brandLine: string | null;
+            brandName: string;
+            copyrightText: string | null;
+            defaultSeo: {
+                [key: string]: unknown;
+            };
+            footerStatement: string | null;
+            homePath: string;
+            navigationCta?: {
+                href?: string;
+                label?: string;
+            } | null;
+            organization: {
+                [key: string]: unknown;
+            };
+            productCategories?: components["schemas"]["ProductFamilyPresentation"][];
+        } & {
+            [key: string]: unknown;
+        };
 /** @description Immutable General Information revision payload. */
         GeneralInformationRevision: components["schemas"]["GeneralInformation"];
 GeneralInformationRevisionPage: {
@@ -103,6 +123,9 @@ IdentifyResponse: {
             readonly flowToken: string;
             methods: string[];
         };
+IdentityResetRequest: {
+            reason: string;
+        };
 IntegrationTestResult: {
             delivered: boolean;
             verified: boolean;
@@ -175,7 +198,7 @@ MailSettings: {
             host: string;
             port: number;
             /** @enum {string} */
-            protocol: "starttls" | "tls";
+            protocol: "starttls" | "tls" | "plain";
             /** Format: int64 */
             revision: number;
             username: string;
@@ -349,6 +372,10 @@ PerformancePoint: {
             airflow: number;
             pressure: number;
         };
+PhoneVerificationStarted: {
+            /** @enum {string} */
+            status: "codeSent";
+        };
 PlatformSettings: {
             /** @constant */
             readonly publicLocale: "en";
@@ -454,39 +481,5 @@ ProductImportError: {
 ProductImportRequest: {
             csv: string;
             mappingVersion?: string | null;
-        };
-ProductImportResult: {
-            checksum: string;
-            /** Format: date-time */
-            createdAt: string;
-            errors: components["schemas"]["ProductImportRowError"][];
-            /** Format: uuid */
-            id: string;
-            malformedRows: number;
-            mappingVersion: string;
-            missingAssets: components["schemas"]["MissingAssetReference"][];
-            reused: boolean;
-            status: string;
-            totalRows: number;
-            validRows: number;
-        };
-ProductImportResultPage: {
-            items: components["schemas"]["ProductImportResult"][];
-            nextCursor: string | null;
-        };
-ProductImportRowError: {
-            code: string;
-            detail: string;
-            fieldName: string | null;
-            rowNumber: number;
-            /** @enum {string} */
-            severity: "warning" | "error";
-            stableId: string | null;
-        };
-ProductImportRun: components["schemas"]["ProductImportResult"];
-ProductMediaGalleryItem: {
-            altText: string;
-            /** Format: uuid */
-            assetId: string;
         };
 }

@@ -6,6 +6,49 @@
 import type { components } from '../components'
 
 export interface SchemasPart05 {
+SessionUser: {
+            displayName: string;
+            /** Format: email */
+            email: string;
+            environment: string;
+            /** Format: uuid */
+            id: string;
+            mustChangePassword: boolean;
+            mustConfirmRecoveryKey: boolean;
+            permissions: string[];
+            phoneVerified: boolean;
+            role: string;
+            roleKeys: string[];
+            totpEnabled: boolean;
+        };
+SiteBootstrap: {
+            footer: components["schemas"]["PublicContentProjection"] | null;
+            generalInformation: components["schemas"]["PublicContentProjection"] | null;
+            /** Format: date-time */
+            generatedAt: string;
+            motorTechnologies: string[];
+            navigation: components["schemas"]["PublicContentProjection"] | null;
+            productFamilies: components["schemas"]["ProductFamilyPresentation"][];
+        };
+SmsSettings: {
+            accessKeyId: string;
+            configured: boolean;
+            /** @constant */
+            provider: "aliyun";
+            region: string;
+            /** Format: int64 */
+            revision: number;
+            signName: string;
+            templateCode: string;
+        };
+SmsTestRequest: {
+            phone: string;
+        };
+SocialLinkInput: {
+            service: string;
+            /** Format: uri */
+            url: string;
+        };
 SourceFact: {
             fieldName: string;
             operatingCondition: string | null;
@@ -53,6 +96,11 @@ StagingRecordPage: {
         };
 /** @enum {string} */
         StagingValidationStatus: "pending" | "valid" | "invalid";
+StartPhoneVerificationRequest: {
+            /** Format: password */
+            currentPassword: string;
+            phone: string;
+        };
 SyncMapping: {
             active: boolean;
             /** Format: uuid */
@@ -124,6 +172,11 @@ TemporaryOverride: {
 TemporaryOverridePage: {
             items: components["schemas"]["TemporaryOverride"][];
             nextCursor: string | null;
+        };
+TemporaryPasswordResult: {
+            mustChangePassword: boolean;
+            sessionsRevoked: boolean;
+            temporaryPassword: string;
         };
 TiptapCodeBlockAttrs: {
             language?: string;
@@ -234,6 +287,7 @@ UpdateAdminUser: {
             displayName?: string;
             locale?: string;
             managerUserId?: string | null;
+            phoneE164?: string;
             reason: string;
             roleKeys?: string[];
             /** @enum {string} */
@@ -269,7 +323,7 @@ UpdateMailSettings: {
             password?: string | null;
             port: number;
             /** @enum {string} */
-            protocol: "starttls" | "tls";
+            protocol: "starttls" | "tls" | "plain";
             reason: string;
             username?: string | null;
         };

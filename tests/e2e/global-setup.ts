@@ -19,6 +19,7 @@ import {
 import { totp } from './support/totp'
 import { cookieRequestHeader, mergeCookies, secureHostOnlyCookies } from './support/secure-cookie'
 import { upsertAndPublish } from './support/content-fixtures'
+import { adminPhone, configureDeliverySettings, waitForSmsCode } from './support/delivery'
 
 async function seedAnalyticsProjection(): Promise<void> {
   const publicApi = await request.newContext({
@@ -319,6 +320,23 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     })
     if (!objectStorage.ok()) {
       throw new Error(`Unable to configure E2E object storage (${objectStorage.status()}): ${await objectStorage.text()}`)
+    }
+    // Outbound email goes to Mailpit and outbound SMS to the local stub so the
+    // browser journeys can read the real verification codes.
+    await configureDeliverySettings(api, refreshedCsrf)
+    const phoneStart = await api.post('/api/admin/v1/auth/phone/verification', {
+      headers: { 'X-CSRF-Token': refreshedCsrf },
+      data: { phone: adminPhone, currentPassword: administrator.password },
+    })
+    if (phoneStart.status() !== 202) {
+      throw new Error(`Unable to start the E2E phone binding (${phoneStart.status()}): ${await phoneStart.text()}`)
+    }
+    const phoneConfirm = await api.post('/api/admin/v1/auth/phone/confirm', {
+      headers: { 'X-CSRF-Token': refreshedCsrf },
+      data: { code: await waitForSmsCode(setupApi, adminPhone) },
+    })
+    if (!phoneConfirm.ok()) {
+      throw new Error(`Unable to confirm the E2E phone binding (${phoneConfirm.status()}): ${await phoneConfirm.text()}`)
     }
     await seedPublicProjection(api, refreshedCsrf)
     await seedProductProjection(api, refreshedCsrf)

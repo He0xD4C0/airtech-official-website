@@ -63,10 +63,21 @@ allows its existing shared `airtek` owner for development-volume compatibility.
 Application-owned schema migration and general operations CLIs have been
 removed; the restricted maintenance binary described below remains.
 
-Admin authentication uses an Argon2id password and a host-only HttpOnly session
-cookie. The one-time `AIRTEK_ADMIN_BOOTSTRAP_TOKEN` is accepted only by
-`/api/admin/v1/auth/setup` while no users exist. It is not a shared bearer
-credential.
+Admin authentication is a three-stage flow. `POST /api/admin/v1/auth/identify`
+accepts only the account, `POST /api/admin/v1/auth/attempt` validates the chosen
+primary method (password, email code or SMS code) together with the CAPTCHA
+token, and `POST /api/admin/v1/auth/verify` completes the risk phone challenge
+and TOTP before a host-only HttpOnly session cookie is issued. Unknown accounts
+and accounts without a verified phone never reveal their state: the code is
+silently not sent and the response is identical. The initial Super Admin comes
+from `AIRTEK_ADMIN_*` on an empty database; there is no bootstrap token and no
+setup endpoint.
+
+An account-wide failure counter turns repeated failures into a phone challenge
+(10 failures in 15 minutes, Super Admins exempt) while the source-scoped counter
+returns `429` after 20 failures. A successful sign-in clears both counters.
+Sessions use a 60-minute idle timeout and a 24-hour absolute timeout; the
+security page lists and revokes them.
 
 ### Existing SQLx v1-10 database takeover
 
@@ -89,15 +100,22 @@ migration role must own the legacy objects or have their grant option so
 `baselineOnMigrate` remains disabled so takeover is always explicit; a new
 empty database uses only `pnpm db:migrate`.
 
-TOTP secrets are generated from the operating-system CSPRNG and sealed with
-AES-256-GCM before persistence. Set `AIRTEK_TOTP_ENCRYPTION_KEY` to Base64 for
-exactly 32 random bytes; production builds refuse to start without it. Development
-may start without the key, but enrollment and verification then return `503`
-instead of storing plaintext or inventing an ephemeral key. TOTP uses SHA-1, six
-digits, 30-second steps and a one-step clock tolerance. Recovery codes contain
-80 random bits each, are stored only as independently salted Argon2id hashes, and
-are consumed atomically once. Active sessions have a 30-minute idle timeout and
-a 12-hour absolute timeout; users can list and revoke their own sessions.
+TOTP is optional. Secrets are generated from the operating-system CSPRNG and
+sealed with AES-256-GCM before persistence. Set `AIRTEK_TOTP_ENCRYPTION_KEY` to
+Base64 for exactly 32 random bytes; without it, enrollment and verification
+return `503` instead of storing plaintext or inventing an ephemeral key. TOTP
+uses SHA-1, six digits, 30-second steps and a one-step clock tolerance.
+Enrollment and removal both require the current password plus a verification
+code. The legacy one-time recovery codes are retired: a Super Admin reissues a
+phone binding, resets a TOTP enrollment or issues a one-time password for
+another account, and the root Super Admin recovers with the offline recovery
+key file.
+
+Phone numbers are bound by the account holder through
+`/api/admin/v1/auth/phone/verification` and `/api/admin/v1/auth/phone/confirm`
+(current password plus an SMS code), or by a Super Admin through the user
+detail. SMS and email verification codes are single-use, expire after 10
+minutes, allow at most five attempts and are stored as Argon2id hashes only.
 
 Public Contact, RFQ and Analytics writes use fixed-window source limits. With
 PostgreSQL the counters are durable; the isolated in-memory test store expires
@@ -200,6 +218,6 @@ endpoint or Feishu rollback workflow is exposed. The worker durably claims
 outbox events; provider-specific CDN, search and sitemap adapters remain
 deployment configuration and are not represented as already connected.
 
-High-risk operation requests require a Super Admin role and a freshly verified
-TOTP. Recovery codes can restore login access but are deliberately not accepted
-as high-risk-operation reauthentication.
+High-risk operation requests require a Super Admin role and are gated purely by
+role permissions; the retired `x-totp-code` reauthentication header is not
+accepted anywhere.

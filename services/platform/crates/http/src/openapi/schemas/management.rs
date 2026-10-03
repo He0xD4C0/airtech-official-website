@@ -271,6 +271,8 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "status",
                 "revision",
                 "managerUserId",
+                "phoneE164",
+                "phoneVerified",
                 "roles",
                 "totpEnabled",
                 "invitedAt",
@@ -286,6 +288,8 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "status": string_enum(&["invited", "active", "disabled"]),
                 "revision": revision(),
                 "managerUserId": nullable(uuid()),
+                "phoneE164": nullable(json!({"type": "string", "pattern": "^\\+[1-9][0-9]{7,14}$"})),
+                "phoneVerified": {"type": "boolean"},
                 "roles": array(json!({"type": "string"})),
                 "totpEnabled": {"type": "boolean"},
                 "invitedAt": nullable(timestamp()),
@@ -320,7 +324,26 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "status": string_enum(&["invited", "active", "disabled"]),
                 "roleKeys": array(json!({"type": "string"})),
                 "managerUserId": nullable(uuid()),
+                "phoneE164": {"type": "string", "pattern": "^\\+[1-9][0-9]{7,14}$"},
                 "reason": {"type": "string", "minLength": 10}
+            }),
+        ),
+    );
+    s.insert(
+        "IdentityResetRequest".into(),
+        object(
+            &["reason"],
+            json!({"reason": {"type": "string", "minLength": 10}}),
+        ),
+    );
+    s.insert(
+        "TemporaryPasswordResult".into(),
+        object(
+            &["temporaryPassword", "mustChangePassword", "sessionsRevoked"],
+            json!({
+                "temporaryPassword": {"type": "string", "writeOnly": true},
+                "mustChangePassword": {"type": "boolean"},
+                "sessionsRevoked": {"type": "boolean"}
             }),
         ),
     );

@@ -22,7 +22,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "configured": {"type": "boolean"},
                 "host": {"type": "string"},
                 "port": {"type": "integer"},
-                "protocol": {"type": "string", "enum": ["starttls", "tls"]},
+                "protocol": {"type": "string", "enum": ["starttls", "tls", "plain"]},
                 "username": {"type": "string"},
                 "fromAddress": {"type": "string"},
                 "fromName": {"type": "string"},
@@ -37,7 +37,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             json!({
                 "host": {"type": "string", "minLength": 1, "maxLength": 255},
                 "port": {"type": "integer", "minimum": 1, "maximum": 65535},
-                "protocol": {"type": "string", "enum": ["starttls", "tls"]},
+                "protocol": {"type": "string", "enum": ["starttls", "tls", "plain"]},
                 "username": nullable(json!({"type": "string", "maxLength": 320})),
                 "password": nullable(json!({"type": "string", "format": "password", "maxLength": 2048, "writeOnly": true})),
                 "fromAddress": {"type": "string", "format": "email"},

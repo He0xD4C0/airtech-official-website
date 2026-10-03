@@ -5,9 +5,12 @@ pub const CSRF_COOKIE: &str = "airtek_admin_csrf";
 pub const CSRF_HEADER: &str = "x-csrf-token";
 pub(super) const SESSION_HOURS: i64 = 24;
 pub(super) const SESSION_IDLE_MINUTES: i64 = 60;
-pub(super) const RATE_WINDOW_MINUTES: i64 = 10;
+pub(super) const RATE_WINDOW_MINUTES: i64 = 15;
 pub(super) const RATE_BLOCK_MINUTES: i64 = 15;
 pub(super) const RATE_MAX_FAILURES: u32 = 5;
+/// Source-scoped sign-in limit: the multi-step flow counts the account-wide
+/// risk signal separately, so a source is only blocked after 20 failures.
+pub(super) const SOURCE_RATE_MAX_FAILURES: u32 = 20;
 pub(super) static DUMMY_PASSWORD_HASH: OnceLock<String> = OnceLock::new();
 
 #[derive(Clone, Debug)]

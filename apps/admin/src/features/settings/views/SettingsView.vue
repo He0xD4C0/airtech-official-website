@@ -34,6 +34,11 @@ const settingsState = ref<'loading' | 'ready' | 'error' | 'forbidden'>(accountSe
 const settingsError = ref('')
 const enrollment = ref<TotpEnrollment | null>(null)
 const confirmationCode = ref('')
+const phoneNumber = ref('')
+const phonePassword = ref('')
+const phoneCode = ref('')
+const phoneCodeSent = ref(false)
+const phoneBusy = ref(false)
 const sessions = ref<AdminSession[]>([])
 const securityLoading = ref(false)
 
@@ -190,6 +195,36 @@ async function revokeSession(session: AdminSession): Promise<void> {
   }
 }
 
+async function sendPhoneCode(): Promise<void> {
+  phoneBusy.value = true
+  try {
+    await adminAuthApi.startPhoneVerification(phoneNumber.value.trim(), phonePassword.value)
+    phoneCodeSent.value = true
+    phonePassword.value = ''
+    ui.toast('验证码已发送', '短信验证码 10 分钟内有效，请勿转发给他人。', 'success')
+  } catch (error) {
+    ui.toast('无法发送验证码', problemMessage(error), 'danger')
+  } finally {
+    phoneBusy.value = false
+  }
+}
+
+async function confirmPhoneCode(): Promise<void> {
+  phoneBusy.value = true
+  try {
+    await adminAuthApi.confirmPhoneVerification(phoneCode.value.trim())
+    phoneCode.value = ''
+    phoneCodeSent.value = false
+    phoneNumber.value = ''
+    await auth.refresh()
+    ui.toast('手机号已绑定', '该号码可用于短信登录与风控验证。', 'success')
+  } catch (error) {
+    ui.toast('绑定失败', problemMessage(error), 'danger')
+  } finally {
+    phoneBusy.value = false
+  }
+}
+
 function formatTime(value: string): string {
   return new Date(value).toLocaleString('zh-CN')
 }
@@ -208,7 +243,7 @@ void loadSettings()
 
 <template>
   <div class="page-stack">
-    <PageHeader eyebrow="PLATFORM CONFIGURATION" :title="accountSecurityOnly ? '账号安全' : '系统设置'" :description="accountSecurityOnly ? '管理本账号的 TOTP、恢复码与活动会话。' : '管理平台级配置；对象存储凭据写入数据库但绝不由 API 回显。'">
+    <PageHeader eyebrow="PLATFORM CONFIGURATION" :title="accountSecurityOnly ? '账号安全' : '系统设置'" :description="accountSecurityOnly ? '管理本账号的 TOTP、绑定手机号与活动会话。' : '管理平台级配置；对象存储凭据写入数据库但绝不由 API 回显。'">
       <template #actions><button v-if="active === 'retention' && settingsState === 'ready'" class="button button--primary" type="button" :disabled="settingsLoading || settingsSaving || !loadedSettings" @click="save"><Save :size="16" />{{ settingsSaving ? '保存中…' : '保存业务设置' }}</button></template>
     </PageHeader>
 
@@ -217,7 +252,7 @@ void loadSettings()
       <div><strong>先完成首次安全设置</strong><p>初始密码与管理员恢复密钥确认完成后即可进入管理功能；账号角色已经保留。</p></div>
     </div>
 
-    <div v-if="accountSecurityOnly || settingsState === 'ready'" class="status-banner"><span>{{ active === 'security' ? '实时身份服务' : '实时业务设置' }}</span><p>{{ active === 'security' ? 'TOTP、恢复码与会话操作直接调用受认证、CSRF 保护且可审计的 API。' : `三个业务策略值由 Settings API 管理；当前 ${settingsEtag}。部署凭据与 origin 始终只读。` }}</p></div>
+    <div v-if="accountSecurityOnly || settingsState === 'ready'" class="status-banner"><span>{{ active === 'security' ? '实时身份服务' : '实时业务设置' }}</span><p>{{ active === 'security' ? 'TOTP、手机号与会话操作直接调用受认证、CSRF 保护且可审计的 API。' : `三个业务策略值由 Settings API 管理；当前 ${settingsEtag}。部署凭据与 origin 始终只读。` }}</p></div>
 
     <section class="settings-layout">
       <nav class="settings-nav panel" aria-label="设置导航"><button v-for="tab in visibleTabs" :key="tab.id" type="button" :class="{ 'is-active': active === tab.id }" @click="selectTab(tab.id)"><component :is="tab.icon" :size="17" />{{ tab.label }}</button></nav>
@@ -241,7 +276,7 @@ void loadSettings()
         <template v-else-if="active === 'security'">
           <div class="settings-section">
             <h3>管理会话</h3>
-            <p>会话在连续 30 分钟无活动或创建 12 小时后失效；Cookie 为 host-only、HttpOnly、Secure 与 SameSite=Strict。</p>
+            <p>会话在连续 60 分钟无活动或创建 24 小时后失效；Cookie 为 host-only、HttpOnly、Secure 与 SameSite=Strict。</p>
             <div class="security-session-list">
               <div v-for="session in sessions" :key="session.id" class="security-session-row">
                 <span><strong>{{ session.current ? '当前会话' : '其他会话' }}</strong><small>最近活动 {{ formatTime(session.lastSeenAt) }} · 到期 {{ formatTime(session.expiresAt) }}</small></span>
@@ -251,9 +286,23 @@ void loadSettings()
             </div>
           </div>
           <div class="settings-section">
+            <h3>手机号</h3>
+            <p>绑定后可用短信验证码登录；触发风控时系统也只向该号码发送验证码。邮箱验证码使用账号邮箱，无需绑定。</p>
+            <div v-if="auth.user?.phoneVerified" class="settings-section--success security-status"><Smartphone :size="18" /><div><strong>手机号已绑定并验证</strong><p>换绑需要当前密码与短信验证码。</p></div></div>
+            <div class="security-enrollment">
+              <label class="field"><span>手机号（E.164）</span><input v-model="phoneNumber" inputmode="tel" autocomplete="tel" placeholder="+8613800138000" /></label>
+              <label class="field"><span>当前密码</span><input v-model="phonePassword" type="password" autocomplete="current-password" /></label>
+              <button class="button button--primary" type="button" :disabled="phoneBusy || phoneNumber.trim().length < 8 || !phonePassword" @click="sendPhoneCode">{{ phoneCodeSent ? '重新发送验证码' : '发送验证码' }}</button>
+              <template v-if="phoneCodeSent">
+                <label class="field field--compact"><span>短信验证码</span><input v-model="phoneCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" /></label>
+                <button class="button button--primary" type="button" :disabled="phoneBusy || phoneCode.trim().length !== 6" @click="confirmPhoneCode">确认绑定</button>
+              </template>
+            </div>
+          </div>
+          <div class="settings-section">
             <h3>多因素验证</h3>
-            <p>标准 TOTP 为 SHA-1、6 位、30 秒，并允许前后一个时间步。高风险数据库任务只接受当前 TOTP，不接受恢复码。</p>
-            <div v-if="auth.user?.totpEnabled" class="settings-section--success security-status"><ShieldCheck :size="18" /><div><strong>TOTP 已启用</strong><p>登录可使用 TOTP；恢复码只能使用一次。</p></div></div>
+            <p>标准 TOTP 为 SHA-1、6 位、30 秒，并允许前后一个时间步。TOTP 是可选项；账号登录支持密码、邮箱验证码或已绑定手机号。</p>
+            <div v-if="auth.user?.totpEnabled" class="settings-section--success security-status"><ShieldCheck :size="18" /><div><strong>TOTP 已启用</strong><p>登录在密码或验证码之后追加验证器验证码。</p></div></div>
             <button v-else-if="!enrollment" class="button button--primary" type="button" :disabled="securityLoading" @click="startEnrollment"><KeyRound :size="16" />开始绑定 TOTP</button>
             <div v-if="enrollment" class="security-enrollment">
               <label class="field"><span>验证器密钥</span><input :value="enrollment.secret" readonly autocomplete="off" /></label>

@@ -226,7 +226,7 @@ changeAdministratorPassword: {
             };
         };
     };
-recoverAdministratorWithKey: {
+confirmAdministratorPhoneVerification: {
         parameters: {
             query?: never;
             header?: never;
@@ -235,18 +235,16 @@ recoverAdministratorWithKey: {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RecoveryRequest"];
+                "application/json": components["schemas"]["ConfirmPhoneVerificationRequest"];
             };
         };
         responses: {
-            /** @description Rotated recovery key */
-            200: {
+            /** @description Phone number verified */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["RecoveryKeyRotationResult"];
-                };
+                content?: never;
             };
             /** @description Malformed request */
             400: {
@@ -340,22 +338,26 @@ recoverAdministratorWithKey: {
             };
         };
     };
-getAdministratorRecoveryKey: {
+startAdministratorPhoneVerification: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartPhoneVerificationRequest"];
+            };
+        };
         responses: {
-            /** @description Recovery key state */
-            200: {
+            /** @description Binding code sent */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RecoveryKeyState"];
+                    "application/json": components["schemas"]["PhoneVerificationStarted"];
                 };
             };
             /** @description Malformed request */

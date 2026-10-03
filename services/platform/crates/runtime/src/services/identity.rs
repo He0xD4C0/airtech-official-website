@@ -66,6 +66,8 @@ pub async fn list_users(
         r#"SELECT user_account.id,user_account.email,user_account.display_name,
                   user_account.locale,user_account.status,user_account.revision,
                   user_account.manager_user_id,
+                  user_account.phone_e164,
+                  user_account.phone_verified_at IS NOT NULL AS phone_verified,
                   user_account.totp_confirmed_at IS NOT NULL AS totp_enabled,
                   user_account.invited_at,user_account.last_login_at,
                   user_account.created_at,user_account.updated_at,

@@ -15,6 +15,8 @@ const adminPort = process.env.AIRTEK_E2E_ADMIN_PORT ?? '3310'
 const apiPort = process.env.AIRTEK_E2E_API_PORT ?? '8800'
 const minioPort = process.env.AIRTEK_E2E_MINIO_PORT ?? '19100'
 const minioConsolePort = process.env.AIRTEK_E2E_MINIO_CONSOLE_PORT ?? '19101'
+const mailpitPort = process.env.AIRTEK_E2E_MAILPIT_PORT ?? '18025'
+const smsStubPort = process.env.AIRTEK_E2E_SMS_STUB_PORT ?? '18099'
 const publicOrigin = `http://www.airtek.localhost:${gatewayPort}`
 const adminOrigin = `http://admin.airtek.localhost:${gatewayPort}`
 const apiOrigin = `http://api.airtek.localhost:${gatewayPort}`
@@ -42,7 +44,16 @@ const environment = {
   ...repositoryDotenv(),
   ...process.env,
   ...isolation,
-  COMPOSE_PROFILES: 'minio',
+  COMPOSE_PROFILES: 'minio,e2e-integrations',
+  AIRTEK_MAILPIT_BIND_ADDRESS: '127.0.0.1',
+  AIRTEK_MAILPIT_HOST_PORT: mailpitPort,
+  AIRTEK_SMS_STUB_BIND_ADDRESS: '127.0.0.1',
+  AIRTEK_SMS_STUB_HOST_PORT: smsStubPort,
+  AIRTEK_SMS_ENDPOINT: 'http://e2e-sms-stub:8099/sms',
+  AIRTEK_SMS_ALLOW_ENDPOINT_OVERRIDE: 'true',
+  E2E_MAILPIT_ORIGIN: `http://127.0.0.1:${mailpitPort}`,
+  E2E_SMS_STUB_ORIGIN: `http://127.0.0.1:${smsStubPort}`,
+  E2E_ADMIN_PHONE: process.env.E2E_ADMIN_PHONE ?? '+8613800138000',
   AIRTEK_PUBLIC_HOST_PORT: publicPort,
   AIRTEK_ADMIN_HOST_PORT: adminPort,
   AIRTEK_API_HOST_PORT: apiPort,

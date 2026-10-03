@@ -10,6 +10,8 @@ pub struct AdminUserRecord {
     pub status: String,
     pub revision: i64,
     pub manager_user_id: Option<Uuid>,
+    pub phone_e164: Option<String>,
+    pub phone_verified: bool,
     pub roles: Vec<String>,
     pub totp_enabled: bool,
     pub invited_at: Option<DateTime<Utc>>,
@@ -96,5 +98,7 @@ pub struct UpdateAdminUser {
     pub status: Option<String>,
     pub role_keys: Option<Vec<String>>,
     pub manager_user_id: Option<Option<Uuid>>,
+    /// Super-admin assisted binding: a supplied number is stored as verified.
+    pub phone_e164: Option<String>,
     pub reason: String,
 }

@@ -149,9 +149,9 @@ pub async fn update_mail(
     if host.is_empty() || host.len() > 255 || input.port < 1 || input.port > 65535 {
         return Err(invalid("host and port are invalid."));
     }
-    if !matches!(input.protocol.as_str(), "starttls" | "tls") {
+    if !matches!(input.protocol.as_str(), "starttls" | "tls" | "plain") {
         return Err(invalid(
-            "protocol must be starttls or tls; unencrypted SMTP authentication is refused.",
+            "protocol must be starttls, tls or plain; unencrypted SMTP authentication is refused.",
         ));
     }
     let username = input.username.clone().unwrap_or_default();
@@ -189,6 +189,11 @@ pub async fn update_mail(
     if username.is_empty() != password.is_empty() {
         return Err(invalid(
             "username and password must be supplied or cleared together.",
+        ));
+    }
+    if input.protocol == "plain" && !username.is_empty() {
+        return Err(invalid(
+            "plain refuses credentials; use starttls or tls for authenticated delivery.",
         ));
     }
     sqlx::query(

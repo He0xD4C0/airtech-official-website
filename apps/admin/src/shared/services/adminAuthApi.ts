@@ -165,6 +165,16 @@ export const adminAuthApi = {
     await adminContractClient.post('/api/admin/v1/auth/recovery-key/confirm')
   },
 
+  async startPhoneVerification(phone: string, currentPassword: string): Promise<void> {
+    await adminContractClient.post('/api/admin/v1/auth/phone/verification', {
+      body: { phone, currentPassword },
+    })
+  },
+
+  async confirmPhoneVerification(code: string): Promise<void> {
+    await adminContractClient.post('/api/admin/v1/auth/phone/confirm', { body: { code } })
+  },
+
   async startTotpEnrollment(): Promise<TotpEnrollment> {
     const result = await adminContractClient.post('/api/admin/v1/auth/totp/enrollment')
     return result.data
