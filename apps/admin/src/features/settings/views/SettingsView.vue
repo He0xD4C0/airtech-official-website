@@ -3,10 +3,12 @@ import { settingsApi } from '@/features/settings/services/settingsApi'
 import { adminAuthApi } from '@/shared/services/adminAuthApi'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Check, Cookie, Database, Globe2, KeyRound, LockKeyhole, LogOut, Save, Server, Settings, ShieldCheck, TimerReset } from 'lucide-vue-next'
+import { Check, Cookie, Database, Globe2, KeyRound, LockKeyhole, LogOut, Mail, Save, Server, Settings, ShieldCheck, Smartphone, TimerReset } from 'lucide-vue-next'
 import DataStatePanel from '@/shared/components/DataStatePanel.vue'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import ObjectStorageSettingsPanel from '@/features/settings/components/ObjectStorageSettingsPanel.vue'
+import IntegrationSettingsPanels from '@/features/settings/components/IntegrationSettingsPanels.vue'
+import type { Permission } from '@/shared/types/domain'
 import { type AdminSession, type PlatformSettings, type TotpEnrollment, type UpdatePlatformSettings } from '@/shared/services/adminApiTypes'
 import { apiErrorMessage, apiProblemStatus } from '@/shared/services/cursorPagination'
 import { useAuthStore } from '@/shared/stores/auth'
@@ -41,9 +43,15 @@ const tabs = [
   { id: 'consent', label: 'Consent 与 Analytics', icon: Cookie },
   { id: 'retention', label: '数据保留', icon: TimerReset },
   { id: 'object-storage', label: '对象存储', icon: Database },
+  { id: 'mail', label: '邮件投递', icon: Mail, permission: 'mail.manage' as Permission },
+  { id: 'sms', label: '短信服务', icon: Smartphone, permission: 'sms.manage' as Permission },
+  { id: 'captcha', label: '人机验证', icon: ShieldCheck, permission: 'captcha.manage' as Permission },
   { id: 'domains', label: '域名与 Origin', icon: Globe2 },
 ]
-const visibleTabs = computed(() => accountSecurityOnly ? tabs.filter((tab) => tab.id === 'security') : tabs)
+const visibleTabs = computed(() => {
+  const base = accountSecurityOnly ? tabs.filter((tab) => tab.id === 'security') : tabs
+  return base.filter((tab) => !tab.permission || auth.hasPermission(tab.permission))
+})
 
 const activeTitle = computed(() => tabs.find((tab) => tab.id === active.value)?.label ?? '基本设置')
 
@@ -271,6 +279,10 @@ void loadSettings()
 
         <template v-else-if="active === 'object-storage'">
           <ObjectStorageSettingsPanel />
+        </template>
+
+        <template v-else-if="active === 'mail' || active === 'sms' || active === 'captcha'">
+          <IntegrationSettingsPanels :section="active" />
         </template>
 
         <template v-else>
