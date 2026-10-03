@@ -79,6 +79,16 @@ export const adminIdentityApi = {
     return { user: result.data }
   },
 
+  /// Rotates the root administrator recovery key. The plaintext key is returned
+  /// exactly once; a replayed request answers with 409.
+  async rotateUserRecoveryKey(id: string, reason: string): Promise<{ recoveryKey: string }> {
+    const result = await adminContractClient.post('/api/admin/v1/users/{id}/recovery/reset', {
+      parameters: { path: { id }, header: { 'Idempotency-Key': randomRequestId() } },
+      body: { reason },
+    })
+    return { recoveryKey: result.data.recoveryKey }
+  },
+
   async listRoles(request: Pick<IdentityListRequest, 'cursor' | 'limit' | 'q'> = {}): Promise<AdminRoleRecordPage> {
     const result = await adminContractClient.get('/api/admin/v1/roles', {
       parameters: { query: {

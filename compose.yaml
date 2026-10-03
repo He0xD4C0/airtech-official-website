@@ -100,6 +100,18 @@ services:
       - "${AIRTEK_SMS_STUB_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_SMS_STUB_HOST_PORT:-8099}:8099"
     restart: unless-stopped
 
+  e2e-captcha-stub:
+    profiles: ["e2e-integrations"]
+    image: ${AIRTEK_CAPTCHA_STUB_IMAGE:-node:22-alpine}
+    command: ["node", "/srv/captcha-stub.mjs"]
+    environment:
+      CAPTCHA_STUB_PORT: "8098"
+    volumes:
+      - ./tests/e2e/support:/srv:ro
+    ports:
+      - "${AIRTEK_CAPTCHA_STUB_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_CAPTCHA_STUB_HOST_PORT:-8098}:8098"
+    restart: unless-stopped
+
   flyway-migrate:
     build:
       context: .
@@ -213,6 +225,8 @@ services:
       # stub; the override is ignored unless the explicit flag is true.
       AIRTEK_SMS_ENDPOINT: ${AIRTEK_SMS_ENDPOINT:-}
       AIRTEK_SMS_ALLOW_ENDPOINT_OVERRIDE: ${AIRTEK_SMS_ALLOW_ENDPOINT_OVERRIDE:-false}
+      AIRTEK_CAPTCHA_ENDPOINT: ${AIRTEK_CAPTCHA_ENDPOINT:-}
+      AIRTEK_CAPTCHA_ALLOW_ENDPOINT_OVERRIDE: ${AIRTEK_CAPTCHA_ALLOW_ENDPOINT_OVERRIDE:-false}
       RUST_LOG: ${RUST_LOG:-airtek_runtime=info,airtek_http=info,airtek_jobs=info,tower_http=info}
     ports:
       - "${AIRTEK_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_API_HOST_PORT:-8080}:8080"

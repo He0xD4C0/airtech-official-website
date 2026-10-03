@@ -1,6 +1,6 @@
 {
   "generatedFrom": "packages/contracts/openapi/openapi.production.json",
-  "operationCount": 106,
+  "operationCount": 107,
   "operations": [
     {
       "method": "GET",
@@ -4065,6 +4065,50 @@
       "audit": {
         "required": true,
         "action": "resetAdminUserPassword"
+      },
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/users/{id}/recovery/reset",
+      "operationId": "resetAdminUserRecoveryKey",
+      "permission": "identity.manage",
+      "request": {
+        "parameters": [
+          "id",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "IdentityResetRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "RecoveryKeyResetResult"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "resetAdminUserRecoveryKey"
       },
       "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
     },

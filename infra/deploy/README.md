@@ -196,13 +196,26 @@ stored in the repository. Images are named
 `${AIRTEK_IMAGE_PREFIX}-{public-web,admin-web,platform,migrations,gateway}` with
 the exact release tag. Runtime domains are deliberately absent from publishing.
 
-The `airtek-cd-agent` on each target host pulls the published tag, checks out
-the same tag, runs Compose and gates the release on readiness. It keeps its
-state and failure records under `/opt/airtek/cd`. The server keeps runtime
-origins in `/etc/airtek/production.env` and its read-only pull credential in
-`/etc/airtek/cd.env` (mode 0600), so a released tag can be redeployed under
-different reviewed domains without rebuilding. Publishing never receives
-PostgreSQL superuser, object-storage, or server access secrets.
+The `airtek-cd-agent` lives in its own public repository,
+`https://github.com/He0xD4C0/airtek-cd-agent` (agent `v1.0.0` or newer). Each
+target host pulls the published tag, checks out the same tag and runs a strict
+flash-cut release: stop the gateway, stop API/Worker/Public/Admin, run
+`flyway-migrate release`, run `platform-maintenance prepare-runtime`, start the
+new revision and only then open the gateway. The full-site interruption is
+roughly one to three minutes. When the readiness gate fails after a schema
+promotion, the agent restores the retained pre-migration dump and starts the
+previous tag before it alerts, so a failed release never leaves the database
+ahead of the running images. State, failure records and the retained dump live
+under `/opt/airtek/cd` and the migration state directory. The server keeps
+runtime origins in `/etc/airtek/production.env` and its read-only pull
+credential in `/etc/airtek/cd.env` (mode 0600), so a released tag can be
+redeployed under different reviewed domains without rebuilding. Publishing
+never receives PostgreSQL superuser, object-storage, or server access secrets.
+
+`infra/deploy/deploy-app.sh` remains the legacy Jenkins path for the development
+VM. It performs the same stop-the-site ordering but rolls application images
+back only; it does not restore the retained dump, so prefer the agent for every
+release that promotes the schema.
 
 The Jenkins pipeline remains in the repository for the current development VM
 but no longer owns deployment; keep `CD_ENABLED` false and retire the pipeline

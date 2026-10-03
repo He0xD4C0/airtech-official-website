@@ -239,6 +239,12 @@ PublicSearchPage: {
 ReasonRequest: {
             reason: string;
         };
+RecoveryKeyResetResult: {
+            confirmed: boolean;
+            /** @enum {string} */
+            origin: "generated";
+            recoveryKey: string;
+        };
 RecoveryKeyRotationResult: {
             readonly recoveryKey: string;
             /** Format: date-time */

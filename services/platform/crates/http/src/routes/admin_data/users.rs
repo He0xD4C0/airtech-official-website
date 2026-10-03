@@ -14,6 +14,14 @@ pub(super) struct TemporaryPasswordResult {
     sessions_revoked: bool,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct RecoveryKeyResetResult {
+    recovery_key: String,
+    origin: &'static str,
+    confirmed: bool,
+}
+
 fn secret_json(status: StatusCode, value: &impl Serialize) -> Response {
     let mut response = (status, Json(value)).into_response();
     response
@@ -382,4 +390,87 @@ pub(super) async fn reset_user_totp(
     transaction.commit().await?;
     staged.finish().await?;
     Ok(entity_response(StatusCode::OK, &after, after.revision))
+}
+
+/// Rotates the offline recovery key of the root administrator. Only the root
+/// account itself may call this, the key file is the single plaintext source of
+/// truth, and the new plaintext is returned exactly once: the idempotency store
+/// keeps a marker instead of the key, so a replay answers with a conflict.
+pub(super) async fn reset_user_recovery_key(
+    State(state): State<AppState>,
+    Extension(principal): Extension<AdminPrincipal>,
+    Path(id): Path<Uuid>,
+    headers: HeaderMap,
+    Json(request): Json<IdentityResetRequest>,
+) -> Result<Response, ApiError> {
+    validate_reason(&request.reason)?;
+    if id != principal.user_id {
+        return Err(ApiError::forbidden(
+            "The administrator recovery key can only be rotated by its owner.",
+        ));
+    }
+    let root_email = state
+        .config
+        .admin_email
+        .as_deref()
+        .ok_or_else(|| {
+            ApiError::service_unavailable(
+                "AIRTEK_ADMIN_EMAIL is required to rotate the recovery key.",
+            )
+        })?
+        .trim()
+        .to_ascii_lowercase();
+    if principal.email.trim().to_ascii_lowercase() != root_email {
+        return Err(ApiError::forbidden(
+            "Only the root administrator holds an administrator recovery key.",
+        ));
+    }
+    let idempotency = match begin_idempotency(
+        &state,
+        "admin.identity.user.recovery_reset",
+        &headers,
+        &json!({"userId": id}),
+    )
+    .await?
+    {
+        IdempotencyOutcome::Replay(_) => {
+            // The plaintext key is never persisted in the replay record.
+            return Err(ApiError::conflict(
+                "This recovery-key rotation was already processed; the new key is displayed only once.",
+            ));
+        }
+        IdempotencyOutcome::Fresh(context) => context,
+    };
+    let rotated = airtek_runtime::services::admin_provisioning::rotate_recovery_key(
+        &state.pool,
+        &state.config,
+    )
+    .await?;
+    let mut transaction = state.pool.begin().await?;
+    let audit = mutation_audit_event(
+        &headers,
+        "identity.user.recovery_reset",
+        "user",
+        Some(id),
+        None,
+        Some(json!({"origin": "generated", "confirmed": false, "keyFile": rotated.path})),
+        Some(request.reason),
+    );
+    airtek_runtime::services::audit_log::insert_in_transaction(&mut transaction, &audit).await?;
+    transaction.commit().await?;
+    idempotency
+        .complete(
+            &state,
+            &json!({"rotated": true, "userId": id}),
+            StatusCode::OK,
+        )
+        .await?;
+    Ok(secret_json(
+        StatusCode::OK,
+        &RecoveryKeyResetResult {
+            recovery_key: rotated.recovery_key,
+            origin: "generated",
+            confirmed: false,
+        },
+    ))
 }

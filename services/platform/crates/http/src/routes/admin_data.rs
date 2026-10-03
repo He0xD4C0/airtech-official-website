@@ -65,6 +65,7 @@ pub fn router() -> Router<AppState> {
         .route("/users/{id}/sessions", delete(revoke_user_sessions))
         .route("/users/{id}/password-reset", post(reset_user_password))
         .route("/users/{id}/totp-reset", post(reset_user_totp))
+        .route("/users/{id}/recovery/reset", post(reset_user_recovery_key))
         .route("/user-invitations", get(list_invitations).post(invite_user))
         .route("/user-invitations/{id}/revoke", post(revoke_invitation))
         .route("/roles", get(list_roles).post(create_role))

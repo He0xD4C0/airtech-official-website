@@ -36,6 +36,19 @@ mod cases {
     }
 
     #[test]
+    pub(super) fn captcha_outage_decision_follows_the_configured_mode() {
+        use crate::auth::login_flow::captcha_unavailable_allows;
+        use crate::config::CaptchaFailureMode::{FailClosed, FailOpen};
+
+        for method in ["password", "emailCode", "smsCode"] {
+            assert!(captcha_unavailable_allows(FailOpen, method));
+        }
+        assert!(captcha_unavailable_allows(FailClosed, "password"));
+        assert!(!captcha_unavailable_allows(FailClosed, "emailCode"));
+        assert!(!captcha_unavailable_allows(FailClosed, "smsCode"));
+    }
+
+    #[test]
     pub(super) fn password_hashes_use_argon2id() {
         let hash = hash_password("a-long-password-123").unwrap();
         assert!(hash.starts_with("$argon2id$"));

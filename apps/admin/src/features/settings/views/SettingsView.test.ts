@@ -19,7 +19,7 @@ vi.mock('@/shared/services/adminAuthApi', () => ({ adminAuthApi: {
 
 vi.mock('@/shared/stores/auth', () => ({
   useAuthStore: () => ({
-    user: { totpEnabled: false },
+    user: { id: '90000000-0000-4000-8000-000000000001', totpEnabled: false, roleKeys: [] },
     requiresOnboarding: true,
   }),
 }))

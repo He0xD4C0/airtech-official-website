@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { settingsApi } from '@/features/settings/services/settingsApi'
+import { adminIdentityApi } from '@/features/identity'
 import { adminAuthApi } from '@/shared/services/adminAuthApi'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Check, Cookie, Database, Globe2, KeyRound, LockKeyhole, LogOut, Mail, Save, Server, Settings, ShieldCheck, Smartphone, TimerReset } from 'lucide-vue-next'
+import { Check, Cookie, Copy, Database, Globe2, KeyRound, LockKeyhole, LogOut, Mail, Save, Server, Settings, ShieldCheck, Smartphone, TimerReset } from 'lucide-vue-next'
 import DataStatePanel from '@/shared/components/DataStatePanel.vue'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import ObjectStorageSettingsPanel from '@/features/settings/components/ObjectStorageSettingsPanel.vue'
@@ -39,6 +40,8 @@ const phonePassword = ref('')
 const phoneCode = ref('')
 const phoneCodeSent = ref(false)
 const phoneBusy = ref(false)
+const rotatedRecoveryKey = ref('')
+const rotatingRecoveryKey = ref(false)
 const sessions = ref<AdminSession[]>([])
 const securityLoading = ref(false)
 
@@ -225,6 +228,34 @@ async function confirmPhoneCode(): Promise<void> {
   }
 }
 
+async function rotateRecoveryKey(): Promise<void> {
+  const user = auth.user
+  if (!user) return
+  rotatingRecoveryKey.value = true
+  try {
+    const result = await adminIdentityApi.rotateUserRecoveryKey(
+      user.id,
+      'Rotate the root administrator recovery key from the account security page.',
+    )
+    rotatedRecoveryKey.value = result.recoveryKey
+    ui.toast('恢复密钥已轮换', '新密钥只显示这一次；请保存后完成恢复密钥确认。', 'success')
+  } catch (error) {
+    ui.toast('轮换失败', problemMessage(error), 'danger')
+  } finally {
+    rotatingRecoveryKey.value = false
+  }
+}
+
+async function copyRecoveryKey(): Promise<void> {
+  if (rotatedRecoveryKey.value) await navigator.clipboard.writeText(rotatedRecoveryKey.value)
+}
+
+async function acknowledgeRotatedKey(): Promise<void> {
+  rotatedRecoveryKey.value = ''
+  await auth.refresh()
+  await router.push({ name: 'onboarding' })
+}
+
 function formatTime(value: string): string {
   return new Date(value).toLocaleString('zh-CN')
 }
@@ -310,6 +341,16 @@ void loadSettings()
               <label class="field field--compact"><span>当前 6 位验证码</span><input v-model="confirmationCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" /></label>
               <button class="button button--primary" type="button" :disabled="confirmationCode.length !== 6 || securityLoading" @click="confirmEnrollment">确认并启用</button>
             </div>
+          </div>
+          <div v-if="auth.user?.roleKeys.includes('super-admin')" class="settings-section">
+            <h3>管理员恢复密钥</h3>
+            <p>恢复密钥文件是根超管唯一的明文来源，数据库只保存 Argon2 哈希。轮换后旧密钥立即失效，新密钥只显示一次，并需要重新确认。</p>
+            <div v-if="rotatedRecoveryKey" class="security-enrollment">
+              <label class="field"><span>新的恢复密钥</span><input :value="rotatedRecoveryKey" readonly autocomplete="off" /></label>
+              <button class="button button--secondary" type="button" @click="copyRecoveryKey"><Copy :size="15" />复制</button>
+              <button class="button button--primary" type="button" @click="acknowledgeRotatedKey">我已保存，去确认</button>
+            </div>
+            <button v-else class="button button--secondary" type="button" :disabled="rotatingRecoveryKey" @click="rotateRecoveryKey"><KeyRound :size="16" />{{ rotatingRecoveryKey ? '轮换中…' : '轮换我的恢复密钥' }}</button>
           </div>
         </template>
 

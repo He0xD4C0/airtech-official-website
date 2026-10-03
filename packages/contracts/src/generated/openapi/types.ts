@@ -209,6 +209,7 @@ export type PublicSearchItem = components['schemas']['PublicSearchItem'];
 export type PublicSearchPage = components['schemas']['PublicSearchPage'];
 export type PublicSearchType = components['schemas']['PublicSearchType'];
 export type ReasonRequest = components['schemas']['ReasonRequest'];
+export type RecoveryKeyResetResult = components['schemas']['RecoveryKeyResetResult'];
 export type RecoveryKeyRotationResult = components['schemas']['RecoveryKeyRotationResult'];
 export type RecoveryKeyState = components['schemas']['RecoveryKeyState'];
 export type RecoveryRequest = components['schemas']['RecoveryRequest'];

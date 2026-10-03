@@ -58,6 +58,23 @@ export interface PathsPart04 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/users/{id}/recovery/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rotate the root administrator recovery key; the plaintext is returned exactly once */
+        post: operations["resetAdminUserRecoveryKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/users/{id}/sessions": {
         parameters: {
             query?: never;
@@ -458,23 +475,6 @@ export interface PathsPart04 {
         };
         /** Report persistence readiness */
         get: operations["getReadiness"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/robots.txt": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Disallow crawler access to the API origin */
-        get: operations["getApiRobots"];
         put?: never;
         post?: never;
         delete?: never;

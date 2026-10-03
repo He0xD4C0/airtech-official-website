@@ -17,6 +17,7 @@ const minioPort = process.env.AIRTEK_E2E_MINIO_PORT ?? '19100'
 const minioConsolePort = process.env.AIRTEK_E2E_MINIO_CONSOLE_PORT ?? '19101'
 const mailpitPort = process.env.AIRTEK_E2E_MAILPIT_PORT ?? '18025'
 const smsStubPort = process.env.AIRTEK_E2E_SMS_STUB_PORT ?? '18099'
+const captchaStubPort = process.env.AIRTEK_E2E_CAPTCHA_STUB_PORT ?? '18098'
 const publicOrigin = `http://www.airtek.localhost:${gatewayPort}`
 const adminOrigin = `http://admin.airtek.localhost:${gatewayPort}`
 const apiOrigin = `http://api.airtek.localhost:${gatewayPort}`
@@ -51,8 +52,16 @@ const environment = {
   AIRTEK_SMS_STUB_HOST_PORT: smsStubPort,
   AIRTEK_SMS_ENDPOINT: 'http://e2e-sms-stub:8099/sms',
   AIRTEK_SMS_ALLOW_ENDPOINT_OVERRIDE: 'true',
+  AIRTEK_CAPTCHA_STUB_BIND_ADDRESS: '127.0.0.1',
+  AIRTEK_CAPTCHA_STUB_HOST_PORT: captchaStubPort,
+  AIRTEK_CAPTCHA_ENDPOINT: 'http://e2e-captcha-stub:8098/siteverify',
+  AIRTEK_CAPTCHA_ALLOW_ENDPOINT_OVERRIDE: 'true',
+  // The acceptance stack proves the production-shaped failure mode: an
+  // unreachable provider keeps password sign-in only.
+  AIRTEK_CAPTCHA_FAILURE_MODE: 'fail-closed',
   E2E_MAILPIT_ORIGIN: `http://127.0.0.1:${mailpitPort}`,
   E2E_SMS_STUB_ORIGIN: `http://127.0.0.1:${smsStubPort}`,
+  E2E_CAPTCHA_STUB_ORIGIN: `http://127.0.0.1:${captchaStubPort}`,
   E2E_ADMIN_PHONE: process.env.E2E_ADMIN_PHONE ?? '+8613800138000',
   AIRTEK_PUBLIC_HOST_PORT: publicPort,
   AIRTEK_ADMIN_HOST_PORT: adminPort,
@@ -71,8 +80,12 @@ const environment = {
   ADMIN_HOST: 'admin.airtek.localhost',
   API_HOST: 'api.airtek.localhost',
   AIRTEK_COMPOSE_SUBNET: process.env.AIRTEK_E2E_COMPOSE_SUBNET ?? '172.29.0.0/24',
-  AIRTEK_GATEWAY_INTERNAL_IP: process.env.AIRTEK_E2E_GATEWAY_INTERNAL_IP ?? '172.29.0.10',
-  AIRTEK_TRUSTED_PROXY_CIDRS: process.env.AIRTEK_E2E_TRUSTED_PROXY_CIDRS ?? '172.29.0.10/32',
+  // The gateway keeps a deterministic address so the API can trust its
+  // X-Forwarded-For hops, but the address must sit outside the range Docker
+  // assigns sequentially: capture services now share this network, and an
+  // early dynamic lease on .10 would break the gateway's static address.
+  AIRTEK_GATEWAY_INTERNAL_IP: process.env.AIRTEK_E2E_GATEWAY_INTERNAL_IP ?? '172.29.0.240',
+  AIRTEK_TRUSTED_PROXY_CIDRS: process.env.AIRTEK_E2E_TRUSTED_PROXY_CIDRS ?? '172.29.0.240/32',
   AIRTEK_PLATFORM_FEATURES: 'production',
   AIRTEK_MAINTENANCE_COMMAND: 'prepare-runtime',
   AIRTEK_FLYWAY_TARGET: String(latestMigrationVersion),

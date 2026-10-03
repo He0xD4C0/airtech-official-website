@@ -88,6 +88,7 @@ pub(super) const REQUIRED_PATHS: &[&str] = &[
     "/api/admin/v1/users",
     "/api/admin/v1/users/{id}",
     "/api/admin/v1/users/{id}/password-reset",
+    "/api/admin/v1/users/{id}/recovery/reset",
     "/api/admin/v1/users/{id}/sessions",
     "/api/admin/v1/users/{id}/totp-reset",
     "/api/public/v1/analytics/consents",

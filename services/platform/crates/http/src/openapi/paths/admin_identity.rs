@@ -162,6 +162,32 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
     );
     add(
         paths,
+        "/api/admin/v1/users/{id}/recovery/reset",
+        "post",
+        admin(
+            params(
+                body(
+                    op(
+                        "resetAdminUserRecoveryKey",
+                        "Rotate the root administrator recovery key; the plaintext is returned exactly once",
+                        "adminIdentity",
+                        [(
+                            "200",
+                            json_response(
+                                "Rotated administrator recovery key",
+                                r("RecoveryKeyResetResult"),
+                            ),
+                        )],
+                    ),
+                    r("IdentityResetRequest"),
+                ),
+                vec![path_param("id", uuid()), idempotency_param()],
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
         "/api/admin/v1/user-invitations",
         "get",
         admin(

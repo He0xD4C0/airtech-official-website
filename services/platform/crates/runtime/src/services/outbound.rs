@@ -244,15 +244,10 @@ async fn verify_captcha_token(
     token: &str,
     remote_ip: Option<&str>,
 ) -> Result<bool, ApiError> {
-    let endpoint = match transport.provider.as_str() {
-        "turnstile" => "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-        "recaptcha" => "https://www.google.com/recaptcha/api/siteverify",
-        "hcaptcha" => "https://hcaptcha.com/siteverify",
-        _ => {
-            return Err(ApiError::service_unavailable(
-                "The CAPTCHA provider is unsupported.",
-            ))
-        }
+    let Some(endpoint) = resolved_captcha_endpoint(&transport.provider) else {
+        return Err(ApiError::service_unavailable(
+            "The CAPTCHA provider is unsupported.",
+        ));
     };
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
@@ -281,9 +276,50 @@ async fn verify_captcha_token(
     Ok(parsed.success)
 }
 
+/// The provider siteverify endpoint. Development and acceptance stacks may
+/// redirect verification to a local stub through `AIRTEK_CAPTCHA_ENDPOINT`,
+/// but only when `AIRTEK_CAPTCHA_ALLOW_ENDPOINT_OVERRIDE=true` is set.
+pub(super) fn captcha_endpoint(
+    provider: &str,
+    override_endpoint: Option<&str>,
+    allow_override: Option<&str>,
+) -> Option<String> {
+    let default = match provider {
+        "turnstile" => "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+        "recaptcha" => "https://www.google.com/recaptcha/api/siteverify",
+        "hcaptcha" => "https://hcaptcha.com/siteverify",
+        _ => return None,
+    };
+    if allow_override != Some("true") {
+        return Some(default.to_owned());
+    }
+    let Some(endpoint) = override_endpoint.map(str::trim) else {
+        return Some(default.to_owned());
+    };
+    if !(endpoint.starts_with("http://") || endpoint.starts_with("https://")) {
+        return Some(default.to_owned());
+    }
+    tracing::warn!(
+        endpoint,
+        provider,
+        "AIRTEK_CAPTCHA_ENDPOINT is active; CAPTCHA tokens are verified against the override endpoint"
+    );
+    Some(endpoint.to_owned())
+}
+
+fn resolved_captcha_endpoint(provider: &str) -> Option<String> {
+    captcha_endpoint(
+        provider,
+        std::env::var("AIRTEK_CAPTCHA_ENDPOINT").ok().as_deref(),
+        std::env::var("AIRTEK_CAPTCHA_ALLOW_ENDPOINT_OVERRIDE")
+            .ok()
+            .as_deref(),
+    )
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{sms_endpoint, ALIYUN_SMS_ENDPOINT};
+    use super::{captcha_endpoint, sms_endpoint, ALIYUN_SMS_ENDPOINT};
 
     #[test]
     fn sms_endpoint_override_requires_the_explicit_flag_and_an_http_url() {
@@ -303,5 +339,35 @@ mod tests {
             sms_endpoint(Some(" http://stub:8099/sms "), Some("true")),
             "http://stub:8099/sms"
         );
+    }
+
+    #[test]
+    fn captcha_endpoint_override_requires_the_explicit_flag_and_an_http_url() {
+        let turnstile = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+        assert_eq!(
+            captcha_endpoint("turnstile", None, None),
+            Some(turnstile.into())
+        );
+        assert_eq!(
+            captcha_endpoint("turnstile", Some("http://stub:8098/siteverify"), None),
+            Some(turnstile.into())
+        );
+        assert_eq!(
+            captcha_endpoint(
+                "turnstile",
+                Some("http://stub:8098/siteverify"),
+                Some("false")
+            ),
+            Some(turnstile.into())
+        );
+        assert_eq!(
+            captcha_endpoint("turnstile", Some("stub:8098"), Some("true")),
+            Some(turnstile.into())
+        );
+        assert_eq!(
+            captcha_endpoint("recaptcha", Some(" https://stub/siteverify "), Some("true")),
+            Some("https://stub/siteverify".into())
+        );
+        assert_eq!(captcha_endpoint("unknown", None, None), None);
     }
 }

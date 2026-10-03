@@ -6,6 +6,7 @@ const mailpitOrigin = process.env.E2E_MAILPIT_ORIGIN ?? 'http://127.0.0.1:18025'
 const smsStubOrigin = process.env.E2E_SMS_STUB_ORIGIN ?? 'http://127.0.0.1:18099'
 
 export const adminPhone = process.env.E2E_ADMIN_PHONE ?? '+8613800138000'
+export const captchaStubOrigin = process.env.E2E_CAPTCHA_STUB_ORIGIN ?? 'http://127.0.0.1:18098'
 
 /// Points outbound email at the Mailpit SMTP listener and outbound SMS at the
 /// stub endpoint. Both are configured through the real Admin API.
@@ -43,6 +44,34 @@ export async function configureDeliverySettings(
   })
   if (!sms.ok()) {
     throw new Error(`Unable to configure E2E SMS capture (${sms.status()}): ${await sms.text()}`)
+  }
+}
+
+/// Points CAPTCHA verification at the local provider stub through the real
+/// Admin API. The singleton cannot be cleared again, so callers run last.
+export async function configureCaptchaSettings(
+  api: APIRequestContext,
+  csrf: string,
+): Promise<void> {
+  const current = await api.get('/api/admin/v1/settings/captcha')
+  if (!current.ok()) {
+    throw new Error(`Unable to read CAPTCHA settings (${current.status()}): ${await current.text()}`)
+  }
+  const settings = await current.json() as { revision?: number }
+  const saved = await api.put('/api/admin/v1/settings/captcha', {
+    headers: {
+      'X-CSRF-Token': csrf,
+      'If-Match': `"revision-${settings.revision ?? 0}"`,
+    },
+    data: {
+      provider: 'turnstile',
+      siteKey: 'e2e-site-key',
+      secretKey: 'e2e-secret',
+      reason: 'Route acceptance CAPTCHA verification through the isolated provider stub.',
+    },
+  })
+  if (!saved.ok()) {
+    throw new Error(`Unable to configure the E2E CAPTCHA provider (${saved.status()}): ${await saved.text()}`)
   }
 }
 

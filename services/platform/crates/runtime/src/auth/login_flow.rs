@@ -154,6 +154,17 @@ pub async fn identify(
 /// Applies the configured CAPTCHA failure mode. Returns `Ok(true)` when the
 /// caller may continue with the requested method and `Ok(false)` when the
 /// fail-closed fallback must restrict sign-in to the password method.
+///
+/// When the provider cannot be reached at all, fail-open keeps every method
+/// available; fail-closed keeps passwords only, so an outage never disables
+/// the account entirely nor silently skips the check for the code methods.
+pub(super) fn captcha_unavailable_allows(mode: CaptchaFailureMode, method: &str) -> bool {
+    match mode {
+        CaptchaFailureMode::FailOpen => true,
+        CaptchaFailureMode::FailClosed => method == "password",
+    }
+}
+
 async fn captcha_guard(
     state: &AppState,
     headers: &HeaderMap,
@@ -183,16 +194,17 @@ async fn captcha_guard(
         Ok(false) => Err(ApiError::forbidden(
             "The CAPTCHA challenge was not accepted.",
         )),
-        Err(error) => match state.config.captcha_failure_mode {
-            CaptchaFailureMode::FailOpen => {
-                tracing::warn!(error = %error, "CAPTCHA unavailable; continuing in fail-open mode");
-                Ok(true)
-            }
-            CaptchaFailureMode::FailClosed => {
-                tracing::warn!(error = %error, "CAPTCHA unavailable; restricting sign-in to passwords");
-                Ok(method == "password")
-            }
-        },
+        Err(error) => {
+            let allowed = captcha_unavailable_allows(state.config.captcha_failure_mode, method);
+            tracing::warn!(
+                error = %error,
+                mode = ?state.config.captcha_failure_mode,
+                method,
+                allowed,
+                "CAPTCHA provider unavailable; applying the configured failure mode"
+            );
+            Ok(allowed)
+        }
     }
 }
 

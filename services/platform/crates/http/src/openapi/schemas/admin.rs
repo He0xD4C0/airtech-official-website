@@ -128,6 +128,17 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         ),
     );
     s.insert(
+        "RecoveryKeyResetResult".into(),
+        object(
+            &["recoveryKey", "origin", "confirmed"],
+            json!({
+                "recoveryKey": {"type": "string", "writeOnly": true},
+                "origin": {"type": "string", "enum": ["generated"]},
+                "confirmed": {"type": "boolean"}
+            }),
+        ),
+    );
+    s.insert(
         "AcceptInvitationRequest".into(),
         object(
             &["token", "password"],
