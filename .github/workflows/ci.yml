@@ -259,6 +259,13 @@ jobs:
       FLYWAY_PASSWORD: airtek
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: airtek_runtime
       AIRTEK_FLYWAY_TARGET: 31
+      # A fresh database provisions its root administrator from the environment;
+      # the recovery key is generated into the writable runner directory.
+      AIRTEK_ADMIN_EMAIL: ci-admin@airtek.invalid
+      AIRTEK_ADMIN_DISPLAY_NAME: AIRTEK CI Administrator
+      AIRTEK_ADMIN_PASSWORD: Airtek-CI-Admin-123!
+      AIRTEK_ADMIN_RECOVERY_KEY_DIR: /tmp/airtek-admin-recovery-key
+      AIRTEK_ADMIN_RECOVERY_KEY_MODE: auto
       AIRTEK_OBJECT_STORE_IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-minio${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
       AIRTEK_OBJECT_STORE_MC_IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-minio-mc${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
     steps:

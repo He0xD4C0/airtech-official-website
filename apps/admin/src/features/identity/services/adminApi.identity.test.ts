@@ -70,7 +70,8 @@ describe('admin identity API', () => {
   it('updates users with the exact revision ETag', async () => {
     const user = {
       id: '90000000-0000-4000-8000-000000000001', email: 'editor@example.test', displayName: 'Editor',
-      locale: 'zh-CN', status: 'active', managerUserId: null, roles: ['content-editor'], totpEnabled: true, invitedAt: null,
+      locale: 'zh-CN', status: 'active', managerUserId: null, phoneE164: null, phoneVerified: false,
+      roles: ['content-editor'], totpEnabled: true, invitedAt: null,
       lastLoginAt: null, createdAt: '2026-09-02T00:00:00Z', updatedAt: '2026-09-02T00:00:00Z', revision: 3,
     }
     const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
