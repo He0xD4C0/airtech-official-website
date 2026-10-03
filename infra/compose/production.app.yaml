@@ -66,6 +66,9 @@ services:
       AIRTEK_ADMIN_PASSWORD: ${AIRTEK_ADMIN_PASSWORD:?set the initial administrator password from the secret manager}
       AIRTEK_ADMIN_RECOVERY_KEY_DIR: /var/lib/airtek/admin-recovery-key
       AIRTEK_ADMIN_RECOVERY_KEY_MODE: ${AIRTEK_ADMIN_RECOVERY_KEY_MODE:-auto}
+      # CAPTCHA provider failures fail closed by default in production: only the
+      # password method stays available instead of skipping verification.
+      AIRTEK_CAPTCHA_FAILURE_MODE: ${AIRTEK_CAPTCHA_FAILURE_MODE:-fail-closed}
       AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:-}
       AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: ${AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY:?set AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY from the secret manager}
       AIRTEK_ANALYTICS_TOKEN_HMAC_KEY: ${AIRTEK_ANALYTICS_TOKEN_HMAC_KEY:?set AIRTEK_ANALYTICS_TOKEN_HMAC_KEY from the secret manager}
