@@ -137,13 +137,6 @@ export const adminAuthApi = {
     return loginResult(result.data)
   },
 
-  async setup(displayName: string, email: string, password: string, bootstrapToken: string): Promise<SessionUser> {
-    const result = await adminContractClient.post('/api/admin/v1/auth/setup', {
-      body: { displayName, email, password, bootstrapToken },
-    })
-    return sessionUser(result.data)
-  },
-
   async acceptInvitation(payload: AcceptInvitationRequest): Promise<InvitationAcceptance> {
     const result = await adminContractClient.post('/api/admin/v1/auth/invitations/accept', { body: payload })
     return result.data

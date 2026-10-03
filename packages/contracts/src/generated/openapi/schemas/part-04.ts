@@ -468,14 +468,6 @@ SessionUser: {
             roleKeys: string[];
             totpEnabled: boolean;
         };
-SetupRequest: {
-            bootstrapToken: string;
-            displayName: string;
-            /** Format: email */
-            email: string;
-            /** Format: password */
-            password: string;
-        };
 SiteBootstrap: {
             footer: components["schemas"]["PublicContentProjection"] | null;
             generalInformation: components["schemas"]["PublicContentProjection"] | null;
@@ -495,5 +487,13 @@ SmsSettings: {
             revision: number;
             signName: string;
             templateCode: string;
+        };
+SmsTestRequest: {
+            phone: string;
+        };
+SocialLinkInput: {
+            service: string;
+            /** Format: uri */
+            url: string;
         };
 }

@@ -6,23 +6,6 @@
 import type { operations } from '../operations'
 
 export interface PathsPart02 {
-"/api/admin/v1/content-drafts/{draftId}/claim": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Claim an unassigned migrated draft as Super Admin */
-        post: operations["claimUnassignedPrivateContentDraft"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 "/api/admin/v1/content-drafts/{draftId}/shares": {
         parameters: {
             query?: never;
@@ -480,6 +463,23 @@ export interface PathsPart02 {
         put?: never;
         /** Create an expiring source-field override */
         post: operations["createTemporaryOverride"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/products/{id}/validation-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the stable product publication validation report */
+        get: operations["getProductValidationReport"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

@@ -6,14 +6,6 @@
 import type { components } from '../components'
 
 export interface SchemasPart05 {
-SmsTestRequest: {
-            phone: string;
-        };
-SocialLinkInput: {
-            service: string;
-            /** Format: uri */
-            url: string;
-        };
 SourceFact: {
             fieldName: string;
             operatingCondition: string | null;

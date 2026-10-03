@@ -278,23 +278,6 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/auth/setup": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create the first administrator with a deployment bootstrap token */
-        post: operations["setupInitialAdministrator"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 "/api/admin/v1/auth/totp/confirm": {
         parameters: {
             query?: never;
@@ -482,6 +465,23 @@ export interface PathsPart01 {
         head?: never;
         /** Explicitly save an owned editing draft */
         patch: operations["savePrivateContentDraft"];
+        trace?: never;
+    };
+"/api/admin/v1/content-drafts/{draftId}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Claim an unassigned migrated draft as Super Admin */
+        post: operations["claimUnassignedPrivateContentDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 }

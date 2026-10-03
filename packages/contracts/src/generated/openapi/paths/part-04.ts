@@ -6,24 +6,6 @@
 import type { operations } from '../operations'
 
 export interface PathsPart04 {
-"/api/admin/v1/users/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get one management user */
-        get: operations["getAdminUser"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Update a management user, status or role assignments */
-        patch: operations["updateAdminUser"];
-        trace?: never;
-    };
 "/api/admin/v1/users/{id}/sessions": {
         parameters: {
             query?: never;

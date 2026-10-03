@@ -42,4 +42,7 @@ pub fn document() -> Value {
 }
 
 #[cfg(test)]
+#[path = "openapi/required_paths.rs"]
+mod required_paths;
+#[cfg(test)]
 mod tests;

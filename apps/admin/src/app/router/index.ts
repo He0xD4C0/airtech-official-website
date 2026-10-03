@@ -191,12 +191,6 @@ const router = createRouter({
       meta: { title: '登录' },
     },
     {
-      path: '/setup',
-      name: 'setup',
-      component: () => import('@/features/auth/views/SetupView.vue'),
-      meta: { title: '初始化平台' },
-    },
-    {
       path: '/accept-invitation',
       name: 'accept-invitation',
       component: () => import('@/features/auth/views/AcceptInvitationView.vue'),
@@ -248,7 +242,7 @@ router.beforeEach(async (to) => {
     return { name: 'onboarding' }
   }
 
-  if ((to.name === 'login' || to.name === 'setup') && auth.isAuthenticated) {
+  if (to.name === 'login' && auth.isAuthenticated) {
     return { name: 'dashboard' }
   }
 

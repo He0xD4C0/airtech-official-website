@@ -136,8 +136,6 @@ mod admin_workflows;
 #[path = "postgres_contract/cms_private_workflow.rs"]
 mod cms_private_workflow;
 #[cfg(feature = "devtools")]
-#[path = "postgres_contract/development_admin.rs"]
-mod development_admin;
 #[cfg(feature = "devtools")]
 #[path = "postgres_contract/development_public_site.rs"]
 mod development_public_site;

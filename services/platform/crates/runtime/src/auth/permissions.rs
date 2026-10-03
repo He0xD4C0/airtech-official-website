@@ -1,5 +1,6 @@
 use super::*;
 
+#[cfg(test)]
 pub(super) fn super_admin_permissions() -> Vec<String> {
     #[allow(unused_mut)]
     let mut values = [

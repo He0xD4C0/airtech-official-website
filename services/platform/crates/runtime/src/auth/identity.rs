@@ -13,19 +13,6 @@ pub fn verify_csrf(headers: &HeaderMap, principal: &AdminPrincipal) -> Result<()
     Ok(())
 }
 
-pub(super) fn validate_setup(request: &SetupRequest) -> Result<(), ApiError> {
-    if request.display_name.trim().is_empty() || request.display_name.trim().len() > 120 {
-        return Err(ApiError::bad_request(
-            "displayName must contain 1 to 120 characters.",
-        ));
-    }
-    if !valid_email(request.email.trim()) {
-        return Err(ApiError::bad_request("A valid work email is required."));
-    }
-    validate_strong_password(&request.password)?;
-    Ok(())
-}
-
 pub(super) fn validate_strong_password(password: &str) -> Result<(), ApiError> {
     if password.len() < 12
         || password.len() > 256
@@ -37,90 +24,6 @@ pub(super) fn validate_strong_password(password: &str) -> Result<(), ApiError> {
         ));
     }
     Ok(())
-}
-
-pub(super) fn verify_bootstrap_token(state: &AppState, supplied: &str) -> Result<(), ApiError> {
-    let expected = state
-        .config
-        .admin_bootstrap_token
-        .as_ref()
-        .ok_or_else(|| ApiError::service_unavailable("Initial setup is not enabled."))?;
-    if supplied.len() != expected.len()
-        || !bool::from(supplied.as_bytes().ct_eq(expected.as_bytes()))
-    {
-        return Err(ApiError::unauthorized("The bootstrap token is invalid."));
-    }
-    Ok(())
-}
-
-pub(super) async fn create_initial_super_admin(
-    state: &AppState,
-    display_name: &str,
-    email: &str,
-    password_hash: String,
-) -> Result<StoredUser, ApiError> {
-    let id = Uuid::new_v4();
-    let normalized_email = email.to_ascii_lowercase();
-    let pool = &state.pool;
-    let mut transaction = pool.begin().await?;
-    sqlx::query("SELECT pg_advisory_xact_lock(672183921)")
-        .execute(&mut *transaction)
-        .await?;
-    let exists: bool = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM users)")
-        .fetch_one(&mut *transaction)
-        .await?;
-    if exists {
-        return Err(ApiError::conflict(
-            "Initial setup is disabled after the first user is created.",
-        ));
-    }
-    let role_id: Uuid = sqlx::query_scalar(
-        r#"INSERT INTO roles (id, key, display_name, system_role)
-               VALUES ($1, 'super-admin', 'Super Admin', true)
-               ON CONFLICT (key) DO UPDATE SET display_name=EXCLUDED.display_name
-               RETURNING id"#,
-    )
-    .bind(Uuid::new_v4())
-    .fetch_one(&mut *transaction)
-    .await?;
-    sqlx::query(
-            "INSERT INTO role_permissions (role_id, permission_key) SELECT $1, key FROM permissions ON CONFLICT DO NOTHING",
-        )
-        .bind(role_id)
-        .execute(&mut *transaction)
-        .await?;
-    sqlx::query(
-        r#"INSERT INTO users
-               (id, email, password_hash, display_name, status, created_at, updated_at)
-               VALUES ($1,$2,$3,$4,'active',now(),now())"#,
-    )
-    .bind(id)
-    .bind(&normalized_email)
-    .bind(&password_hash)
-    .bind(display_name)
-    .execute(&mut *transaction)
-    .await?;
-    sqlx::query("INSERT INTO user_roles (user_id, role_id) VALUES ($1,$2)")
-        .bind(id)
-        .bind(role_id)
-        .execute(&mut *transaction)
-        .await?;
-    transaction.commit().await?;
-    Ok(StoredUser {
-        id,
-        display_name: display_name.into(),
-        email: normalized_email,
-        password_hash,
-        role: "Super Admin".into(),
-        role_keys: vec!["super-admin".into()],
-        permissions: super_admin_permissions(),
-        active: true,
-        totp_enabled: false,
-        totp_secret_ciphertext: None,
-        must_change_password: false,
-        must_confirm_recovery_key: false,
-        phone_verified: false,
-    })
 }
 
 pub(super) async fn find_user_by_email(

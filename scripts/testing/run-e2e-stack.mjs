@@ -65,8 +65,6 @@ const environment = {
   AIRTEK_PLATFORM_FEATURES: 'production',
   AIRTEK_MAINTENANCE_COMMAND: 'prepare-runtime',
   AIRTEK_FLYWAY_TARGET: String(latestMigrationVersion),
-  AIRTEK_ADMIN_BOOTSTRAP_TOKEN: process.env.E2E_ADMIN_BOOTSTRAP_TOKEN
-    ?? 'airtek-e2e-bootstrap-token-change-me',
   AIRTEK_ADMIN_EMAIL: process.env.E2E_ADMIN_EMAIL ?? 'e2e-admin@airtek.invalid',
   AIRTEK_ADMIN_DISPLAY_NAME: 'AIRTEK E2E Administrator',
   AIRTEK_ADMIN_PASSWORD: process.env.E2E_ADMIN_PASSWORD ?? 'Airtek-E2E-Admin-123!',

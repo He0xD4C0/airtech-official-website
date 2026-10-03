@@ -238,7 +238,6 @@ export type SeoInputV2 = components['schemas']['SeoInputV2'];
 export type SeoMetadata = components['schemas']['SeoMetadata'];
 export type SeoMetadataInput = components['schemas']['SeoMetadataInput'];
 export type SessionUser = components['schemas']['SessionUser'];
-export type SetupRequest = components['schemas']['SetupRequest'];
 export type SiteBootstrap = components['schemas']['SiteBootstrap'];
 export type SmsSettings = components['schemas']['SmsSettings'];
 export type SmsTestRequest = components['schemas']['SmsTestRequest'];

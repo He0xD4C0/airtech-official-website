@@ -54,23 +54,13 @@ requireMatch(
   'production maintenance must execute prepare-runtime only',
 )
 requireMatch(
-  'infra/compose/production.app.yaml',
-  productionCompose,
-  /AIRTEK_ADMIN_BOOTSTRAP_TOKEN:\s*\$\{AIRTEK_ADMIN_BOOTSTRAP_TOKEN:-/u,
-  'production API must use the explicit bootstrap-token boundary',
-)
-requireMatch(
   'infra/docker/Dockerfile.platform',
   platformDockerfile,
   /ARG\s+AIRTEK_PLATFORM_FEATURES=production/u,
   'platform image must default to the production feature set',
 )
 
-for (const name of [
-  'AIRTEK_DEV_ADMIN_SEED',
-  'AIRTEK_DEV_PUBLIC_SEED',
-  'AIRTEK_DEV_ADMIN_PASSWORD_ONLY',
-]) {
+for (const name of ['AIRTEK_DEV_PUBLIC_SEED']) {
   requireIncludes(
     'services/platform/crates/runtime/src/config/environment.rs',
     environmentConfig,

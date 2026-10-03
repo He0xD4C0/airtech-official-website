@@ -244,15 +244,7 @@ requireMatch(serviceBlock(compose, 'flyway-migrate'), new RegExp(`AIRTEK_FLYWAY_
 requireMatch(serviceBlock(compose, 'flyway-migrate'), /AIRTEK_FLYWAY_ALLOW_SHARED_ROLE:\s*"true"/u, 'Local Compose must make its shared development role exception explicit.')
 forbidMatch(serviceBlock(compose, 'flyway-migrate'), /DATABASE_URL/u, 'Flyway must use its JDBC deployment credentials, not the Rust DATABASE_URL.')
 requireMatch(serviceBlock(compose, 'platform-maintenance'), /entrypoint:\s*\["\/usr\/local\/bin\/airtek-maintenance"\]/u, 'Local maintenance must use the dedicated binary.')
-requireMatch(serviceBlock(compose, 'platform-maintenance'), /command:\s*\["\$\{AIRTEK_MAINTENANCE_COMMAND:-prepare-development-runtime\}"\]/u, 'Local maintenance must prepare runtime data and the optional development administrator.')
-for (const marker of [
-  /AIRTEK_DEV_ADMIN_SEED:\s*\$\{AIRTEK_DEV_ADMIN_SEED:-true\}/u,
-  /AIRTEK_DEV_ADMIN_DISPLAY_NAME:\s*AIRTEK Local Administrator/u,
-  /AIRTEK_DEV_ADMIN_EMAIL:\s*local-admin@airtek\.invalid/u,
-  /AIRTEK_DEV_ADMIN_PASSWORD:\s*Airtek-Local-Admin-20260917!/u,
-]) {
-  requireMatch(serviceBlock(compose, 'platform-maintenance'), marker, 'Local maintenance must own the fixed development administrator configuration.')
-}
+requireMatch(serviceBlock(compose, 'platform-maintenance'), /command:\s*\["\$\{AIRTEK_MAINTENANCE_COMMAND:-prepare-development-runtime\}"\]/u, 'Local maintenance must prepare runtime data and the optional public-site seed.')
 requireMatch(serviceBlock(compose, 'platform-maintenance'), /flyway-migrate:[\s\S]*condition:\s*service_completed_successfully/u, 'Local maintenance must wait for Flyway.')
 for (const service of ['platform-api', 'platform-worker']) {
   requireMatch(serviceBlock(compose, service), /platform-maintenance:[\s\S]*condition:\s*service_completed_successfully/u, `${service} must wait for runtime preparation.`)
@@ -262,7 +254,6 @@ if (migrationWaits < 2) failures.push('Both API and Worker must wait for a succe
 requireMatch(compose, /^\s{2}gateway:\s*$/mu, 'Compose must define the HTTP gateway service.')
 requireMatch(compose, /dockerfile:\s*infra\/docker\/Dockerfile\.gateway/u, 'Compose must build the non-root gateway image.')
 requireMatch(compose, /PUBLIC_API_INTERNAL_URL:\s*\$\{PUBLIC_API_INTERNAL_URL:-http:\/\/platform-api:8080\/api\/public\/v1\}/u, 'Public SSR must receive a configurable internal API URL with the fixed service default.')
-requireMatch(compose, /AIRTEK_ADMIN_BOOTSTRAP_TOKEN:/u, 'Compose must configure the setup-only admin bootstrap secret.')
 forbidMatch(compose, /AIRTEK_ADMIN_BEARER_TOKEN:/u, 'Compose must not present the setup secret as a reusable bearer token.')
 for (const [variable, hostPort, containerPort] of [
   ['AIRTEK_API_HOST_PORT', 8080, 8080],

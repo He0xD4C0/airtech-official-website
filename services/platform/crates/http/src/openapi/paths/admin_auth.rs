@@ -8,20 +8,6 @@ use super::super::support::*;
 pub(super) fn add_paths(paths: &mut Map<String, Value>) {
     add(
         paths,
-        "/api/admin/v1/auth/setup",
-        "post",
-        body(
-            op(
-                "setupInitialAdministrator",
-                "Create the first administrator with a deployment bootstrap token",
-                "adminAuth",
-                [("201", session_response("Initial administrator created"))],
-            ),
-            r("SetupRequest"),
-        ),
-    );
-    add(
-        paths,
         "/api/admin/v1/auth/login",
         "post",
         body(

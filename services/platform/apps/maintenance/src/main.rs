@@ -1,6 +1,4 @@
 #[cfg(feature = "devtools")]
-use airtek_runtime::services::development_admin::{self, DevelopmentAdminInput};
-#[cfg(feature = "devtools")]
 use airtek_runtime::services::development_public_site;
 use airtek_runtime::services::{public_readiness, runtime_preparation};
 use sqlx::postgres::PgPoolOptions;
@@ -97,34 +95,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(feature = "devtools")]
         Some("prepare-development-runtime") => {
             let runtime = runtime_preparation::prepare(&pool).await?;
-            let development_admin = if development_seed_enabled()? {
-                Some(development_admin::ensure(&pool, &development_admin_input()?).await?)
-            } else {
-                None
-            };
             let development_public_site = if development_public_seed_enabled()? {
                 Some(
-                    development_public_site::ensure(
-                        &pool,
-                        &required_env("AIRTEK_DEV_ADMIN_EMAIL")?,
-                    )
-                    .await?,
+                    development_public_site::ensure(&pool, &required_env("AIRTEK_ADMIN_EMAIL")?)
+                        .await?,
                 )
             } else {
                 None
             };
             serde_json::json!({
                 "runtime": runtime,
-                "developmentAdmin": development_admin,
                 "developmentPublicSite": development_public_site,
             })
-        }
-        #[cfg(feature = "devtools")]
-        Some("reset-development-admin") => {
-            require_reset_confirmation()?;
-            serde_json::to_value(
-                development_admin::reset(&pool, &development_admin_input()?).await?,
-            )?
         }
         _ => unreachable!("command was validated before connecting"),
     };
@@ -144,7 +126,7 @@ fn validate_command(command: Option<&str>) -> Result<(), Box<dyn std::error::Err
             | "import-local-product-archive",
         ) => Ok(()),
         #[cfg(feature = "devtools")]
-        Some("prepare-development-runtime" | "reset-development-admin") => Ok(()),
+        Some("prepare-development-runtime") => Ok(()),
         _ => Err(usage().into()),
     }
 }
@@ -152,23 +134,11 @@ fn validate_command(command: Option<&str>) -> Result<(), Box<dyn std::error::Err
 fn usage() -> &'static str {
     #[cfg(feature = "devtools")]
     {
-        "usage: airtek-maintenance prepare-runtime|inspect-public-site|check-public-readiness|refresh-product-archive|import-local-product-archive|prepare-development-runtime|reset-development-admin"
+        "usage: airtek-maintenance prepare-runtime|inspect-public-site|check-public-readiness|refresh-product-archive|import-local-product-archive|prepare-development-runtime"
     }
     #[cfg(not(feature = "devtools"))]
     {
         "usage: airtek-maintenance prepare-runtime|inspect-public-site|check-public-readiness|refresh-product-archive|import-local-product-archive"
-    }
-}
-
-#[cfg(feature = "devtools")]
-fn development_seed_enabled() -> Result<bool, Box<dyn std::error::Error>> {
-    match std::env::var("AIRTEK_DEV_ADMIN_SEED")
-        .unwrap_or_else(|_| "false".into())
-        .as_str()
-    {
-        "true" => Ok(true),
-        "false" => Ok(false),
-        _ => Err("AIRTEK_DEV_ADMIN_SEED must be true or false".into()),
     }
 }
 
@@ -181,24 +151,6 @@ fn development_public_seed_enabled() -> Result<bool, Box<dyn std::error::Error>>
         "true" => Ok(true),
         "false" => Ok(false),
         _ => Err("AIRTEK_DEV_PUBLIC_SEED must be true or false".into()),
-    }
-}
-
-#[cfg(feature = "devtools")]
-fn development_admin_input() -> Result<DevelopmentAdminInput, Box<dyn std::error::Error>> {
-    Ok(DevelopmentAdminInput {
-        display_name: required_env("AIRTEK_DEV_ADMIN_DISPLAY_NAME")?,
-        email: required_env("AIRTEK_DEV_ADMIN_EMAIL")?,
-        password: required_env("AIRTEK_DEV_ADMIN_PASSWORD")?,
-    })
-}
-
-#[cfg(feature = "devtools")]
-fn require_reset_confirmation() -> Result<(), Box<dyn std::error::Error>> {
-    if std::env::var("AIRTEK_ALLOW_DEV_ADMIN_RESET").as_deref() == Ok("true") {
-        Ok(())
-    } else {
-        Err("AIRTEK_ALLOW_DEV_ADMIN_RESET=true is required for an explicit reset".into())
     }
 }
 

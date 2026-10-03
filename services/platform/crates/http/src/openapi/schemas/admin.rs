@@ -5,10 +5,6 @@ use serde_json::{json, Map, Value};
 use super::super::support::*;
 
 pub(super) fn add(s: &mut Map<String, Value>) {
-    s.insert("SetupRequest".into(), object(
-        &["displayName", "email", "password", "bootstrapToken"],
-        json!({"displayName": {"type": "string", "minLength": 1, "maxLength": 120}, "email": {"type": "string", "format": "email"}, "password": {"type": "string", "format": "password", "minLength": 12, "maxLength": 256, "writeOnly": true}, "bootstrapToken": {"type": "string", "writeOnly": true}})
-    ));
     s.insert("LoginRequest".into(), json!({
         "type": "object", "additionalProperties": false, "required": ["email", "password"],
         "properties": {"email": {"type": "string", "format": "email"}, "password": {"type": "string", "format": "password", "writeOnly": true}, "otp": nullable(json!({"type": "string", "description": "A six-digit TOTP or one unused recovery code.", "pattern": "^(?:[0-9]{6}|[A-HJ-NP-Za-hj-np-z2-9]{4}(?:-[A-HJ-NP-Za-hj-np-z2-9]{4}){3})$", "writeOnly": true}))}

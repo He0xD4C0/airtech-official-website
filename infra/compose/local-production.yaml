@@ -6,7 +6,6 @@ services:
       args:
         AIRTEK_PLATFORM_FEATURES: production
     environment:
-      AIRTEK_DEV_ADMIN_PASSWORD_ONLY: !reset null
   platform-worker:
     build:
       args:
@@ -17,5 +16,4 @@ services:
         AIRTEK_PLATFORM_FEATURES: production
     command: ["prepare-runtime"]
     environment:
-      AIRTEK_DEV_ADMIN_SEED: !reset null
       AIRTEK_DEV_PUBLIC_SEED: !reset null

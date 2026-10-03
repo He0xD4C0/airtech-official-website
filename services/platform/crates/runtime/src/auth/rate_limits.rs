@@ -120,13 +120,3 @@ pub(super) async fn clear_auth_rate_limit(state: &AppState, key: &str) -> Result
         .await?;
     Ok(())
 }
-
-pub(super) fn valid_email(value: &str) -> bool {
-    value.len() <= 254
-        && !value.contains(':')
-        && !value.chars().any(char::is_whitespace)
-        && !value.chars().any(char::is_control)
-        && value.split_once('@').is_some_and(|(local, domain)| {
-            !local.is_empty() && domain.contains('.') && !domain.ends_with('.')
-        })
-}

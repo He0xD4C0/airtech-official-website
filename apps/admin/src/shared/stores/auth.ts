@@ -49,15 +49,6 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = await adminAuthApi.session()
   }
 
-  async function setup(displayName: string, email: string, password: string, bootstrapToken: string): Promise<void> {
-    loading.value = true
-    try {
-      user.value = await adminAuthApi.setup(displayName, email, password, bootstrapToken)
-    } finally {
-      loading.value = false
-    }
-  }
-
   async function logout(): Promise<void> {
     await adminAuthApi.logout()
     user.value = null
@@ -76,7 +67,6 @@ export const useAuthStore = defineStore('auth', () => {
     refresh,
     login,
     apply,
-    setup,
     logout,
   }
 })

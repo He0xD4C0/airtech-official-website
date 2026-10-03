@@ -7,7 +7,7 @@ mod cases {
         AdminPrincipal {
             user_id: Uuid::nil(),
             display_name: "Local administrator".into(),
-            email: crate::config::DEVELOPMENT_ADMIN_EMAIL.into(),
+            email: "local-admin@airtek.invalid".into(),
             role: "Super Admin".into(),
             role_keys: vec!["super-admin".into()],
             permissions: vec!["content.write".into()],

@@ -7,7 +7,7 @@ use types::*;
 pub use types::*;
 #[path = "auth/bootstrap.rs"]
 mod bootstrap;
-pub use bootstrap::{accept_invitation, setup};
+pub use bootstrap::accept_invitation;
 #[path = "auth/login_sessions.rs"]
 mod login_sessions;
 pub use login_sessions::*;

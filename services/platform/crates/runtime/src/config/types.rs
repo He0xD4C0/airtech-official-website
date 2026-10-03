@@ -1,7 +1,6 @@
 use super::*;
 
 pub const API_PORT: u16 = 8080;
-pub const DEVELOPMENT_ADMIN_EMAIL: &str = "local-admin@airtek.invalid";
 
 /// How the deployment-supplied administrator recovery key file is treated at
 /// startup. `Auto` generates a key only when the file is missing or empty.
@@ -93,9 +92,6 @@ pub struct Config {
     pub public_origin: String,
     pub admin_origin: String,
     pub database_url: Option<String>,
-    /// One-time deployment secret. It is accepted only by `/auth/setup` while
-    /// the user table is empty; it never authenticates normal API requests.
-    pub admin_bootstrap_token: Option<String>,
     /// Deployment-provided AEAD key used only to seal TOTP secrets at rest.
     /// The wrapper intentionally redacts its Debug representation.
     pub totp_encryption_key: Option<TotpEncryptionKey>,
@@ -128,9 +124,6 @@ pub struct Config {
     /// uploads instead of writing objects it cannot serve.
     pub media: MediaSettings,
     pub production: bool,
-    /// Explicit local-only convenience for the fixed seeded administrator.
-    /// Production builds reject the corresponding environment variable.
-    pub development_admin_password_only: bool,
     /// Initial administrator credentials. They are applied only while the user
     /// table is empty (or while renaming the reserved development account) and
     /// are ignored entirely on an initialized database.
@@ -144,14 +137,6 @@ pub struct Config {
     pub captcha_failure_mode: CaptchaFailureMode,
 }
 
-impl Config {
-    pub fn development_password_only_for(&self, email: &str) -> bool {
-        cfg!(feature = "devtools")
-            && self.development_admin_password_only
-            && email.eq_ignore_ascii_case(DEVELOPMENT_ADMIN_EMAIL)
-    }
-}
-
 impl fmt::Debug for Config {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
@@ -162,10 +147,6 @@ impl fmt::Debug for Config {
             .field(
                 "database_url",
                 &self.database_url.as_ref().map(|_| "[configured]"),
-            )
-            .field(
-                "admin_bootstrap_token",
-                &self.admin_bootstrap_token.as_ref().map(|_| "[configured]"),
             )
             .field("totp_encryption_key", &self.totp_encryption_key)
             .field(
@@ -202,10 +183,6 @@ impl fmt::Debug for Config {
             .field("trusted_proxy_cidrs", &self.trusted_proxy_cidrs)
             .field("media_storage", &self.media.storage_kind_label())
             .field("production", &self.production)
-            .field(
-                "development_admin_password_only",
-                &self.development_admin_password_only,
-            )
             .field("admin_email", &self.admin_email)
             .field("admin_display_name", &self.admin_display_name)
             .field(

@@ -25,8 +25,6 @@ export const administrator = {
   displayName: 'AIRTEK E2E Administrator',
   email: process.env.E2E_ADMIN_EMAIL ?? 'e2e-admin@airtek.invalid',
   password: process.env.E2E_ADMIN_PASSWORD ?? 'Airtek-E2E-Admin-123!',
-  bootstrapToken: process.env.AIRTEK_ADMIN_BOOTSTRAP_TOKEN
-    ?? 'airtek-e2e-bootstrap-token-change-me',
 }
 
 export const restrictedUser = {

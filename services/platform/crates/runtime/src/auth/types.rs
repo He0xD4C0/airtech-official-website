@@ -87,15 +87,6 @@ pub struct SessionUser {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SetupRequest {
-    pub(super) display_name: String,
-    pub(super) email: String,
-    pub(super) password: String,
-    pub(super) bootstrap_token: String,
-}
-
-#[derive(Debug, Deserialize)]
 pub struct LoginRequest {
     pub(super) email: String,
     pub(super) password: String,

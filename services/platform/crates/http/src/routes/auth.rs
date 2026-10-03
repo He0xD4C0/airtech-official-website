@@ -2,7 +2,7 @@ use airtek_runtime::{
     auth::{
         accept_invitation, attempt, change_password, confirm_recovery_key, confirm_totp_enrollment,
         identify, list_sessions, login, logout, recover_with_key, recovery_key_state,
-        revoke_session_by_id, session, setup, start_totp_enrollment, verify,
+        revoke_session_by_id, session, start_totp_enrollment, verify,
     },
     AppState,
 };
@@ -13,7 +13,6 @@ use axum::{
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/auth/setup", post(setup))
         .route("/auth/login", post(login))
         .route("/auth/identify", post(identify))
         .route("/auth/attempt", post(attempt))

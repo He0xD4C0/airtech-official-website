@@ -234,22 +234,11 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
   let api: ApiContext | undefined
   try {
     // The isolated stack provisions the initial administrator from
-    // AIRTEK_ADMIN_* at startup, so `/auth/setup` is already closed. Fall back
-    // to a normal password login with the same credentials.
-    const setup = await setupApi.post('/api/admin/v1/auth/setup', {
-      data: {
-        displayName: administrator.displayName,
-        email: administrator.email,
-        password: administrator.password,
-        bootstrapToken: administrator.bootstrapToken,
-      },
+    // AIRTEK_ADMIN_* at startup; there is no separate setup endpoint.
+    const sessionResponse = await setupApi.post('/api/admin/v1/auth/login', {
+      data: { email: administrator.email, password: administrator.password },
     })
-    const sessionResponse = setup.status() === 201
-      ? setup
-      : await setupApi.post('/api/admin/v1/auth/login', {
-          data: { email: administrator.email, password: administrator.password },
-        })
-    if (sessionResponse.status() !== 201 && sessionResponse.status() !== 200) {
+    if (sessionResponse.status() !== 200) {
       throw new Error(`Unable to establish the isolated E2E administrator (${sessionResponse.status()}): ${await sessionResponse.text()}`)
     }
     let csrf = sessionResponse.headers()['x-csrf-token']
