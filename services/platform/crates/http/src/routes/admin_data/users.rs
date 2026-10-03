@@ -16,10 +16,9 @@ pub(super) struct TemporaryPasswordResult {
 
 fn secret_json(status: StatusCode, value: &impl Serialize) -> Response {
     let mut response = (status, Json(value)).into_response();
-    response.headers_mut().insert(
-        header::CACHE_CONTROL,
-        HeaderValue::from_static("no-store"),
-    );
+    response
+        .headers_mut()
+        .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     response
 }
 
@@ -40,10 +39,7 @@ fn temporary_password() -> Result<String, ApiError> {
     Ok(password)
 }
 
-fn reset_scope(
-    principal: &AdminPrincipal,
-    id: Uuid,
-) -> Result<(), ApiError> {
+fn reset_scope(principal: &AdminPrincipal, id: Uuid) -> Result<(), ApiError> {
     if principal.user_id == id {
         // A reset is an emergency action for another account; this session can
         // already rotate its own password and TOTP from the security page.
@@ -308,12 +304,9 @@ pub(super) async fn reset_user_password(
         id,
     )
     .await?;
-    let revoked = airtek_runtime::services::identity::reset_user_password(
-        &mut transaction,
-        id,
-        &hash,
-    )
-    .await?;
+    let revoked =
+        airtek_runtime::services::identity::reset_user_password(&mut transaction, id, &hash)
+            .await?;
     let audit = mutation_audit_event(
         &headers,
         "identity.user.password_reset",

@@ -287,7 +287,10 @@ mod tests {
 
     #[test]
     fn sms_endpoint_override_requires_the_explicit_flag_and_an_http_url() {
-        assert_eq!(sms_endpoint(Some("http://stub:8099/sms"), None), ALIYUN_SMS_ENDPOINT);
+        assert_eq!(
+            sms_endpoint(Some("http://stub:8099/sms"), None),
+            ALIYUN_SMS_ENDPOINT
+        );
         assert_eq!(
             sms_endpoint(Some("http://stub:8099/sms"), Some("false")),
             ALIYUN_SMS_ENDPOINT

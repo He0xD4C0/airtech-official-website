@@ -1,9 +1,9 @@
 use airtek_runtime::{
     auth::{
-        accept_invitation, attempt, change_password, confirm_recovery_key, confirm_totp_enrollment,
-        confirm_phone_verification, identify, list_sessions, login, logout, recover_with_key,
-        recovery_key_state, revoke_session_by_id, session, start_phone_verification,
-        start_totp_enrollment, verify,
+        accept_invitation, attempt, change_password, confirm_phone_verification,
+        confirm_recovery_key, confirm_totp_enrollment, identify, list_sessions, login, logout,
+        recover_with_key, recovery_key_state, revoke_session_by_id, session,
+        start_phone_verification, start_totp_enrollment, verify,
     },
     AppState,
 };

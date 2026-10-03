@@ -61,7 +61,11 @@ fn masked(phone: &str) -> String {
     }
 }
 
-async fn current_password_matches(state: &AppState, user_id: Uuid, supplied: &str) -> Result<bool, ApiError> {
+async fn current_password_matches(
+    state: &AppState,
+    user_id: Uuid,
+    supplied: &str,
+) -> Result<bool, ApiError> {
     let hash: String = sqlx::query_scalar("SELECT password_hash FROM users WHERE id=$1")
         .bind(user_id)
         .fetch_one(&state.pool)
@@ -112,7 +116,8 @@ pub async fn start_phone_verification(
         let previous_phone: String = row.try_get("phone_e164")?;
         let last_sent_at: DateTime<Utc> = row.try_get("last_sent_at")?;
         send_count = row.try_get("send_count")?;
-        if previous_phone == phone && last_sent_at + Duration::seconds(RESEND_SECONDS) > Utc::now() {
+        if previous_phone == phone && last_sent_at + Duration::seconds(RESEND_SECONDS) > Utc::now()
+        {
             return Err(ApiError::too_many_requests(
                 "A verification code was sent recently. Try again shortly.",
             ));
@@ -193,22 +198,23 @@ pub async fn confirm_phone_verification(
         ));
     }
     if !verify_password(&code_hash, request.code.trim()) {
-        sqlx::query("UPDATE auth_phone_verifications SET code_attempts=code_attempts+1 WHERE user_id=$1")
-            .bind(principal.user_id)
-            .execute(&state.pool)
-            .await?;
+        sqlx::query(
+            "UPDATE auth_phone_verifications SET code_attempts=code_attempts+1 WHERE user_id=$1",
+        )
+        .bind(principal.user_id)
+        .execute(&state.pool)
+        .await?;
         return Err(ApiError::unauthorized(
             "The verification code is invalid or expired.",
         ));
     }
     let mut transaction = state.pool.begin().await?;
-    let conflict: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM users WHERE phone_e164=$1 AND id<>$2)",
-    )
-    .bind(&phone)
-    .bind(principal.user_id)
-    .fetch_one(&mut *transaction)
-    .await?;
+    let conflict: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE phone_e164=$1 AND id<>$2)")
+            .bind(&phone)
+            .bind(principal.user_id)
+            .fetch_one(&mut *transaction)
+            .await?;
     if conflict {
         return Err(ApiError::conflict(
             "This phone number is already bound to another administrator.",

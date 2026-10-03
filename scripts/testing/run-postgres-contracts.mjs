@@ -2,12 +2,25 @@ import { isolatedTestEnvironment } from './isolated-test-environment.mjs'
 import { testProcess } from './test-process.mjs'
 import { contractObjectStore } from './contract-object-store.mjs'
 import { repositoryDotenv } from './dotenv.mjs'
+import { mkdirSync } from 'node:fs'
+import { rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 const isolated = isolatedTestEnvironment()
 const name = isolated.COMPOSE_PROJECT_NAME + '-postgres'
+// An empty database provisions its root administrator from AIRTEK_ADMIN_*; the
+// recovery key is generated into a disposable directory owned by this process.
+const recoveryKeyDir = join(tmpdir(), `airtek-contract-recovery-${process.pid}`)
+mkdirSync(recoveryKeyDir, { recursive: true, mode: 0o700 })
 const env = {
   ...repositoryDotenv(), ...process.env, ...isolated,
   AIRTEK_TEST_TEMPLATE_DATABASE: 'airtek_test_template',
+  AIRTEK_ADMIN_EMAIL: 'contract-admin@airtek.invalid',
+  AIRTEK_ADMIN_DISPLAY_NAME: 'AIRTEK Contract Administrator',
+  AIRTEK_ADMIN_PASSWORD: 'Airtek-Contract-Admin-123!',
+  AIRTEK_ADMIN_RECOVERY_KEY_DIR: recoveryKeyDir,
+  AIRTEK_ADMIN_RECOVERY_KEY_MODE: 'auto',
 }
 const { run, capture } = testProcess(env)
 const storage = contractObjectStore(`${name}-objects`, run, capture)
@@ -65,4 +78,5 @@ try {
 } finally {
   if (!await storage.cleanup()) process.exitCode = 1
   if (owned && await run('docker', ['rm', '--force', name], { cleanup: true }) !== 0) process.exitCode = 1
+  await rm(recoveryKeyDir, { recursive: true, force: true })
 }
