@@ -178,7 +178,7 @@ function restart(): void {
           <span>密码</span>
           <div class="field__control">
             <LockKeyhole :size="17" />
-            <input v-model="password" :type="passwordVisible ? 'text' : 'password'" autocomplete="current-password" />
+            <input v-model="password" :type="passwordVisible ? 'text' : 'password'" aria-label="登录密码" autocomplete="current-password" />
             <button type="button" :aria-label="passwordVisible ? '隐藏密码' : '显示密码'" @click="passwordVisible = !passwordVisible">
               <EyeOff v-if="passwordVisible" :size="17" /><Eye v-else :size="17" />
             </button>

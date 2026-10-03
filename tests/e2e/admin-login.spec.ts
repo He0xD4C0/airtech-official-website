@@ -22,7 +22,7 @@ test.describe('Admin browser login', () => {
 
       // Second stage: choose the password method. CAPTCHA is not configured in
       // the isolated stack, so the flow intentionally skips the widget.
-      await page.getByLabel('密码 显示密码').fill(administrator.password)
+      await page.getByLabel('登录密码').fill(administrator.password)
       await page.getByRole('button', { name: '使用密码登录' }).click()
 
       // The E2E administrator enrolls TOTP during global setup, so the flow

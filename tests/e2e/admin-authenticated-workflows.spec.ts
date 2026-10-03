@@ -275,7 +275,7 @@ test.describe('Authenticated Admin workflows against Rust and PostgreSQL', () =>
         })
         return response.status
       }, { apiUrl: apiOrigin, csrf: refreshedCsrf.csrf!, code: totp(enrollment.body.secret) })
-      expect(confirmation).toBe(200)
+      expect(confirmation).toBe(204)
       const session = await restrictedPage.evaluate(async (apiUrl) => {
         const response = await fetch(`${apiUrl}/api/admin/v1/auth/session`, { credentials: 'include' })
         return { status: response.status, body: await response.json() as { permissions: string[]; totpEnabled: boolean } }

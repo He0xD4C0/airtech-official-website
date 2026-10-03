@@ -278,9 +278,11 @@ async fn configure_recovery_key(
     user_id: Uuid,
     existing_hash: Option<&str>,
 ) -> Result<Option<&'static str>, ApiError> {
-    let Some(dir) = config.admin_recovery_key_dir.as_deref() else {
-        return Ok(None);
-    };
+    let dir = config.admin_recovery_key_dir.as_deref().ok_or_else(|| {
+        ApiError::service_unavailable(
+            "AIRTEK_ADMIN_RECOVERY_KEY_DIR is required to manage the administrator recovery key.",
+        )
+    })?;
     match existing_hash {
         Some(hash) => {
             let key = recovery_key::read_existing(dir)?.ok_or_else(|| {

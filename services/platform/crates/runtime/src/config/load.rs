@@ -72,9 +72,6 @@ impl Config {
         let admin_recovery_key_dir = non_empty_env("AIRTEK_ADMIN_RECOVERY_KEY_DIR");
         let admin_recovery_key_mode = parse_admin_recovery_key_mode()?;
         let captcha_failure_mode = parse_captcha_failure_mode()?;
-        if production && admin_recovery_key_dir.is_none() {
-            return Err(ConfigError::MissingAdminRecoveryKeyDir);
-        }
         let media = MediaSettings::disabled();
         require_production_database(production, database_url.as_deref())?;
         require_production_keys(
