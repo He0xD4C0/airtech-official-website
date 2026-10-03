@@ -1643,7 +1643,7 @@
           },
           "revision": {
             "format": "int64",
-            "minimum": 1,
+            "minimum": 0,
             "type": "integer"
           },
           "siteKey": {
@@ -5735,7 +5735,7 @@
           },
           "revision": {
             "format": "int64",
-            "minimum": 1,
+            "minimum": 0,
             "type": "integer"
           },
           "username": {
@@ -9617,7 +9617,7 @@
           },
           "revision": {
             "format": "int64",
-            "minimum": 1,
+            "minimum": 0,
             "type": "integer"
           },
           "signName": {

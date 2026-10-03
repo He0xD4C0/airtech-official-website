@@ -26,7 +26,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "username": {"type": "string"},
                 "fromAddress": {"type": "string"},
                 "fromName": {"type": "string"},
-                "revision": revision()
+                "revision": settings_revision()
             }),
         ),
     );
@@ -65,7 +65,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "signName": {"type": "string"},
                 "templateCode": {"type": "string"},
                 "region": {"type": "string"},
-                "revision": revision()
+                "revision": settings_revision()
             }),
         ),
     );
@@ -92,7 +92,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "configured": {"type": "boolean"},
                 "provider": {"type": "string", "enum": ["turnstile", "recaptcha", "hcaptcha"]},
                 "siteKey": {"type": "string"},
-                "revision": revision()
+                "revision": settings_revision()
             }),
         ),
     );

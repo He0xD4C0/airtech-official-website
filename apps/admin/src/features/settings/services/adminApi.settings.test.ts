@@ -42,6 +42,24 @@ describe('platform settings API', () => {
   })
 
   it('keeps object-storage secrets write-only and sends revision preconditions', async () => {
+    const unconfiguredMail = { configured: false, host: '', port: 587, protocol: 'starttls', username: '', fromAddress: '', fromName: '', revision: 0 }
+    const unconfiguredSms = { configured: false, provider: 'aliyun', accessKeyId: '', signName: '', templateCode: '', region: 'cn-hangzhou', revision: 0 }
+    const unconfiguredCaptcha = { configured: false, provider: 'turnstile', siteKey: '', revision: 0 }
+    const integrationFetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input)
+      if (url.endsWith('/settings/mail')) return response(unconfiguredMail)
+      if (url.endsWith('/settings/sms')) return response(unconfiguredSms)
+      return response(unconfiguredCaptcha)
+    })
+    vi.stubGlobal('fetch', integrationFetch)
+    // The API reports revision 0 until a singleton settings row is first saved;
+    // the generated contract must accept that payload instead of failing parse.
+    await expect(settingsApi.getMailSettings()).resolves.toMatchObject({ settings: { configured: false, revision: 0 } })
+    await expect(settingsApi.getSmsSettings()).resolves.toMatchObject({ settings: { configured: false, revision: 0 } })
+    await expect(settingsApi.getCaptchaSettings()).resolves.toMatchObject({ settings: { configured: false, revision: 0 } })
+  })
+
+  it('keeps object-storage secrets write-only and sends revision preconditions', async () => {
     const current = {
       configured: true,
       provider: 's3',
