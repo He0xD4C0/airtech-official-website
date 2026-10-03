@@ -18,17 +18,33 @@ test.describe('Admin browser login', () => {
     try {
       await page.goto(absolute(adminOrigin, '/login'))
       await page.getByLabel('工作邮箱').fill(administrator.email)
-      await page.getByRole('textbox', { name: '密码 显示密码' }).fill(administrator.password)
+      await page.getByRole('button', { name: '下一步' }).click()
+
+      // Second stage: choose the password method. CAPTCHA is not configured in
+      // the isolated stack, so the flow intentionally skips the widget.
+      await page.getByLabel('登录密码').fill(administrator.password)
+      await page.getByRole('button', { name: '使用密码登录' }).click()
+
+      // The E2E administrator enrolls TOTP during global setup, so the flow
+      // asks for the authenticator code as the final factor.
       const secret = (await readFile(adminTotpSecretPath, 'utf8')).trim()
-      await page.getByLabel(/TOTP 或恢复码/u).fill(totp(secret))
-      await page.getByRole('button', { name: '进入管理平台' }).click()
+      await page.getByLabel('验证器 6 位验证码').fill(totp(secret))
+      await page.getByRole('button', { name: '继续' }).click()
 
       await expect(page).toHaveURL(absolute(adminOrigin, '/'))
       await expect(page.getByRole('heading', { name: /开始今天的发布工作/u })).toBeVisible()
       await expect(page.getByRole('region', { name: '关键指标' })).toBeVisible()
       const cookies = await context.cookies()
       expect(cookies.filter((cookie) => cookie.httpOnly).length).toBeGreaterThan(0)
-      expect(cookies.filter((cookie) => cookie.httpOnly).every((cookie) => cookie.secure && cookie.sameSite === 'Strict')).toBe(true)
+      // The API scopes the Secure attribute to the configured Admin origin, so the
+      // http E2E stack must receive browser-storable cookies while an https
+      // deployment keeps them Secure.
+      const requiresSecureCookie = adminOrigin.startsWith('https://')
+      expect(
+        cookies
+          .filter((cookie) => cookie.httpOnly)
+          .every((cookie) => cookie.secure === requiresSecureCookie && cookie.sameSite === 'Strict'),
+      ).toBe(true)
       await page.reload()
       await expect(page).toHaveURL(absolute(adminOrigin, '/'))
       await expect(page.getByRole('region', { name: '关键指标' })).toBeVisible()

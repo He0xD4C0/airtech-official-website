@@ -5,6 +5,8 @@ import { ArrowLeft, Eye, Redo2, Save, Send, Settings2, Undo2 } from 'lucide-vue-
 import DraftVisualCanvas from '@airtek/content-renderer/DraftVisualCanvas.vue'
 import type { AssetVersionReference, ContentBlock, ContentBlockKind, ContentDraftV2, ContentRelationReference, ContentTypeFields, RelationTargetReference, SeoInputV2 } from '@airtek/contracts'
 import BlockInspector from '@/features/content/components/BlockInspector.vue'
+import HomeBannerEditor from '@/features/content/components/HomeBannerEditor.vue'
+import { useBannerMediaUrls } from '@/features/content/services/useBannerMediaUrls'
 import CompositionEditor from '@/features/content/components/CompositionEditor.vue'
 import ContentMediaBlockDialog from '@/features/content/components/ContentMediaBlockDialog.vue'
 import ContentOutline from '@/features/content/components/ContentOutline.vue'
@@ -30,6 +32,7 @@ const previewOpen = ref(false)
 
 const draft = computed(() => store.draft)
 const template = computed(() => store.template)
+const previewMediaUrls = useBannerMediaUrls(draft)
 const blocks = computed<ContentBlock[]>(() => draft.value?.composition.blocks ?? [])
 const bodyPolicy = computed(() => template.value?.bodyPolicy ?? 'optional')
 const selectedBlock = computed(() => blocks.value.find((block) => block.id === selectedBlockId.value) ?? null)
@@ -49,7 +52,14 @@ function patchDraft(
 }
 
 function updateBlocks(next: ContentBlock[]): void {
+  if (draft.value?.kind === 'home' && !next.some(block => block.type === 'hero')) return
   patchDraft('composition', (value) => { value.composition.blocks = next })
+}
+
+function updateContentBlocks(next: ContentBlock[]): void {
+  updateBlocks(draft.value?.kind === 'home'
+    ? [...blocks.value.filter(block => block.type === 'hero'), ...next]
+    : next)
 }
 
 function addBlock(kind: ContentBlockKind): void {
@@ -157,7 +167,7 @@ async function submit(): Promise<void> {
 
     <section v-if="previewOpen" id="draft-local-preview" class="local-preview" aria-label="编辑器内存预览">
       <p class="local-preview__notice">LOCAL MEMORY PREVIEW · 不创建 URL 或数据库记录</p>
-      <DraftVisualCanvas :document="draft" :pending-media-urls="deferredMedia.objectUrls" />
+      <DraftVisualCanvas :document="draft" :pending-media-urls="deferredMedia.objectUrls" :media-urls="previewMediaUrls" />
     </section>
 
     <div class="content-editor__layout" :inert="!editable">
@@ -169,7 +179,7 @@ async function submit(): Promise<void> {
           <label class="field"><span>摘要</span><textarea :value="draft.summary ?? ''" rows="2" maxlength="500" @input="patchDraft('summary', value => { value.summary = ($event.target as HTMLTextAreaElement).value || null })" /></label>
           <label class="toggle-row"><span><strong>占位内容</strong><small>占位内容强制 noindex</small></span><input type="checkbox" :checked="draft.isPlaceholder" @change="patchDraft('placeholder', value => { value.isPlaceholder = ($event.target as HTMLInputElement).checked; if (value.isPlaceholder) value.seo.indexable = false })" /></label>
         </section>
-        <section id="editor-composition" class="panel editor-section"><h2>页面组成</h2><CompositionEditor :model-value="blocks" :template="template" :selected-block-id="selectedBlockId" @update:model-value="updateBlocks" @select="selectedBlockId = $event" @add-block="addBlock" @remove-block="removeBlock" /></section>
+        <section id="editor-composition" class="panel editor-section"><h2>页面组成</h2><HomeBannerEditor v-if="draft.kind === 'home'" :model-value="blocks" :title="draft.title" @update:model-value="updateBlocks" /><CompositionEditor :model-value="draft.kind === 'home' ? blocks.filter(block => block.type !== 'hero') : blocks" :template="template" :selected-block-id="selectedBlockId" @update:model-value="updateContentBlocks" @select="selectedBlockId = $event" @add-block="addBlock" @remove-block="removeBlock" /></section>
         <section v-if="bodyPolicy !== 'forbidden'" id="editor-body" class="panel editor-section"><h2>正文</h2><StructuredBodyEditor :model-value="draft.body" :policy="bodyPolicy" @update:model-value="patchDraft('body', value => { value.body = $event })" /></section>
         <section id="editor-type-fields" class="panel editor-section"><h2>类型字段</h2><TypeFieldsPanel :model-value="draft.typeFields" :kind="draft.kind" @update:model-value="patchDraft('typeFields', value => { value.typeFields = $event as ContentTypeFields })" /></section>
       </div>

@@ -6,22 +6,31 @@
 import type { components } from '../components'
 
 export interface OperationsPart27 {
-getInternalMetrics: {
+resetAdminUserRecoveryKey: {
         parameters: {
             query?: never;
-            header?: never;
-            path?: never;
+            header: {
+                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IdentityResetRequest"];
+            };
+        };
         responses: {
-            /** @description OpenMetrics telemetry */
+            /** @description Rotated administrator recovery key */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/openmetrics-text": string;
+                    "application/json": components["schemas"]["RecoveryKeyResetResult"];
                 };
             };
             /** @description Malformed request */
@@ -116,22 +125,141 @@ getInternalMetrics: {
             };
         };
     };
-getOpenApiDocument: {
+revokeAdminUserSessions: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description OpenAPI document */
+            /** @description User sessions revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Malformed request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Admin session required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Permission, CSRF, origin, or TOTP check failed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Resource or route not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Concurrent or domain conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Required service is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+resetAdminUserTotp: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IdentityResetRequest"];
+            };
+        };
+        responses: {
+            /** @description Management user updated */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OpenApiDocument"];
+                    "application/json": components["schemas"]["AdminUserRecord"];
                 };
             };
             /** @description Malformed request */
@@ -226,132 +354,26 @@ getOpenApiDocument: {
             };
         };
     };
-getReadiness: {
+createAnalyticsConsent: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Service is ready */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HealthStatus"];
-                };
-            };
-            /** @description Malformed request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Admin session required */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Permission, CSRF, origin, or TOTP check failed */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Resource or route not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Concurrent or domain conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Validation failed */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description If-Match precondition required */
-            428: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Authentication rate limit exceeded */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Required service is unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAnalyticsConsent"];
             };
         };
-    };
-getApiRobots: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
-            /** @description Crawler policy */
-            200: {
+            /** @description Consent receipt */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/plain": string;
+                    "application/json": components["schemas"]["AnalyticsConsentReceipt"];
                 };
             };
             /** @description Malformed request */

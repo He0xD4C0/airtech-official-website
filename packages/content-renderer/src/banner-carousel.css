@@ -1,0 +1,46 @@
+@layer components {
+  .banner-carousel { --banner-direction: 1; --banner-copy-width: min(640px, 48cqw); --banner-heading-size: clamp(2rem, 3.8cqw, 3.5rem); position: relative; isolation: isolate; overflow: hidden; background: #092e39; color: white; touch-action: pan-y; container-type: inline-size; }
+  .banner-carousel__track { display: grid; }
+  .banner-carousel__slide { position: relative; grid-area: 1 / 1; min-width: 0; isolation: isolate; visibility: hidden; pointer-events: none; background: #092e39; }
+  .banner-carousel__slide.is-active, .banner-carousel__slide.is-outgoing { visibility: visible; }
+  .banner-carousel__slide.is-active { pointer-events: auto; }
+  .banner-carousel.is-preparing .is-active { transform: translateX(calc(var(--banner-direction) * 100%)); }
+  .banner-carousel.is-moving .is-active, .banner-carousel.is-moving .is-outgoing { transition: transform 350ms cubic-bezier(.22, .61, .36, 1); }
+  .banner-carousel.is-moving .is-active { transform: translateX(0); }
+  .banner-carousel.is-moving .is-outgoing { transform: translateX(calc(var(--banner-direction) * -100%)); }
+  .banner-carousel__image { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 65% center; }
+  .banner-carousel__gradient { position: absolute; z-index: 1; inset: 0; background: linear-gradient(90deg, rgb(9 46 57 / 96%) 0%, rgb(9 46 57 / 90%) 30%, rgb(9 46 57 / 76%) 55%, rgb(9 46 57 / 0%) 70%); }
+  .banner-carousel__copy { position: relative; z-index: 2; box-sizing: border-box; width: min(calc(100% - 160px), 1200px); margin-inline: auto; padding-block: clamp(3.5rem, 6vw, 6rem) 6.5rem; }
+  .banner-carousel__eyebrow { margin: 0 0 1rem; color: white; font-size: .8rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  .banner-carousel h1, .banner-carousel h2 { max-width: var(--banner-copy-width); margin: 0 0 1.25rem; color: white; font-size: var(--banner-heading-size); line-height: 1.12; text-wrap: balance; overflow-wrap: anywhere; }
+  .banner-carousel__lead { max-width: min(580px, 46cqw); margin: 0; color: white; font-size: clamp(1rem, 1.25vw, 1.125rem); line-height: 1.7; overflow-wrap: anywhere; }
+  .banner-carousel__actions { display: flex; flex-wrap: wrap; gap: .75rem; max-width: min(640px, 48cqw); margin-top: 1.75rem; }
+  .banner-carousel__actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; box-sizing: border-box; padding: .65rem 1.15rem; border: 1px solid white; border-radius: 6px; background: white; color: #092e39; font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
+  .banner-carousel__actions a + a { background: rgb(9 46 57 / 35%); color: white; }
+  .banner-carousel__arrow, .banner-carousel__play, .banner-carousel__dot { display: grid; flex: 0 0 auto; place-items: center; height: 44px; box-sizing: border-box; padding: 0; border: 0; color: white; cursor: pointer; }
+  .banner-carousel__arrow, .banner-carousel__play { width: 44px; border-radius: 6px; background: rgb(9 46 57 / 52%); }
+  .banner-carousel__arrow { position: absolute; z-index: 3; top: 50%; transform: translateY(-50%); }
+  .banner-carousel__arrow--previous { left: 16px; }
+  .banner-carousel__arrow--next { right: 16px; }
+  .banner-carousel__arrow:hover, .banner-carousel__play:hover { background: rgb(9 46 57 / 65%); }
+  .banner-carousel__controls { position: absolute; z-index: 3; bottom: 1.25rem; left: 50%; display: flex; align-items: center; gap: .75rem; max-width: calc(100% - 160px); transform: translateX(-50%); }
+  .banner-carousel__dots { display: flex; align-items: center; min-width: 0; overflow-x: auto; scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / 40%) transparent; }
+  .banner-carousel__dot { width: 32px; border-radius: 6px; background: transparent; }
+  .banner-carousel__dot::before { width: 8px; height: 8px; border-radius: 999px; background: rgb(255 255 255 / 65%); box-shadow: 0 0 2px rgb(9 46 57 / 90%); content: ''; transition: width 180ms ease, background 180ms ease; }
+  .banner-carousel__dot[aria-current='true']::before { width: 24px; background: white; }
+  .banner-carousel__dot:hover::before { background: white; }
+  .banner-carousel__status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .banner-carousel:focus-visible { outline: 3px solid var(--airtek-green); outline-offset: -3px; }
+  .banner-carousel button:focus-visible, .banner-carousel a:focus-visible { outline: 2px solid white; outline-offset: -3px; box-shadow: 0 0 0 2px #092e39; }
+  @container (max-width: 900px) {
+    .banner-carousel__arrow { display: none; }
+    .banner-carousel__copy { --banner-copy-width: min(640px, 100%); width: calc(100% - 44px); padding-top: clamp(4rem, 17cqw, 7rem); }
+    .banner-carousel h1, .banner-carousel h2 { max-width: min(640px, 100%); }
+    .banner-carousel__lead, .banner-carousel__actions { max-width: min(580px, 100%); }
+    .banner-carousel__gradient { background: linear-gradient(0deg, #092e39 0%, rgb(9 46 57 / 96%) 45%, rgb(9 46 57 / 80%) 65%, rgb(9 46 57 / 0%) 100%), linear-gradient(90deg, rgb(9 46 57 / 85%), rgb(9 46 57 / 0%) 70%); }
+    .banner-carousel__controls { max-width: calc(100% - 44px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .banner-carousel.is-moving .is-active, .banner-carousel.is-moving .is-outgoing, .banner-carousel__dot::before { transition: none; }
+  }
+}

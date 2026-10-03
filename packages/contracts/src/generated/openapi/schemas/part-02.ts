@@ -6,6 +6,33 @@
 import type { components } from '../components'
 
 export interface SchemasPart02 {
+ContactInformationInput: {
+            addressLines: string[];
+            countryCode?: string | null;
+            email?: string | null;
+            locality?: string | null;
+            phone?: string | null;
+            postalCode?: string | null;
+            region?: string | null;
+        };
+ContentBlock: components["schemas"]["HeroBlock"] | components["schemas"]["BodyBlock"] | components["schemas"]["MediaBlock"] | components["schemas"]["FeatureGridBlock"] | components["schemas"]["EvidenceBlock"] | components["schemas"]["CtaBlock"] | components["schemas"]["RelationCollectionBlock"] | components["schemas"]["FaqCollectionBlock"] | components["schemas"]["DownloadAssetBlock"] | components["schemas"]["ContactBlock"];
+/** @enum {string} */
+        ContentBlockKind: "hero" | "body" | "media" | "featureGrid" | "evidence" | "cta" | "relationCollection" | "faqCollection" | "downloadAsset" | "contactBlock";
+ContentDraftInput: {
+            body: components["schemas"]["RichTextDocument"];
+            /** @default false */
+            isPlaceholder?: boolean;
+            kind: components["schemas"]["ContentKind"];
+            /**
+             * @default en
+             * @enum {string}
+             */
+            locale?: "en";
+            seo?: components["schemas"]["SeoMetadataInput"];
+            slug: string;
+            summary?: string | null;
+            title: string;
+        };
 ContentDraftV2: {
             body?: components["schemas"]["TiptapDocument"] | null;
             composition: components["schemas"]["PageComposition"];
@@ -148,6 +175,12 @@ ContentTypeFields: {
         };
 /** @enum {string} */
         ContentWidth: "narrow" | "standard" | "wide";
+CreateAdminRole: {
+            displayName: string;
+            key: string;
+            permissions: string[];
+            reason: string;
+        };
 CreateAnalyticsConsent: {
             analyticsAllowed: boolean;
             /** Format: uuid */
@@ -451,44 +484,5 @@ GeneralInformationDraftInput: {
             /** @default en */
             locale?: string;
             payload: components["schemas"]["GeneralInformationPayload"];
-        };
-GeneralInformationPayload: {
-            brandLine: string | null;
-            brandName: string;
-            copyrightText: string | null;
-            defaultSeo: {
-                [key: string]: unknown;
-            };
-            footerStatement: string | null;
-            homePath: string;
-            navigationCta?: {
-                href?: string;
-                label?: string;
-            } | null;
-            organization: {
-                [key: string]: unknown;
-            };
-            productCategories?: components["schemas"]["ProductFamilyPresentation"][];
-        } & {
-            [key: string]: unknown;
-        };
-/** @description Immutable General Information revision payload. */
-        GeneralInformationRevision: components["schemas"]["GeneralInformation"];
-GeneralInformationRevisionPage: {
-            items: components["schemas"]["GeneralInformationRevision"][];
-            nextCursor: string | null;
-        };
-GeneralInformationTypeFields: {
-            brandLine?: string | null;
-            contact: components["schemas"]["ContactInformationInput"];
-            copyrightTemplate?: string | null;
-            defaultSeo: components["schemas"]["SeoInputV2"];
-            footerStatement?: string | null;
-            homePath?: string | null;
-            navigationCta?: components["schemas"]["EditorialAction"] | null;
-            organizationName?: string | null;
-            productCategories: components["schemas"]["ProductCategoryPresentationInput"][];
-            siteIcon?: components["schemas"]["AssetVersionReference"] | null;
-            socialLinks: components["schemas"]["SocialLinkInput"][];
         };
 }

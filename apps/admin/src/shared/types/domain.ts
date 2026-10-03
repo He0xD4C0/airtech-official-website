@@ -14,8 +14,12 @@ export type Permission =
   | 'rfq.assign'
   | 'analytics.read'
   | 'identity.manage'
+  | 'identity.roles.manage'
   | 'audit.read'
   | 'settings.manage'
+  | 'mail.manage'
+  | 'sms.manage'
+  | 'captcha.manage'
   | 'devtools.shell'
 
 export interface SessionUser {
@@ -23,9 +27,13 @@ export interface SessionUser {
   displayName: string
   email: string
   role: string
+  roleKeys: string[]
   permissions: Permission[]
   environment: 'development' | 'staging' | 'production'
   totpEnabled: boolean
+  phoneVerified: boolean
+  mustChangePassword: boolean
+  mustConfirmRecoveryKey: boolean
 }
 
 export type ProductStatus = 'draft' | 'scheduled' | 'published' | 'archived'

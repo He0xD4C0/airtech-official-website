@@ -1,12 +1,26 @@
 import { isolatedTestEnvironment } from './isolated-test-environment.mjs'
 import { testProcess } from './test-process.mjs'
 import { contractObjectStore } from './contract-object-store.mjs'
+import { repositoryDotenv } from './dotenv.mjs'
+import { mkdirSync } from 'node:fs'
+import { rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 const isolated = isolatedTestEnvironment()
 const name = isolated.COMPOSE_PROJECT_NAME + '-postgres'
+// An empty database provisions its root administrator from AIRTEK_ADMIN_*; the
+// recovery key is generated into a disposable directory owned by this process.
+const recoveryKeyDir = join(tmpdir(), `airtek-contract-recovery-${process.pid}`)
+mkdirSync(recoveryKeyDir, { recursive: true, mode: 0o700 })
 const env = {
-  ...process.env, ...isolated,
+  ...repositoryDotenv(), ...process.env, ...isolated,
   AIRTEK_TEST_TEMPLATE_DATABASE: 'airtek_test_template',
+  AIRTEK_ADMIN_EMAIL: 'contract-admin@airtek.invalid',
+  AIRTEK_ADMIN_DISPLAY_NAME: 'AIRTEK Contract Administrator',
+  AIRTEK_ADMIN_PASSWORD: 'Airtek-Contract-Admin-123!',
+  AIRTEK_ADMIN_RECOVERY_KEY_DIR: recoveryKeyDir,
+  AIRTEK_ADMIN_RECOVERY_KEY_MODE: 'auto',
 }
 const { run, capture } = testProcess(env)
 const storage = contractObjectStore(`${name}-objects`, run, capture)
@@ -42,7 +56,7 @@ try {
     '-e', `FLYWAY_URL=jdbc:postgresql://127.0.0.1:5432/${isolated.POSTGRES_DB}`,
     '-e', 'FLYWAY_USER=airtek', '-e', 'FLYWAY_PASSWORD=airtek-test-only',
     '-e', 'FLYWAY_PLACEHOLDERS_RUNTIME_ROLE=airtek', '-e', 'AIRTEK_FLYWAY_ALLOW_SHARED_ROLE=true',
-    '-e', 'AIRTEK_FLYWAY_TARGET=27', flywayImage, 'migrate'])
+    '-e', 'AIRTEK_FLYWAY_TARGET=31', flywayImage, 'migrate'])
   const cargo = ['--manifest-path', 'services/platform/Cargo.toml']
   await checked('cargo', ['run', ...cargo, '-p', 'airtek-maintenance', '--bin', 'airtek-maintenance', '--', 'prepare-runtime'])
   await checked(postgres[0], [...postgres[1], '-c', `CREATE DATABASE airtek_test_template TEMPLATE ${isolated.POSTGRES_DB}`])
@@ -64,4 +78,5 @@ try {
 } finally {
   if (!await storage.cleanup()) process.exitCode = 1
   if (owned && await run('docker', ['rm', '--force', name], { cleanup: true }) !== 0) process.exitCode = 1
+  await rm(recoveryKeyDir, { recursive: true, force: true })
 }

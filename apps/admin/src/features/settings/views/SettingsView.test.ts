@@ -19,8 +19,8 @@ vi.mock('@/shared/services/adminAuthApi', () => ({ adminAuthApi: {
 
 vi.mock('@/shared/stores/auth', () => ({
   useAuthStore: () => ({
-    user: { totpEnabled: false },
-    requiresTotpEnrollment: true,
+    user: { id: '90000000-0000-4000-8000-000000000001', totpEnabled: false, roleKeys: [] },
+    requiresOnboarding: true,
   }),
 }))
 
@@ -36,7 +36,7 @@ beforeEach(() => {
 })
 
 describe('SettingsView account security', () => {
-  it('explains why business permissions are withheld before TOTP enrollment', async () => {
+  it('explains the first-login security onboarding gate', async () => {
     const host = document.createElement('div')
     document.body.append(host)
     const app = createApp(SettingsView)
@@ -44,8 +44,8 @@ describe('SettingsView account security', () => {
     await Promise.resolve()
     await nextTick()
 
-    expect(host.textContent).toContain('完成 TOTP 后解锁管理功能')
-    expect(host.textContent).toContain('服务端在完成绑定前暂不下发业务权限')
+    expect(host.textContent).toContain('先完成首次安全设置')
+    expect(host.textContent).toContain('管理员恢复密钥确认完成后即可进入管理功能')
 
     app.unmount()
     host.remove()

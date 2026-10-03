@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./DraftVisualCanvas.vue": "./src/DraftVisualCanvas.vue"
+    "./DraftVisualCanvas.vue": "./src/DraftVisualCanvas.vue",
+    "./BannerCarousel.vue": "./src/BannerCarousel.vue"
   },
   "scripts": {
     "build": "vue-tsc --noEmit",

@@ -41,6 +41,24 @@ pub(super) async fn record_auth_failures(
     Ok(())
 }
 
+/// Failure accounting for the multi-step sign-in flow. `keys[0]` is the
+/// account-wide counter that drives the risk challenge and never blocks on its
+/// own; `keys[1]` is the source-scoped counter that returns 429 after 20
+/// failures in the window.
+pub(super) async fn record_login_failures(
+    state: &AppState,
+    keys: &[String],
+) -> Result<(), ApiError> {
+    let Some((account_key, rest)) = keys.split_first() else {
+        return Ok(());
+    };
+    record_auth_failure_count(state, account_key, None).await?;
+    if let Some(source_key) = rest.first() {
+        record_auth_failure_count(state, source_key, Some(SOURCE_RATE_MAX_FAILURES)).await?;
+    }
+    Ok(())
+}
+
 pub(super) async fn clear_auth_rate_limits(
     state: &AppState,
     keys: &[String],
@@ -69,6 +87,14 @@ pub(super) async fn check_auth_rate_limit(state: &AppState, key: &str) -> Result
 }
 
 pub(super) async fn record_auth_failure(state: &AppState, key: &str) -> Result<(), ApiError> {
+    record_auth_failure_count(state, key, Some(RATE_MAX_FAILURES)).await
+}
+
+async fn record_auth_failure_count(
+    state: &AppState,
+    key: &str,
+    block_after: Option<u32>,
+) -> Result<(), ApiError> {
     let now = Utc::now();
     let mut transaction = state.pool.begin().await?;
     sqlx::query("SELECT pg_advisory_xact_lock(hashtext($1)::bigint)")
@@ -92,8 +118,9 @@ pub(super) async fn record_auth_failure(state: &AppState, key: &str) -> Result<(
     } else {
         (1, now)
     };
-    let blocked_until =
-        (attempts >= RATE_MAX_FAILURES).then(|| now + Duration::minutes(RATE_BLOCK_MINUTES));
+    let blocked_until = block_after
+        .filter(|limit| attempts >= *limit)
+        .map(|_| now + Duration::minutes(RATE_BLOCK_MINUTES));
     sqlx::query(
         r#"INSERT INTO auth_rate_limits
                (key_hash, attempts, window_started_at, blocked_until, updated_at)
@@ -119,14 +146,4 @@ pub(super) async fn clear_auth_rate_limit(state: &AppState, key: &str) -> Result
         .execute(&state.pool)
         .await?;
     Ok(())
-}
-
-pub(super) fn valid_email(value: &str) -> bool {
-    value.len() <= 254
-        && !value.contains(':')
-        && !value.chars().any(char::is_whitespace)
-        && !value.chars().any(char::is_control)
-        && value.split_once('@').is_some_and(|(local, domain)| {
-            !local.is_empty() && domain.contains('.') && !domain.ends_with('.')
-        })
 }

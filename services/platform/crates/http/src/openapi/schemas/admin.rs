@@ -5,14 +5,139 @@ use serde_json::{json, Map, Value};
 use super::super::support::*;
 
 pub(super) fn add(s: &mut Map<String, Value>) {
-    s.insert("SetupRequest".into(), object(
-        &["displayName", "email", "password", "bootstrapToken"],
-        json!({"displayName": {"type": "string", "minLength": 1, "maxLength": 120}, "email": {"type": "string", "format": "email"}, "password": {"type": "string", "format": "password", "minLength": 12, "maxLength": 256, "writeOnly": true}, "bootstrapToken": {"type": "string", "writeOnly": true}})
-    ));
     s.insert("LoginRequest".into(), json!({
         "type": "object", "additionalProperties": false, "required": ["email", "password"],
         "properties": {"email": {"type": "string", "format": "email"}, "password": {"type": "string", "format": "password", "writeOnly": true}, "otp": nullable(json!({"type": "string", "description": "A six-digit TOTP or one unused recovery code.", "pattern": "^(?:[0-9]{6}|[A-HJ-NP-Za-hj-np-z2-9]{4}(?:-[A-HJ-NP-Za-hj-np-z2-9]{4}){3})$", "writeOnly": true}))}
     }));
+    s.insert(
+        "ChangePasswordRequest".into(),
+        object(
+            &["currentPassword", "newPassword"],
+            json!({
+                "currentPassword": {"type": "string", "format": "password", "writeOnly": true},
+                "newPassword": {"type": "string", "format": "password", "minLength": 12, "maxLength": 256, "writeOnly": true}
+            }),
+        ),
+    );
+    s.insert(
+        "IdentifyRequest".into(),
+        object(
+            &["email"],
+            json!({"email": {"type": "string", "format": "email"}}),
+        ),
+    );
+    s.insert(
+        "AttemptRequest".into(),
+        object(
+            &["flowToken", "method"],
+            json!({
+                "flowToken": {"type": "string"},
+                "method": {"type": "string", "enum": ["password", "emailCode", "smsCode"]},
+                "password": nullable(json!({"type": "string", "format": "password", "writeOnly": true})),
+                "captchaToken": nullable(json!({"type": "string", "writeOnly": true}))
+            }),
+        ),
+    );
+    s.insert(
+        "VerifyRequest".into(),
+        object(
+            &["flowToken", "code"],
+            json!({
+                "flowToken": {"type": "string"},
+                "code": {"type": "string", "writeOnly": true}
+            }),
+        ),
+    );
+    s.insert(
+        "IdentifyResponse".into(),
+        object(
+            &["flowToken", "captchaRequired", "methods"],
+            json!({
+                "flowToken": {"type": "string", "readOnly": true},
+                "captchaRequired": {"type": "boolean"},
+                "captchaSiteKey": nullable(json!({"type": "string"})),
+                "captchaProvider": nullable(json!({"type": "string"})),
+                "methods": {"type": "array", "items": {"type": "string"}}
+            }),
+        ),
+    );
+    s.insert(
+        "LoginStepResponse".into(),
+        object(
+            &["status"],
+            json!({
+                "status": {"type": "string", "enum": ["codeSent", "factorRequired"]},
+                "factor": nullable(json!({"type": "string", "enum": ["emailCode", "smsCode", "riskSms", "totp"]}))
+            }),
+        ),
+    );
+    s.insert(
+        "RecoveryRequest".into(),
+        object(
+            &["email", "recoveryKey", "newPassword"],
+            json!({
+                "email": {"type": "string", "format": "email"},
+                "recoveryKey": {"type": "string", "minLength": 52, "maxLength": 52, "pattern": "^[A-Z2-7]{52}$", "writeOnly": true},
+                "newPassword": {"type": "string", "format": "password", "minLength": 12, "maxLength": 256, "writeOnly": true}
+            }),
+        ),
+    );
+    s.insert(
+        "StartPhoneVerificationRequest".into(),
+        object(
+            &["phone", "currentPassword"],
+            json!({
+                "phone": {"type": "string", "pattern": "^\\+[1-9][0-9]{7,14}$"},
+                "currentPassword": {"type": "string", "format": "password", "writeOnly": true}
+            }),
+        ),
+    );
+    s.insert(
+        "ConfirmPhoneVerificationRequest".into(),
+        object(
+            &["code"],
+            json!({"code": {"type": "string", "pattern": "^[0-9]{6}$", "writeOnly": true}}),
+        ),
+    );
+    s.insert(
+        "PhoneVerificationStarted".into(),
+        object(
+            &["status"],
+            json!({"status": {"type": "string", "enum": ["codeSent"]}}),
+        ),
+    );
+    s.insert(
+        "RecoveryKeyState".into(),
+        object(
+            &["origin", "confirmed"],
+            json!({
+                "origin": {"type": "string", "enum": ["generated", "provided"]},
+                "confirmed": {"type": "boolean"},
+                "recoveryKey": {"type": "string", "readOnly": true}
+            }),
+        ),
+    );
+    s.insert(
+        "RecoveryKeyRotationResult".into(),
+        object(
+            &["recoveryKey", "rotatedAt"],
+            json!({
+                "recoveryKey": {"type": "string", "readOnly": true},
+                "rotatedAt": timestamp()
+            }),
+        ),
+    );
+    s.insert(
+        "RecoveryKeyResetResult".into(),
+        object(
+            &["recoveryKey", "origin", "confirmed"],
+            json!({
+                "recoveryKey": {"type": "string", "writeOnly": true},
+                "origin": {"type": "string", "enum": ["generated"]},
+                "confirmed": {"type": "boolean"}
+            }),
+        ),
+    );
     s.insert(
         "AcceptInvitationRequest".into(),
         object(
@@ -47,8 +172,8 @@ pub(super) fn add(s: &mut Map<String, Value>) {
         ),
     );
     s.insert("SessionUser".into(), object(
-        &["id", "displayName", "email", "role", "permissions", "environment", "totpEnabled"],
-        json!({"id": uuid(), "displayName": {"type": "string"}, "email": {"type": "string", "format": "email"}, "role": {"type": "string"}, "permissions": array(json!({"type": "string"})), "environment": {"type": "string"}, "totpEnabled": {"type": "boolean"}})
+        &["id", "displayName", "email", "role", "roleKeys", "permissions", "environment", "totpEnabled", "phoneVerified", "mustChangePassword", "mustConfirmRecoveryKey"],
+        json!({"id": uuid(), "displayName": {"type": "string"}, "email": {"type": "string", "format": "email"}, "role": {"type": "string"}, "roleKeys": array(json!({"type": "string"})), "permissions": array(json!({"type": "string"})), "environment": {"type": "string"}, "totpEnabled": {"type": "boolean"}, "phoneVerified": {"type": "boolean"}, "mustChangePassword": {"type": "boolean"}, "mustConfirmRecoveryKey": {"type": "boolean"}})
     ));
     s.insert(
         "TotpCodeRequest".into(),
@@ -76,13 +201,6 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             }),
         ),
     );
-    s.insert("RecoveryCodeSet".into(), object(
-        &["recoveryCodes", "generatedAt"],
-        json!({
-            "recoveryCodes": {"type": "array", "minItems": 10, "maxItems": 10, "readOnly": true, "items": {"type": "string", "pattern": "^[A-HJ-NP-Z2-9]{4}(?:-[A-HJ-NP-Z2-9]{4}){3}$"}},
-            "generatedAt": timestamp()
-        })
-    ));
     s.insert("AdminSession".into(), object(
         &["id", "current", "createdAt", "lastSeenAt", "expiresAt"],
         json!({"id": uuid(), "current": {"type": "boolean"}, "createdAt": timestamp(), "lastSeenAt": timestamp(), "expiresAt": timestamp()})

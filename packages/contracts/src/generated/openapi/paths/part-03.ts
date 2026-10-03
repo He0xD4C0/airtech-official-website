@@ -6,6 +6,127 @@
 import type { operations } from '../operations'
 
 export interface PathsPart03 {
+"/api/admin/v1/products/{id}/temporary-overrides": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List temporary source-field overrides */
+        get: operations["listTemporaryOverrides"];
+        put?: never;
+        /** Create an expiring source-field override */
+        post: operations["createTemporaryOverride"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/products/{id}/validation-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the stable product publication validation report */
+        get: operations["getProductValidationReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/products/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Product Master import reports */
+        get: operations["listProductImportRuns"];
+        put?: never;
+        /** Validate and import an authoritative Product Master CSV */
+        post: operations["importProductMaster"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/products/imports/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one Product Master import report */
+        get: operations["getProductImportRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/published-content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List company current published content */
+        get: operations["listCurrentPublishedContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/published-content/{contentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read company current published content */
+        get: operations["getCurrentPublishedContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/published-content/{contentId}/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy current published content to the user's new private draft */
+        post: operations["copyPublishedContentToPrivateDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/rfqs": {
         parameters: {
             query?: never;
@@ -118,7 +239,8 @@ export interface PathsPart03 {
         /** List role definitions and their permission matrices */
         get: operations["listAdminRoles"];
         put?: never;
-        post?: never;
+        /** Create a custom administrator role */
+        post: operations["createAdminRole"];
         delete?: never;
         options?: never;
         head?: never;
@@ -136,7 +258,8 @@ export interface PathsPart03 {
         get: operations["getAdminRole"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete an unassigned custom administrator role */
+        delete: operations["deleteAdminRole"];
         options?: never;
         head?: never;
         /** Update a role display name or permission matrix */
@@ -159,6 +282,76 @@ export interface PathsPart03 {
         head?: never;
         /** Atomically update allow-listed mutable business settings */
         patch: operations["updatePlatformSettings"];
+        trace?: never;
+    };
+"/api/admin/v1/settings/captcha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get CAPTCHA settings */
+        get: operations["getCaptchaSettings"];
+        /** Save CAPTCHA settings */
+        put: operations["updateCaptchaSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/settings/captcha/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send or verify a test using the stored settings */
+        post: operations["testCaptchaSettings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/settings/mail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get administration email settings */
+        get: operations["getMailSettings"];
+        /** Save administration email settings */
+        put: operations["updateMailSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/settings/mail/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send or verify a test using the stored settings */
+        post: operations["testMailSettings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
 "/api/admin/v1/settings/object-storage": {
@@ -196,6 +389,41 @@ export interface PathsPart03 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/settings/sms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get administration SMS settings */
+        get: operations["getSmsSettings"];
+        /** Save administration SMS settings */
+        put: operations["updateSmsSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/settings/sms/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send or verify a test using the stored settings */
+        post: operations["testSmsSettings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/site-singletons/{kind}": {
         parameters: {
             query?: never;
@@ -205,6 +433,23 @@ export interface PathsPart03 {
         };
         /** Read the caller's draft and current publication for a site singleton */
         get: operations["getSiteSingletonState"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/source-metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List admin-only supplier and brand source metadata */
+        get: operations["listProductSourceMetadata"];
         put?: never;
         post?: never;
         delete?: never;
@@ -242,245 +487,6 @@ export interface PathsPart03 {
         put?: never;
         /** Revoke a pending management user invitation */
         post: operations["revokeUserInvitation"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/users": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List management users and role assignments */
-        get: operations["listAdminUsers"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/users/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get one management user */
-        get: operations["getAdminUser"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Update a management user, status or role assignments */
-        patch: operations["updateAdminUser"];
-        trace?: never;
-    };
-"/api/admin/v1/users/{id}/sessions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Revoke all active sessions for one management user */
-        delete: operations["revokeAdminUserSessions"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/analytics/consents": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Record an anonymous analytics consent decision and issue a bounded receipt */
-        post: operations["createAnalyticsConsent"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/analytics/events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Accept an idempotent allowlisted analytics event */
-        post: operations["createAnalyticsEvent"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/contact": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Submit a contact request */
-        post: operations["createContactRequest"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/content/{kind}/{slug}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get published content */
-        get: operations["getPublishedContent"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/discovery": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List canonical indexable published URLs for sitemap generation */
-        get: operations["getPublicDiscovery"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/guest-visits": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create or refresh a consented anonymous first-party visit */
-        post: operations["createGuestVisit"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/media/{assetId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Redirect to a live media asset without authentication */
-        get: operations["getPublicMediaAsset"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/media/{assetId}/download": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Redirect to a live media asset without authentication */
-        get: operations["downloadPublicMediaAsset"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/news": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List published News records */
-        get: operations["listPublishedNews"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/news/{slug}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get one published News record */
-        get: operations["getPublishedNews"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/public/v1/products": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List published products */
-        get: operations["listPublishedProducts"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;

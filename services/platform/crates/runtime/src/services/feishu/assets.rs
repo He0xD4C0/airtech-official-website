@@ -6,11 +6,14 @@ use crate::error::ApiError;
 use crate::services::{media, object_storage_settings};
 use crate::state::AppState;
 
-use super::{client::AssetProbe, token_hash, FeishuClient, SourceAttachment};
+use super::{token_hash, FeishuClient, SourceAttachment};
 
 #[path = "asset_types.rs"]
 mod asset_types;
 use asset_types::{classify_asset, sanitize_name, staged_attachment_error, AssetType};
+#[path = "archive_asset_storage.rs"]
+mod archive_asset_storage;
+pub use archive_asset_storage::store_archive_asset;
 
 #[derive(Clone, Debug)]
 pub struct StoredSourceAsset {

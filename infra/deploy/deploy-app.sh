@@ -1,18 +1,14 @@
 #!/bin/sh
 set -eu
 
-release_tag=${1:-}
+release_id=${1:-}
 image_prefix=${2:-}
 source_compose=${3:-./infra/compose/production.app.yaml}
 deploy_root=${AIRTEK_DEPLOY_ROOT:-/opt/airtek/app}
 production_env=${AIRTEK_PRODUCTION_ENV:-/etc/airtek/production.env}
 
-if ! printf '%s' "$release_tag" | grep -Eq '^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$'; then
-  echo "Release tag must be a valid OCI image tag." >&2
-  exit 2
-fi
-if [ "$(printf '%s' "$release_tag" | tr '[:upper:]' '[:lower:]')" = latest ]; then
-  echo "The mutable tag 'latest' is not a valid release identifier." >&2
+if ! printf '%s' "$release_id" | grep -Eq '^[0-9a-f]{40}$'; then
+  echo "Release ID must be a full lowercase Git commit SHA." >&2
   exit 2
 fi
 case "$image_prefix" in
@@ -38,17 +34,19 @@ if [ "${AIRTEK_DEPLOY_LOCKED:-0}" != 1 ]; then
   exec flock -n -E 75 "$lock_file" "$0" "$@"
 fi
 
-release_dir="$deploy_root/releases/$release_tag"
+release_dir="$deploy_root/releases/$release_id"
 mkdir -p "$release_dir"
 # Release snapshots have a stable name independent of the repository layout.
 cp "$source_compose" "$release_dir/compose.production.yaml"
 
 cat >"$release_dir/images.env" <<EOF
-AIRTEK_PUBLIC_WEB_IMAGE=$image_prefix-public-web:$release_tag
-AIRTEK_ADMIN_WEB_IMAGE=$image_prefix-admin-web:$release_tag
-AIRTEK_PLATFORM_IMAGE=$image_prefix-platform:$release_tag
-AIRTEK_MIGRATIONS_IMAGE=$image_prefix-migrations:$release_tag
-AIRTEK_GATEWAY_IMAGE=$image_prefix-gateway:$release_tag
+AIRTEK_PUBLIC_WEB_IMAGE=$image_prefix-public-web:$release_id
+AIRTEK_ADMIN_WEB_IMAGE=$image_prefix-admin-web:$release_id
+AIRTEK_PLATFORM_IMAGE=$image_prefix-platform:$release_id
+AIRTEK_MIGRATIONS_IMAGE=$image_prefix-migrations:$release_id
+AIRTEK_GATEWAY_IMAGE=$image_prefix-gateway:$release_id
+AIRTEK_RELEASE_TAG=$release_id
+AIRTEK_IMAGE_REVISION=$release_id
 EOF
 
 previous_release=
@@ -71,6 +69,11 @@ rollback() {
     return
   fi
   echo "Application health check failed; restoring previous application images." >&2
+  retained_dump_file="${AIRTEK_MIGRATION_STATE_DIR:-/srv/airtek/migration-state}/latest-migration-dump"
+  if [ -f "$retained_dump_file" ]; then
+    echo "A pre-migration dump was retained at $(cat "$retained_dump_file" 2>/dev/null)." >&2
+    echo "If this release promoted the schema, restore that dump with pg_restore before the previous images can serve." >&2
+  fi
   compose_release "$previous_release" up -d --no-deps --remove-orphans --wait --wait-timeout 180 \
     platform-api platform-worker public-web admin-web gateway
   ln -sfn "$previous_release" "$deploy_root/current"
@@ -104,11 +107,17 @@ fi
 docker network inspect "${AIRTEK_PRODUCTION_NETWORK:-airtek-production}" >/dev/null
 compose_release "$release_dir" config --quiet
 compose_release "$release_dir" pull
-compose_release "$release_dir" run --rm flyway-migrate migrate
-compose_release "$release_dir" run --rm flyway-migrate validate
-compose_release "$release_dir" run --rm platform-maintenance
 
 deployment_started=1
+# A schema-promoting release needs a short full-site interruption: stop the
+# entry point and application containers, promote the schema with the dedicated
+# migration artifact, prepare runtime state, then start the new revision. The
+# migration artifact retains its pre-migration dump so this release can be
+# rolled back at the database level if the new containers fail to become healthy.
+compose_release "$release_dir" stop gateway >/dev/null 2>&1 || true
+compose_release "$release_dir" stop platform-api platform-worker public-web admin-web >/dev/null 2>&1 || true
+compose_release "$release_dir" run --rm --no-deps flyway-migrate release
+compose_release "$release_dir" run --rm --no-deps platform-maintenance prepare-runtime
 compose_release "$release_dir" up -d --no-deps --remove-orphans --wait --wait-timeout 180 \
   platform-api platform-worker public-web admin-web gateway
 
@@ -121,4 +130,4 @@ compose_release "$release_dir" run --rm --no-deps -e AIRTEK_READINESS_EXTERNAL=t
 
 ln -sfn "$release_dir" "$deploy_root/current"
 deployment_started=0
-echo "Application release $release_tag is healthy."
+echo "Application release $release_id is healthy."

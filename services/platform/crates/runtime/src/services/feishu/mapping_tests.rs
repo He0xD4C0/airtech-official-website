@@ -37,6 +37,7 @@ fn type_change_is_schema_drift_even_after_a_display_rename() {
                         field_type: 1,
                     },
                 )]),
+                source_fields: vec![],
                 attachments: vec![],
                 private_fields: vec![],
             },
@@ -102,4 +103,74 @@ fn mapping_identity_keeps_same_table_id_in_different_wikis_distinct() {
     assert!(mapping
         .tables
         .contains_key(&source_identity_key(&discovered[1].source)));
+}
+
+#[test]
+fn maps_all_four_archived_product_schemas_without_guessing_between_related_fields() {
+    let schemas: BTreeMap<String, Vec<FeishuField>> =
+        serde_json::from_str(include_str!("archive_fields.json")).unwrap();
+    for (name, fields) in schemas {
+        let table = discover_archived_table(&name, &fields)
+            .unwrap_or_else(|error| panic!("{name}: {error}"))
+            .unwrap_or_else(|| panic!("{name}: explicit archived mapping is missing"));
+        assert!(table.fields.contains_key("model"));
+        assert!(table.fields.contains_key("category"));
+        assert!(table.fields.contains_key("primaryCategory"));
+        assert_eq!(
+            table
+                .fields
+                .get("ambientTemperature")
+                .map(|field| field.name.as_str()),
+            Some("Amb.Temp"),
+            "{name}: ambientTemperature"
+        );
+        assert_eq!(
+            table.fields.get("airflow").map(|field| field.name.as_str()),
+            Some("风量(Air Flow)"),
+            "{name}: airflow"
+        );
+        if name != "tblOtUU5MaxEnZI7" {
+            assert_eq!(
+                table
+                    .fields
+                    .get("pressure")
+                    .map(|field| field.name.as_str()),
+                Some("风压(AIr Pressure)"),
+                "{name}: pressure"
+            );
+        }
+        let private_names: Vec<_> = table
+            .private_fields
+            .iter()
+            .map(|field| field.name.as_str())
+            .collect();
+        for field in fields.iter().filter(|field| {
+            field.field_type != 17
+                && (field.field_name.contains("sample") || field.field_name.contains("批"))
+        }) {
+            assert!(
+                private_names.contains(&field.field_name.as_str()),
+                "{}",
+                field.field_name
+            );
+        }
+    }
+}
+
+#[test]
+fn archived_tables_fail_closed_without_their_exact_stable_field_ids() {
+    let schemas: BTreeMap<String, Vec<FeishuField>> =
+        serde_json::from_str(include_str!("archive_fields.json")).unwrap();
+    for (name, fields) in schemas {
+        let mut renamed = fields.clone();
+        let model = renamed
+            .iter_mut()
+            .find(|field| field.field_id == "fldjq4VB5w" || field.field_id == "fldjAaBY2N")
+            .expect("archived model field exists");
+        model.field_id = "renamed-model-field".into();
+        assert!(
+            discover_archived_table(&name, &renamed).is_err(),
+            "{name} must not fall back when an exact field id is missing"
+        );
+    }
 }

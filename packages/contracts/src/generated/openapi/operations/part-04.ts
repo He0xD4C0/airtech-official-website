@@ -6,7 +6,7 @@
 import type { components } from '../components'
 
 export interface OperationsPart04 {
-confirmTotpEnrollment: {
+recoverAdministratorWithKey: {
         parameters: {
             query?: never;
             header?: never;
@@ -15,17 +15,17 @@ confirmTotpEnrollment: {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TotpCodeRequest"];
+                "application/json": components["schemas"]["RecoveryRequest"];
             };
         };
         responses: {
-            /** @description One-time recovery codes */
+            /** @description Rotated recovery key */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RecoveryCodeSet"];
+                    "application/json": components["schemas"]["RecoveryKeyRotationResult"];
                 };
             };
             /** @description Malformed request */
@@ -120,7 +120,7 @@ confirmTotpEnrollment: {
             };
         };
     };
-startTotpEnrollment: {
+getAdministratorRecoveryKey: {
         parameters: {
             query?: never;
             header?: never;
@@ -129,13 +129,13 @@ startTotpEnrollment: {
         };
         requestBody?: never;
         responses: {
-            /** @description TOTP enrollment details */
+            /** @description Recovery key state */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TotpEnrollment"];
+                    "application/json": components["schemas"]["RecoveryKeyState"];
                 };
             };
             /** @description Malformed request */
@@ -230,31 +230,21 @@ startTotpEnrollment: {
             };
         };
     };
-listContactInboxItems: {
+confirmAdministratorRecoveryKey: {
         parameters: {
-            query?: {
-                assignedTo?: string;
-                /** @description Opaque endpoint-scoped cursor returned by the previous page. */
-                cursor?: string;
-                /** @description Page size; values outside 1 through 100 return Problem Details 400. */
-                limit?: number;
-                q?: string;
-                status?: components["schemas"]["BusinessInboxStatus"];
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Business inbox page */
-            200: {
+            /** @description Recovery key confirmed */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["BusinessInboxPage"];
-                };
+                content?: never;
             };
             /** @description Malformed request */
             400: {
@@ -348,24 +338,26 @@ listContactInboxItems: {
             };
         };
     };
-getContactInboxItem: {
+getAdminSession: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Business inbox detail */
+            /** @description Current admin session */
             200: {
                 headers: {
+                    /** @description Host-only session and CSRF cookies. */
+                    "Set-Cookie"?: string;
+                    /** @description Fresh CSRF token mirrored in the readable host-only CSRF cookie. */
+                    "X-CSRF-Token"?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BusinessInboxDetail"];
+                    "application/json": components["schemas"]["SessionUser"];
                 };
             };
             /** @description Malformed request */

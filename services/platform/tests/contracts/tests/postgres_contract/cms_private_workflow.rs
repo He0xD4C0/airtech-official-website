@@ -11,12 +11,15 @@ fn cms_workflow_principal(
         display_name: "TEST ONLY CMS user".into(),
         email,
         role: role.into(),
+        role_keys: vec![role.into()],
         permissions: permissions.iter().map(|value| (*value).into()).collect(),
         session_id: Uuid::new_v4(),
         session_token_hash: vec![1; 32],
         csrf_hash: vec![2; 32],
         totp_enabled: true,
-        development_password_only: false,
+        must_change_password: false,
+        must_confirm_recovery_key: false,
+        phone_verified: false,
     }
 }
 

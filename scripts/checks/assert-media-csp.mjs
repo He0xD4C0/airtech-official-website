@@ -13,8 +13,8 @@ for (const [label, body, expected] of [
   ['Local Admin Compose', read('compose.yaml'), `ADMIN_MEDIA_IMAGE_SOURCES: "${composeSources}"`],
   ['Local gateway Compose', read('compose.yaml'), `MEDIA_IMAGE_SOURCES: "${composeSources}"`],
   ['Local API host mapping', read('compose.yaml'), 'media.localhost:host-gateway'],
-  ['Production Admin Compose', read('infra/compose/production.app.yaml'), 'ADMIN_MEDIA_IMAGE_SOURCES: "https:"'],
-  ['Production gateway Compose', read('infra/compose/production.app.yaml'), 'MEDIA_IMAGE_SOURCES: "https:"'],
+  ['Production Admin Compose', read('infra/compose/production.app.yaml'), 'ADMIN_MEDIA_IMAGE_SOURCES: "${AIRTEK_API_ORIGIN:?set AIRTEK_API_ORIGIN} ${PUBLIC_MEDIA_ORIGIN:-https:}"'],
+  ['Production gateway Compose', read('infra/compose/production.app.yaml'), 'MEDIA_IMAGE_SOURCES: "${AIRTEK_API_ORIGIN:?set AIRTEK_API_ORIGIN} ${PUBLIC_MEDIA_ORIGIN:-https:}"'],
   ['Admin Nginx template', read('apps/admin/deploy/nginx.conf'), "img-src 'self' data: blob: ${ADMIN_MEDIA_IMAGE_SOURCES}"],
 ]) {
   if (!body.includes(expected)) failures.push(`${label} is missing ${expected}`)

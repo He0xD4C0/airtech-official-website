@@ -13,6 +13,7 @@ describe('contract transport compatibility', () => {
       displayName: 'Production Admin',
       email: 'admin@example.test',
       role: 'Developer',
+      roleKeys: ['developer'],
       permissions: [
         'dashboard.read',
         'media.write',
@@ -21,6 +22,9 @@ describe('contract transport compatibility', () => {
       ],
       environment: 'production',
       totpEnabled: true,
+      phoneVerified: false,
+      mustChangePassword: false,
+      mustConfirmRecoveryKey: false,
     })))
 
     await expect(adminAuthApi.session()).resolves.toMatchObject({
@@ -35,9 +39,13 @@ describe('contract transport compatibility', () => {
       displayName: 'Contract Admin',
       email: 'admin@example.test',
       role: 'Super Admin',
+      roleKeys: ['super-admin'],
       permissions: ['settings.manage'],
       environment: 'development',
       totpEnabled: true,
+      phoneVerified: false,
+      mustChangePassword: false,
+      mustConfirmRecoveryKey: false,
     }
     const settings = {
       rfqRetentionDays: 365,

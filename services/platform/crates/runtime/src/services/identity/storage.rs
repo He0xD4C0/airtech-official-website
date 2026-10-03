@@ -5,6 +5,8 @@ pub async fn load_admin_user(state: &AppState, id: Uuid) -> Result<AdminUserReco
         r#"SELECT user_account.id,user_account.email,user_account.display_name,
                   user_account.locale,user_account.status,user_account.revision,
                   user_account.manager_user_id,
+                  user_account.phone_e164,
+                  user_account.phone_verified_at IS NOT NULL AS phone_verified,
                   user_account.totp_confirmed_at IS NOT NULL AS totp_enabled,
                   user_account.invited_at,user_account.last_login_at,
                   user_account.created_at,user_account.updated_at,
@@ -31,6 +33,8 @@ pub async fn load_admin_user_in_transaction(
         r#"SELECT user_account.id,user_account.email,user_account.display_name,
                   user_account.locale,user_account.status,user_account.revision,
                   user_account.manager_user_id,
+                  user_account.phone_e164,
+                  user_account.phone_verified_at IS NOT NULL AS phone_verified,
                   user_account.totp_confirmed_at IS NOT NULL AS totp_enabled,
                   user_account.invited_at,user_account.last_login_at,
                   user_account.created_at,user_account.updated_at,
@@ -60,7 +64,7 @@ async fn role_row(
     id: Uuid,
 ) -> Result<Option<sqlx::postgres::PgRow>, sqlx::Error> {
     sqlx::query(
-        r#"SELECT role.id,role.key,role.display_name,role.system_role,role.revision,
+        r#"SELECT role.id,role.key,role.display_name,role.system_role,role.is_preset,role.revision,
                   COALESCE(array_agg(permission.permission_key ORDER BY permission.permission_key)
                     FILTER (WHERE permission.permission_key IS NOT NULL),ARRAY[]::text[]) AS permissions
            FROM roles role LEFT JOIN role_permissions permission ON permission.role_id=role.id
@@ -76,7 +80,7 @@ pub async fn load_admin_role_in_transaction(
     id: Uuid,
 ) -> Result<AdminRoleRecord, ApiError> {
     let row = sqlx::query(
-        r#"SELECT role.id,role.key,role.display_name,role.system_role,role.revision,
+        r#"SELECT role.id,role.key,role.display_name,role.system_role,role.is_preset,role.revision,
                   COALESCE(array_agg(permission.permission_key ORDER BY permission.permission_key)
                     FILTER (WHERE permission.permission_key IS NOT NULL),ARRAY[]::text[]) AS permissions
            FROM roles role LEFT JOIN role_permissions permission ON permission.role_id=role.id
@@ -98,6 +102,8 @@ pub fn decode_admin_user(row: sqlx::postgres::PgRow) -> Result<AdminUserRecord, 
         status: row.try_get("status")?,
         revision: row.try_get("revision")?,
         manager_user_id: row.try_get("manager_user_id")?,
+        phone_e164: row.try_get("phone_e164")?,
+        phone_verified: row.try_get("phone_verified")?,
         roles: row.try_get("roles")?,
         totp_enabled: row.try_get("totp_enabled")?,
         invited_at: row.try_get("invited_at")?,
@@ -113,6 +119,7 @@ pub fn decode_admin_role(row: sqlx::postgres::PgRow) -> Result<AdminRoleRecord, 
         key: row.try_get("key")?,
         display_name: row.try_get("display_name")?,
         system_role: row.try_get("system_role")?,
+        is_preset: row.try_get("is_preset")?,
         revision: row.try_get("revision")?,
         permissions: row.try_get("permissions")?,
     })
@@ -221,6 +228,8 @@ pub async fn update_user_record(
         r#"UPDATE users SET display_name=COALESCE($2,display_name),
                   locale=COALESCE($3,locale),status=COALESCE($4,status),
                   manager_user_id=CASE WHEN $5 THEN $6 ELSE manager_user_id END,
+                  phone_e164=COALESCE($9,phone_e164),
+                  phone_verified_at=CASE WHEN $9 IS NULL THEN phone_verified_at ELSE now() END,
                   updated_at=$7,revision=revision+1
            WHERE id=$1 AND revision=$8"#,
     )
@@ -232,14 +241,17 @@ pub async fn update_user_record(
     .bind(update.manager_user_id.flatten())
     .bind(Utc::now())
     .bind(expected)
+    .bind(update.phone_e164.as_deref())
     .execute(&mut **transaction)
     .await
     .map_err(|error| {
-        if error
+        let code = error
             .as_database_error()
-            .is_some_and(|value| value.code().as_deref() == Some("23514"))
-        {
+            .and_then(|value| value.code().map(|code| code.to_string()));
+        if code.as_deref() == Some("23514") {
             ApiError::conflict("The manager relationship would create a cycle.")
+        } else if code.as_deref() == Some("23505") {
+            ApiError::conflict("This phone number is already bound to another administrator.")
         } else {
             error.into()
         }
@@ -309,6 +321,41 @@ pub async fn revoke_user_sessions(
     .execute(&mut **transaction)
     .await?
     .rows_affected())
+}
+
+/// Super-admin forced TOTP reset: the enrolment is cleared so the account
+/// holder can bind a new authenticator on the next sign-in.
+pub async fn clear_user_totp(
+    transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    id: Uuid,
+) -> Result<u64, ApiError> {
+    Ok(sqlx::query(
+        r#"UPDATE users SET totp_secret_ciphertext=NULL, totp_confirmed_at=NULL,
+             updated_at=now(), revision=revision+1 WHERE id=$1"#,
+    )
+    .bind(id)
+    .execute(&mut **transaction)
+    .await?
+    .rows_affected())
+}
+
+/// Super-admin password reset: installs the one-time password, forces a change
+/// at next sign-in and revokes every existing session of the target account.
+pub async fn reset_user_password(
+    transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    id: Uuid,
+    password_hash: &str,
+) -> Result<u64, ApiError> {
+    sqlx::query(
+        r#"UPDATE users SET password_hash=$2, must_change_password=true,
+             password_changed_at=now(), updated_at=now(), revision=revision+1
+           WHERE id=$1"#,
+    )
+    .bind(id)
+    .bind(password_hash)
+    .execute(&mut **transaction)
+    .await?;
+    revoke_user_sessions(transaction, id).await
 }
 
 pub async fn validate_permissions(

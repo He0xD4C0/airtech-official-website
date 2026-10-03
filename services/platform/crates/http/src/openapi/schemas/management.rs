@@ -7,6 +7,59 @@ use super::super::support::*;
 /// Adds management-platform data schemas.
 pub(super) fn add(s: &mut Map<String, Value>) {
     s.insert(
+        "SourceMetadataKind".into(),
+        string_enum(&["supplier", "brand"]),
+    );
+    s.insert(
+        "ProductSourceMetadata".into(),
+        object(
+            &[
+                "id",
+                "kind",
+                "label",
+                "sourceTable",
+                "sourceRecordId",
+                "archiveSha256",
+                "attributes",
+                "rawFields",
+                "capturedAt",
+                "importedAt",
+            ],
+            json!({
+                "id": uuid(),
+                "kind": r("SourceMetadataKind"),
+                "label": {"type": "string", "minLength": 1, "maxLength": 300},
+                "sourceTable": {"type": "string", "minLength": 1, "maxLength": 100},
+                "sourceRecordId": {"type": "string", "minLength": 1, "maxLength": 200},
+                "archiveSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+                "attributes": {"type": "object", "additionalProperties": true},
+                "rawFields": {"type": "object", "additionalProperties": true},
+                "capturedAt": timestamp(),
+                "importedAt": timestamp()
+            }),
+        ),
+    );
+    s.insert(
+        "ProductSourceMetadataPage".into(),
+        object(
+            &["items", "nextCursor"],
+            json!({
+                "items": array(r("ProductSourceMetadata")),
+                "nextCursor": nullable(json!({"type": "string"}))
+            }),
+        ),
+    );
+    s.insert(
+        "ProductSourceWarning".into(),
+        object(
+            &["code", "detail"],
+            json!({
+                "code": {"type": "string", "minLength": 1},
+                "detail": {"type": "string", "minLength": 1}
+            }),
+        ),
+    );
+    s.insert(
         "RevisionRequest".into(),
         object(
             &["revision", "reason"],
@@ -195,10 +248,11 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             "allOf": [
                 r("Product"),
                 object(
-                    &["sourceKind", "missingAssets", "presentation"],
+                    &["sourceKind", "missingAssets", "sourceWarnings", "presentation"],
                     json!({
                         "sourceKind": r("DataClass"),
                         "missingAssets": array(r("MissingAssetReference")),
+                        "sourceWarnings": array(r("ProductSourceWarning")),
                         "presentation": nullable(r("ProductPresentation"))
                     })
                 )
@@ -217,6 +271,8 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "status",
                 "revision",
                 "managerUserId",
+                "phoneE164",
+                "phoneVerified",
                 "roles",
                 "totpEnabled",
                 "invitedAt",
@@ -232,6 +288,8 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "status": string_enum(&["invited", "active", "disabled"]),
                 "revision": revision(),
                 "managerUserId": nullable(uuid()),
+                "phoneE164": nullable(json!({"type": "string", "pattern": "^\\+[1-9][0-9]{7,14}$"})),
+                "phoneVerified": {"type": "boolean"},
                 "roles": array(json!({"type": "string"})),
                 "totpEnabled": {"type": "boolean"},
                 "invitedAt": nullable(timestamp()),
@@ -266,7 +324,26 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "status": string_enum(&["invited", "active", "disabled"]),
                 "roleKeys": array(json!({"type": "string"})),
                 "managerUserId": nullable(uuid()),
+                "phoneE164": {"type": "string", "pattern": "^\\+[1-9][0-9]{7,14}$"},
                 "reason": {"type": "string", "minLength": 10}
+            }),
+        ),
+    );
+    s.insert(
+        "IdentityResetRequest".into(),
+        object(
+            &["reason"],
+            json!({"reason": {"type": "string", "minLength": 10}}),
+        ),
+    );
+    s.insert(
+        "TemporaryPasswordResult".into(),
+        object(
+            &["temporaryPassword", "mustChangePassword", "sessionsRevoked"],
+            json!({
+                "temporaryPassword": {"type": "string", "writeOnly": true},
+                "mustChangePassword": {"type": "boolean"},
+                "sessionsRevoked": {"type": "boolean"}
             }),
         ),
     );
@@ -278,6 +355,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "key",
                 "displayName",
                 "systemRole",
+                "isPreset",
                 "revision",
                 "permissions",
             ],
@@ -286,6 +364,7 @@ pub(super) fn add(s: &mut Map<String, Value>) {
                 "key": {"type": "string"},
                 "displayName": {"type": "string"},
                 "systemRole": {"type": "boolean"},
+                "isPreset": {"type": "boolean"},
                 "revision": revision(),
                 "permissions": array(json!({"type": "string"}))
             }),
@@ -313,6 +392,27 @@ pub(super) fn add(s: &mut Map<String, Value>) {
             json!({
                 "displayName": {"type": "string", "minLength": 1, "maxLength": 120},
                 "permissions": array(json!({"type": "string"})),
+                "reason": {"type": "string", "minLength": 10}
+            }),
+        ),
+    );
+    s.insert(
+        "CreateAdminRole".into(),
+        object(
+            &["key", "displayName", "permissions", "reason"],
+            json!({
+                "key": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 64,
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                },
+                "displayName": {"type": "string", "minLength": 1, "maxLength": 120},
+                "permissions": {
+                    "type": "array",
+                    "maxItems": 128,
+                    "items": {"type": "string"}
+                },
                 "reason": {"type": "string", "minLength": 10}
             }),
         ),

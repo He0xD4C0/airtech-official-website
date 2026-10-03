@@ -1,5 +1,13 @@
 import type { APIResponse } from '@playwright/test'
 
+import { adminOrigin } from './environment'
+
+// The API scopes the Secure attribute to the configured Admin origin: an http
+// deployment must receive a browser-storable cookie, an https deployment must
+// receive Secure. Asserting the wrong side silently breaks browser login in
+// that environment, which is exactly what the http acceptance host hit.
+const requiresSecureCookie = adminOrigin.startsWith('https://')
+
 export interface BrowserCookie {
   name: string
   value: string
@@ -36,8 +44,13 @@ export function secureHostOnlyCookies(response: APIResponse, hostname: string): 
     if (attributes.some((attribute) => attribute.trim().toLowerCase().startsWith('domain='))) {
       throw new Error('The production API session cookie must remain host-only.')
     }
-    if (!attributes.some((attribute) => attribute.trim().toLowerCase() === 'secure')) {
-      throw new Error('The production API session cookie must retain Secure in the E2E stack.')
+    const secure = attributes.some((attribute) => attribute.trim().toLowerCase() === 'secure')
+    if (secure !== requiresSecureCookie) {
+      throw new Error(
+        requiresSecureCookie
+          ? 'The HTTPS production API session cookie must retain Secure.'
+          : 'The HTTP E2E API session cookie must omit Secure so browsers store it.',
+      )
     }
     const sameSite = parseAttribute(attributes, 'samesite')
     if (sameSite?.toLowerCase() !== 'strict') {
@@ -51,7 +64,7 @@ export function secureHostOnlyCookies(response: APIResponse, hostname: string): 
       path: parseAttribute(attributes, 'path') ?? '/',
       expires: Number.isFinite(maxAge) ? Math.floor(Date.now() / 1000) + maxAge : -1,
       httpOnly: attributes.some((attribute) => attribute.trim().toLowerCase() === 'httponly'),
-      secure: true,
+      secure,
       sameSite: 'Strict' as const,
     }
   })

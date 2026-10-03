@@ -19,6 +19,7 @@ import {
 import { totp } from './support/totp'
 import { cookieRequestHeader, mergeCookies, secureHostOnlyCookies } from './support/secure-cookie'
 import { upsertAndPublish } from './support/content-fixtures'
+import { adminPhone, configureDeliverySettings, waitForSmsCode } from './support/delivery'
 
 async function seedAnalyticsProjection(): Promise<void> {
   const publicApi = await request.newContext({
@@ -233,21 +234,18 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
   })
   let api: ApiContext | undefined
   try {
-    const setup = await setupApi.post('/api/admin/v1/auth/setup', {
-      data: {
-        displayName: administrator.displayName,
-        email: administrator.email,
-        password: administrator.password,
-        bootstrapToken: administrator.bootstrapToken,
-      },
+    // The isolated stack provisions the initial administrator from
+    // AIRTEK_ADMIN_* at startup; there is no separate setup endpoint.
+    const sessionResponse = await setupApi.post('/api/admin/v1/auth/login', {
+      data: { email: administrator.email, password: administrator.password },
     })
-    if (setup.status() !== 201) {
-      throw new Error(`Unable to create the isolated E2E administrator (${setup.status()}): ${await setup.text()}`)
+    if (sessionResponse.status() !== 200) {
+      throw new Error(`Unable to establish the isolated E2E administrator (${sessionResponse.status()}): ${await sessionResponse.text()}`)
     }
-    const csrf = setup.headers()['x-csrf-token']
-    if (!csrf) throw new Error('Initial setup did not return the CSRF token required for TOTP enrollment.')
+    let csrf = sessionResponse.headers()['x-csrf-token']
+    if (!csrf) throw new Error('Administrator login did not return the CSRF token required for onboarding.')
     const cookieHostname = new URL(apiOrigin).hostname
-    let productionCookies = secureHostOnlyCookies(setup, cookieHostname)
+    let productionCookies = secureHostOnlyCookies(sessionResponse, cookieHostname)
     api = await request.newContext({
       baseURL: apiControlOrigin,
       extraHTTPHeaders: {
@@ -255,6 +253,31 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
         Cookie: cookieRequestHeader(productionCookies),
       },
     })
+    // Complete the first-login onboarding: rotate the initial password and
+    // confirm the generated recovery key before any business route is allowed.
+    const passwordChange = await api.post('/api/admin/v1/auth/password', {
+      headers: { 'X-CSRF-Token': csrf },
+      data: { currentPassword: administrator.password, newPassword: administrator.password },
+    })
+    if (!passwordChange.ok()) {
+      throw new Error(`Unable to change the E2E administrator password (${passwordChange.status()}): ${await passwordChange.text()}`)
+    }
+    const rotatedSession = await api.get('/api/admin/v1/auth/session')
+    if (!rotatedSession.ok()) {
+      throw new Error(`Unable to refresh the onboarded E2E session (${rotatedSession.status()}): ${await rotatedSession.text()}`)
+    }
+    const rotatedCsrf = rotatedSession.headers()['x-csrf-token']
+    if (!rotatedCsrf) throw new Error('Onboarding did not return a rotated CSRF token.')
+    csrf = rotatedCsrf
+    const recoveryState = await api.get('/api/admin/v1/auth/recovery-key')
+    if (recoveryState.ok()) {
+      const confirmation = await api.post('/api/admin/v1/auth/recovery-key/confirm', {
+        headers: { 'X-CSRF-Token': csrf },
+      })
+      if (!confirmation.ok()) {
+        throw new Error(`Unable to confirm the E2E recovery key (${confirmation.status()}): ${await confirmation.text()}`)
+      }
+    }
     const enrollment = await api.post('/api/admin/v1/auth/totp/enrollment', {
       headers: { 'X-CSRF-Token': csrf },
     })
@@ -297,6 +320,23 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     })
     if (!objectStorage.ok()) {
       throw new Error(`Unable to configure E2E object storage (${objectStorage.status()}): ${await objectStorage.text()}`)
+    }
+    // Outbound email goes to Mailpit and outbound SMS to the local stub so the
+    // browser journeys can read the real verification codes.
+    await configureDeliverySettings(api, refreshedCsrf)
+    const phoneStart = await api.post('/api/admin/v1/auth/phone/verification', {
+      headers: { 'X-CSRF-Token': refreshedCsrf },
+      data: { phone: adminPhone, currentPassword: administrator.password },
+    })
+    if (phoneStart.status() !== 202) {
+      throw new Error(`Unable to start the E2E phone binding (${phoneStart.status()}): ${await phoneStart.text()}`)
+    }
+    const phoneConfirm = await api.post('/api/admin/v1/auth/phone/confirm', {
+      headers: { 'X-CSRF-Token': refreshedCsrf },
+      data: { code: await waitForSmsCode(setupApi, adminPhone) },
+    })
+    if (!phoneConfirm.ok()) {
+      throw new Error(`Unable to confirm the E2E phone binding (${phoneConfirm.status()}): ${await phoneConfirm.text()}`)
     }
     await seedPublicProjection(api, refreshedCsrf)
     await seedProductProjection(api, refreshedCsrf)

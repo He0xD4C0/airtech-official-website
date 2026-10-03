@@ -6,29 +6,29 @@
 import type { components } from '../components'
 
 export interface OperationsPart25 {
-getPublishedProduct: {
+listProductSourceMetadata: {
         parameters: {
             query?: {
-                /** @description Product family used to disambiguate presentation slugs that are reusable across families. */
-                family?: components["schemas"]["ProductFamily"];
+                /** @description Opaque endpoint-scoped cursor returned by the previous page. */
+                cursor?: string;
+                kind?: components["schemas"]["SourceMetadataKind"];
+                /** @description Page size; values outside 1 through 100 return Problem Details 400. */
+                limit?: number;
+                q?: string;
             };
             header?: never;
-            path: {
-                slug: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Published product */
+            /** @description Product source metadata */
             200: {
                 headers: {
-                    /** @description Immutable published revision tag */
-                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Product"];
+                    "application/json": components["schemas"]["ProductSourceMetadataPage"];
                 };
             };
             /** @description Malformed request */
@@ -123,28 +123,27 @@ getPublishedProduct: {
             };
         };
     };
-getPublishedProductAssets: {
+listUserInvitations: {
         parameters: {
             query?: {
-                family?: components["schemas"]["ProductFamily"];
+                /** @description Opaque endpoint-scoped cursor returned by the previous page. */
+                cursor?: string;
+                /** @description Page size; values outside 1 through 100 return Problem Details 400. */
+                limit?: number;
             };
             header?: never;
-            path: {
-                slug: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Published product attachments */
+            /** @description User invitations */
             200: {
                 headers: {
-                    /** @description Immutable published revision tag */
-                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProductSourceAssetDocument"];
+                    "application/json": components["schemas"]["UserInvitationPage"];
                 };
             };
             /** @description Malformed request */
@@ -239,7 +238,7 @@ getPublishedProductAssets: {
             };
         };
     };
-createRfqSubmission: {
+inviteAdminUser: {
         parameters: {
             query?: never;
             header: {
@@ -251,26 +250,17 @@ createRfqSubmission: {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateRfqRequest"];
+                "application/json": components["schemas"]["InviteAdminUser"];
             };
         };
         responses: {
-            /** @description Idempotent replay */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AcceptedResponse"];
-                };
-            };
-            /** @description RFQ accepted */
+            /** @description User invitation created */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AcceptedResponse"];
+                    "application/json": components["schemas"]["UserInvitation"];
                 };
             };
             /** @description Malformed request */
@@ -365,26 +355,30 @@ createRfqSubmission: {
             };
         };
     };
-resolvePublishedRoute: {
+revokeUserInvitation: {
         parameters: {
-            query: {
-                locale?: "en";
-                path: string;
+            query?: never;
+            header: {
+                /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
+                "Idempotency-Key": string;
             };
-            header?: never;
-            path?: never;
+            path: {
+                id: string;
+            };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonRequest"];
+            };
+        };
         responses: {
-            /** @description Resolved public route */
-            200: {
+            /** @description User invitation revoked */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["RouteResolution"];
-                };
+                content?: never;
             };
             /** @description Malformed request */
             400: {

@@ -6,6 +6,101 @@
 import type { components } from '../components'
 
 export interface SchemasPart04 {
+ProductImportResult: {
+            checksum: string;
+            /** Format: date-time */
+            createdAt: string;
+            errors: components["schemas"]["ProductImportRowError"][];
+            /** Format: uuid */
+            id: string;
+            malformedRows: number;
+            mappingVersion: string;
+            missingAssets: components["schemas"]["MissingAssetReference"][];
+            reused: boolean;
+            status: string;
+            totalRows: number;
+            validRows: number;
+        };
+ProductImportResultPage: {
+            items: components["schemas"]["ProductImportResult"][];
+            nextCursor: string | null;
+        };
+ProductImportRowError: {
+            code: string;
+            detail: string;
+            fieldName: string | null;
+            rowNumber: number;
+            /** @enum {string} */
+            severity: "warning" | "error";
+            stableId: string | null;
+        };
+ProductImportRun: components["schemas"]["ProductImportResult"];
+ProductMediaGalleryItem: {
+            altText: string;
+            /** Format: uuid */
+            assetId: string;
+        };
+ProductPage: {
+            familyCounts: components["schemas"]["ProductFacetCount"][];
+            items: components["schemas"]["Product"][];
+            motorTechnologyCounts: components["schemas"]["ProductFacetCount"][];
+            /** @description Opaque base64url v3 keyset cursor bound to normalized query and filters; v2 is accepted only when q is absent for one compatibility release. */
+            nextCursor: string | null;
+            total: number;
+        };
+ProductPresentation: {
+            indexable: boolean;
+            locale: string;
+            mediaGallery: components["schemas"]["ProductMediaGalleryItem"][];
+            publishedRevision: number | null;
+            relatedContentIds: string[];
+            /** Format: int64 */
+            revision: number;
+            seo: components["schemas"]["SeoMetadata"];
+            slug: string;
+            sortOrder: number;
+            summary: string | null;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+ProductPrivatePricing: {
+            readonly pricingFields: {
+                [key: string]: string;
+            };
+            /** Format: uuid */
+            productId: string;
+            sourceRowNumber: number;
+            stableId: string;
+        };
+/** @enum {string} */
+        ProductPublicationAction: "publish";
+ProductPublicationReport: {
+            allowedActions: components["schemas"]["ProductPublicationAction"][];
+            /** Format: int64 */
+            currentRevision: number;
+            issues: components["schemas"]["ValidationIssue"][];
+            /** Format: uuid */
+            productId: string;
+            ready: boolean;
+        };
+ProductRfqContext: {
+            additionalMessage?: string;
+            application: string;
+            electrical?: components["schemas"]["RfqElectricalContext"];
+            environment?: string;
+            /** @enum {string} */
+            priority?: "efficiency" | "noise" | "size" | "headroom";
+            quantity?: components["schemas"]["RfqQuantity"];
+        };
+ProductRfqProductContext: {
+            model: string;
+            /** Format: uuid */
+            productId: string;
+            /** Format: int64 */
+            publishedRevision: number;
+            stableId: string;
+        };
 ProductRfqRequest: {
             /** @enum {boolean} */
             consent: true;
@@ -40,6 +135,33 @@ ProductSourceAssetDocument: {
             productId: string;
             /** Format: int64 */
             productRevision: number;
+        };
+ProductSourceMetadata: {
+            archiveSha256: string;
+            attributes: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            capturedAt: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            importedAt: string;
+            kind: components["schemas"]["SourceMetadataKind"];
+            label: string;
+            rawFields: {
+                [key: string]: unknown;
+            };
+            sourceRecordId: string;
+            sourceTable: string;
+        };
+ProductSourceMetadataPage: {
+            items: components["schemas"]["ProductSourceMetadata"][];
+            nextCursor: string | null;
+        };
+ProductSourceWarning: {
+            code: string;
+            detail: string;
         };
 ProjectRfqContext: {
             additionalMessage?: string;
@@ -117,10 +239,29 @@ PublicSearchPage: {
 ReasonRequest: {
             reason: string;
         };
-RecoveryCodeSet: {
+RecoveryKeyResetResult: {
+            confirmed: boolean;
+            /** @enum {string} */
+            origin: "generated";
+            recoveryKey: string;
+        };
+RecoveryKeyRotationResult: {
+            readonly recoveryKey: string;
             /** Format: date-time */
-            generatedAt: string;
-            readonly recoveryCodes: string[];
+            rotatedAt: string;
+        };
+RecoveryKeyState: {
+            confirmed: boolean;
+            /** @enum {string} */
+            origin: "generated" | "provided";
+            readonly recoveryKey?: string;
+        };
+RecoveryRequest: {
+            /** Format: email */
+            email: string;
+            /** Format: password */
+            newPassword: string;
+            recoveryKey: string;
         };
 RelationCollectionBlock: {
             heading?: string | null;
@@ -351,147 +492,5 @@ SeoMetadataInput: {
             /** @default false */
             indexable: boolean;
             title?: string | null;
-        };
-SessionUser: {
-            displayName: string;
-            /** Format: email */
-            email: string;
-            environment: string;
-            /** Format: uuid */
-            id: string;
-            permissions: string[];
-            role: string;
-            totpEnabled: boolean;
-        };
-SetupRequest: {
-            bootstrapToken: string;
-            displayName: string;
-            /** Format: email */
-            email: string;
-            /** Format: password */
-            password: string;
-        };
-SiteBootstrap: {
-            footer: components["schemas"]["PublicContentProjection"] | null;
-            generalInformation: components["schemas"]["PublicContentProjection"] | null;
-            /** Format: date-time */
-            generatedAt: string;
-            motorTechnologies: string[];
-            navigation: components["schemas"]["PublicContentProjection"] | null;
-            productFamilies: components["schemas"]["ProductFamilyPresentation"][];
-        };
-SocialLinkInput: {
-            service: string;
-            /** Format: uri */
-            url: string;
-        };
-SpecValue: {
-            key: string;
-            label: string;
-            operatingCondition: string | null;
-            sourceReference: string | null;
-            state: components["schemas"]["FactState"];
-            unit: string | null;
-            value: unknown | null;
-        };
-/** @enum {string} */
-        StableProblemCode: "media_idempotency_conflict" | "media_decode_failed" | "content_dependency_conflict";
-/**
-         * Format: uri
-         * @enum {string}
-         */
-        StableProblemType: "https://api.airtekpower.example/problems/media_idempotency_conflict" | "https://api.airtekpower.example/problems/media_decode_failed" | "https://api.airtekpower.example/problems/content_dependency_conflict";
-StagingRecord: {
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: uuid */
-            id: string;
-            normalizedPayload: unknown | null;
-            sourceRecordId: string;
-            /** Format: uuid */
-            sourceSnapshotId: string;
-            /** Format: uuid */
-            syncRunId: string;
-            validationErrors: components["schemas"]["ValidationIssue"][];
-            validationStatus: components["schemas"]["StagingValidationStatus"];
-        };
-StagingRecordPage: {
-            items: components["schemas"]["StagingRecord"][];
-            nextCursor: string | null;
-            total: number;
-        };
-/** @enum {string} */
-        StagingValidationStatus: "pending" | "valid" | "invalid";
-SyncMapping: {
-            active: boolean;
-            /** Format: uuid */
-            connectorId: string;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: uuid */
-            id: string;
-            mapping: unknown;
-            schemaVersion: number;
-            version: string;
-        };
-SyncMappingPage: {
-            items: components["schemas"]["SyncMapping"][];
-            nextCursor: string | null;
-        };
-SyncRun: {
-            assetsCopied: number;
-            assetsFailed: number;
-            assetsReused: number;
-            assetsSeen: number;
-            completedAt: string | null;
-            connectorId?: string | null;
-            /** @constant */
-            dryRun: false;
-            error?: string | null;
-            /** Format: uuid */
-            id: string;
-            mappingVersion: string;
-            recordsApplied: number;
-            recordsDeleted: number;
-            recordsFailed: number;
-            recordsSeen: number;
-            recordsValid: number;
-            resumeCursor: string | null;
-            /** Format: int64 */
-            settingsRevision: number;
-            /** @constant */
-            source: "feishu";
-            sources: components["schemas"]["FeishuSource"][];
-            /** Format: date-time */
-            startedAt: string;
-            status: components["schemas"]["SyncRunStatus"];
-            trigger: components["schemas"]["FeishuSyncTrigger"];
-        };
-SyncRunPage: {
-            items: components["schemas"]["SyncRun"][];
-            nextCursor: string | null;
-        };
-/** @enum {string} */
-        SyncRunStatus: "queued" | "fetching" | "validating" | "readyToPublish" | "completed" | "completedWithErrors" | "failed";
-TaxonomyTypeFields: {
-            key?: string | null;
-        };
-TemporaryOverride: {
-            /** Format: date-time */
-            createdAt: string;
-            expired: boolean;
-            /** Format: date-time */
-            expiresAt: string;
-            fieldPath: string;
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            productId: string;
-            reason: string;
-            value: unknown;
-        };
-TemporaryOverridePage: {
-            items: components["schemas"]["TemporaryOverride"][];
-            nextCursor: string | null;
         };
 }

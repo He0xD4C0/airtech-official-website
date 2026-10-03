@@ -1,33 +1,132 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowRight, Eye, EyeOff, KeyRound, LockKeyhole, ShieldCheck } from 'lucide-vue-next'
+import { ArrowLeft, ArrowRight, Eye, EyeOff, KeyRound, LockKeyhole, Mail, ShieldCheck, Smartphone } from 'lucide-vue-next'
 import BrandMark from '@/shared/components/BrandMark.vue'
+import CaptchaWidget from '@/features/auth/components/CaptchaWidget.vue'
+import { adminAuthApi } from '@/shared/services/adminAuthApi'
 import { useAuthStore } from '@/shared/stores/auth'
-import type { ApiProblem } from '@/shared/types/domain'
+import type { LoginStep } from '@/shared/services/adminApiTypes'
+import type { ApiProblem, SessionUser } from '@/shared/types/domain'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+
+type Stage = 'identify' | 'method' | 'code'
+const stage = ref<Stage>('identify')
 const email = ref('')
 const password = ref('')
-const otp = ref('')
 const passwordVisible = ref(false)
+const captchaToken = ref('')
+const captchaRequired = ref(false)
+const captchaSiteKey = ref('')
+const captchaProvider = ref('turnstile')
+const flowToken = ref('')
+const pendingFactor = ref<string | null>(null)
+const code = ref('')
 const errorMessage = ref('')
+const busy = ref(false)
 
-async function submit(): Promise<void> {
-  errorMessage.value = ''
-  try {
-    await auth.login(email.value.trim(), password.value, otp.value || undefined)
-    if (auth.requiresTotpEnrollment) {
-      await router.replace('/account/security')
-      return
-    }
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
-    await router.replace(redirect)
-  } catch (error) {
-    errorMessage.value = (error as ApiProblem).detail ?? (error as ApiProblem).title ?? '登录失败，请重试。'
+const codeLabel = computed(() => {
+  switch (pendingFactor.value) {
+    case 'totp':
+      return '验证器 6 位验证码'
+    case 'riskSms':
+      return '风控短信验证码'
+    case 'smsCode':
+      return '短信验证码'
+    default:
+      return '邮箱验证码'
   }
+})
+
+function message(error: unknown): string {
+  return (error as ApiProblem).detail ?? (error as ApiProblem).title ?? '登录失败，请重试。'
+}
+
+async function finish(user: SessionUser): Promise<void> {
+  auth.apply(user)
+  if (auth.requiresOnboarding) {
+    await router.replace('/onboarding')
+    return
+  }
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+  await router.replace(redirect)
+}
+
+async function handleResult(result: LoginStep | SessionUser): Promise<void> {
+  if ('status' in result) {
+    pendingFactor.value = result.factor ?? null
+    code.value = ''
+    captchaToken.value = ''
+    stage.value = 'code'
+    return
+  }
+  await finish(result)
+}
+
+async function submitIdentify(): Promise<void> {
+  errorMessage.value = ''
+  busy.value = true
+  try {
+    const identity = await adminAuthApi.identify(email.value.trim())
+    flowToken.value = identity.flowToken
+    captchaRequired.value = identity.captchaRequired
+    captchaSiteKey.value = identity.captchaSiteKey ?? ''
+    captchaProvider.value = identity.captchaProvider ?? 'turnstile'
+    captchaToken.value = ''
+    stage.value = 'method'
+  } catch (error) {
+    errorMessage.value = message(error)
+  } finally {
+    busy.value = false
+  }
+}
+
+async function attempt(method: 'password' | 'emailCode' | 'smsCode'): Promise<void> {
+  errorMessage.value = ''
+  if (captchaRequired.value && !captchaToken.value) {
+    errorMessage.value = '请先完成人机验证。'
+    return
+  }
+  busy.value = true
+  try {
+    const result = await adminAuthApi.attempt({
+      flowToken: flowToken.value,
+      method,
+      ...(method === 'password' ? { password: password.value } : {}),
+      ...(captchaToken.value ? { captchaToken: captchaToken.value } : {}),
+    })
+    await handleResult(result)
+  } catch (error) {
+    errorMessage.value = message(error)
+  } finally {
+    busy.value = false
+  }
+}
+
+async function submitCode(): Promise<void> {
+  errorMessage.value = ''
+  busy.value = true
+  try {
+    const result = await adminAuthApi.verify(flowToken.value, code.value.trim())
+    await handleResult(result)
+  } catch (error) {
+    errorMessage.value = message(error)
+  } finally {
+    busy.value = false
+  }
+}
+
+function restart(): void {
+  stage.value = 'identify'
+  flowToken.value = ''
+  pendingFactor.value = null
+  code.value = ''
+  captchaToken.value = ''
+  password.value = ''
+  errorMessage.value = ''
 }
 </script>
 
@@ -47,39 +146,68 @@ async function submit(): Promise<void> {
     </section>
 
     <section class="auth-form-panel">
-      <form class="auth-card" @submit.prevent="submit">
+      <form v-if="stage === 'identify'" class="auth-card" @submit.prevent="submitIdentify">
         <div class="auth-card__mobile-brand"><BrandMark /></div>
         <p class="eyebrow">安全登录</p>
         <h2>欢迎回来</h2>
-        <p class="auth-card__lead">使用受邀账号登录 AIRTEKPOWER 管理平台。</p>
-
+        <p class="auth-card__lead">第一步：输入工作邮箱。</p>
         <label class="field">
           <span>工作邮箱</span>
           <div class="field__control"><KeyRound :size="17" /><input v-model="email" type="email" autocomplete="username" required /></div>
         </label>
+        <p v-if="errorMessage" class="form-error" role="alert">{{ errorMessage }}</p>
+        <button class="button button--primary button--wide" type="submit" :disabled="busy">
+          {{ busy ? '正在识别…' : '下一步' }}<ArrowRight :size="17" />
+        </button>
+      </form>
+
+      <form v-else-if="stage === 'method'" class="auth-card" @submit.prevent="attempt('password')">
+        <div class="auth-card__mobile-brand"><BrandMark /></div>
+        <p class="eyebrow">选择登录方式</p>
+        <h2>{{ email }}</h2>
+        <button class="button button--secondary" type="button" @click="restart"><ArrowLeft :size="15" />换个账号</button>
+
+        <CaptchaWidget
+          v-if="captchaRequired"
+          :provider="captchaProvider"
+          :site-key="captchaSiteKey"
+          @update:token="captchaToken = $event"
+        />
+
         <label class="field">
           <span>密码</span>
           <div class="field__control">
             <LockKeyhole :size="17" />
-            <input v-model="password" :type="passwordVisible ? 'text' : 'password'" autocomplete="current-password" required />
+            <input v-model="password" :type="passwordVisible ? 'text' : 'password'" aria-label="登录密码" autocomplete="current-password" />
             <button type="button" :aria-label="passwordVisible ? '隐藏密码' : '显示密码'" @click="passwordVisible = !passwordVisible">
               <EyeOff v-if="passwordVisible" :size="17" /><Eye v-else :size="17" />
             </button>
           </div>
         </label>
-        <label class="field">
-          <span>TOTP 或恢复码 <small>（已启用多因素验证时填写）</small></span>
-          <div class="field__control"><ShieldCheck :size="17" /><input v-model="otp" autocomplete="one-time-code" maxlength="19" placeholder="6 位验证码或恢复码" /></div>
-        </label>
-
-        <p v-if="errorMessage" class="form-error" role="alert">{{ errorMessage }}</p>
-        <button class="button button--primary button--wide" type="submit" :disabled="auth.loading">
-          {{ auth.loading ? '正在验证…' : '进入管理平台' }}<ArrowRight :size="17" />
+        <button class="button button--primary button--wide" type="submit" :disabled="busy || !password">
+          {{ busy ? '正在验证…' : '使用密码登录' }}
         </button>
-
         <div class="auth-card__footer">
-          <span>首次部署？</span><RouterLink to="/setup">初始化超级管理员</RouterLink>
+          <button class="button button--secondary" type="button" :disabled="busy" @click="attempt('emailCode')"><Mail :size="15" />发送邮箱验证码</button>
+          <button class="button button--secondary" type="button" :disabled="busy" @click="attempt('smsCode')"><Smartphone :size="15" />发送短信验证码</button>
         </div>
+        <p class="inline-note">若该账号未绑定手机，短信验证码不会发送。</p>
+        <p v-if="errorMessage" class="form-error" role="alert">{{ errorMessage }}</p>
+      </form>
+
+      <form v-else class="auth-card" @submit.prevent="submitCode">
+        <div class="auth-card__mobile-brand"><BrandMark /></div>
+        <p class="eyebrow">多因素验证</p>
+        <h2>{{ codeLabel }}</h2>
+        <label class="field">
+          <span>{{ codeLabel }}</span>
+          <div class="field__control"><ShieldCheck :size="17" /><input v-model="code" autocomplete="one-time-code" maxlength="19" required /></div>
+        </label>
+        <p v-if="errorMessage" class="form-error" role="alert">{{ errorMessage }}</p>
+        <button class="button button--primary button--wide" type="submit" :disabled="busy || !code">
+          {{ busy ? '正在验证…' : '继续' }}
+        </button>
+        <button class="button button--secondary" type="button" @click="restart">重新开始</button>
       </form>
     </section>
   </main>

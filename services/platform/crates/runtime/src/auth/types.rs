@@ -3,11 +3,14 @@ use super::*;
 pub const SESSION_COOKIE: &str = "airtek_admin_session";
 pub const CSRF_COOKIE: &str = "airtek_admin_csrf";
 pub const CSRF_HEADER: &str = "x-csrf-token";
-pub(super) const SESSION_HOURS: i64 = 12;
-pub(super) const SESSION_IDLE_MINUTES: i64 = 30;
-pub(super) const RATE_WINDOW_MINUTES: i64 = 10;
+pub(super) const SESSION_HOURS: i64 = 24;
+pub(super) const SESSION_IDLE_MINUTES: i64 = 60;
+pub(super) const RATE_WINDOW_MINUTES: i64 = 15;
 pub(super) const RATE_BLOCK_MINUTES: i64 = 15;
 pub(super) const RATE_MAX_FAILURES: u32 = 5;
+/// Source-scoped sign-in limit: the multi-step flow counts the account-wide
+/// risk signal separately, so a source is only blocked after 20 failures.
+pub(super) const SOURCE_RATE_MAX_FAILURES: u32 = 20;
 pub(super) static DUMMY_PASSWORD_HASH: OnceLock<String> = OnceLock::new();
 
 #[derive(Clone, Debug)]
@@ -17,10 +20,14 @@ pub struct StoredUser {
     pub email: String,
     pub password_hash: String,
     pub role: String,
+    pub role_keys: Vec<String>,
     pub permissions: Vec<String>,
     pub active: bool,
     pub totp_enabled: bool,
     pub totp_secret_ciphertext: Option<Vec<u8>>,
+    pub must_change_password: bool,
+    pub must_confirm_recovery_key: bool,
+    pub phone_verified: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -29,21 +36,24 @@ pub struct AdminPrincipal {
     pub display_name: String,
     pub email: String,
     pub role: String,
+    pub role_keys: Vec<String>,
     pub permissions: Vec<String>,
     pub session_id: Uuid,
     pub session_token_hash: Vec<u8>,
     pub csrf_hash: Vec<u8>,
     pub totp_enabled: bool,
-    pub development_password_only: bool,
+    pub must_change_password: bool,
+    pub must_confirm_recovery_key: bool,
+    pub phone_verified: bool,
 }
 
 impl AdminPrincipal {
-    pub fn business_access_enabled(&self) -> bool {
-        self.totp_enabled || self.development_password_only
+    pub fn is_super_admin(&self) -> bool {
+        self.role_keys.iter().any(|key| key == "super-admin")
     }
 
     pub fn has_permission(&self, permission: &str) -> bool {
-        self.business_access_enabled() && self.permissions.iter().any(|value| value == permission)
+        self.permissions.iter().any(|value| value == permission)
     }
 
     pub fn session_user(&self, state: &AppState) -> SessionUser {
@@ -52,16 +62,13 @@ impl AdminPrincipal {
             display_name: self.display_name.clone(),
             email: self.email.clone(),
             role: self.role.clone(),
-            // Password-only sessions exist solely to finish first-login TOTP
-            // enrollment. Do not expose or authorize business permissions
-            // until the second factor has been confirmed.
-            permissions: if self.business_access_enabled() {
-                self.permissions.clone()
-            } else {
-                Vec::new()
-            },
+            role_keys: self.role_keys.clone(),
+            permissions: self.permissions.clone(),
             environment: state.environment_label().into(),
             totp_enabled: self.totp_enabled,
+            phone_verified: self.phone_verified,
+            must_change_password: self.must_change_password,
+            must_confirm_recovery_key: self.must_confirm_recovery_key,
         }
     }
 }
@@ -73,18 +80,13 @@ pub struct SessionUser {
     pub display_name: String,
     pub email: String,
     pub role: String,
+    pub role_keys: Vec<String>,
     pub permissions: Vec<String>,
     pub environment: String,
     pub totp_enabled: bool,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SetupRequest {
-    pub(super) display_name: String,
-    pub(super) email: String,
-    pub(super) password: String,
-    pub(super) bootstrap_token: String,
+    pub phone_verified: bool,
+    pub must_change_password: bool,
+    pub must_confirm_recovery_key: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -118,6 +120,37 @@ pub struct TotpCodeRequest {
     pub(super) code: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ChangePasswordRequest {
+    pub(super) current_password: String,
+    pub(super) new_password: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RecoveryRequest {
+    pub(super) email: String,
+    pub(super) recovery_key: String,
+    pub(super) new_password: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecoveryKeyState {
+    pub(super) origin: String,
+    pub(super) confirmed: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) recovery_key: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecoveryKeyRotationResult {
+    pub(super) recovery_key: String,
+    pub(super) rotated_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TotpEnrollment {
@@ -126,13 +159,6 @@ pub struct TotpEnrollment {
     pub(super) algorithm: &'static str,
     pub(super) digits: u8,
     pub(super) period_seconds: u64,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RecoveryCodeSet {
-    pub(super) recovery_codes: Vec<String>,
-    pub(super) generated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize)]
@@ -149,19 +175,4 @@ pub(super) struct SessionIssue {
     pub(super) principal: AdminPrincipal,
     pub(super) session_token: String,
     pub(super) csrf_token: String,
-}
-
-#[derive(Clone, Copy)]
-pub(super) enum SecondFactorMethod {
-    Totp,
-    RecoveryCode,
-}
-
-impl SecondFactorMethod {
-    pub(super) fn label(self) -> &'static str {
-        match self {
-            Self::Totp => "totp",
-            Self::RecoveryCode => "recoveryCode",
-        }
-    }
 }

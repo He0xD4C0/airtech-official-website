@@ -8,6 +8,12 @@ use super::{validate_staging_payload, FeishuRecord, FeishuTableMapping, MappedFe
 #[path = "normalization_units.rs"]
 mod normalization_units;
 use normalization_units::{declared_unit, optional_warning, specification_definitions};
+#[path = "normalization_values.rs"]
+mod normalization_values;
+use normalization_values::{attachment_usage, cell_value, motor_technology};
+#[path = "normalization_facts.rs"]
+mod normalization_facts;
+use normalization_facts::source_facts;
 
 #[derive(Clone, Debug)]
 pub struct SourceAttachment {
@@ -82,14 +88,33 @@ pub fn normalize_record(
     };
     let mut warnings = Vec::new();
     let mut specifications = Vec::new();
+    let source_facts = source_facts(mapping, record, &source_reference);
     for definition in specification_definitions() {
         let Some(field) = mapping.fields.get(definition.key) else {
             continue;
         };
-        let Some(value) = record.fields.get(&field.name).and_then(public_value) else {
+        let Some(raw) = record.fields.get(&field.name).and_then(public_value) else {
             continue;
         };
-        let unit = declared_unit(definition.key, &field.name);
+        let Some((value, cell_unit)) = cell_value(definition.key, &raw) else {
+            specifications.push(json!({
+                "key": definition.key, "label": definition.label, "value": null,
+                "unit": declared_unit(definition.key, &field.name), "state": "missing",
+                "sourceReference": source_reference(field)
+            }));
+            continue;
+        };
+        let field_unit = declared_unit(definition.key, &field.name);
+        if field_unit.is_some() && cell_unit.is_some() && field_unit != cell_unit {
+            warnings.push(optional_warning(
+                definition.key,
+                "conflictingUnit",
+                "Field and cell declare different units; retain the source value for review."
+                    .into(),
+            ));
+            continue;
+        }
+        let unit = field_unit.or(cell_unit);
         if definition.unit_expected && unit.is_none() {
             warnings.push(optional_warning(
                 definition.key,
@@ -132,7 +157,7 @@ pub fn normalize_record(
         "locale": "en",
         "family": family,
         "subtype": subtype,
-        "motorTechnology": null,
+        "motorTechnology": motor_technology(mapped_text(mapping, &record.fields, "motorTechnology").as_deref(), subtype.as_deref()),
         "title": model,
         "summary": null,
         "seo": {
@@ -145,6 +170,7 @@ pub fn normalize_record(
         "relatedContentIds": [],
         "mediaGallery": [],
         "specifications": specifications,
+        "sourceFacts": source_facts,
         "performanceCurves": [],
         "sourceRevision": source_revision,
         "applicationCategories": source.application.iter().cloned().collect::<Vec<_>>(),
@@ -183,17 +209,7 @@ pub fn normalize_record(
     let mut confidential_checksum_payload = confidential_payload.clone();
     remove_volatile_attachment_urls(&mut confidential_checksum_payload);
     let confidential_checksum = checksum(&confidential_checksum_payload);
-    let mut public_checksum_payload = payload.clone();
-    public_checksum_payload
-        .as_object_mut()
-        .map(|object| object.remove("sourceRevision"));
-    if let Some(object) = public_checksum_payload.as_object_mut() {
-        object.insert(
-            "sourceAttachments".into(),
-            snapshot_payload["attachments"].clone(),
-        );
-    }
-    let source_checksum = checksum(&public_checksum_payload);
+    let source_checksum = public_checksum(&payload, &snapshot_payload);
     if let Some(object) = payload.as_object_mut() {
         object.insert("sourceChecksum".into(), json!(source_checksum));
     }
@@ -213,6 +229,28 @@ pub fn normalize_record(
         issues,
         warnings,
     }
+}
+
+pub(super) fn set_source_warnings(record: &mut NormalizedFeishuRecord, warnings: Vec<Value>) {
+    if let Some(payload) = record.normalized_payload.as_object_mut() {
+        payload.insert("sourceWarnings".into(), Value::Array(warnings));
+    }
+    record.issues.retain(|issue| issue.code != "duplicateModel");
+    record.source_checksum = public_checksum(&record.normalized_payload, &record.snapshot_payload);
+}
+
+fn public_checksum(payload: &Value, snapshot_payload: &Value) -> String {
+    let mut public_checksum_payload = payload.clone();
+    public_checksum_payload
+        .as_object_mut()
+        .map(|object| object.remove("sourceRevision"));
+    if let Some(object) = public_checksum_payload.as_object_mut() {
+        object.insert(
+            "sourceAttachments".into(),
+            snapshot_payload["attachments"].clone(),
+        );
+    }
+    checksum(&public_checksum_payload)
 }
 
 fn mapped_text(
@@ -274,6 +312,10 @@ fn private_projection(mapping: &FeishuTableMapping, fields: &Map<String, Value>)
     json!({
         "schema": "feishu-private-v1",
         "fieldsById": fields_by_id,
+        "unmappedFieldsByName": fields.iter().filter(|(name, _)| {
+            !mapping.fields.values().chain(mapping.private_fields.iter()).chain(mapping.attachments.iter())
+                .any(|field| &field.name == *name)
+        }).map(|(name, value)| (name.clone(), value.clone())).collect::<Map<_, _>>(),
         "pricingFieldIds": mapping.private_fields.iter().map(|field| field.id.clone()).collect::<Vec<_>>()
     })
 }
@@ -331,25 +373,6 @@ fn remove_volatile_attachment_urls(value: &mut Value) {
                 .for_each(remove_volatile_attachment_urls);
         }
         _ => {}
-    }
-}
-
-fn attachment_usage(name: &str) -> &'static str {
-    let lower = name.to_ascii_lowercase();
-    if name.contains("曲线") || lower.contains("pq") {
-        "curve"
-    } else if name.contains("图纸") || lower.contains("drawing") || lower.contains("2d") {
-        "drawing"
-    } else if lower.contains("cad")
-        || lower.contains("3d")
-        || lower.contains("step")
-        || lower.contains("dwg")
-    {
-        "cad"
-    } else if name.contains("规格") || name.contains("说明书") || lower.contains("datasheet") {
-        "datasheet"
-    } else {
-        "technicalDocument"
     }
 }
 

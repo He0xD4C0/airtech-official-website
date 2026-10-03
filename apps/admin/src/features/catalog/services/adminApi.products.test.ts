@@ -13,6 +13,7 @@ describe('admin product API', () => {
       ...product('10000000-0000-4000-8000-000000000001'),
       sourceKind: 'verifiedCsv',
       missingAssets: [],
+      sourceWarnings: [],
       presentation: null,
     }
     const fetchMock = vi.fn(async (input: string | URL | Request) => {
@@ -44,7 +45,7 @@ describe('admin product API', () => {
           indexable: false, sortOrder: 0, relatedContentIds: [], mediaGallery: [], revision: 5, publishedRevision: null,
           updatedAt: '2026-09-02T00:00:00Z',
         },
-        sourceKind: 'verifiedCsv', missingAssets: [],
+        sourceKind: 'verifiedCsv', missingAssets: [], sourceWarnings: [],
       }, { ETag: '"revision-5"' })
     })
     vi.stubGlobal('fetch', fetchMock)
@@ -174,6 +175,37 @@ describe('admin product API', () => {
     const [url, init] = fetchMock.mock.calls[0] ?? []
     expect(String(url)).toContain(`/products/${privateRecord.productId}/private-pricing`)
     expect(init?.cache).toBe('no-store')
+  })
+
+  it('queries admin-only supplier and brand archive metadata', async () => {
+    const record = {
+      id: '70000000-0000-4000-8000-000000000001',
+      kind: 'supplier',
+      label: 'Supplier A',
+      sourceTable: 'tblhKpZRLfUIlGYo',
+      sourceRecordId: 'rec-supplier-1',
+      archiveSha256: 'a'.repeat(64),
+      attributes: { 权重: 'P1' },
+      rawFields: { 供应商名称: 'Supplier A', 权重: 'P1' },
+      capturedAt: '2026-10-01T00:00:00Z',
+      importedAt: '2026-10-01T00:00:00Z',
+    }
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      void input
+      return response({ items: [record], nextCursor: null })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(adminProductApi.listSourceMetadata({
+      kind: 'supplier',
+      q: 'Supplier A',
+      limit: 25,
+    })).resolves.toMatchObject({ items: [record], nextCursor: null })
+    const url = new URL(String(fetchMock.mock.calls[0]?.[0]))
+    expect(url.pathname).toContain('/source-metadata')
+    expect(url.searchParams.get('kind')).toBe('supplier')
+    expect(url.searchParams.get('q')).toBe('Supplier A')
+    expect(url.searchParams.get('limit')).toBe('25')
   })
 
   it('waits on the accepted operation resource and extracts the import report', async () => {

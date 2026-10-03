@@ -55,8 +55,7 @@ for (const variable of [
 }
 
 forbidMatch(deployScript, /docker compose[^\n]*(?:down|-v|volume rm)/u, 'Application deployment must never tear down or delete stateful storage.')
-requireMatch(deployScript, /run --rm flyway-migrate migrate/u, 'Application deployment must migrate before rollout.')
-requireMatch(deployScript, /run --rm flyway-migrate validate/u, 'Application deployment must validate migration history.')
+forbidMatch(deployScript, /run --rm flyway-migrate (?:migrate|validate)/u, 'Application deployment must migrate through the Compose dependency graph.')
 requireMatch(deployScript, /run --rm --no-deps public-readiness/u, 'Application deployment must run the public-site readiness gate.')
 requireMatch(deployScript, /restoring previous application images/u, 'Application deployment must attempt image rollback after a failed rollout.')
 

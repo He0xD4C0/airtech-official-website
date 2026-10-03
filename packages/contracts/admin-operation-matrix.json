@@ -1,6 +1,6 @@
 {
   "generatedFrom": "packages/contracts/openapi/openapi.production.json",
-  "operationCount": 85,
+  "operationCount": 107,
   "operations": [
     {
       "method": "GET",
@@ -174,6 +174,86 @@
     },
     {
       "method": "POST",
+      "path": "/api/admin/v1/auth/attempt",
+      "operationId": "attemptAdministratorSignIn",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "AttemptRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 202,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "LoginStepResponse"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "attemptAdministratorSignIn"
+      },
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/auth/identify",
+      "operationId": "identifyAdministrator",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "IdentifyRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "IdentifyResponse"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "identifyAdministrator"
+      },
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
+    },
+    {
+      "method": "POST",
       "path": "/api/admin/v1/auth/invitations/accept",
       "operationId": "acceptAdministratorInvitation",
       "permission": "authenticated-or-public-auth-flow",
@@ -283,25 +363,95 @@
     },
     {
       "method": "POST",
-      "path": "/api/admin/v1/auth/recovery-codes/regenerate",
-      "operationId": "regenerateRecoveryCodes",
+      "path": "/api/admin/v1/auth/password",
+      "operationId": "changeAdministratorPassword",
       "permission": "authenticated-or-public-auth-flow",
       "request": {
         "parameters": [],
         "body": [
           {
             "mediaType": "application/json",
-            "type": "TotpCodeRequest"
+            "type": "ChangePasswordRequest"
           }
         ]
       },
       "response": [
         {
-          "status": 200,
+          "status": 204,
+          "types": []
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "changeAdministratorPassword"
+      },
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/auth/phone/confirm",
+      "operationId": "confirmAdministratorPhoneVerification",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "ConfirmPhoneVerificationRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 204,
+          "types": []
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "confirmAdministratorPhoneVerification"
+      },
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/auth/phone/verification",
+      "operationId": "startAdministratorPhoneVerification",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "StartPhoneVerificationRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 202,
           "types": [
             {
               "mediaType": "application/json",
-              "type": "RecoveryCodeSet"
+              "type": "PhoneVerificationStarted"
             }
           ]
         }
@@ -317,7 +467,111 @@
       },
       "audit": {
         "required": true,
-        "action": "regenerateRecoveryCodes"
+        "action": "startAdministratorPhoneVerification"
+      },
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/auth/recovery",
+      "operationId": "recoverAdministratorWithKey",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "RecoveryRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "RecoveryKeyRotationResult"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "recoverAdministratorWithKey"
+      },
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/auth/recovery-key",
+      "operationId": "getAdministratorRecoveryKey",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "RecoveryKeyState"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/auth/recovery-key/confirm",
+      "operationId": "confirmAdministratorRecoveryKey",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 204,
+          "types": []
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "confirmAdministratorRecoveryKey"
       },
       "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
     },
@@ -422,46 +676,6 @@
     },
     {
       "method": "POST",
-      "path": "/api/admin/v1/auth/setup",
-      "operationId": "setupInitialAdministrator",
-      "permission": "authenticated-or-public-auth-flow",
-      "request": {
-        "parameters": [],
-        "body": [
-          {
-            "mediaType": "application/json",
-            "type": "SetupRequest"
-          }
-        ]
-      },
-      "response": [
-        {
-          "status": 201,
-          "types": [
-            {
-              "mediaType": "application/json",
-              "type": "SessionUser"
-            }
-          ]
-        }
-      ],
-      "pagination": {
-        "strategy": "none"
-      },
-      "idempotency": {
-        "required": false
-      },
-      "concurrency": {
-        "required": false
-      },
-      "audit": {
-        "required": true,
-        "action": "setupInitialAdministrator"
-      },
-      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
-    },
-    {
-      "method": "POST",
       "path": "/api/admin/v1/auth/totp/confirm",
       "operationId": "confirmTotpEnrollment",
       "permission": "authenticated-or-public-auth-flow",
@@ -476,13 +690,8 @@
       },
       "response": [
         {
-          "status": 200,
-          "types": [
-            {
-              "mediaType": "application/json",
-              "type": "RecoveryCodeSet"
-            }
-          ]
+          "status": 204,
+          "types": []
         }
       ],
       "pagination": {
@@ -532,6 +741,55 @@
       "audit": {
         "required": true,
         "action": "startTotpEnrollment"
+      },
+      "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/auth/verify",
+      "operationId": "verifyAdministratorSignIn",
+      "permission": "authenticated-or-public-auth-flow",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "VerifyRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "SessionUser"
+            }
+          ]
+        },
+        {
+          "status": 202,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "LoginStepResponse"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "verifyAdministratorSignIn"
       },
       "frontendConsumer": "apps/admin/src/shared/services/adminAuthApi.ts"
     },
@@ -2740,6 +2998,84 @@
       "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
     },
     {
+      "method": "POST",
+      "path": "/api/admin/v1/roles",
+      "operationId": "createAdminRole",
+      "permission": "identity.roles.manage",
+      "request": {
+        "parameters": [
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "CreateAdminRole"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 201,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "AdminRoleRecord"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "createAdminRole"
+      },
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/v1/roles/{id}",
+      "operationId": "deleteAdminRole",
+      "permission": "identity.roles.manage",
+      "request": {
+        "parameters": [
+          "id",
+          "If-Match",
+          "reason"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 204,
+          "types": []
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "deleteAdminRole"
+      },
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
+    },
+    {
       "method": "GET",
       "path": "/api/admin/v1/roles/{id}",
       "operationId": "getAdminRole",
@@ -2779,7 +3115,7 @@
       "method": "PATCH",
       "path": "/api/admin/v1/roles/{id}",
       "operationId": "updateAdminRole",
-      "permission": "identity.manage",
+      "permission": "identity.roles.manage",
       "request": {
         "parameters": [
           "id",
@@ -2895,6 +3231,240 @@
       "audit": {
         "required": true,
         "action": "updatePlatformSettings"
+      },
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/settings/captcha",
+      "operationId": "getCaptchaSettings",
+      "permission": "captcha.manage",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "CaptchaSettings"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/v1/settings/captcha",
+      "operationId": "updateCaptchaSettings",
+      "permission": "captcha.manage",
+      "request": {
+        "parameters": [
+          "If-Match"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "UpdateCaptchaSettings"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "CaptchaSettings"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "updateCaptchaSettings"
+      },
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/settings/captcha/test",
+      "operationId": "testCaptchaSettings",
+      "permission": "captcha.manage",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "CaptchaTestRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "IntegrationTestResult"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "testCaptchaSettings"
+      },
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/settings/mail",
+      "operationId": "getMailSettings",
+      "permission": "mail.manage",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "MailSettings"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/v1/settings/mail",
+      "operationId": "updateMailSettings",
+      "permission": "mail.manage",
+      "request": {
+        "parameters": [
+          "If-Match"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "UpdateMailSettings"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "MailSettings"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "updateMailSettings"
+      },
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/settings/mail/test",
+      "operationId": "testMailSettings",
+      "permission": "mail.manage",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "MailTestRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "IntegrationTestResult"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "testMailSettings"
       },
       "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
     },
@@ -3017,6 +3587,123 @@
     },
     {
       "method": "GET",
+      "path": "/api/admin/v1/settings/sms",
+      "operationId": "getSmsSettings",
+      "permission": "sms.manage",
+      "request": {
+        "parameters": [],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "SmsSettings"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/v1/settings/sms",
+      "operationId": "updateSmsSettings",
+      "permission": "sms.manage",
+      "request": {
+        "parameters": [
+          "If-Match"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "UpdateSmsSettings"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "SmsSettings"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": true,
+        "header": "If-Match"
+      },
+      "audit": {
+        "required": true,
+        "action": "updateSmsSettings"
+      },
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/settings/sms/test",
+      "operationId": "testSmsSettings",
+      "permission": "sms.manage",
+      "request": {
+        "parameters": [],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "SmsTestRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "IntegrationTestResult"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "testSmsSettings"
+      },
+      "frontendConsumer": "apps/admin/src/features/settings/services/settingsApi.ts"
+    },
+    {
+      "method": "GET",
       "path": "/api/admin/v1/site-singletons/{kind}",
       "operationId": "getSiteSingletonState",
       "permission": "content.read",
@@ -3051,6 +3738,47 @@
         "required": false
       },
       "frontendConsumer": "apps/admin/src/features/content/services/contentApi.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v1/source-metadata",
+      "operationId": "listProductSourceMetadata",
+      "permission": "product.read",
+      "request": {
+        "parameters": [
+          "cursor",
+          "limit",
+          "kind",
+          "q"
+        ],
+        "body": []
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "ProductSourceMetadataPage"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "cursor",
+        "cursor": "cursor",
+        "limit": "limit"
+      },
+      "idempotency": {
+        "required": false
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": false
+      },
+      "frontendConsumer": "apps/admin/src/features/catalog/services/adminProductApi.ts"
     },
     {
       "method": "GET",
@@ -3297,6 +4025,94 @@
       "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
     },
     {
+      "method": "POST",
+      "path": "/api/admin/v1/users/{id}/password-reset",
+      "operationId": "resetAdminUserPassword",
+      "permission": "identity.manage",
+      "request": {
+        "parameters": [
+          "id",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "IdentityResetRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "TemporaryPasswordResult"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "resetAdminUserPassword"
+      },
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/users/{id}/recovery/reset",
+      "operationId": "resetAdminUserRecoveryKey",
+      "permission": "identity.manage",
+      "request": {
+        "parameters": [
+          "id",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "IdentityResetRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "RecoveryKeyResetResult"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "resetAdminUserRecoveryKey"
+      },
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
+    },
+    {
       "method": "DELETE",
       "path": "/api/admin/v1/users/{id}/sessions",
       "operationId": "revokeAdminUserSessions",
@@ -3325,6 +4141,50 @@
       "audit": {
         "required": true,
         "action": "revokeAdminUserSessions"
+      },
+      "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v1/users/{id}/totp-reset",
+      "operationId": "resetAdminUserTotp",
+      "permission": "identity.manage",
+      "request": {
+        "parameters": [
+          "id",
+          "Idempotency-Key"
+        ],
+        "body": [
+          {
+            "mediaType": "application/json",
+            "type": "IdentityResetRequest"
+          }
+        ]
+      },
+      "response": [
+        {
+          "status": 200,
+          "types": [
+            {
+              "mediaType": "application/json",
+              "type": "AdminUserRecord"
+            }
+          ]
+        }
+      ],
+      "pagination": {
+        "strategy": "none"
+      },
+      "idempotency": {
+        "required": true,
+        "header": "Idempotency-Key"
+      },
+      "concurrency": {
+        "required": false
+      },
+      "audit": {
+        "required": true,
+        "action": "resetAdminUserTotp"
       },
       "frontendConsumer": "apps/admin/src/features/identity/services/adminIdentityApi.ts"
     }

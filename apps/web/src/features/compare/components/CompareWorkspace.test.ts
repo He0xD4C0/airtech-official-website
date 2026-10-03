@@ -34,7 +34,7 @@ function product(slug: string, family: Product['family'], value: number): Produc
       operatingCondition: null,
       sourceReference: null,
       state: 'verified',
-    }],
+    }], sourceFacts: [],
     performanceCurves: [],
     sourceSnapshotId: crypto.randomUUID(),
     sourceRevision: 'source-1',

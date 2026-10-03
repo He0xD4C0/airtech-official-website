@@ -1,7 +1,43 @@
 use super::*;
 
 pub const API_PORT: u16 = 8080;
-pub const DEVELOPMENT_ADMIN_EMAIL: &str = "local-admin@airtek.invalid";
+
+/// How the deployment-supplied administrator recovery key file is treated at
+/// startup. `Auto` generates a key only when the file is missing or empty.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AdminRecoveryKeyMode {
+    Auto,
+    Generate,
+    Load,
+}
+
+impl AdminRecoveryKeyMode {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Auto => "auto",
+            Self::Generate => "generate",
+            Self::Load => "load",
+        }
+    }
+}
+
+/// Behaviour when the CAPTCHA provider is unreachable. Fail-open keeps every
+/// sign-in method available; fail-closed restricts sign-in to the password
+/// method so a broken provider cannot lock every administrator out.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CaptchaFailureMode {
+    FailOpen,
+    FailClosed,
+}
+
+impl CaptchaFailureMode {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::FailOpen => "fail-open",
+            Self::FailClosed => "fail-closed",
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct FeishuCredentials {
@@ -56,9 +92,6 @@ pub struct Config {
     pub public_origin: String,
     pub admin_origin: String,
     pub database_url: Option<String>,
-    /// One-time deployment secret. It is accepted only by `/auth/setup` while
-    /// the user table is empty; it never authenticates normal API requests.
-    pub admin_bootstrap_token: Option<String>,
     /// Deployment-provided AEAD key used only to seal TOTP secrets at rest.
     /// The wrapper intentionally redacts its Debug representation.
     pub totp_encryption_key: Option<TotpEncryptionKey>,
@@ -91,17 +124,17 @@ pub struct Config {
     /// uploads instead of writing objects it cannot serve.
     pub media: MediaSettings,
     pub production: bool,
-    /// Explicit local-only convenience for the fixed seeded administrator.
-    /// Production builds reject the corresponding environment variable.
-    pub development_admin_password_only: bool,
-}
-
-impl Config {
-    pub fn development_password_only_for(&self, email: &str) -> bool {
-        cfg!(feature = "devtools")
-            && self.development_admin_password_only
-            && email.eq_ignore_ascii_case(DEVELOPMENT_ADMIN_EMAIL)
-    }
+    /// Initial administrator credentials. They are applied only while the user
+    /// table is empty (or while renaming the reserved development account) and
+    /// are ignored entirely on an initialized database.
+    pub admin_email: Option<String>,
+    pub admin_display_name: Option<String>,
+    pub admin_password: Option<String>,
+    /// Host directory mounted at a fixed container path that holds the
+    /// administrator recovery key file.
+    pub admin_recovery_key_dir: Option<String>,
+    pub admin_recovery_key_mode: AdminRecoveryKeyMode,
+    pub captcha_failure_mode: CaptchaFailureMode,
 }
 
 impl fmt::Debug for Config {
@@ -114,10 +147,6 @@ impl fmt::Debug for Config {
             .field(
                 "database_url",
                 &self.database_url.as_ref().map(|_| "[configured]"),
-            )
-            .field(
-                "admin_bootstrap_token",
-                &self.admin_bootstrap_token.as_ref().map(|_| "[configured]"),
             )
             .field("totp_encryption_key", &self.totp_encryption_key)
             .field(
@@ -154,10 +183,18 @@ impl fmt::Debug for Config {
             .field("trusted_proxy_cidrs", &self.trusted_proxy_cidrs)
             .field("media_storage", &self.media.storage_kind_label())
             .field("production", &self.production)
+            .field("admin_email", &self.admin_email)
+            .field("admin_display_name", &self.admin_display_name)
             .field(
-                "development_admin_password_only",
-                &self.development_admin_password_only,
+                "admin_password",
+                &self.admin_password.as_ref().map(|_| "[configured]"),
             )
+            .field("admin_recovery_key_dir", &self.admin_recovery_key_dir)
+            .field(
+                "admin_recovery_key_mode",
+                &self.admin_recovery_key_mode.label(),
+            )
+            .field("captcha_failure_mode", &self.captcha_failure_mode.label())
             .finish()
     }
 }

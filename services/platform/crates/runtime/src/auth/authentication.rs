@@ -12,7 +12,9 @@ pub async fn authenticate(
     let row = sqlx::query(
             r#"SELECT session.id AS session_id, session.user_id, session.csrf_hash,
                       session.expires_at, session.last_seen_at, user_account.display_name, user_account.email,
-                      user_account.status, user_account.totp_confirmed_at
+                      user_account.status, user_account.totp_confirmed_at,
+                      user_account.must_change_password, user_account.phone_verified_at,
+                      user_account.recovery_key_hash, user_account.recovery_key_confirmed_at
                FROM sessions AS session
                JOIN users AS user_account ON user_account.id = session.user_id
                WHERE session.token_hash = $1 AND session.revoked_at IS NULL"#,
@@ -36,16 +38,20 @@ pub async fn authenticate(
         return Err(ApiError::unauthorized("The admin session has expired."));
     }
     let user_id: Uuid = row.try_get("user_id")?;
-    let (role, permissions) = load_roles_and_permissions(pool, user_id).await?;
+    let (role, role_keys, permissions) = load_roles_and_permissions(pool, user_id).await?;
     sqlx::query("UPDATE sessions SET last_seen_at=now() WHERE id=$1")
         .bind(row.try_get::<Uuid, _>("session_id")?)
         .execute(pool)
         .await?;
+    let recovery_key_hash: Option<String> = row.try_get("recovery_key_hash")?;
+    let recovery_key_confirmed_at: Option<DateTime<Utc>> =
+        row.try_get("recovery_key_confirmed_at")?;
     Ok(AdminPrincipal {
         user_id,
         display_name: row.try_get("display_name")?,
         email: row.try_get("email")?,
         role,
+        role_keys,
         permissions,
         session_id: row.try_get("session_id")?,
         session_token_hash: supplied_hash,
@@ -53,9 +59,12 @@ pub async fn authenticate(
         totp_enabled: row
             .try_get::<Option<DateTime<Utc>>, _>("totp_confirmed_at")?
             .is_some(),
-        development_password_only: state
-            .config
-            .development_password_only_for(&row.try_get::<String, _>("email")?),
+        must_change_password: row.try_get("must_change_password")?,
+        must_confirm_recovery_key: recovery_key_hash.is_some()
+            && recovery_key_confirmed_at.is_none(),
+        phone_verified: row
+            .try_get::<Option<DateTime<Utc>>, _>("phone_verified_at")?
+            .is_some(),
     })
 }
 
@@ -87,16 +96,12 @@ pub async fn preview_session_is_authorized(
                      AND session.expires_at > now()
                      AND session.last_seen_at + ($3::bigint * interval '1 minute') > now()
                      AND user_account.status='active'
-                     AND (user_account.totp_confirmed_at IS NOT NULL
-                          OR ($4 AND lower(user_account.email)=lower($5)))
                      AND role_permission.permission_key='content.read'
                )"#,
     )
     .bind(session_id)
     .bind(user_id)
     .bind(SESSION_IDLE_MINUTES)
-    .bind(state.config.development_admin_password_only)
-    .bind(crate::config::DEVELOPMENT_ADMIN_EMAIL)
     .fetch_one(&state.pool)
     .await?)
 }

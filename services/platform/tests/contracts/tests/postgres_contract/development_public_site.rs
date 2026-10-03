@@ -1,16 +1,26 @@
 use super::*;
 
-use airtek_runtime::services::{
-    development_admin::{self, DevelopmentAdminInput},
-    development_public_site,
-};
+use airtek_runtime::services::development_public_site;
 
-fn admin_input() -> DevelopmentAdminInput {
-    DevelopmentAdminInput {
-        display_name: "AIRTEK Local Administrator".into(),
-        email: "local-admin@airtek.invalid".into(),
-        password: "Airtek-Local-Admin-20260917!".into(),
-    }
+/// The public-site fixture needs its owner account to exist; the administrator
+/// seed path is gone, so the test creates the row directly.
+async fn ensure_fixture_owner(pool: &sqlx::PgPool) {
+    let user_id = Uuid::new_v4();
+    sqlx::query(
+        r#"INSERT INTO users (id,email,password_hash,display_name,status,created_at,updated_at)
+           VALUES ($1,'local-admin@airtek.invalid','test-only-not-a-login-hash','AIRTEK Local Administrator','active',now(),now())"#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO user_roles(user_id,role_id) SELECT $1,id FROM roles WHERE key='super-admin'",
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .unwrap();
 }
 
 #[tokio::test]
@@ -38,9 +48,7 @@ async fn public_seed_is_transactional_idempotent_and_refuses_partial_state() {
         .unwrap()
         .iter()
         .all(|entry| entry["missing"] == true));
-    development_admin::ensure(sandbox.pool(), &admin_input())
-        .await
-        .unwrap();
+    ensure_fixture_owner(sandbox.pool()).await;
 
     let created = development_public_site::ensure(sandbox.pool(), "local-admin@airtek.invalid")
         .await

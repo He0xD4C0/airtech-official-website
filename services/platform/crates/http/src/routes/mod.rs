@@ -82,7 +82,6 @@ pub fn build_router(state: AppState) -> Router {
                     header::IF_MATCH,
                     HeaderName::from_static("idempotency-key"),
                     HeaderName::from_static(airtek_runtime::auth::CSRF_HEADER),
-                    HeaderName::from_static("x-totp-code"),
                 ])
                 .expose_headers([
                     HeaderName::from_static(airtek_runtime::auth::CSRF_HEADER),
@@ -128,9 +127,14 @@ async fn require_admin(
             .ok_or_else(|| {
                 ApiError::forbidden("This admin route has no RBAC policy and is denied by default.")
             })?;
-    if !principal.business_access_enabled() {
+    if principal.must_change_password {
         return Err(ApiError::forbidden(
-            "This account must enable TOTP before accessing Admin business data.",
+            "This account must change its initial password before accessing admin data.",
+        ));
+    }
+    if principal.must_confirm_recovery_key {
+        return Err(ApiError::forbidden(
+            "This account must confirm the administrator recovery key before accessing admin data.",
         ));
     }
     if !permission.allows(&principal) {

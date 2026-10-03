@@ -32,5 +32,5 @@ pub(super) fn visibility_sql(user_parameter: usize) -> String {
 }
 
 pub(super) fn is_super_admin(principal: &AdminPrincipal) -> bool {
-    principal.role == "super-admin"
+    principal.is_super_admin()
 }

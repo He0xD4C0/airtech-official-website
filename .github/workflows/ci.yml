@@ -1,16 +1,14 @@
-name: Tag CI and GHCR publish
+name: CI
 
 on:
   push:
     tags:
-      - '*'
+      - 'dev-arm64-*'
+      - 'release-x86-*'
+  workflow_dispatch:
 
 permissions:
   contents: read
-
-concurrency:
-  group: tag-release-${{ github.ref }}
-  cancel-in-progress: false
 
 jobs:
   release-metadata:
@@ -18,25 +16,102 @@ jobs:
     outputs:
       image_prefix: ${{ steps.release.outputs.image_prefix }}
       release_tag: ${{ steps.release.outputs.release_tag }}
+      tag_prefix: ${{ steps.release.outputs.tag_prefix }}
+      target_platform: ${{ steps.release.outputs.target_platform }}
+      runner: ${{ steps.release.outputs.runner }}
+      image_suffix: ${{ steps.release.outputs.image_suffix }}
     steps:
       - id: release
-        name: Validate the immutable release tag
+        name: Resolve the release tag, platform and runner
         env:
           RELEASE_TAG: ${{ github.ref_name }}
           REPOSITORY_OWNER: ${{ github.repository_owner }}
+          CONFIGURED_IMAGE_PREFIX: ${{ vars.AIRTEK_IMAGE_PREFIX }}
+          CONFIGURED_ARM64_RUNNER: ${{ vars.AIRTEK_ARM64_RUNNER }}
         run: |
           set -euo pipefail
-          if ! printf '%s' "$RELEASE_TAG" | grep -Eq '^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$'; then
-            echo "Git tag must also be a valid OCI image tag." >&2
-            exit 1
-          fi
-          if [ "$(printf '%s' "$RELEASE_TAG" | tr '[:upper:]' '[:lower:]')" = latest ]; then
-            echo "The mutable tag 'latest' is not a valid release identifier." >&2
+          if ! printf '%s' "$RELEASE_TAG" | grep -Eq '^(dev-arm64|release-x86)-[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$'; then
+            echo "Release tags must match dev-arm64-* or release-x86-* and stay OCI-safe." >&2
             exit 1
           fi
           owner=$(printf '%s' "$REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
-          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
-          echo "image_prefix=ghcr.io/$owner/airtekpower" >> "$GITHUB_OUTPUT"
+          prefix=${CONFIGURED_IMAGE_PREFIX:-ghcr.io/$owner/airtekpower}
+          case "$RELEASE_TAG" in
+            dev-arm64-*)
+              platform=linux/arm64
+              tag_prefix=dev-arm64-
+              runner=${CONFIGURED_ARM64_RUNNER:-ubuntu-24.04-arm}
+              suffix=-dev
+              ;;
+            *)
+              platform=linux/amd64
+              tag_prefix=release-x86-
+              runner=ubuntu-latest
+              suffix=
+              ;;
+          esac
+          {
+            echo "release_tag=$RELEASE_TAG"
+            echo "image_prefix=$prefix"
+            echo "tag_prefix=$tag_prefix"
+            echo "target_platform=$platform"
+            echo "runner=$runner"
+            echo "image_suffix=$suffix"
+          } >> "$GITHUB_OUTPUT"
+
+  object-storage-images:
+    needs:
+      - release-metadata
+    runs-on: ${{ needs.release-metadata.outputs.runner }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: minio
+            dockerfile: infra/docker/Dockerfile.minio
+          - image: minio-mc
+            dockerfile: infra/docker/Dockerfile.mc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Refuse to overwrite an already published release image
+        env:
+          IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
+        run: |
+          if docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "Refusing to overwrite the published image $IMAGE; a release tag is immutable." >&2
+            exit 1
+          fi
+      - id: publish
+        name: Build and publish ${{ matrix.image }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: ${{ needs.release-metadata.outputs.target_platform }}
+          push: true
+          tags: ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
+          build-args: |
+            GOPROXY=${{ vars.AIRTEK_GOPROXY || 'https://proxy.golang.org,direct' }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ needs.release-metadata.outputs.target_platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ needs.release-metadata.outputs.target_platform }}
+      - name: Record the immutable image digest
+        env:
+          IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
+          DIGEST: ${{ steps.publish.outputs.digest }}
+        run: |
+          printf '### `%s`\n\nDigest: `%s`\n' "$IMAGE" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"
 
   rust-msrv:
     runs-on: ubuntu-latest
@@ -98,14 +173,28 @@ jobs:
       - run: pnpm check:media-boundary
 
   browser-contracts:
-    runs-on: ubuntu-latest
+    needs:
+      - release-metadata
+      - object-storage-images
+    permissions:
+      contents: read
+      packages: read
+    runs-on: ${{ needs.release-metadata.outputs.runner }}
     timeout-minutes: 35
     env:
       E2E_PUBLIC_ORIGIN: http://www.airtek.test:8088
       E2E_ADMIN_ORIGIN: http://admin.airtek.test:8088
       E2E_API_ORIGIN: http://api.airtek.test:8088
+      AIRTEK_OBJECT_STORE_IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-minio${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
+      AIRTEK_OBJECT_STORE_MC_IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-minio-mc${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
     steps:
       - uses: actions/checkout@v4
+      - name: Log in to GHCR for the private object-storage images
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
       - uses: pnpm/action-setup@v4
         with:
           version: 11.19.0
@@ -140,7 +229,13 @@ jobs:
           retention-days: 7
 
   rust:
-    runs-on: ubuntu-latest
+    needs:
+      - release-metadata
+      - object-storage-images
+    permissions:
+      contents: read
+      packages: read
+    runs-on: ${{ needs.release-metadata.outputs.runner }}
     services:
       postgres:
         image: postgres:17-alpine
@@ -163,9 +258,24 @@ jobs:
       FLYWAY_USER: airtek
       FLYWAY_PASSWORD: airtek
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: airtek_runtime
-      AIRTEK_FLYWAY_TARGET: 27
+      AIRTEK_FLYWAY_TARGET: 31
+      # A fresh database provisions its root administrator from the environment;
+      # the recovery key is generated into the writable runner directory.
+      AIRTEK_ADMIN_EMAIL: ci-admin@airtek.invalid
+      AIRTEK_ADMIN_DISPLAY_NAME: AIRTEK CI Administrator
+      AIRTEK_ADMIN_PASSWORD: Airtek-CI-Admin-123!
+      AIRTEK_ADMIN_RECOVERY_KEY_DIR: /tmp/airtek-admin-recovery-key
+      AIRTEK_ADMIN_RECOVERY_KEY_MODE: auto
+      AIRTEK_OBJECT_STORE_IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-minio${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
+      AIRTEK_OBJECT_STORE_MC_IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-minio-mc${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
     steps:
       - uses: actions/checkout@v4
+      - name: Log in to GHCR for the private object-storage images
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
       - name: Generate a temporary CI-only runtime database password
         run: |
           runtime_password="$(openssl rand -hex 32)"
@@ -374,6 +484,11 @@ jobs:
 
   deployment:
     runs-on: ubuntu-latest
+    env:
+      # Compose interpolates profile-gated services even when the profile is
+      # inactive, so the configuration checks need placeholder image references.
+      AIRTEK_OBJECT_STORE_IMAGE: ghcr.io/validation-only/airtekpower-minio:validation
+      AIRTEK_OBJECT_STORE_MC_IMAGE: ghcr.io/validation-only/airtekpower-minio-mc:validation
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -383,6 +498,8 @@ jobs:
       - run: node scripts/checks/assert-production-infrastructure.mjs
       - name: Validate every supported Compose combination
         run: node scripts/checks/assert-compose-configs.mjs
+      - run: node scripts/checks/assert-migration-release-config.mjs
+      - run: node scripts/checks/assert-object-storage-build.mjs
       - run: docker compose --project-directory . config --quiet
       - name: Validate opt-in debug port override
         run: docker compose --project-directory . -f compose.yaml -f infra/compose/debug.yaml --profile object-storage config --quiet
@@ -413,6 +530,7 @@ jobs:
             airtek-gateway:ci nginx -t
 
   publish-images:
+    if: github.ref_type == 'tag'
     needs:
       - release-metadata
       - rust-msrv
@@ -421,7 +539,7 @@ jobs:
       - browser-contracts
       - rust
       - deployment
-    runs-on: ubuntu-latest
+    runs-on: ${{ needs.release-metadata.outputs.runner }}
     permissions:
       contents: read
       packages: write
@@ -443,42 +561,51 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
+      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
+      - name: Refuse to overwrite an already published release image
+        env:
+          IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
+        run: |
+          if docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "Refusing to overwrite the published image $IMAGE; a release tag is immutable." >&2
+            exit 1
+          fi
       - id: publish
         name: Build and publish ${{ matrix.image }}
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          platforms: ${{ vars.PRODUCTION_CONTAINER_PLATFORM || 'linux/amd64' }}
+          platforms: ${{ needs.release-metadata.outputs.target_platform }}
           push: true
-          tags: |
-            ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}:${{ needs.release-metadata.outputs.release_tag }}
-            ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}:latest
+          tags: ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ needs.release-metadata.outputs.release_tag }}
           provenance: mode=max
           sbom: true
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ needs.release-metadata.outputs.target_platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ needs.release-metadata.outputs.target_platform }}
       - name: Record the immutable image digest
         env:
-          IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}:${{ needs.release-metadata.outputs.release_tag }}
+          IMAGE: ${{ needs.release-metadata.outputs.image_prefix }}-${{ matrix.image }}${{ needs.release-metadata.outputs.image_suffix }}:${{ needs.release-metadata.outputs.release_tag }}
           DIGEST: ${{ steps.publish.outputs.digest }}
         run: |
           printf '### `%s`\n\nDigest: `%s`\n' "$IMAGE" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"
 
   prune-images:
+    if: github.ref_type == 'tag'
     needs:
       - release-metadata
       - publish-images
+      - object-storage-images
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -492,14 +619,15 @@ jobs:
           - platform
           - migrations
           - gateway
+          - minio
+          - minio-mc
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
       - name: Keep the five newest release images
         env:
           GH_TOKEN: ${{ github.token }}
           PACKAGE_OWNER: ${{ github.repository_owner }}
-          PACKAGE_NAME: airtekpower-${{ matrix.image }}
+          PACKAGE_NAME: airtekpower-${{ matrix.image }}${{ needs.release-metadata.outputs.image_suffix }}
           KEEP_RELEASE_VERSIONS: '5'
+          RETENTION_TAG_PREFIX: ${{ needs.release-metadata.outputs.tag_prefix }}
         run: bash scripts/maintenance/prune-ghcr-versions.sh

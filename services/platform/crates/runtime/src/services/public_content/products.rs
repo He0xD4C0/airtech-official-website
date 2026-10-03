@@ -233,6 +233,7 @@ pub async fn load_published_product_assets(
            FROM asset_references reference
            JOIN media_assets asset ON asset.id=reference.media_asset_id
              AND asset.deleted_at IS NULL
+             AND asset.access_level='public'
            WHERE reference.product_id=$1 AND reference.product_revision=$2
            ORDER BY reference.sort_order,reference.id"#,
     )
@@ -249,6 +250,13 @@ pub async fn load_published_product_assets(
         .iter()
         .map(|row| {
             let asset_id: Uuid = row.try_get("id")?;
+            let media_type: String = row.try_get("media_type")?;
+            let byte_size: i64 = row.try_get("byte_size")?;
+            if !is_public_source_asset_media_type(&media_type) || byte_size < 1 {
+                return Err(ApiError::service_unavailable(
+                    "Published product attachments include an unsupported media type.",
+                ));
+            }
             let has_preview = row
                 .try_get::<Option<String>, _>("preview_storage_key")?
                 .is_some();
@@ -256,19 +264,41 @@ pub async fn load_published_product_assets(
                 asset_id,
                 usage: row.try_get("usage")?,
                 original_name: row.try_get("original_name")?,
-                media_type: row.try_get("media_type")?,
-                byte_size: row.try_get("byte_size")?,
+                media_type,
+                byte_size,
                 sha256: row.try_get("checksum")?,
                 download_url: format!("/api/public/v1/media/{asset_id}/download"),
                 preview_url: has_preview.then(|| format!("/api/public/v1/media/{asset_id}")),
             })
         })
-        .collect::<Result<Vec<_>, sqlx::Error>>()?;
+        .collect::<Result<Vec<_>, ApiError>>()?;
     Ok(ProductSourceAssetDocument {
         product_id,
         product_revision,
         items,
     })
+}
+
+fn is_public_source_asset_media_type(value: &str) -> bool {
+    matches!(
+        value,
+        "image/png"
+            | "image/jpeg"
+            | "image/webp"
+            | "application/pdf"
+            | "application/msword"
+            | "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            | "application/vnd.ms-excel"
+            | "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            | "image/vnd.dxf"
+            | "image/vnd.dwg"
+            | "model/step"
+            | "model/iges"
+            | "model/stl"
+            | "model/obj"
+            | "application/x-3ds"
+            | "application/octet-stream"
+    )
 }
 
 const PRODUCT_MATCHES_SQL: &str = r#"FROM published_products published
@@ -324,4 +354,25 @@ pub async fn load_catalog_page(
     let products = load_published_product_rows(&mut *transaction, filter).await?;
     transaction.commit().await?;
     Ok((products, facets))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_public_source_asset_media_type;
+
+    #[test]
+    fn product_attachments_allow_only_the_contract_media_types() {
+        for allowed in [
+            "image/png",
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "image/vnd.dwg",
+            "model/step",
+        ] {
+            assert!(is_public_source_asset_media_type(allowed), "{allowed}");
+        }
+        assert!(!is_public_source_asset_media_type("text/html"));
+        assert!(!is_public_source_asset_media_type("application/zip"));
+    }
 }

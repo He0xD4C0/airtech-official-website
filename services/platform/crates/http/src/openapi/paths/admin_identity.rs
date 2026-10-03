@@ -113,6 +113,81 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
     );
     add(
         paths,
+        "/api/admin/v1/users/{id}/password-reset",
+        "post",
+        admin(
+            params(
+                body(
+                    op(
+                        "resetAdminUserPassword",
+                        "Issue a one-time password, force a change and revoke every session of the account",
+                        "adminIdentity",
+                        [(
+                            "200",
+                            json_response(
+                                "One-time password for the account holder",
+                                r("TemporaryPasswordResult"),
+                            ),
+                        )],
+                    ),
+                    r("IdentityResetRequest"),
+                ),
+                vec![path_param("id", uuid()), idempotency_param()],
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/users/{id}/totp-reset",
+        "post",
+        admin(
+            params(
+                body(
+                    op(
+                        "resetAdminUserTotp",
+                        "Clear the TOTP enrolment and revoke every session of the account",
+                        "adminIdentity",
+                        [(
+                            "200",
+                            json_response("Management user updated", r("AdminUserRecord")),
+                        )],
+                    ),
+                    r("IdentityResetRequest"),
+                ),
+                vec![path_param("id", uuid()), idempotency_param()],
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/users/{id}/recovery/reset",
+        "post",
+        admin(
+            params(
+                body(
+                    op(
+                        "resetAdminUserRecoveryKey",
+                        "Rotate the root administrator recovery key; the plaintext is returned exactly once",
+                        "adminIdentity",
+                        [(
+                            "200",
+                            json_response(
+                                "Rotated administrator recovery key",
+                                r("RecoveryKeyResetResult"),
+                            ),
+                        )],
+                    ),
+                    r("IdentityResetRequest"),
+                ),
+                vec![path_param("id", uuid()), idempotency_param()],
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
         "/api/admin/v1/user-invitations",
         "get",
         admin(
@@ -204,6 +279,33 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
     );
     add(
         paths,
+        "/api/admin/v1/roles",
+        "post",
+        admin(
+            params(
+                body(
+                    op(
+                        "createAdminRole",
+                        "Create a custom administrator role",
+                        "adminIdentity",
+                        [(
+                            "201",
+                            response_header(
+                                json_response("Role definition created", r("AdminRoleRecord")),
+                                "ETag",
+                                "New role revision tag",
+                            ),
+                        )],
+                    ),
+                    r("CreateAdminRole"),
+                ),
+                vec![idempotency_param()],
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
         "/api/admin/v1/roles/{id}",
         "get",
         admin(
@@ -252,6 +354,27 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
                     path_param("id", uuid()),
                     if_match_param(),
                     idempotency_param(),
+                ],
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/roles/{id}",
+        "delete",
+        admin(
+            params(
+                op(
+                    "deleteAdminRole",
+                    "Delete an unassigned custom administrator role",
+                    "adminIdentity",
+                    [("204", empty_response("Role deleted"))],
+                ),
+                vec![
+                    path_param("id", uuid()),
+                    if_match_param(),
+                    query_param("reason", true, json!({"type": "string", "minLength": 10})),
                 ],
             ),
             true,

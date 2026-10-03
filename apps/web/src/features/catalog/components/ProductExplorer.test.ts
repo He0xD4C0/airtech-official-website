@@ -26,7 +26,7 @@ const product: Product = {
   sortOrder: 0,
   relatedContentIds: [],
   mediaGallery: [],
-  specifications: [],
+    specifications: [], sourceFacts: [],
   performanceCurves: [],
   sourceSnapshotId: 'c44656ad-fc7a-41c0-909e-930466096b37',
   sourceRevision: 'source-8',

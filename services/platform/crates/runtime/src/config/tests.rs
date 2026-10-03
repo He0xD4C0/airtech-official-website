@@ -78,30 +78,25 @@ mod cases {
 
     #[test]
     pub(super) fn production_requires_product_staging_and_analytics_keys() {
-        let totp = TotpEncryptionKey([1; 32]);
         let invitation = InvitationReplayEncryptionKey([5; 32]);
         let product = ProductStagingEncryptionKey([3; 32]);
         let analytics = AnalyticsTokenHmacKey([4; 32]);
         assert!(matches!(
-            require_production_keys(true, Some(&totp), Some(&invitation), None, Some(&analytics)),
+            require_production_keys(true, Some(&invitation), None, Some(&analytics)),
             Err(ConfigError::MissingProductStagingEncryptionKey)
         ));
         assert!(matches!(
-            require_production_keys(true, Some(&totp), Some(&invitation), Some(&product), None),
+            require_production_keys(true, Some(&invitation), Some(&product), None),
             Err(ConfigError::MissingAnalyticsTokenHmacKey)
         ));
         assert!(matches!(
-            require_production_keys(true, Some(&totp), None, Some(&product), Some(&analytics)),
+            require_production_keys(true, None, Some(&product), Some(&analytics)),
             Err(ConfigError::MissingInvitationReplayEncryptionKey)
         ));
-        assert!(require_production_keys(
-            true,
-            Some(&totp),
-            Some(&invitation),
-            Some(&product),
-            Some(&analytics)
-        )
-        .is_ok());
+        assert!(
+            require_production_keys(true, Some(&invitation), Some(&product), Some(&analytics))
+                .is_ok()
+        );
     }
 
     #[test]
@@ -160,16 +155,5 @@ mod cases {
             parse_approved_product_master(false, None, None, None, None).unwrap(),
             None
         );
-    }
-
-    #[cfg(feature = "devtools")]
-    #[test]
-    pub(super) fn password_only_development_auth_is_limited_to_the_fixed_local_admin() {
-        let mut config = Config::for_test();
-        config.development_admin_password_only = true;
-        assert!(config.development_password_only_for(DEVELOPMENT_ADMIN_EMAIL));
-        assert!(config.development_password_only_for("LOCAL-ADMIN@AIRTEK.INVALID"));
-        assert!(!config.development_password_only_for("codex-qa@airtek.invalid"));
-        assert!(!config.development_password_only_for("admin@example.com"));
     }
 }

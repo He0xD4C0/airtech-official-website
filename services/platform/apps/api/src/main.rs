@@ -25,6 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let address = SocketAddr::from(config.bind_address());
     let state = AppState::new(config)?;
     state.verify_runtime_ready().await?;
+    airtek_runtime::services::admin_provisioning::ensure(&state.pool, &state.config).await?;
     let listener = tokio::net::TcpListener::bind(address).await?;
     tracing::info!(%address, "AIRTEKPOWER platform API listening");
     axum::serve(

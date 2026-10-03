@@ -244,15 +244,7 @@ requireMatch(serviceBlock(compose, 'flyway-migrate'), new RegExp(`AIRTEK_FLYWAY_
 requireMatch(serviceBlock(compose, 'flyway-migrate'), /AIRTEK_FLYWAY_ALLOW_SHARED_ROLE:\s*"true"/u, 'Local Compose must make its shared development role exception explicit.')
 forbidMatch(serviceBlock(compose, 'flyway-migrate'), /DATABASE_URL/u, 'Flyway must use its JDBC deployment credentials, not the Rust DATABASE_URL.')
 requireMatch(serviceBlock(compose, 'platform-maintenance'), /entrypoint:\s*\["\/usr\/local\/bin\/airtek-maintenance"\]/u, 'Local maintenance must use the dedicated binary.')
-requireMatch(serviceBlock(compose, 'platform-maintenance'), /command:\s*\["\$\{AIRTEK_MAINTENANCE_COMMAND:-prepare-development-runtime\}"\]/u, 'Local maintenance must prepare runtime data and the optional development administrator.')
-for (const marker of [
-  /AIRTEK_DEV_ADMIN_SEED:\s*\$\{AIRTEK_DEV_ADMIN_SEED:-true\}/u,
-  /AIRTEK_DEV_ADMIN_DISPLAY_NAME:\s*AIRTEK Local Administrator/u,
-  /AIRTEK_DEV_ADMIN_EMAIL:\s*local-admin@airtek\.invalid/u,
-  /AIRTEK_DEV_ADMIN_PASSWORD:\s*Airtek-Local-Admin-20260917!/u,
-]) {
-  requireMatch(serviceBlock(compose, 'platform-maintenance'), marker, 'Local maintenance must own the fixed development administrator configuration.')
-}
+requireMatch(serviceBlock(compose, 'platform-maintenance'), /command:\s*\["\$\{AIRTEK_MAINTENANCE_COMMAND:-prepare-development-runtime\}"\]/u, 'Local maintenance must prepare runtime data and the optional public-site seed.')
 requireMatch(serviceBlock(compose, 'platform-maintenance'), /flyway-migrate:[\s\S]*condition:\s*service_completed_successfully/u, 'Local maintenance must wait for Flyway.')
 for (const service of ['platform-api', 'platform-worker']) {
   requireMatch(serviceBlock(compose, service), /platform-maintenance:[\s\S]*condition:\s*service_completed_successfully/u, `${service} must wait for runtime preparation.`)
@@ -262,7 +254,6 @@ if (migrationWaits < 2) failures.push('Both API and Worker must wait for a succe
 requireMatch(compose, /^\s{2}gateway:\s*$/mu, 'Compose must define the HTTP gateway service.')
 requireMatch(compose, /dockerfile:\s*infra\/docker\/Dockerfile\.gateway/u, 'Compose must build the non-root gateway image.')
 requireMatch(compose, /PUBLIC_API_INTERNAL_URL:\s*\$\{PUBLIC_API_INTERNAL_URL:-http:\/\/platform-api:8080\/api\/public\/v1\}/u, 'Public SSR must receive a configurable internal API URL with the fixed service default.')
-requireMatch(compose, /AIRTEK_ADMIN_BOOTSTRAP_TOKEN:/u, 'Compose must configure the setup-only admin bootstrap secret.')
 forbidMatch(compose, /AIRTEK_ADMIN_BEARER_TOKEN:/u, 'Compose must not present the setup secret as a reusable bearer token.')
 for (const [variable, hostPort, containerPort] of [
   ['AIRTEK_API_HOST_PORT', 8080, 8080],
@@ -289,9 +280,9 @@ requireMatch(serviceBlock(compose, 'minio'), /profiles:\s*\["minio"\]/u, 'Local 
 requireMatch(serviceBlock(compose, 'minio-create-bucket'), /profiles:\s*\["minio"\]/u, 'Local bucket initialization must use the minio Compose profile.')
 requireMatch(serviceBlock(compose, 'minio'), /\$\{AIRTEK_OBJECT_STORE_BIND_ADDRESS:-127\.0\.0\.1\}:\$\{AIRTEK_OBJECT_STORE_HOST_PORT:-19000\}:9000[\s\S]*\$\{AIRTEK_OBJECT_STORE_BIND_ADDRESS:-127\.0\.0\.1\}:\$\{AIRTEK_OBJECT_STORE_CONSOLE_HOST_PORT:-19001\}:9001/u, 'Profiled MinIO ports must be configurable and loopback-only by default.')
 requireMatch(serviceBlock(compose, 'minio-create-bucket'), /mc mb --ignore-existing/u, 'Local object storage must create its media bucket idempotently.')
-requireMatch(serviceBlock(compose, 'minio'), /dockerfile:\s*infra\/docker\/Dockerfile\.minio/u, 'Local MinIO must build from the reviewed Dockerfile.')
+requireMatch(serviceBlock(compose, 'minio'), /image:\s*\$\{AIRTEK_OBJECT_STORE_IMAGE:\?/u, 'Local MinIO must pull the repository source-built image from a configured reference.')
 requireMatch(serviceBlock(compose, 'minio'), /healthcheck:[\s\S]*\/minio\/health\/live/u, 'Local MinIO must expose a container healthcheck.')
-requireMatch(serviceBlock(compose, 'minio-create-bucket'), /dockerfile:\s*infra\/docker\/Dockerfile\.minio-mc/u, 'Local mc must build from the reviewed Dockerfile.')
+requireMatch(serviceBlock(compose, 'minio-create-bucket'), /image:\s*\$\{AIRTEK_OBJECT_STORE_MC_IMAGE:\?/u, 'Local mc must pull the repository source-built client image from a configured reference.')
 requireMatch(serviceBlock(compose, 'minio-create-bucket'), /mc anonymous set download/u, 'Local media objects must be anonymously readable through their immutable URLs.')
 requireMatch(serviceBlock(compose, 'minio-create-bucket'), /depends_on:[\s\S]*minio:[\s\S]*condition:\s*service_healthy/u, 'Local bucket initialization must wait for a healthy MinIO server.')
 forbidMatch(serviceBlock(compose, 'platform-worker'), /^\s+(?:ports|expose):/mu, 'Worker must not expose or publish a listening port.')
@@ -369,7 +360,7 @@ for (const origin of ['AIRTEK_PUBLIC_ORIGIN=https://', 'AIRTEK_ADMIN_ORIGIN=http
 }
 requireMatch(productionEnv, flywayTargetPattern, `Production must target schema V${latestMigration}.`)
 forbidMatch(productionEnv, /^(?:AIRTEK_MEDIA_|AIRTEK_MINIO_|MINIO_|S3_)/mu, 'Production environment examples must not contain S3 or MinIO settings.')
-requireMatch(productionCompose, /AIRTEK_TOTP_ENCRYPTION_KEY:\s*\$\{AIRTEK_TOTP_ENCRYPTION_KEY:\?/u, 'Production must require a secret-manager TOTP encryption key.')
+requireMatch(productionCompose, /AIRTEK_TOTP_ENCRYPTION_KEY:\s*\$\{AIRTEK_TOTP_ENCRYPTION_KEY:-\}/u, 'Production must pass the optional TOTP encryption key so enrolment can be disabled without failing startup.')
 requireMatch(productionEnv, /^AIRTEK_TOTP_ENCRYPTION_KEY=REPLACE_/mu, 'Production environment example must declare the TOTP key placeholder.')
 for (const variable of ['FLYWAY_URL', 'FLYWAY_USER', 'FLYWAY_PASSWORD', 'FLYWAY_PLACEHOLDERS_RUNTIME_ROLE']) {
   requireMatch(serviceBlock(productionCompose, 'flyway-migrate'), new RegExp(`${variable}:\\s*\\$\\{${variable}:\\?`, 'u'), `Production Flyway must require ${variable}.`)
@@ -391,22 +382,19 @@ for (const variable of ['AIRTEK_ANALYTICS_ALLOWED_UTM_SOURCES', 'AIRTEK_ANALYTIC
   requireMatch(serviceBlock(productionCompose, 'platform-api'), new RegExp(`${variable}:\\s*\\$\\{${variable}`, 'u'), `Production API must receive ${variable}.`)
   requireMatch(productionEnv, new RegExp(`^${variable}=`, 'mu'), `Production environment example must declare ${variable}.`)
 }
-const productionRelease = read('.github/workflows/ci.yml')
-requireMatch(productionRelease, /^\s+packages:\s+write$/mu, 'Production image publishing must grant its job package-write permission.')
-requireMatch(productionRelease, /registry:\s+ghcr\.io/u, 'Production images must publish to GHCR.')
-requireMatch(productionRelease, /password:\s*\$\{\{ github\.token \}\}/u, 'GHCR publishing must use the short-lived GitHub workflow token.')
-requireMatch(productionRelease, /tags:\s*\|[\s\S]*:\$\{\{ needs\.release-metadata\.outputs\.release_tag \}\}[\s\S]*:\s*latest/u, 'Published images must use the selected Git tag and latest alias.')
-requireMatch(productionRelease, /KEEP_RELEASE_VERSIONS:\s*'5'/u, 'Production publishing must retain the five newest GHCR release images.')
-requireMatch(productionRelease, /run:\s*bash scripts\/maintenance\/prune-ghcr-versions\.sh/u, 'Production publishing must prune GHCR through the checked-in retention script.')
-forbidMatch(productionRelease, /ACR_/u, 'Production release workflow must not retain Alibaba Container Registry configuration.')
-requireMatch(productionRelease, /^\s+tags:\s*\n\s+- '\*'$/mu, 'Production publishing must be triggered by a Git tag push.')
-forbidMatch(productionRelease, /^\s+(?:workflow_dispatch|workflow_run|pull_request|schedule):/mu, 'No second workflow event may publish production images.')
-forbidMatch(productionRelease, /VITE_(?:PUBLIC|ADMIN).*ORIGIN|candidate/u, 'Production publishing must remain domain-neutral.')
-forbidMatch(productionRelease, /^  deploy:\s*$/mu, 'Image publishing must not contain a server deployment job.')
-forbidMatch(productionRelease, /ECS_|SSH_PRIVATE_KEY|deploy_after_publish/u, 'Image publishing must not accept server credentials or deployment controls.')
+
+const tagRelease = read('.github/workflows/ci.yml')
+requireMatch(tagRelease, /^\s+packages:\s+write$/mu, 'Tag publishing must grant the workflow package write permission.')
+requireMatch(tagRelease, /registry:\s+ghcr\.io/u, 'Release images must publish to GHCR.')
+requireMatch(tagRelease, /password:\s*\$\{\{ github\.token \}\}/u, 'GHCR publishing must use the short-lived GitHub workflow token.')
+requireMatch(tagRelease, /tags:\s+\$\{\{ needs\.release-metadata\.outputs\.image_prefix \}\}-\$\{\{ matrix\.image \}\}\$\{\{ needs\.release-metadata\.outputs\.image_suffix \}\}:\$\{\{ needs\.release-metadata\.outputs\.release_tag \}\}/u, 'Published images must use the configured prefix, stream suffix and exact release tag.')
+forbidMatch(tagRelease, /:latest\s*$/mu, 'Published images must not carry a mutable latest tag.')
+requireMatch(tagRelease, /^\s+- 'dev-arm64-\*'\n\s+- 'release-x86-\*'/mu, 'Tag CI must listen to the reviewed dev and release tag prefixes.')
+forbidMatch(tagRelease, /ECS_|SSH_PRIVATE_KEY|deploy_after_publish/u, 'Image publishing must not accept server credentials or deployment controls.')
+
 const productionDeploy = read('infra/deploy/deploy-app.sh')
-requireMatch(productionDeploy, /compose_release "\$release_dir" run --rm flyway-migrate validate\ncompose_release "\$release_dir" run --rm platform-maintenance\n/u, 'Production deployment must prepare runtime data immediately after Flyway validation.')
-requireMatch(productionDeploy, /AIRTEK_PLATFORM_IMAGE=\$image_prefix-platform:\$release_tag/u, 'Production deployment must reference the GHCR AIRTEKPOWER platform package by Git tag.')
+forbidMatch(productionDeploy, /run --rm flyway-migrate (?:migrate|validate)/u, 'Production deployment must migrate through the Compose dependency graph.')
+requireMatch(productionDeploy, /AIRTEK_PLATFORM_IMAGE=\$image_prefix-platform:\$release_id/u, 'Production deployment must reference the GHCR AIRTEKPOWER platform package.')
 
 const localEnvExample = read('.env.example')
 for (const variable of [

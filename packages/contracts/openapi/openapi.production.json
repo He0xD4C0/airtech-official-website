@@ -117,11 +117,18 @@
               },
               "sourceKind": {
                 "$ref": "#/components/schemas/DataClass"
+              },
+              "sourceWarnings": {
+                "items": {
+                  "$ref": "#/components/schemas/ProductSourceWarning"
+                },
+                "type": "array"
               }
             },
             "required": [
               "sourceKind",
               "missingAssets",
+              "sourceWarnings",
               "presentation"
             ],
             "type": "object"
@@ -190,6 +197,9 @@
             "format": "uuid",
             "type": "string"
           },
+          "isPreset": {
+            "type": "boolean"
+          },
           "key": {
             "type": "string"
           },
@@ -213,6 +223,7 @@
           "key",
           "displayName",
           "systemRole",
+          "isPreset",
           "revision",
           "permissions"
         ],
@@ -335,6 +346,20 @@
               }
             ]
           },
+          "phoneE164": {
+            "anyOf": [
+              {
+                "pattern": "^\\+[1-9][0-9]{7,14}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "phoneVerified": {
+            "type": "boolean"
+          },
           "revision": {
             "format": "int64",
             "minimum": 1,
@@ -370,6 +395,8 @@
           "status",
           "revision",
           "managerUserId",
+          "phoneE164",
+          "phoneVerified",
           "roles",
           "totpEnabled",
           "invitedAt",
@@ -956,6 +983,50 @@
         "required": [
           "assignedTo",
           "reason"
+        ],
+        "type": "object"
+      },
+      "AttemptRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "captchaToken": {
+            "anyOf": [
+              {
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "flowToken": {
+            "type": "string"
+          },
+          "method": {
+            "enum": [
+              "password",
+              "emailCode",
+              "smsCode"
+            ],
+            "type": "string"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "format": "password",
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "flowToken",
+          "method"
         ],
         "type": "object"
       },
@@ -1556,6 +1627,51 @@
         ],
         "type": "object"
       },
+      "CaptchaSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "provider": {
+            "enum": [
+              "turnstile",
+              "recaptcha",
+              "hcaptcha"
+            ],
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "siteKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "configured",
+          "provider",
+          "siteKey",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "CaptchaTestRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "minLength": 1,
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
       "CaseStudyTypeFields": {
         "additionalProperties": false,
         "properties": {
@@ -1583,6 +1699,28 @@
           }
         },
         "required": [],
+        "type": "object"
+      },
+      "ChangePasswordRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "currentPassword": {
+            "format": "password",
+            "type": "string",
+            "writeOnly": true
+          },
+          "newPassword": {
+            "format": "password",
+            "maxLength": 256,
+            "minLength": 12,
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
         "type": "object"
       },
       "CmsBodyPolicy": {
@@ -1989,6 +2127,20 @@
           "compact"
         ],
         "type": "string"
+      },
+      "ConfirmPhoneVerificationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "pattern": "^[0-9]{6}$",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
       },
       "ConsentedAnalyticsEvent": {
         "additionalProperties": false,
@@ -3167,6 +3319,40 @@
           "wide"
         ],
         "type": "string"
+      },
+      "CreateAdminRole": {
+        "additionalProperties": false,
+        "properties": {
+          "displayName": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "key": {
+            "maxLength": 64,
+            "minLength": 2,
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "reason": {
+            "minLength": 10,
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "displayName",
+          "permissions",
+          "reason"
+        ],
+        "type": "object"
       },
       "CreateAnalyticsConsent": {
         "additionalProperties": false,
@@ -5206,6 +5392,92 @@
         ],
         "type": "string"
       },
+      "IdentifyRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
+      "IdentifyResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "captchaProvider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "captchaRequired": {
+            "type": "boolean"
+          },
+          "captchaSiteKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "flowToken": {
+            "readOnly": true,
+            "type": "string"
+          },
+          "methods": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "flowToken",
+          "captchaRequired",
+          "methods"
+        ],
+        "type": "object"
+      },
+      "IdentityResetRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "minLength": 10,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "type": "object"
+      },
+      "IntegrationTestResult": {
+        "additionalProperties": false,
+        "properties": {
+          "delivered": {
+            "type": "boolean"
+          },
+          "verified": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "delivered",
+          "verified"
+        ],
+        "type": "object"
+      },
       "InvitationAcceptance": {
         "additionalProperties": false,
         "properties": {
@@ -5401,6 +5673,103 @@
           "email",
           "password"
         ],
+        "type": "object"
+      },
+      "LoginStepResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "factor": {
+            "anyOf": [
+              {
+                "enum": [
+                  "emailCode",
+                  "smsCode",
+                  "riskSms",
+                  "totp"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "codeSent",
+              "factorRequired"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "MailSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "fromAddress": {
+            "type": "string"
+          },
+          "fromName": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer"
+          },
+          "protocol": {
+            "enum": [
+              "starttls",
+              "tls",
+              "plain"
+            ],
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "configured",
+          "host",
+          "port",
+          "protocol",
+          "username",
+          "fromAddress",
+          "fromName",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "MailTestRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "to": {
+            "anyOf": [
+              {
+                "format": "email",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [],
         "type": "object"
       },
       "MediaAsset": {
@@ -6314,6 +6683,21 @@
         ],
         "type": "object"
       },
+      "PhoneVerificationStarted": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": [
+              "codeSent"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
       "PlatformSettings": {
         "additionalProperties": false,
         "properties": {
@@ -6511,6 +6895,12 @@
           "sortOrder": {
             "type": "integer"
           },
+          "sourceFacts": {
+            "items": {
+              "$ref": "#/components/schemas/SourceFact"
+            },
+            "type": "array"
+          },
           "sourceRevision": {
             "type": "string"
           },
@@ -6574,6 +6964,7 @@
           "relatedContentIds",
           "mediaGallery",
           "specifications",
+          "sourceFacts",
           "performanceCurves",
           "sourceSnapshotId",
           "sourceRevision",
@@ -7424,6 +7815,110 @@
         ],
         "type": "object"
       },
+      "ProductSourceMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "archiveSha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "attributes": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "capturedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "importedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SourceMetadataKind"
+          },
+          "label": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "rawFields": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "sourceRecordId": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sourceTable": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "sourceTable",
+          "sourceRecordId",
+          "archiveSha256",
+          "attributes",
+          "rawFields",
+          "capturedAt",
+          "importedAt"
+        ],
+        "type": "object"
+      },
+      "ProductSourceMetadataPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProductSourceMetadata"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object"
+      },
+      "ProductSourceWarning": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "detail": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "detail"
+        ],
+        "type": "object"
+      },
       "ProjectRfqContext": {
         "additionalProperties": false,
         "properties": {
@@ -7774,27 +8269,98 @@
         ],
         "type": "object"
       },
-      "RecoveryCodeSet": {
+      "RecoveryKeyResetResult": {
         "additionalProperties": false,
         "properties": {
-          "generatedAt": {
-            "format": "date-time",
+          "confirmed": {
+            "type": "boolean"
+          },
+          "origin": {
+            "enum": [
+              "generated"
+            ],
             "type": "string"
           },
-          "recoveryCodes": {
-            "items": {
-              "pattern": "^[A-HJ-NP-Z2-9]{4}(?:-[A-HJ-NP-Z2-9]{4}){3}$",
-              "type": "string"
-            },
-            "maxItems": 10,
-            "minItems": 10,
-            "readOnly": true,
-            "type": "array"
+          "recoveryKey": {
+            "type": "string",
+            "writeOnly": true
           }
         },
         "required": [
-          "recoveryCodes",
-          "generatedAt"
+          "recoveryKey",
+          "origin",
+          "confirmed"
+        ],
+        "type": "object"
+      },
+      "RecoveryKeyRotationResult": {
+        "additionalProperties": false,
+        "properties": {
+          "recoveryKey": {
+            "readOnly": true,
+            "type": "string"
+          },
+          "rotatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "recoveryKey",
+          "rotatedAt"
+        ],
+        "type": "object"
+      },
+      "RecoveryKeyState": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "type": "boolean"
+          },
+          "origin": {
+            "enum": [
+              "generated",
+              "provided"
+            ],
+            "type": "string"
+          },
+          "recoveryKey": {
+            "readOnly": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "origin",
+          "confirmed"
+        ],
+        "type": "object"
+      },
+      "RecoveryRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "format": "email",
+            "type": "string"
+          },
+          "newPassword": {
+            "format": "password",
+            "maxLength": 256,
+            "minLength": 12,
+            "type": "string",
+            "writeOnly": true
+          },
+          "recoveryKey": {
+            "maxLength": 52,
+            "minLength": 52,
+            "pattern": "^[A-Z2-7]{52}$",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "email",
+          "recoveryKey",
+          "newPassword"
         ],
         "type": "object"
       },
@@ -8954,14 +9520,29 @@
             "format": "uuid",
             "type": "string"
           },
+          "mustChangePassword": {
+            "type": "boolean"
+          },
+          "mustConfirmRecoveryKey": {
+            "type": "boolean"
+          },
           "permissions": {
             "items": {
               "type": "string"
             },
             "type": "array"
           },
+          "phoneVerified": {
+            "type": "boolean"
+          },
           "role": {
             "type": "string"
+          },
+          "roleKeys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "totpEnabled": {
             "type": "boolean"
@@ -8972,41 +9553,13 @@
           "displayName",
           "email",
           "role",
+          "roleKeys",
           "permissions",
           "environment",
-          "totpEnabled"
-        ],
-        "type": "object"
-      },
-      "SetupRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "bootstrapToken": {
-            "type": "string",
-            "writeOnly": true
-          },
-          "displayName": {
-            "maxLength": 120,
-            "minLength": 1,
-            "type": "string"
-          },
-          "email": {
-            "format": "email",
-            "type": "string"
-          },
-          "password": {
-            "format": "password",
-            "maxLength": 256,
-            "minLength": 12,
-            "type": "string",
-            "writeOnly": true
-          }
-        },
-        "required": [
-          "displayName",
-          "email",
-          "password",
-          "bootstrapToken"
+          "totpEnabled",
+          "phoneVerified",
+          "mustChangePassword",
+          "mustConfirmRecoveryKey"
         ],
         "type": "object"
       },
@@ -9070,6 +9623,58 @@
         ],
         "type": "object"
       },
+      "SmsSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "accessKeyId": {
+            "type": "string"
+          },
+          "configured": {
+            "type": "boolean"
+          },
+          "provider": {
+            "const": "aliyun",
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "revision": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "signName": {
+            "type": "string"
+          },
+          "templateCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "configured",
+          "provider",
+          "accessKeyId",
+          "signName",
+          "templateCode",
+          "region",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "SmsTestRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "phone": {
+            "pattern": "^\\+[1-9][0-9]{7,14}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone"
+        ],
+        "type": "object"
+      },
       "SocialLinkInput": {
         "additionalProperties": false,
         "properties": {
@@ -9089,6 +9694,61 @@
           "url"
         ],
         "type": "object"
+      },
+      "SourceFact": {
+        "additionalProperties": false,
+        "properties": {
+          "fieldName": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "operatingCondition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rawValue": {
+            "type": "string"
+          },
+          "sourceReference": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/FactState"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "fieldName",
+          "rawValue",
+          "sourceReference",
+          "state",
+          "unit",
+          "operatingCondition"
+        ],
+        "type": "object"
+      },
+      "SourceMetadataKind": {
+        "enum": [
+          "supplier",
+          "brand"
+        ],
+        "type": "string"
       },
       "SpecValue": {
         "additionalProperties": false,
@@ -9259,6 +9919,25 @@
           "invalid"
         ],
         "type": "string"
+      },
+      "StartPhoneVerificationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "currentPassword": {
+            "format": "password",
+            "type": "string",
+            "writeOnly": true
+          },
+          "phone": {
+            "pattern": "^\\+[1-9][0-9]{7,14}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phone",
+          "currentPassword"
+        ],
+        "type": "object"
       },
       "SyncMapping": {
         "additionalProperties": false,
@@ -9586,6 +10265,27 @@
         "required": [
           "items",
           "nextCursor"
+        ],
+        "type": "object"
+      },
+      "TemporaryPasswordResult": {
+        "additionalProperties": false,
+        "properties": {
+          "mustChangePassword": {
+            "type": "boolean"
+          },
+          "sessionsRevoked": {
+            "type": "boolean"
+          },
+          "temporaryPassword": {
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "temporaryPassword",
+          "mustChangePassword",
+          "sessionsRevoked"
         ],
         "type": "object"
       },
@@ -10114,6 +10814,10 @@
               }
             ]
           },
+          "phoneE164": {
+            "pattern": "^\\+[1-9][0-9]{7,14}$",
+            "type": "string"
+          },
           "reason": {
             "minLength": 10,
             "type": "string"
@@ -10152,6 +10856,47 @@
         },
         "required": [
           "status",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "UpdateCaptchaSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "provider": {
+            "enum": [
+              "turnstile",
+              "recaptcha",
+              "hcaptcha"
+            ],
+            "type": "string"
+          },
+          "reason": {
+            "minLength": 10,
+            "type": "string"
+          },
+          "secretKey": {
+            "anyOf": [
+              {
+                "format": "password",
+                "maxLength": 2048,
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "siteKey": {
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "siteKey",
           "reason"
         ],
         "type": "object"
@@ -10207,6 +10952,74 @@
           "intervalMinutes",
           "dailyEnabled",
           "dailyLocalTime"
+        ],
+        "type": "object"
+      },
+      "UpdateMailSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "fromAddress": {
+            "format": "email",
+            "type": "string"
+          },
+          "fromName": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "host": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "format": "password",
+                "maxLength": 2048,
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "port": {
+            "maximum": 65535,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "protocol": {
+            "enum": [
+              "starttls",
+              "tls",
+              "plain"
+            ],
+            "type": "string"
+          },
+          "reason": {
+            "minLength": 10,
+            "type": "string"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "host",
+          "port",
+          "protocol",
+          "fromAddress",
+          "fromName",
+          "reason"
         ],
         "type": "object"
       },
@@ -10338,6 +11151,66 @@
         ],
         "type": "object"
       },
+      "UpdateSmsSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "accessKeyId": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "accessKeySecret": {
+            "anyOf": [
+              {
+                "format": "password",
+                "maxLength": 2048,
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider": {
+            "const": "aliyun",
+            "type": "string"
+          },
+          "reason": {
+            "minLength": 10,
+            "type": "string"
+          },
+          "region": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "signName": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "templateCode": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "signName",
+          "templateCode",
+          "region",
+          "reason"
+        ],
+        "type": "object"
+      },
       "UserAdminSummary": {
         "allOf": [
           {
@@ -10445,6 +11318,23 @@
           "fieldPath",
           "code",
           "detail"
+        ],
+        "type": "object"
+      },
+      "VerifyRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "writeOnly": true
+          },
+          "flowToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "flowToken",
+          "code"
         ],
         "type": "object"
       }
@@ -11210,6 +12100,268 @@
         ]
       }
     },
+    "/api/admin/v1/auth/attempt": {
+      "post": {
+        "operationId": "attemptAdministratorSignIn",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttemptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginStepResponse"
+                }
+              }
+            },
+            "description": "Next sign-in step"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "summary": "Verify the password or send an email or SMS verification code",
+        "tags": [
+          "adminAuth"
+        ]
+      }
+    },
+    "/api/admin/v1/auth/identify": {
+      "post": {
+        "operationId": "identifyAdministrator",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdentifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentifyResponse"
+                }
+              }
+            },
+            "description": "Sign-in methods and CAPTCHA requirement"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "summary": "Start a multi-step administrator sign-in without revealing whether the account exists",
+        "tags": [
+          "adminAuth"
+        ]
+      }
+    },
     "/api/admin/v1/auth/invitations/accept": {
       "post": {
         "operationId": "acceptAdministratorInvitation",
@@ -11606,29 +12758,22 @@
         ]
       }
     },
-    "/api/admin/v1/auth/recovery-codes/regenerate": {
+    "/api/admin/v1/auth/password": {
       "post": {
-        "operationId": "regenerateRecoveryCodes",
+        "operationId": "changeAdministratorPassword",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TotpCodeRequest"
+                "$ref": "#/components/schemas/ChangePasswordRequest"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecoveryCodeSet"
-                }
-              }
-            },
-            "description": "Replacement recovery codes"
+          "204": {
+            "description": "Password changed"
           },
           "400": {
             "content": {
@@ -11737,7 +12882,651 @@
             "csrfToken": []
           }
         ],
-        "summary": "Invalidate prior recovery codes and return a new one-time set",
+        "summary": "Change the current administrator password and revoke other sessions",
+        "tags": [
+          "adminAuth"
+        ]
+      }
+    },
+    "/api/admin/v1/auth/phone/confirm": {
+      "post": {
+        "operationId": "confirmAdministratorPhoneVerification",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmPhoneVerificationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Phone number verified"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Confirm the binding code and mark the phone number verified",
+        "tags": [
+          "adminAuth"
+        ]
+      }
+    },
+    "/api/admin/v1/auth/phone/verification": {
+      "post": {
+        "operationId": "startAdministratorPhoneVerification",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartPhoneVerificationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhoneVerificationStarted"
+                }
+              }
+            },
+            "description": "Binding code sent"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Send a binding code to a new phone number after verifying the current password",
+        "tags": [
+          "adminAuth"
+        ]
+      }
+    },
+    "/api/admin/v1/auth/recovery": {
+      "post": {
+        "operationId": "recoverAdministratorWithKey",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoveryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryKeyRotationResult"
+                }
+              }
+            },
+            "description": "Rotated recovery key"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "summary": "Reset the root administrator with the offline recovery key and rotate it",
+        "tags": [
+          "adminAuth"
+        ]
+      }
+    },
+    "/api/admin/v1/auth/recovery-key": {
+      "get": {
+        "operationId": "getAdministratorRecoveryKey",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryKeyState"
+                }
+              }
+            },
+            "description": "Recovery key state"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "Read recovery-key state; plaintext is returned only before first confirmation",
+        "tags": [
+          "adminAuth"
+        ]
+      }
+    },
+    "/api/admin/v1/auth/recovery-key/confirm": {
+      "post": {
+        "operationId": "confirmAdministratorRecoveryKey",
+        "responses": {
+          "204": {
+            "description": "Recovery key confirmed"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Record that the administrator stored the recovery key offline",
         "tags": [
           "adminAuth"
         ]
@@ -12143,151 +13932,6 @@
         ]
       }
     },
-    "/api/admin/v1/auth/setup": {
-      "post": {
-        "operationId": "setupInitialAdministrator",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SetupRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SessionUser"
-                }
-              }
-            },
-            "description": "Initial administrator created",
-            "headers": {
-              "Set-Cookie": {
-                "description": "Host-only session and CSRF cookies.",
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "X-CSRF-Token": {
-                "description": "Fresh CSRF token mirrored in the readable host-only CSRF cookie.",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Malformed request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Admin session required"
-          },
-          "403": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Permission, CSRF, origin, or TOTP check failed"
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Resource or route not found"
-          },
-          "409": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Concurrent or domain conflict"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Validation failed"
-          },
-          "428": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "If-Match precondition required"
-          },
-          "429": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication rate limit exceeded"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Internal server error"
-          },
-          "503": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Required service is unavailable"
-          }
-        },
-        "summary": "Create the first administrator with a deployment bootstrap token",
-        "tags": [
-          "adminAuth"
-        ]
-      }
-    },
     "/api/admin/v1/auth/totp/confirm": {
       "post": {
         "operationId": "confirmTotpEnrollment",
@@ -12302,15 +13946,8 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecoveryCodeSet"
-                }
-              }
-            },
-            "description": "One-time recovery codes"
+          "204": {
+            "description": "TOTP enabled"
           },
           "400": {
             "content": {
@@ -12419,7 +14056,7 @@
             "csrfToken": []
           }
         ],
-        "summary": "Verify enrollment and return a one-time recovery-code set",
+        "summary": "Verify the enrollment code and enable TOTP for the account",
         "tags": [
           "adminAuth"
         ]
@@ -12547,6 +14184,161 @@
           }
         ],
         "summary": "Create or replace an unconfirmed encrypted TOTP enrollment secret",
+        "tags": [
+          "adminAuth"
+        ]
+      }
+    },
+    "/api/admin/v1/auth/verify": {
+      "post": {
+        "operationId": "verifyAdministratorSignIn",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionUser"
+                }
+              }
+            },
+            "description": "Authenticated admin session",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Host-only session and CSRF cookies.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-CSRF-Token": {
+                "description": "Fresh CSRF token mirrored in the readable host-only CSRF cookie.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginStepResponse"
+                }
+              }
+            },
+            "description": "Another factor is required"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "summary": "Complete a sign-in factor; the final factor returns the admin session",
         "tags": [
           "adminAuth"
         ]
@@ -21036,9 +22828,313 @@
         "tags": [
           "adminIdentity"
         ]
+      },
+      "post": {
+        "operationId": "createAdminRole",
+        "parameters": [
+          {
+            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdminRole"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRoleRecord"
+                }
+              }
+            },
+            "description": "Role definition created",
+            "headers": {
+              "ETag": {
+                "description": "New role revision tag",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Create a custom administrator role",
+        "tags": [
+          "adminIdentity"
+        ]
       }
     },
     "/api/admin/v1/roles/{id}": {
+      "delete": {
+        "operationId": "deleteAdminRole",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Current entity ETag, formatted as revision-N.",
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "pattern": "^\\\"revision-[0-9]+\\\"$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reason",
+            "required": true,
+            "schema": {
+              "minLength": 10,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Role deleted"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Delete an unassigned custom administrator role",
+        "tags": [
+          "adminIdentity"
+        ]
+      },
       "get": {
         "operationId": "getAdminRole",
         "parameters": [
@@ -21659,6 +23755,858 @@
         ]
       }
     },
+    "/api/admin/v1/settings/captcha": {
+      "get": {
+        "operationId": "getCaptchaSettings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptchaSettings"
+                }
+              }
+            },
+            "description": "Integration settings",
+            "headers": {
+              "ETag": {
+                "description": "Current settings revision",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "Get CAPTCHA settings",
+        "tags": [
+          "adminSettings"
+        ]
+      },
+      "put": {
+        "operationId": "updateCaptchaSettings",
+        "parameters": [
+          {
+            "description": "Current entity ETag, formatted as revision-N.",
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "pattern": "^\\\"revision-[0-9]+\\\"$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCaptchaSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptchaSettings"
+                }
+              }
+            },
+            "description": "Integration settings updated",
+            "headers": {
+              "ETag": {
+                "description": "New settings revision",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Save CAPTCHA settings",
+        "tags": [
+          "adminSettings"
+        ]
+      }
+    },
+    "/api/admin/v1/settings/captcha/test": {
+      "post": {
+        "operationId": "testCaptchaSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptchaTestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationTestResult"
+                }
+              }
+            },
+            "description": "Integration test result"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Send or verify a test using the stored settings",
+        "tags": [
+          "adminSettings"
+        ]
+      }
+    },
+    "/api/admin/v1/settings/mail": {
+      "get": {
+        "operationId": "getMailSettings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MailSettings"
+                }
+              }
+            },
+            "description": "Integration settings",
+            "headers": {
+              "ETag": {
+                "description": "Current settings revision",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "Get administration email settings",
+        "tags": [
+          "adminSettings"
+        ]
+      },
+      "put": {
+        "operationId": "updateMailSettings",
+        "parameters": [
+          {
+            "description": "Current entity ETag, formatted as revision-N.",
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "pattern": "^\\\"revision-[0-9]+\\\"$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMailSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MailSettings"
+                }
+              }
+            },
+            "description": "Integration settings updated",
+            "headers": {
+              "ETag": {
+                "description": "New settings revision",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Save administration email settings",
+        "tags": [
+          "adminSettings"
+        ]
+      }
+    },
+    "/api/admin/v1/settings/mail/test": {
+      "post": {
+        "operationId": "testMailSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MailTestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationTestResult"
+                }
+              }
+            },
+            "description": "Integration test result"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Send or verify a test using the stored settings",
+        "tags": [
+          "adminSettings"
+        ]
+      }
+    },
     "/api/admin/v1/settings/object-storage": {
       "get": {
         "operationId": "getObjectStorageSettings",
@@ -22097,6 +25045,432 @@
         ]
       }
     },
+    "/api/admin/v1/settings/sms": {
+      "get": {
+        "operationId": "getSmsSettings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmsSettings"
+                }
+              }
+            },
+            "description": "Integration settings",
+            "headers": {
+              "ETag": {
+                "description": "Current settings revision",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "Get administration SMS settings",
+        "tags": [
+          "adminSettings"
+        ]
+      },
+      "put": {
+        "operationId": "updateSmsSettings",
+        "parameters": [
+          {
+            "description": "Current entity ETag, formatted as revision-N.",
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "pattern": "^\\\"revision-[0-9]+\\\"$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSmsSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmsSettings"
+                }
+              }
+            },
+            "description": "Integration settings updated",
+            "headers": {
+              "ETag": {
+                "description": "New settings revision",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Save administration SMS settings",
+        "tags": [
+          "adminSettings"
+        ]
+      }
+    },
+    "/api/admin/v1/settings/sms/test": {
+      "post": {
+        "operationId": "testSmsSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmsTestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationTestResult"
+                }
+              }
+            },
+            "description": "Integration test result"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Send or verify a test using the stored settings",
+        "tags": [
+          "adminSettings"
+        ]
+      }
+    },
     "/api/admin/v1/site-singletons/{kind}": {
       "get": {
         "operationId": "getSiteSingletonState",
@@ -22245,6 +25619,175 @@
         "summary": "Read the caller's draft and current publication for a site singleton",
         "tags": [
           "adminContentDrafts"
+        ]
+      }
+    },
+    "/api/admin/v1/source-metadata": {
+      "get": {
+        "operationId": "listProductSourceMetadata",
+        "parameters": [
+          {
+            "description": "Opaque endpoint-scoped cursor returned by the previous page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page size; values outside 1 through 100 return Problem Details 400.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SourceMetadataKind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "description": "Case-insensitive source label or record id search.",
+              "maxLength": 200,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductSourceMetadataPage"
+                }
+              }
+            },
+            "description": "Product source metadata"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "summary": "List admin-only supplier and brand source metadata",
+        "tags": [
+          "adminProductImports"
         ]
       }
     },
@@ -23192,6 +26735,324 @@
         ]
       }
     },
+    "/api/admin/v1/users/{id}/password-reset": {
+      "post": {
+        "operationId": "resetAdminUserPassword",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdentityResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemporaryPasswordResult"
+                }
+              }
+            },
+            "description": "One-time password for the account holder"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Issue a one-time password, force a change and revoke every session of the account",
+        "tags": [
+          "adminIdentity"
+        ]
+      }
+    },
+    "/api/admin/v1/users/{id}/recovery/reset": {
+      "post": {
+        "operationId": "resetAdminUserRecoveryKey",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdentityResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryKeyResetResult"
+                }
+              }
+            },
+            "description": "Rotated administrator recovery key"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Rotate the root administrator recovery key; the plaintext is returned exactly once",
+        "tags": [
+          "adminIdentity"
+        ]
+      }
+    },
     "/api/admin/v1/users/{id}/sessions": {
       "delete": {
         "operationId": "revokeAdminUserSessions",
@@ -23318,6 +27179,165 @@
           }
         ],
         "summary": "Revoke all active sessions for one management user",
+        "tags": [
+          "adminIdentity"
+        ]
+      }
+    },
+    "/api/admin/v1/users/{id}/totp-reset": {
+      "post": {
+        "operationId": "resetAdminUserTotp",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 8,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdentityResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserRecord"
+                }
+              }
+            },
+            "description": "Management user updated"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Malformed request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Admin session required"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Permission, CSRF, origin, or TOTP check failed"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Resource or route not found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Concurrent or domain conflict"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Validation failed"
+          },
+          "428": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "If-Match precondition required"
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Required service is unavailable"
+          }
+        },
+        "security": [
+          {
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Clear the TOTP enrolment and revoke every session of the account",
         "tags": [
           "adminIdentity"
         ]

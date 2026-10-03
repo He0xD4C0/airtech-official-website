@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { settingsApi } from '@/features/settings/services/settingsApi'
+import { adminIdentityApi } from '@/features/identity'
 import { adminAuthApi } from '@/shared/services/adminAuthApi'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Check, Cookie, Copy, Database, Globe2, KeyRound, LockKeyhole, LogOut, Save, Server, Settings, ShieldCheck, TimerReset } from 'lucide-vue-next'
+import { Check, Cookie, Copy, Database, Globe2, KeyRound, LockKeyhole, LogOut, Mail, Save, Server, Settings, ShieldCheck, Smartphone, TimerReset } from 'lucide-vue-next'
 import DataStatePanel from '@/shared/components/DataStatePanel.vue'
 import PageHeader from '@/shared/components/PageHeader.vue'
 import ObjectStorageSettingsPanel from '@/features/settings/components/ObjectStorageSettingsPanel.vue'
+import IntegrationSettingsPanels from '@/features/settings/components/IntegrationSettingsPanels.vue'
+import type { Permission } from '@/shared/types/domain'
 import { type AdminSession, type PlatformSettings, type TotpEnrollment, type UpdatePlatformSettings } from '@/shared/services/adminApiTypes'
 import { apiErrorMessage, apiProblemStatus } from '@/shared/services/cursorPagination'
 import { useAuthStore } from '@/shared/stores/auth'
@@ -32,8 +35,13 @@ const settingsState = ref<'loading' | 'ready' | 'error' | 'forbidden'>(accountSe
 const settingsError = ref('')
 const enrollment = ref<TotpEnrollment | null>(null)
 const confirmationCode = ref('')
-const recoveryCodes = ref<string[]>([])
-const regenerationCode = ref('')
+const phoneNumber = ref('')
+const phonePassword = ref('')
+const phoneCode = ref('')
+const phoneCodeSent = ref(false)
+const phoneBusy = ref(false)
+const rotatedRecoveryKey = ref('')
+const rotatingRecoveryKey = ref(false)
 const sessions = ref<AdminSession[]>([])
 const securityLoading = ref(false)
 
@@ -43,9 +51,15 @@ const tabs = [
   { id: 'consent', label: 'Consent 与 Analytics', icon: Cookie },
   { id: 'retention', label: '数据保留', icon: TimerReset },
   { id: 'object-storage', label: '对象存储', icon: Database },
+  { id: 'mail', label: '邮件投递', icon: Mail, permission: 'mail.manage' as Permission },
+  { id: 'sms', label: '短信服务', icon: Smartphone, permission: 'sms.manage' as Permission },
+  { id: 'captcha', label: '人机验证', icon: ShieldCheck, permission: 'captcha.manage' as Permission },
   { id: 'domains', label: '域名与 Origin', icon: Globe2 },
 ]
-const visibleTabs = computed(() => accountSecurityOnly ? tabs.filter((tab) => tab.id === 'security') : tabs)
+const visibleTabs = computed(() => {
+  const base = accountSecurityOnly ? tabs.filter((tab) => tab.id === 'security') : tabs
+  return base.filter((tab) => !tab.permission || auth.hasPermission(tab.permission))
+})
 
 const activeTitle = computed(() => tabs.find((tab) => tab.id === active.value)?.label ?? '基本设置')
 
@@ -144,7 +158,6 @@ async function loadSessions(): Promise<void> {
 
 async function startEnrollment(): Promise<void> {
   securityLoading.value = true
-  recoveryCodes.value = []
   try {
     enrollment.value = await adminAuthApi.startTotpEnrollment()
     ui.toast('TOTP 密钥已生成', '请将密钥加入验证器，并用当前验证码完成确认。', 'success')
@@ -158,36 +171,16 @@ async function startEnrollment(): Promise<void> {
 async function confirmEnrollment(): Promise<void> {
   securityLoading.value = true
   try {
-    const result = await adminAuthApi.confirmTotpEnrollment(confirmationCode.value.trim())
-    recoveryCodes.value = result.recoveryCodes
+    await adminAuthApi.confirmTotpEnrollment(confirmationCode.value.trim())
     confirmationCode.value = ''
     enrollment.value = null
     await auth.refresh()
-    ui.toast('TOTP 已启用', '恢复码只显示这一次，请立即保存到安全位置。', 'success')
+    ui.toast('TOTP 已启用', '该账号登录时将要求输入验证器验证码。', 'success')
   } catch (error) {
     ui.toast('验证码确认失败', problemMessage(error), 'danger')
   } finally {
     securityLoading.value = false
   }
-}
-
-async function regenerateCodes(): Promise<void> {
-  securityLoading.value = true
-  try {
-    const result = await adminAuthApi.regenerateRecoveryCodes(regenerationCode.value.trim())
-    recoveryCodes.value = result.recoveryCodes
-    regenerationCode.value = ''
-    ui.toast('恢复码已重新生成', '旧恢复码已全部失效，新码只显示这一次。', 'success')
-  } catch (error) {
-    ui.toast('恢复码生成失败', problemMessage(error), 'danger')
-  } finally {
-    securityLoading.value = false
-  }
-}
-
-async function copyRecoveryCodes(): Promise<void> {
-  await navigator.clipboard.writeText(recoveryCodes.value.join('\n'))
-  ui.toast('已复制恢复码', '请保存到受保护的密码管理器中。', 'success')
 }
 
 async function revokeSession(session: AdminSession): Promise<void> {
@@ -203,6 +196,64 @@ async function revokeSession(session: AdminSession): Promise<void> {
   } catch (error) {
     ui.toast('撤销失败', problemMessage(error), 'danger')
   }
+}
+
+async function sendPhoneCode(): Promise<void> {
+  phoneBusy.value = true
+  try {
+    await adminAuthApi.startPhoneVerification(phoneNumber.value.trim(), phonePassword.value)
+    phoneCodeSent.value = true
+    phonePassword.value = ''
+    ui.toast('验证码已发送', '短信验证码 10 分钟内有效，请勿转发给他人。', 'success')
+  } catch (error) {
+    ui.toast('无法发送验证码', problemMessage(error), 'danger')
+  } finally {
+    phoneBusy.value = false
+  }
+}
+
+async function confirmPhoneCode(): Promise<void> {
+  phoneBusy.value = true
+  try {
+    await adminAuthApi.confirmPhoneVerification(phoneCode.value.trim())
+    phoneCode.value = ''
+    phoneCodeSent.value = false
+    phoneNumber.value = ''
+    await auth.refresh()
+    ui.toast('手机号已绑定', '该号码可用于短信登录与风控验证。', 'success')
+  } catch (error) {
+    ui.toast('绑定失败', problemMessage(error), 'danger')
+  } finally {
+    phoneBusy.value = false
+  }
+}
+
+async function rotateRecoveryKey(): Promise<void> {
+  const user = auth.user
+  if (!user) return
+  rotatingRecoveryKey.value = true
+  try {
+    const result = await adminIdentityApi.rotateUserRecoveryKey(
+      user.id,
+      'Rotate the root administrator recovery key from the account security page.',
+    )
+    rotatedRecoveryKey.value = result.recoveryKey
+    ui.toast('恢复密钥已轮换', '新密钥只显示这一次；请保存后完成恢复密钥确认。', 'success')
+  } catch (error) {
+    ui.toast('轮换失败', problemMessage(error), 'danger')
+  } finally {
+    rotatingRecoveryKey.value = false
+  }
+}
+
+async function copyRecoveryKey(): Promise<void> {
+  if (rotatedRecoveryKey.value) await navigator.clipboard.writeText(rotatedRecoveryKey.value)
+}
+
+async function acknowledgeRotatedKey(): Promise<void> {
+  rotatedRecoveryKey.value = ''
+  await auth.refresh()
+  await router.push({ name: 'onboarding' })
 }
 
 function formatTime(value: string): string {
@@ -223,16 +274,16 @@ void loadSettings()
 
 <template>
   <div class="page-stack">
-    <PageHeader eyebrow="PLATFORM CONFIGURATION" :title="accountSecurityOnly ? '账号安全' : '系统设置'" :description="accountSecurityOnly ? '管理本账号的 TOTP、恢复码与活动会话。' : '管理平台级配置；对象存储凭据写入数据库但绝不由 API 回显。'">
+    <PageHeader eyebrow="PLATFORM CONFIGURATION" :title="accountSecurityOnly ? '账号安全' : '系统设置'" :description="accountSecurityOnly ? '管理本账号的 TOTP、绑定手机号与活动会话。' : '管理平台级配置；对象存储凭据写入数据库但绝不由 API 回显。'">
       <template #actions><button v-if="active === 'retention' && settingsState === 'ready'" class="button button--primary" type="button" :disabled="settingsLoading || settingsSaving || !loadedSettings" @click="save"><Save :size="16" />{{ settingsSaving ? '保存中…' : '保存业务设置' }}</button></template>
     </PageHeader>
 
-    <div v-if="auth.requiresTotpEnrollment" class="security-baseline" role="status">
+    <div v-if="auth.requiresOnboarding" class="security-baseline" role="status">
       <LockKeyhole :size="18" />
-      <div><strong>完成 TOTP 后解锁管理功能</strong><p>账号角色仍然保留；服务端在完成绑定前暂不下发业务权限。绑定成功后，侧栏和对应功能会自动恢复。</p></div>
+      <div><strong>先完成首次安全设置</strong><p>初始密码与管理员恢复密钥确认完成后即可进入管理功能；账号角色已经保留。</p></div>
     </div>
 
-    <div v-if="accountSecurityOnly || settingsState === 'ready'" class="status-banner"><span>{{ active === 'security' ? '实时身份服务' : '实时业务设置' }}</span><p>{{ active === 'security' ? 'TOTP、恢复码与会话操作直接调用受认证、CSRF 保护且可审计的 API。' : `三个业务策略值由 Settings API 管理；当前 ${settingsEtag}。部署凭据与 origin 始终只读。` }}</p></div>
+    <div v-if="accountSecurityOnly || settingsState === 'ready'" class="status-banner"><span>{{ active === 'security' ? '实时身份服务' : '实时业务设置' }}</span><p>{{ active === 'security' ? 'TOTP、手机号与会话操作直接调用受认证、CSRF 保护且可审计的 API。' : `三个业务策略值由 Settings API 管理；当前 ${settingsEtag}。部署凭据与 origin 始终只读。` }}</p></div>
 
     <section class="settings-layout">
       <nav class="settings-nav panel" aria-label="设置导航"><button v-for="tab in visibleTabs" :key="tab.id" type="button" :class="{ 'is-active': active === tab.id }" @click="selectTab(tab.id)"><component :is="tab.icon" :size="17" />{{ tab.label }}</button></nav>
@@ -256,7 +307,7 @@ void loadSettings()
         <template v-else-if="active === 'security'">
           <div class="settings-section">
             <h3>管理会话</h3>
-            <p>会话在连续 30 分钟无活动或创建 12 小时后失效；Cookie 为 host-only、HttpOnly、Secure 与 SameSite=Strict。</p>
+            <p>会话在连续 60 分钟无活动或创建 24 小时后失效；Cookie 为 host-only、HttpOnly、Secure 与 SameSite=Strict。</p>
             <div class="security-session-list">
               <div v-for="session in sessions" :key="session.id" class="security-session-row">
                 <span><strong>{{ session.current ? '当前会话' : '其他会话' }}</strong><small>最近活动 {{ formatTime(session.lastSeenAt) }} · 到期 {{ formatTime(session.expiresAt) }}</small></span>
@@ -266,9 +317,23 @@ void loadSettings()
             </div>
           </div>
           <div class="settings-section">
+            <h3>手机号</h3>
+            <p>绑定后可用短信验证码登录；触发风控时系统也只向该号码发送验证码。邮箱验证码使用账号邮箱，无需绑定。</p>
+            <div v-if="auth.user?.phoneVerified" class="settings-section--success security-status"><Smartphone :size="18" /><div><strong>手机号已绑定并验证</strong><p>换绑需要当前密码与短信验证码。</p></div></div>
+            <div class="security-enrollment">
+              <label class="field"><span>手机号（E.164）</span><input v-model="phoneNumber" inputmode="tel" autocomplete="tel" placeholder="+8613800138000" /></label>
+              <label class="field"><span>当前密码</span><input v-model="phonePassword" type="password" autocomplete="current-password" /></label>
+              <button class="button button--primary" type="button" :disabled="phoneBusy || phoneNumber.trim().length < 8 || !phonePassword" @click="sendPhoneCode">{{ phoneCodeSent ? '重新发送验证码' : '发送验证码' }}</button>
+              <template v-if="phoneCodeSent">
+                <label class="field field--compact"><span>短信验证码</span><input v-model="phoneCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" /></label>
+                <button class="button button--primary" type="button" :disabled="phoneBusy || phoneCode.trim().length !== 6" @click="confirmPhoneCode">确认绑定</button>
+              </template>
+            </div>
+          </div>
+          <div class="settings-section">
             <h3>多因素验证</h3>
-            <p>标准 TOTP 为 SHA-1、6 位、30 秒，并允许前后一个时间步。高风险数据库任务只接受当前 TOTP，不接受恢复码。</p>
-            <div v-if="auth.user?.totpEnabled" class="settings-section--success security-status"><ShieldCheck :size="18" /><div><strong>TOTP 已启用</strong><p>登录可使用 TOTP；恢复码只能使用一次。</p></div></div>
+            <p>标准 TOTP 为 SHA-1、6 位、30 秒，并允许前后一个时间步。TOTP 是可选项；账号登录支持密码、邮箱验证码或已绑定手机号。</p>
+            <div v-if="auth.user?.totpEnabled" class="settings-section--success security-status"><ShieldCheck :size="18" /><div><strong>TOTP 已启用</strong><p>登录在密码或验证码之后追加验证器验证码。</p></div></div>
             <button v-else-if="!enrollment" class="button button--primary" type="button" :disabled="securityLoading" @click="startEnrollment"><KeyRound :size="16" />开始绑定 TOTP</button>
             <div v-if="enrollment" class="security-enrollment">
               <label class="field"><span>验证器密钥</span><input :value="enrollment.secret" readonly autocomplete="off" /></label>
@@ -276,15 +341,16 @@ void loadSettings()
               <label class="field field--compact"><span>当前 6 位验证码</span><input v-model="confirmationCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" /></label>
               <button class="button button--primary" type="button" :disabled="confirmationCode.length !== 6 || securityLoading" @click="confirmEnrollment">确认并启用</button>
             </div>
-            <div v-if="auth.user?.totpEnabled" class="security-regenerate">
-              <label class="field field--compact"><span>用当前 TOTP 重新生成恢复码</span><input v-model="regenerationCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" /></label>
-              <button class="button button--secondary" type="button" :disabled="regenerationCode.length !== 6 || securityLoading" @click="regenerateCodes">使旧恢复码失效并生成新码</button>
+          </div>
+          <div v-if="auth.user?.roleKeys.includes('super-admin')" class="settings-section">
+            <h3>管理员恢复密钥</h3>
+            <p>恢复密钥文件是根超管唯一的明文来源，数据库只保存 Argon2 哈希。轮换后旧密钥立即失效，新密钥只显示一次，并需要重新确认。</p>
+            <div v-if="rotatedRecoveryKey" class="security-enrollment">
+              <label class="field"><span>新的恢复密钥</span><input :value="rotatedRecoveryKey" readonly autocomplete="off" /></label>
+              <button class="button button--secondary" type="button" @click="copyRecoveryKey"><Copy :size="15" />复制</button>
+              <button class="button button--primary" type="button" @click="acknowledgeRotatedKey">我已保存，去确认</button>
             </div>
-            <div v-if="recoveryCodes.length" class="recovery-code-panel" role="status">
-              <div><strong>一次性恢复码</strong><button class="button button--secondary" type="button" @click="copyRecoveryCodes"><Copy :size="15" />复制全部</button></div>
-              <p>关闭或刷新页面后不会再次显示。</p>
-              <code v-for="code in recoveryCodes" :key="code">{{ code }}</code>
-            </div>
+            <button v-else class="button button--secondary" type="button" :disabled="rotatingRecoveryKey" @click="rotateRecoveryKey"><KeyRound :size="16" />{{ rotatingRecoveryKey ? '轮换中…' : '轮换我的恢复密钥' }}</button>
           </div>
         </template>
 
@@ -303,6 +369,10 @@ void loadSettings()
 
         <template v-else-if="active === 'object-storage'">
           <ObjectStorageSettingsPanel />
+        </template>
+
+        <template v-else-if="active === 'mail' || active === 'sms' || active === 'captcha'">
+          <IntegrationSettingsPanels :section="active" />
         </template>
 
         <template v-else>

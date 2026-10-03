@@ -66,6 +66,8 @@ pub async fn list_users(
         r#"SELECT user_account.id,user_account.email,user_account.display_name,
                   user_account.locale,user_account.status,user_account.revision,
                   user_account.manager_user_id,
+                  user_account.phone_e164,
+                  user_account.phone_verified_at IS NOT NULL AS phone_verified,
                   user_account.totp_confirmed_at IS NOT NULL AS totp_enabled,
                   user_account.invited_at,user_account.last_login_at,
                   user_account.created_at,user_account.updated_at,
@@ -142,7 +144,7 @@ pub async fn list_roles(
     };
     let total = role_count(state, search).await?;
     let rows = sqlx::query(
-        r#"SELECT role.id,role.key,role.display_name,role.system_role,role.revision,
+        r#"SELECT role.id,role.key,role.display_name,role.system_role,role.is_preset,role.revision,
                   COALESCE(array_agg(permission.permission_key ORDER BY permission.permission_key)
                     FILTER (WHERE permission.permission_key IS NOT NULL),ARRAY[]::text[]) AS permissions
            FROM roles role LEFT JOIN role_permissions permission ON permission.role_id=role.id
@@ -252,6 +254,9 @@ async fn role_count(state: &AppState, search: Option<&str>) -> Result<i64, ApiEr
 #[path = "identity/storage.rs"]
 mod storage;
 pub use storage::*;
+#[path = "identity/grants.rs"]
+mod grants;
+pub use grants::*;
 #[path = "identity/invitations.rs"]
 mod invitations;
 pub use invitations::*;

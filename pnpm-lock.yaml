@@ -93,6 +93,9 @@ importers:
       '@vue/eslint-config-typescript':
         specifier: ^14.3.0
         version: 14.9.0(eslint-plugin-vue@9.33.0(eslint@9.39.5(supports-color@7.2.0))(supports-color@7.2.0))(eslint@9.39.5(supports-color@7.2.0))(supports-color@7.2.0)(typescript@5.9.3)
+      '@vue/test-utils':
+        specifier: ^2.4.6
+        version: 2.5.0(@vue/compiler-dom@3.5.42)(@vue/server-renderer@3.5.42)(vue@3.5.42(typescript@5.9.3))
       '@xterm/addon-fit':
         specifier: ^0.10.0
         version: 0.10.0(@xterm/xterm@5.5.0)
@@ -105,6 +108,9 @@ importers:
       eslint-plugin-vue:
         specifier: ^9.32.0
         version: 9.33.0(eslint@9.39.5(supports-color@7.2.0))(supports-color@7.2.0)
+      jsdom:
+        specifier: ^27.0.0
+        version: 27.4.0(supports-color@10.2.2)
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
@@ -120,6 +126,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@airtek/content-renderer':
+        specifier: workspace:*
+        version: link:../../packages/content-renderer
       '@airtek/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

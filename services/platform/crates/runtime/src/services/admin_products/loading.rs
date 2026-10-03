@@ -19,7 +19,14 @@ pub async fn load_admin_product_detail(
     .fetch_optional(&state.pool)
     .await?
     .ok_or_else(|| ApiError::not_found("Product was not found."))?;
-    let mut product: Product = decode_payload(row.try_get("payload")?, "product")?;
+    let payload: Value = row.try_get("payload")?;
+    let source_warnings = payload
+        .get("sourceWarnings")
+        .cloned()
+        .map(|value| decode_payload(value, "product source warnings"))
+        .transpose()?
+        .unwrap_or_default();
+    let mut product: Product = decode_payload(payload, "product")?;
     let origin: String = row.try_get("data_origin")?;
     let presentation = load_presentation(state, id, &product.locale).await?;
     if let Some(presentation) = &presentation {
@@ -58,6 +65,7 @@ pub async fn load_admin_product_detail(
             _ => DataClass::Editorial,
         },
         missing_assets,
+        source_warnings,
         presentation,
     })
 }

@@ -27,19 +27,21 @@ pub(super) async fn create_session(
         .bind(user.id)
         .execute(pool)
         .await?;
-    let development_password_only = state.config.development_password_only_for(&user.email);
     Ok(SessionIssue {
         principal: AdminPrincipal {
             user_id: user.id,
             display_name: user.display_name,
             email: user.email,
             role: user.role,
+            role_keys: user.role_keys,
             permissions: user.permissions,
             session_id,
             session_token_hash,
             csrf_hash,
             totp_enabled: user.totp_enabled,
-            development_password_only,
+            must_change_password: user.must_change_password,
+            must_confirm_recovery_key: user.must_confirm_recovery_key,
+            phone_verified: user.phone_verified,
         },
         session_token,
         csrf_token,
@@ -169,7 +171,7 @@ pub(super) fn csrf_cookie(state: &AppState, value: &str, max_age: i64) -> String
 }
 
 pub(super) fn secure_attribute(state: &AppState) -> &'static str {
-    if state.config.production || state.config.admin_origin.starts_with("https://") {
+    if state.config.admin_origin.starts_with("https://") {
         "; Secure"
     } else {
         ""

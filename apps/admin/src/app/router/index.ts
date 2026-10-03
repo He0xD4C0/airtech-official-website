@@ -191,16 +191,16 @@ const router = createRouter({
       meta: { title: '登录' },
     },
     {
-      path: '/setup',
-      name: 'setup',
-      component: () => import('@/features/auth/views/SetupView.vue'),
-      meta: { title: '初始化平台' },
-    },
-    {
       path: '/accept-invitation',
       name: 'accept-invitation',
       component: () => import('@/features/auth/views/AcceptInvitationView.vue'),
       meta: { title: '接受邀请' },
+    },
+    {
+      path: '/onboarding',
+      name: 'onboarding',
+      component: () => import('@/features/auth/views/OnboardingView.vue'),
+      meta: { title: '首次安全设置', requiresAuth: true },
     },
     {
       path: '/forbidden',
@@ -238,11 +238,11 @@ router.beforeEach(async (to) => {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
 
-  if (auth.requiresTotpEnrollment && to.name !== 'account-security') {
-    return { name: 'account-security' }
+  if (auth.requiresOnboarding && to.name !== 'onboarding') {
+    return { name: 'onboarding' }
   }
 
-  if ((to.name === 'login' || to.name === 'setup') && auth.isAuthenticated) {
+  if (to.name === 'login' && auth.isAuthenticated) {
     return { name: 'dashboard' }
   }
 

@@ -104,6 +104,7 @@ async fn feishu_takes_over_verified_csv_stable_id_and_projects_all_facts_atomica
             state: FactState::Verified,
             source_reference: Some(format!("feishu:{source_revision}")),
         }],
+        source_facts: Vec::new(),
         performance_curves: vec![PerformanceCurve {
             airflow_unit: "m³/h".into(),
             pressure_unit: "Pa".into(),

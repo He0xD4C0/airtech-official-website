@@ -8,20 +8,6 @@ use super::super::support::*;
 pub(super) fn add_paths(paths: &mut Map<String, Value>) {
     add(
         paths,
-        "/api/admin/v1/auth/setup",
-        "post",
-        body(
-            op(
-                "setupInitialAdministrator",
-                "Create the first administrator with a deployment bootstrap token",
-                "adminAuth",
-                [("201", session_response("Initial administrator created"))],
-            ),
-            r("SetupRequest"),
-        ),
-    );
-    add(
-        paths,
         "/api/admin/v1/auth/login",
         "post",
         body(
@@ -32,6 +18,125 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
                 [("200", session_response("Authenticated admin session"))],
             ),
             r("LoginRequest"),
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/auth/password",
+        "post",
+        admin(
+            body(
+                op(
+                    "changeAdministratorPassword",
+                    "Change the current administrator password and revoke other sessions",
+                    "adminAuth",
+                    [("204", empty_response("Password changed"))],
+                ),
+                r("ChangePasswordRequest"),
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/auth/identify",
+        "post",
+        body(
+            op(
+                "identifyAdministrator",
+                "Start a multi-step administrator sign-in without revealing whether the account exists",
+                "adminAuth",
+                [(
+                    "200",
+                    json_response("Sign-in methods and CAPTCHA requirement", r("IdentifyResponse")),
+                )],
+            ),
+            r("IdentifyRequest"),
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/auth/attempt",
+        "post",
+        body(
+            op(
+                "attemptAdministratorSignIn",
+                "Verify the password or send an email or SMS verification code",
+                "adminAuth",
+                [(
+                    "202",
+                    json_response("Next sign-in step", r("LoginStepResponse")),
+                )],
+            ),
+            r("AttemptRequest"),
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/auth/verify",
+        "post",
+        body(
+            op(
+                "verifyAdministratorSignIn",
+                "Complete a sign-in factor; the final factor returns the admin session",
+                "adminAuth",
+                [
+                    ("200", session_response("Authenticated admin session")),
+                    (
+                        "202",
+                        json_response("Another factor is required", r("LoginStepResponse")),
+                    ),
+                ],
+            ),
+            r("VerifyRequest"),
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/auth/recovery",
+        "post",
+        body(
+            op(
+                "recoverAdministratorWithKey",
+                "Reset the root administrator with the offline recovery key and rotate it",
+                "adminAuth",
+                [(
+                    "200",
+                    json_response("Rotated recovery key", r("RecoveryKeyRotationResult")),
+                )],
+            ),
+            r("RecoveryRequest"),
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/auth/recovery-key",
+        "get",
+        admin(
+            op(
+                "getAdministratorRecoveryKey",
+                "Read recovery-key state; plaintext is returned only before first confirmation",
+                "adminAuth",
+                [(
+                    "200",
+                    json_response("Recovery key state", r("RecoveryKeyState")),
+                )],
+            ),
+            false,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/auth/recovery-key/confirm",
+        "post",
+        admin(
+            op(
+                "confirmAdministratorRecoveryKey",
+                "Record that the administrator stored the recovery key offline",
+                "adminAuth",
+                [("204", empty_response("Recovery key confirmed"))],
+            ),
+            true,
         ),
     );
     add(
@@ -52,6 +157,46 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
                 )],
             ),
             r("AcceptInvitationRequest"),
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/auth/phone/verification",
+        "post",
+        admin(
+            body(
+                op(
+                    "startAdministratorPhoneVerification",
+                    "Send a binding code to a new phone number after verifying the current password",
+                    "adminAuth",
+                    [(
+                        "202",
+                        json_response(
+                            "Binding code sent",
+                            r("PhoneVerificationStarted"),
+                        ),
+                    )],
+                ),
+                r("StartPhoneVerificationRequest"),
+            ),
+            true,
+        ),
+    );
+    add(
+        paths,
+        "/api/admin/v1/auth/phone/confirm",
+        "post",
+        admin(
+            body(
+                op(
+                    "confirmAdministratorPhoneVerification",
+                    "Confirm the binding code and mark the phone number verified",
+                    "adminAuth",
+                    [("204", empty_response("Phone number verified"))],
+                ),
+                r("ConfirmPhoneVerificationRequest"),
+            ),
+            true,
         ),
     );
     add(
@@ -107,32 +252,9 @@ pub(super) fn add_paths(paths: &mut Map<String, Value>) {
             body(
                 op(
                     "confirmTotpEnrollment",
-                    "Verify enrollment and return a one-time recovery-code set",
+                    "Verify the enrollment code and enable TOTP for the account",
                     "adminAuth",
-                    [(
-                        "200",
-                        json_response("One-time recovery codes", r("RecoveryCodeSet")),
-                    )],
-                ),
-                r("TotpCodeRequest"),
-            ),
-            true,
-        ),
-    );
-    add(
-        paths,
-        "/api/admin/v1/auth/recovery-codes/regenerate",
-        "post",
-        admin(
-            body(
-                op(
-                    "regenerateRecoveryCodes",
-                    "Invalidate prior recovery codes and return a new one-time set",
-                    "adminAuth",
-                    [(
-                        "200",
-                        json_response("Replacement recovery codes", r("RecoveryCodeSet")),
-                    )],
+                    [("204", empty_response("TOTP enabled"))],
                 ),
                 r("TotpCodeRequest"),
             ),

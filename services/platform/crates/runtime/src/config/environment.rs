@@ -2,11 +2,7 @@ use super::*;
 
 pub fn reject_development_seed_configuration() -> Result<(), ConfigError> {
     if !cfg!(feature = "devtools") {
-        for name in [
-            "AIRTEK_DEV_ADMIN_SEED",
-            "AIRTEK_DEV_PUBLIC_SEED",
-            "AIRTEK_DEV_ADMIN_PASSWORD_ONLY",
-        ] {
+        for name in ["AIRTEK_DEV_PUBLIC_SEED"] {
             if env::var_os(name).is_some() {
                 return Err(ConfigError::DevelopmentSeedForbidden(name));
             }
@@ -15,26 +11,37 @@ pub fn reject_development_seed_configuration() -> Result<(), ConfigError> {
     Ok(())
 }
 
-pub(super) fn development_admin_password_only() -> Result<bool, ConfigError> {
-    if !cfg!(feature = "devtools") {
-        return Ok(false);
-    }
-    match env::var("AIRTEK_DEV_ADMIN_PASSWORD_ONLY")
-        .unwrap_or_else(|_| "false".into())
-        .as_str()
-    {
-        "true" => Ok(true),
-        "false" => Ok(false),
-        _ => Err(ConfigError::InvalidBooleanSetting(
-            "AIRTEK_DEV_ADMIN_PASSWORD_ONLY",
-        )),
-    }
-}
-
 pub(super) fn parse_totp_encryption_key(value: &str) -> Result<TotpEncryptionKey, ConfigError> {
     decode_32_byte_key(value)
         .map(TotpEncryptionKey)
         .map_err(|_| ConfigError::InvalidTotpEncryptionKey)
+}
+
+pub(super) fn parse_admin_recovery_key_mode() -> Result<AdminRecoveryKeyMode, ConfigError> {
+    match env::var("AIRTEK_ADMIN_RECOVERY_KEY_MODE")
+        .unwrap_or_else(|_| "auto".into())
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "auto" => Ok(AdminRecoveryKeyMode::Auto),
+        "generate" => Ok(AdminRecoveryKeyMode::Generate),
+        "load" => Ok(AdminRecoveryKeyMode::Load),
+        _ => Err(ConfigError::InvalidAdminRecoveryKeyMode),
+    }
+}
+
+pub(super) fn parse_captcha_failure_mode() -> Result<CaptchaFailureMode, ConfigError> {
+    match env::var("AIRTEK_CAPTCHA_FAILURE_MODE")
+        .unwrap_or_else(|_| "fail-open".into())
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "fail-open" => Ok(CaptchaFailureMode::FailOpen),
+        "fail-closed" => Ok(CaptchaFailureMode::FailClosed),
+        _ => Err(ConfigError::InvalidCaptchaFailureMode),
+    }
 }
 
 pub(super) fn parse_invitation_replay_encryption_key(
@@ -72,14 +79,13 @@ pub(super) fn decode_32_byte_key(value: &str) -> Result<[u8; 32], ()> {
 
 pub(super) fn require_production_keys(
     production: bool,
-    totp_encryption_key: Option<&TotpEncryptionKey>,
     invitation_replay_encryption_key: Option<&InvitationReplayEncryptionKey>,
     product_staging_encryption_key: Option<&ProductStagingEncryptionKey>,
     analytics_token_hmac_key: Option<&AnalyticsTokenHmacKey>,
 ) -> Result<(), ConfigError> {
-    if production && totp_encryption_key.is_none() {
-        return Err(ConfigError::MissingTotpEncryptionKey);
-    }
+    // TOTP is optional, so its encryption key is only needed once an
+    // administrator actually enrolls; enrollment returns a clear
+    // "unavailable" error while the key is absent.
     if production && invitation_replay_encryption_key.is_none() {
         return Err(ConfigError::MissingInvitationReplayEncryptionKey);
     }

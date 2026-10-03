@@ -6,17 +6,126 @@
 import type { components } from '../components'
 
 export interface OperationsPart13 {
-listAdminProducts: {
+getFeishuSyncRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync run detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeishuSyncRunDetail"];
+                };
+            };
+            /** @description Malformed request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Admin session required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Permission, CSRF, origin, or TOTP check failed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Resource or route not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Concurrent or domain conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Required service is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+listAdminMediaAssets: {
         parameters: {
             query?: {
                 /** @description Opaque endpoint-scoped cursor returned by the previous page. */
                 cursor?: string;
-                dataState?: "verified" | "pending";
-                family?: components["schemas"]["ProductFamily"];
                 /** @description Page size; values outside 1 through 100 return Problem Details 400. */
                 limit?: number;
                 q?: string;
-                status?: components["schemas"]["PublicationStatus"];
             };
             header?: never;
             path?: never;
@@ -24,13 +133,13 @@ listAdminProducts: {
         };
         requestBody?: never;
         responses: {
-            /** @description Product records */
+            /** @description Media assets */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminProductPage"];
+                    "application/json": components["schemas"]["MediaAssetPage"];
                 };
             };
             /** @description Malformed request */
@@ -125,149 +234,35 @@ listAdminProducts: {
             };
         };
     };
-getAdminProduct: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Admin product detail */
-            200: {
-                headers: {
-                    /** @description Current independent website presentation revision tag */
-                    ETag?: string;
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminProductDetail"];
-                };
-            };
-            /** @description Malformed request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Admin session required */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Permission, CSRF, origin, or TOTP check failed */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Resource or route not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Concurrent or domain conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Validation failed */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description If-Match precondition required */
-            428: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Authentication rate limit exceeded */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Required service is unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-        };
-    };
-updateProductPresentation: {
+uploadAdminMediaAsset: {
         parameters: {
             query?: never;
             header: {
                 /** @description Replay key scoped to this mutation. Reusing it with the same request returns the original status and entity; a different request returns 409. */
                 "Idempotency-Key": string;
-                /** @description Current entity ETag, formatted as revision-N. */
-                "If-Match": string;
             };
-            path: {
-                id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateProductPresentation"];
+                "multipart/form-data": {
+                    /**
+                     * Format: binary
+                     * @description Exactly one PNG, JPEG, or WebP file up to 25 MiB.
+                     */
+                    file: string;
+                };
             };
         };
         responses: {
-            /** @description Admin product detail updated */
-            200: {
+            /** @description Public media asset */
+            201: {
                 headers: {
-                    /** @description New independent product presentation revision tag */
-                    ETag?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminProductDetail"];
+                    "application/json": components["schemas"]["MediaAsset"];
                 };
             };
             /** @description Malformed request */
@@ -313,6 +308,23 @@ updateProductPresentation: {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The file exceeds 25 MiB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": unknown;
                 };
             };
             /** @description Validation failed */
@@ -362,7 +374,7 @@ updateProductPresentation: {
             };
         };
     };
-getProductPrivatePricing: {
+getAdminMediaAsset: {
         parameters: {
             query?: never;
             header?: never;
@@ -373,13 +385,13 @@ getProductPrivatePricing: {
         };
         requestBody?: never;
         responses: {
-            /** @description Private Product Master pricing */
+            /** @description Media asset */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProductPrivatePricing"];
+                    "application/json": components["schemas"]["MediaAsset"];
                 };
             };
             /** @description Malformed request */

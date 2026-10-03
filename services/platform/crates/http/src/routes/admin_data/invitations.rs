@@ -94,6 +94,13 @@ pub(super) async fn invite_user(
         ));
     }
     validate_roles(&mut transaction, &input.role_keys).await?;
+    airtek_runtime::services::identity::validate_role_grant(
+        &mut transaction,
+        principal.is_super_admin(),
+        &principal.permissions,
+        &input.role_keys,
+    )
+    .await?;
     let invitation = UserInvitation {
         id,
         email: normalized_email,

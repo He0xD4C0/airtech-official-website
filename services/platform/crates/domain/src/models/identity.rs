@@ -10,6 +10,8 @@ pub struct AdminUserRecord {
     pub status: String,
     pub revision: i64,
     pub manager_user_id: Option<Uuid>,
+    pub phone_e164: Option<String>,
+    pub phone_verified: bool,
     pub roles: Vec<String>,
     pub totp_enabled: bool,
     pub invited_at: Option<DateTime<Utc>>,
@@ -33,6 +35,7 @@ pub struct AdminRoleRecord {
     pub key: String,
     pub display_name: String,
     pub system_role: bool,
+    pub is_preset: bool,
     pub revision: i64,
     pub permissions: Vec<String>,
 }
@@ -50,6 +53,15 @@ pub struct AdminRolePage {
 pub struct UpdateAdminRole {
     pub display_name: Option<String>,
     pub permissions: Option<Vec<String>>,
+    pub reason: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CreateAdminRole {
+    pub key: String,
+    pub display_name: String,
+    pub permissions: Vec<String>,
     pub reason: String,
 }
 
@@ -86,5 +98,7 @@ pub struct UpdateAdminUser {
     pub status: Option<String>,
     pub role_keys: Option<Vec<String>>,
     pub manager_user_id: Option<Option<Uuid>>,
+    /// Super-admin assisted binding: a supplied number is stored as verified.
+    pub phone_e164: Option<String>,
     pub reason: String,
 }

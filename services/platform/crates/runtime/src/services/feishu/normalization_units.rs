@@ -17,6 +17,11 @@ pub(super) fn specification_definitions() -> Vec<SpecificationDefinition> {
         spec("airflow", "Airflow", true, true),
         spec("pressure", "Pressure", true, true),
         spec("diameter", "Diameter", true, false),
+        spec("weight", "Weight", true, false),
+        spec("impellerLength", "Impeller length", true, false),
+        spec("dimensionA", "Dimension A", true, false),
+        spec("dimensionB", "Dimension B", true, false),
+        spec("dimensionC", "Dimension C", true, false),
         spec("material", "Material", false, false),
         spec("protection", "Protection class", false, false),
         spec("insulation", "Insulation class", false, false),
@@ -81,6 +86,7 @@ pub(super) fn declared_unit(key: &str, field_name: &str) -> Option<&'static str>
         "diameter" | "productDimensions" | "packageDimensions" if compact.contains("cm") => {
             Some("cm")
         }
+        "weight" if compact.contains("kg") => Some("kg"),
         "ambientTemperature"
             if compact.contains('℃') || compact.contains("°c") || compact.contains("celsius") =>
         {

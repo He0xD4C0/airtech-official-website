@@ -115,6 +115,9 @@ server {
   server_name ${API_HOST};
   server_tokens off;
 
+  # The CMS accepts 25 MiB files; allow multipart framing at the gateway.
+  client_max_body_size 26m;
+
   add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
   add_header X-Content-Type-Options "nosniff" always;
   add_header X-Frame-Options "DENY" always;

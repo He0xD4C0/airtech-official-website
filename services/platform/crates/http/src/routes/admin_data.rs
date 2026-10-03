@@ -17,9 +17,9 @@ use uuid::Uuid;
 
 use crate::routes::{actor, etag, parse_if_match};
 use airtek_domain::models::{
-    AdminProductDetail, AdminRoleRecord, AdminUserRecord, AuditEvent, CursorPage, GuestSourceDaily,
-    InviteAdminUser, ProductImportRequest, ProductImportResult, UpdateAdminRole, UpdateAdminUser,
-    UpdateProductPresentation, UserInvitation,
+    AdminProductDetail, AdminRoleRecord, AdminUserRecord, AuditEvent, CreateAdminRole, CursorPage,
+    GuestSourceDaily, InviteAdminUser, ProductImportRequest, ProductImportResult, UpdateAdminRole,
+    UpdateAdminUser, UpdateProductPresentation, UserInvitation,
 };
 use airtek_runtime::auth::AdminPrincipal;
 use airtek_runtime::error::{json_hash, ApiError};
@@ -52,6 +52,7 @@ pub fn router() -> Router<AppState> {
                 .layer(DefaultBodyLimit::max(16 * 1024 * 1024 + 64 * 1024)),
         )
         .route("/products/imports/{id}", get(get_product_import))
+        .route("/source-metadata", get(list_source_metadata))
         .route("/products/{id}", get(get_admin_product))
         .route("/products/{id}/private-pricing", get(get_private_pricing))
         .route(
@@ -62,10 +63,16 @@ pub fn router() -> Router<AppState> {
         .route("/users", get(list_users))
         .route("/users/{id}", get(get_user).patch(update_user))
         .route("/users/{id}/sessions", delete(revoke_user_sessions))
+        .route("/users/{id}/password-reset", post(reset_user_password))
+        .route("/users/{id}/totp-reset", post(reset_user_totp))
+        .route("/users/{id}/recovery/reset", post(reset_user_recovery_key))
         .route("/user-invitations", get(list_invitations).post(invite_user))
         .route("/user-invitations/{id}/revoke", post(revoke_invitation))
-        .route("/roles", get(list_roles))
-        .route("/roles/{id}", get(get_role).patch(update_role))
+        .route("/roles", get(list_roles).post(create_role))
+        .route(
+            "/roles/{id}",
+            get(get_role).patch(update_role).delete(delete_role),
+        )
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -118,6 +125,9 @@ impl AnalyticsQuery {
 #[path = "admin_data/product_imports.rs"]
 mod product_imports;
 use product_imports::*;
+#[path = "admin_data/source_metadata.rs"]
+mod source_metadata;
+use source_metadata::*;
 #[path = "admin_data/product_presentation.rs"]
 mod product_presentation;
 use product_presentation::*;

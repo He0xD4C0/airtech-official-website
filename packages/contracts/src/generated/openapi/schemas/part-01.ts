@@ -31,6 +31,7 @@ AdminProductDetail: components["schemas"]["Product"] & {
             missingAssets: components["schemas"]["MissingAssetReference"][];
             presentation: components["schemas"]["ProductPresentation"] | null;
             sourceKind: components["schemas"]["DataClass"];
+            sourceWarnings: components["schemas"]["ProductSourceWarning"][];
         };
 AdminProductPage: {
             dataStateCounts: components["schemas"]["ProductFacetCount"][];
@@ -44,6 +45,7 @@ AdminRoleRecord: {
             displayName: string;
             /** Format: uuid */
             id: string;
+            isPreset: boolean;
             key: string;
             permissions: string[];
             /** Format: int64 */
@@ -78,6 +80,8 @@ AdminUserRecord: {
             lastLoginAt: string | null;
             locale: string;
             managerUserId: string | null;
+            phoneE164: string | null;
+            phoneVerified: boolean;
             /** Format: int64 */
             revision: number;
             roles: string[];
@@ -223,6 +227,13 @@ AssignBusinessInboxRequest: {
             assignedTo: string | null;
             reason: string;
         };
+AttemptRequest: {
+            captchaToken?: string | null;
+            flowToken: string;
+            /** @enum {string} */
+            method: "password" | "emailCode" | "smsCode";
+            password?: string | null;
+        };
 AuditEvent: {
             action: string;
             actor: string;
@@ -344,9 +355,26 @@ BusinessStatusHistoryEntry: {
             reason: string | null;
             toStatus: components["schemas"]["BusinessInboxStatus"];
         };
+CaptchaSettings: {
+            configured: boolean;
+            /** @enum {string} */
+            provider: "turnstile" | "recaptcha" | "hcaptcha";
+            /** Format: int64 */
+            revision: number;
+            siteKey: string;
+        };
+CaptchaTestRequest: {
+            token: string;
+        };
 CaseStudyTypeFields: {
             industry?: string | null;
             location?: string | null;
+        };
+ChangePasswordRequest: {
+            /** Format: password */
+            currentPassword: string;
+            /** Format: password */
+            newPassword: string;
         };
 /** @enum {string} */
         CmsBodyPolicy: "required" | "optional" | "forbidden";
@@ -433,6 +461,9 @@ CmsSubmitResult: {
         };
 /** @enum {string} */
         CollectionPresentation: "cards" | "list" | "compact";
+ConfirmPhoneVerificationRequest: {
+            code: string;
+        };
 ConsentedAnalyticsEvent: {
             /** Format: uuid */
             anonymousSessionId: string;
@@ -461,31 +492,4 @@ ContactBlock: {
         };
 /** @enum {string} */
         ContactChannelKind: "email" | "phone" | "address" | "social";
-ContactInformationInput: {
-            addressLines: string[];
-            countryCode?: string | null;
-            email?: string | null;
-            locality?: string | null;
-            phone?: string | null;
-            postalCode?: string | null;
-            region?: string | null;
-        };
-ContentBlock: components["schemas"]["HeroBlock"] | components["schemas"]["BodyBlock"] | components["schemas"]["MediaBlock"] | components["schemas"]["FeatureGridBlock"] | components["schemas"]["EvidenceBlock"] | components["schemas"]["CtaBlock"] | components["schemas"]["RelationCollectionBlock"] | components["schemas"]["FaqCollectionBlock"] | components["schemas"]["DownloadAssetBlock"] | components["schemas"]["ContactBlock"];
-/** @enum {string} */
-        ContentBlockKind: "hero" | "body" | "media" | "featureGrid" | "evidence" | "cta" | "relationCollection" | "faqCollection" | "downloadAsset" | "contactBlock";
-ContentDraftInput: {
-            body: components["schemas"]["RichTextDocument"];
-            /** @default false */
-            isPlaceholder?: boolean;
-            kind: components["schemas"]["ContentKind"];
-            /**
-             * @default en
-             * @enum {string}
-             */
-            locale?: "en";
-            seo?: components["schemas"]["SeoMetadataInput"];
-            slug: string;
-            summary?: string | null;
-            title: string;
-        };
 }

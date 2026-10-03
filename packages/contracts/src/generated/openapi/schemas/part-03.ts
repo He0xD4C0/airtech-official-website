@@ -6,6 +6,45 @@
 import type { components } from '../components'
 
 export interface SchemasPart03 {
+GeneralInformationPayload: {
+            brandLine: string | null;
+            brandName: string;
+            copyrightText: string | null;
+            defaultSeo: {
+                [key: string]: unknown;
+            };
+            footerStatement: string | null;
+            homePath: string;
+            navigationCta?: {
+                href?: string;
+                label?: string;
+            } | null;
+            organization: {
+                [key: string]: unknown;
+            };
+            productCategories?: components["schemas"]["ProductFamilyPresentation"][];
+        } & {
+            [key: string]: unknown;
+        };
+/** @description Immutable General Information revision payload. */
+        GeneralInformationRevision: components["schemas"]["GeneralInformation"];
+GeneralInformationRevisionPage: {
+            items: components["schemas"]["GeneralInformationRevision"][];
+            nextCursor: string | null;
+        };
+GeneralInformationTypeFields: {
+            brandLine?: string | null;
+            contact: components["schemas"]["ContactInformationInput"];
+            copyrightTemplate?: string | null;
+            defaultSeo: components["schemas"]["SeoInputV2"];
+            footerStatement?: string | null;
+            homePath?: string | null;
+            navigationCta?: components["schemas"]["EditorialAction"] | null;
+            organizationName?: string | null;
+            productCategories: components["schemas"]["ProductCategoryPresentationInput"][];
+            siteIcon?: components["schemas"]["AssetVersionReference"] | null;
+            socialLinks: components["schemas"]["SocialLinkInput"][];
+        };
 GuestSourceDaily: {
             /** Format: date */
             bucketDate: string;
@@ -73,6 +112,24 @@ HeroBlock: {
         };
 /** @enum {string} */
         HeroVariant: "standard" | "splitMedia" | "minimal";
+IdentifyRequest: {
+            /** Format: email */
+            email: string;
+        };
+IdentifyResponse: {
+            captchaProvider?: string | null;
+            captchaRequired: boolean;
+            captchaSiteKey?: string | null;
+            readonly flowToken: string;
+            methods: string[];
+        };
+IdentityResetRequest: {
+            reason: string;
+        };
+IntegrationTestResult: {
+            delivered: boolean;
+            verified: boolean;
+        };
 InvitationAcceptance: {
             /** Format: date-time */
             acceptedAt: string;
@@ -128,6 +185,26 @@ LoginRequest: {
             otp?: string | null;
             /** Format: password */
             password: string;
+        };
+LoginStepResponse: {
+            factor?: ("emailCode" | "smsCode" | "riskSms" | "totp") | null;
+            /** @enum {string} */
+            status: "codeSent" | "factorRequired";
+        };
+MailSettings: {
+            configured: boolean;
+            fromAddress: string;
+            fromName: string;
+            host: string;
+            port: number;
+            /** @enum {string} */
+            protocol: "starttls" | "tls" | "plain";
+            /** Format: int64 */
+            revision: number;
+            username: string;
+        };
+MailTestRequest: {
+            to?: string | null;
         };
 MediaAsset: {
             byteSize: number;
@@ -295,6 +372,10 @@ PerformancePoint: {
             airflow: number;
             pressure: number;
         };
+PhoneVerificationStarted: {
+            /** @enum {string} */
+            status: "codeSent";
+        };
 PlatformSettings: {
             /** @constant */
             readonly publicLocale: "en";
@@ -338,6 +419,7 @@ Product: {
             seo: components["schemas"]["SeoMetadata"];
             slug: string;
             sortOrder: number;
+            sourceFacts: components["schemas"]["SourceFact"][];
             sourceRevision: string;
             /** Format: uuid */
             sourceSnapshotId: string;
@@ -399,100 +481,5 @@ ProductImportError: {
 ProductImportRequest: {
             csv: string;
             mappingVersion?: string | null;
-        };
-ProductImportResult: {
-            checksum: string;
-            /** Format: date-time */
-            createdAt: string;
-            errors: components["schemas"]["ProductImportRowError"][];
-            /** Format: uuid */
-            id: string;
-            malformedRows: number;
-            mappingVersion: string;
-            missingAssets: components["schemas"]["MissingAssetReference"][];
-            reused: boolean;
-            status: string;
-            totalRows: number;
-            validRows: number;
-        };
-ProductImportResultPage: {
-            items: components["schemas"]["ProductImportResult"][];
-            nextCursor: string | null;
-        };
-ProductImportRowError: {
-            code: string;
-            detail: string;
-            fieldName: string | null;
-            rowNumber: number;
-            /** @enum {string} */
-            severity: "warning" | "error";
-            stableId: string | null;
-        };
-ProductImportRun: components["schemas"]["ProductImportResult"];
-ProductMediaGalleryItem: {
-            altText: string;
-            /** Format: uuid */
-            assetId: string;
-        };
-ProductPage: {
-            familyCounts: components["schemas"]["ProductFacetCount"][];
-            items: components["schemas"]["Product"][];
-            motorTechnologyCounts: components["schemas"]["ProductFacetCount"][];
-            /** @description Opaque base64url v3 keyset cursor bound to normalized query and filters; v2 is accepted only when q is absent for one compatibility release. */
-            nextCursor: string | null;
-            total: number;
-        };
-ProductPresentation: {
-            indexable: boolean;
-            locale: string;
-            mediaGallery: components["schemas"]["ProductMediaGalleryItem"][];
-            publishedRevision: number | null;
-            relatedContentIds: string[];
-            /** Format: int64 */
-            revision: number;
-            seo: components["schemas"]["SeoMetadata"];
-            slug: string;
-            sortOrder: number;
-            summary: string | null;
-            title: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-ProductPrivatePricing: {
-            readonly pricingFields: {
-                [key: string]: string;
-            };
-            /** Format: uuid */
-            productId: string;
-            sourceRowNumber: number;
-            stableId: string;
-        };
-/** @enum {string} */
-        ProductPublicationAction: "publish";
-ProductPublicationReport: {
-            allowedActions: components["schemas"]["ProductPublicationAction"][];
-            /** Format: int64 */
-            currentRevision: number;
-            issues: components["schemas"]["ValidationIssue"][];
-            /** Format: uuid */
-            productId: string;
-            ready: boolean;
-        };
-ProductRfqContext: {
-            additionalMessage?: string;
-            application: string;
-            electrical?: components["schemas"]["RfqElectricalContext"];
-            environment?: string;
-            /** @enum {string} */
-            priority?: "efficiency" | "noise" | "size" | "headroom";
-            quantity?: components["schemas"]["RfqQuantity"];
-        };
-ProductRfqProductContext: {
-            model: string;
-            /** Format: uuid */
-            productId: string;
-            /** Format: int64 */
-            publishedRevision: number;
-            stableId: string;
         };
 }

@@ -6,22 +6,28 @@
 import type { components } from '../components'
 
 export interface OperationsPart09 {
-getAdminDashboardSummary: {
+setPrivateContentDraftShares: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                draftId: string;
+            };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CmsDraftSharesRequest"];
+            };
+        };
         responses: {
-            /** @description Admin dashboard summary */
+            /** @description Mutation result */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdminDashboardSummary"];
+                    "application/json": components["schemas"]["CmsPrivateDraft"];
                 };
             };
             /** @description Malformed request */
@@ -116,22 +122,26 @@ getAdminDashboardSummary: {
             };
         };
     };
-getFeishuConnectionStatus: {
+submitPrivateContentDraft: {
         parameters: {
             query?: never;
-            header?: never;
-            path?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                draftId: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Feishu connection status */
+            /** @description Mutation result */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FeishuConnectionStatus"];
+                    "application/json": components["schemas"]["CmsSubmitResult"];
                 };
             };
             /** @description Malformed request */
@@ -226,22 +236,24 @@ getFeishuConnectionStatus: {
             };
         };
     };
-testFeishuConnection: {
+withdrawPrivateContentDraft: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                draftId: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Connection test */
+            /** @description Mutation result */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FeishuConnectionTest"];
+                    "application/json": components["schemas"]["CmsPrivateDraft"];
                 };
             };
             /** @description Malformed request */
@@ -336,27 +348,22 @@ testFeishuConnection: {
             };
         };
     };
-listFeishuMappings: {
+listContentDraftTemplates: {
         parameters: {
-            query?: {
-                /** @description Opaque endpoint-scoped cursor returned by the previous page. */
-                cursor?: string;
-                /** @description Page size; values outside 1 through 100 return Problem Details 400. */
-                limit?: number;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description List versioned Feishu field mappings */
+            /** @description Templates */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SyncMappingPage"];
+                    "application/json": components["schemas"]["ContentTemplateDefinitionPage"];
                 };
             };
             /** @description Malformed request */

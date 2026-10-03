@@ -15,7 +15,6 @@ impl Config {
 
         let production = cfg!(feature = "production");
         let database_url = non_empty_env("DATABASE_URL");
-        let admin_bootstrap_token = non_empty_env("AIRTEK_ADMIN_BOOTSTRAP_TOKEN");
         let totp_encryption_key = non_empty_env("AIRTEK_TOTP_ENCRYPTION_KEY")
             .map(|value| parse_totp_encryption_key(&value))
             .transpose()?;
@@ -66,21 +65,17 @@ impl Config {
                 .as_deref()
                 .unwrap_or_default(),
         )?;
-        let development_admin_password_only = development_admin_password_only()?;
+        let admin_email =
+            non_empty_env("AIRTEK_ADMIN_EMAIL").map(|value| value.to_ascii_lowercase());
+        let admin_display_name = non_empty_env("AIRTEK_ADMIN_DISPLAY_NAME");
+        let admin_password = non_empty_env("AIRTEK_ADMIN_PASSWORD");
+        let admin_recovery_key_dir = non_empty_env("AIRTEK_ADMIN_RECOVERY_KEY_DIR");
+        let admin_recovery_key_mode = parse_admin_recovery_key_mode()?;
+        let captcha_failure_mode = parse_captcha_failure_mode()?;
         let media = MediaSettings::disabled();
-        if admin_bootstrap_token
-            .as_ref()
-            .is_some_and(|token| token.len() < 24)
-        {
-            return Err(ConfigError::WeakBootstrapToken);
-        }
-        if cfg!(feature = "devtools") && database_url.is_none() && admin_bootstrap_token.is_none() {
-            return Err(ConfigError::MissingDevtoolsAuthentication);
-        }
         require_production_database(production, database_url.as_deref())?;
         require_production_keys(
             production,
-            totp_encryption_key.as_ref(),
             invitation_replay_encryption_key.as_ref(),
             product_staging_encryption_key.as_ref(),
             analytics_token_hmac_key.as_ref(),
@@ -91,7 +86,6 @@ impl Config {
             public_origin,
             admin_origin,
             database_url,
-            admin_bootstrap_token,
             totp_encryption_key,
             invitation_replay_encryption_key,
             product_staging_encryption_key,
@@ -106,7 +100,12 @@ impl Config {
             trusted_proxy_cidrs,
             media,
             production,
-            development_admin_password_only,
+            admin_email,
+            admin_display_name,
+            admin_password,
+            admin_recovery_key_dir,
+            admin_recovery_key_mode,
+            captcha_failure_mode,
         })
     }
 
@@ -116,7 +115,6 @@ impl Config {
             public_origin: "http://localhost:3000".into(),
             admin_origin: "http://localhost:3100".into(),
             database_url: None,
-            admin_bootstrap_token: Some("test-bootstrap-token-please-change".into()),
             totp_encryption_key: Some(TotpEncryptionKey([0x42; 32])),
             invitation_replay_encryption_key: Some(InvitationReplayEncryptionKey([0x34; 32])),
             product_staging_encryption_key: Some(ProductStagingEncryptionKey([0x54; 32])),
@@ -140,7 +138,12 @@ impl Config {
             trusted_proxy_cidrs: Vec::new(),
             media: MediaSettings::disabled(),
             production: false,
-            development_admin_password_only: false,
+            admin_email: Some("local-admin@airtek.invalid".into()),
+            admin_display_name: Some("Local Administrator".into()),
+            admin_password: Some("Local-Admin-Password-2026".into()),
+            admin_recovery_key_dir: Some(".local/admin-recovery-key".into()),
+            admin_recovery_key_mode: AdminRecoveryKeyMode::Auto,
+            captcha_failure_mode: CaptchaFailureMode::FailOpen,
         }
     }
 

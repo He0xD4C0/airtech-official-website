@@ -6,6 +6,178 @@
 import type { components } from '../components'
 
 export interface SchemasPart05 {
+SessionUser: {
+            displayName: string;
+            /** Format: email */
+            email: string;
+            environment: string;
+            /** Format: uuid */
+            id: string;
+            mustChangePassword: boolean;
+            mustConfirmRecoveryKey: boolean;
+            permissions: string[];
+            phoneVerified: boolean;
+            role: string;
+            roleKeys: string[];
+            totpEnabled: boolean;
+        };
+SiteBootstrap: {
+            footer: components["schemas"]["PublicContentProjection"] | null;
+            generalInformation: components["schemas"]["PublicContentProjection"] | null;
+            /** Format: date-time */
+            generatedAt: string;
+            motorTechnologies: string[];
+            navigation: components["schemas"]["PublicContentProjection"] | null;
+            productFamilies: components["schemas"]["ProductFamilyPresentation"][];
+        };
+SmsSettings: {
+            accessKeyId: string;
+            configured: boolean;
+            /** @constant */
+            provider: "aliyun";
+            region: string;
+            /** Format: int64 */
+            revision: number;
+            signName: string;
+            templateCode: string;
+        };
+SmsTestRequest: {
+            phone: string;
+        };
+SocialLinkInput: {
+            service: string;
+            /** Format: uri */
+            url: string;
+        };
+SourceFact: {
+            fieldName: string;
+            operatingCondition: string | null;
+            rawValue: string;
+            sourceReference: string;
+            state: components["schemas"]["FactState"];
+            unit: string | null;
+        };
+/** @enum {string} */
+        SourceMetadataKind: "supplier" | "brand";
+SpecValue: {
+            key: string;
+            label: string;
+            operatingCondition: string | null;
+            sourceReference: string | null;
+            state: components["schemas"]["FactState"];
+            unit: string | null;
+            value: unknown | null;
+        };
+/** @enum {string} */
+        StableProblemCode: "media_idempotency_conflict" | "media_decode_failed" | "content_dependency_conflict";
+/**
+         * Format: uri
+         * @enum {string}
+         */
+        StableProblemType: "https://api.airtekpower.example/problems/media_idempotency_conflict" | "https://api.airtekpower.example/problems/media_decode_failed" | "https://api.airtekpower.example/problems/content_dependency_conflict";
+StagingRecord: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            normalizedPayload: unknown | null;
+            sourceRecordId: string;
+            /** Format: uuid */
+            sourceSnapshotId: string;
+            /** Format: uuid */
+            syncRunId: string;
+            validationErrors: components["schemas"]["ValidationIssue"][];
+            validationStatus: components["schemas"]["StagingValidationStatus"];
+        };
+StagingRecordPage: {
+            items: components["schemas"]["StagingRecord"][];
+            nextCursor: string | null;
+            total: number;
+        };
+/** @enum {string} */
+        StagingValidationStatus: "pending" | "valid" | "invalid";
+StartPhoneVerificationRequest: {
+            /** Format: password */
+            currentPassword: string;
+            phone: string;
+        };
+SyncMapping: {
+            active: boolean;
+            /** Format: uuid */
+            connectorId: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            id: string;
+            mapping: unknown;
+            schemaVersion: number;
+            version: string;
+        };
+SyncMappingPage: {
+            items: components["schemas"]["SyncMapping"][];
+            nextCursor: string | null;
+        };
+SyncRun: {
+            assetsCopied: number;
+            assetsFailed: number;
+            assetsReused: number;
+            assetsSeen: number;
+            completedAt: string | null;
+            connectorId?: string | null;
+            /** @constant */
+            dryRun: false;
+            error?: string | null;
+            /** Format: uuid */
+            id: string;
+            mappingVersion: string;
+            recordsApplied: number;
+            recordsDeleted: number;
+            recordsFailed: number;
+            recordsSeen: number;
+            recordsValid: number;
+            resumeCursor: string | null;
+            /** Format: int64 */
+            settingsRevision: number;
+            /** @constant */
+            source: "feishu";
+            sources: components["schemas"]["FeishuSource"][];
+            /** Format: date-time */
+            startedAt: string;
+            status: components["schemas"]["SyncRunStatus"];
+            trigger: components["schemas"]["FeishuSyncTrigger"];
+        };
+SyncRunPage: {
+            items: components["schemas"]["SyncRun"][];
+            nextCursor: string | null;
+        };
+/** @enum {string} */
+        SyncRunStatus: "queued" | "fetching" | "validating" | "readyToPublish" | "completed" | "completedWithErrors" | "failed";
+TaxonomyTypeFields: {
+            key?: string | null;
+        };
+TemporaryOverride: {
+            /** Format: date-time */
+            createdAt: string;
+            expired: boolean;
+            /** Format: date-time */
+            expiresAt: string;
+            fieldPath: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            productId: string;
+            reason: string;
+            value: unknown;
+        };
+TemporaryOverridePage: {
+            items: components["schemas"]["TemporaryOverride"][];
+            nextCursor: string | null;
+        };
+TemporaryPasswordResult: {
+            mustChangePassword: boolean;
+            sessionsRevoked: boolean;
+            temporaryPassword: string;
+        };
 TiptapCodeBlockAttrs: {
             language?: string;
         };
@@ -115,6 +287,7 @@ UpdateAdminUser: {
             displayName?: string;
             locale?: string;
             managerUserId?: string | null;
+            phoneE164?: string;
             reason: string;
             roleKeys?: string[];
             /** @enum {string} */
@@ -123,6 +296,13 @@ UpdateAdminUser: {
 UpdateBusinessStatusRequest: {
             reason: string;
             status: components["schemas"]["BusinessInboxStatus"];
+        };
+UpdateCaptchaSettings: {
+            /** @enum {string} */
+            provider: "turnstile" | "recaptcha" | "hcaptcha";
+            reason: string;
+            secretKey?: string | null;
+            siteKey: string;
         };
 UpdateFeishuSettings: {
             appId: string;
@@ -134,6 +314,18 @@ UpdateFeishuSettings: {
             intervalEnabled: boolean;
             intervalMinutes: number;
             sources: components["schemas"]["FeishuSource"][];
+        };
+UpdateMailSettings: {
+            /** Format: email */
+            fromAddress: string;
+            fromName: string;
+            host: string;
+            password?: string | null;
+            port: number;
+            /** @enum {string} */
+            protocol: "starttls" | "tls" | "plain";
+            reason: string;
+            username?: string | null;
         };
 UpdateObjectStorageSettings: components["schemas"]["ObjectStorageSettingsInput"] & {
             adoptLegacyAssets: boolean;
@@ -160,6 +352,16 @@ UpdateProductPresentation: {
             summary?: string | null;
             title: string;
         };
+UpdateSmsSettings: {
+            accessKeyId?: string | null;
+            accessKeySecret?: string | null;
+            /** @constant */
+            provider: "aliyun";
+            reason: string;
+            region: string;
+            signName: string;
+            templateCode: string;
+        };
 UserAdminSummary: components["schemas"]["AdminUserRecord"];
 UserInvitation: {
             displayName: string;
@@ -185,5 +387,9 @@ ValidationIssue: {
             code: string;
             detail: string;
             fieldPath: string;
+        };
+VerifyRequest: {
+            code: string;
+            flowToken: string;
         };
 }

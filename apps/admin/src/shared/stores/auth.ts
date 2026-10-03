@@ -11,8 +11,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => Boolean(user.value))
   const isDevelopment = computed(() => user.value?.environment === 'development')
-  const requiresTotpEnrollment = computed(() => Boolean(
-    user.value && !user.value.totpEnabled && user.value.permissions.length === 0,
+  const isSuperAdmin = computed(() => Boolean(user.value?.roleKeys.includes('super-admin')))
+  const requiresOnboarding = computed(() => Boolean(
+    user.value && (user.value.mustChangePassword || user.value.mustConfirmRecoveryKey),
   ))
 
   function hasPermission(permission?: Permission): boolean {
@@ -40,17 +41,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function refresh(): Promise<void> {
-    user.value = await adminAuthApi.session()
+  function apply(next: SessionUser | null): void {
+    user.value = next
   }
 
-  async function setup(displayName: string, email: string, password: string, bootstrapToken: string): Promise<void> {
-    loading.value = true
-    try {
-      user.value = await adminAuthApi.setup(displayName, email, password, bootstrapToken)
-    } finally {
-      loading.value = false
-    }
+  async function refresh(): Promise<void> {
+    user.value = await adminAuthApi.session()
   }
 
   async function logout(): Promise<void> {
@@ -64,12 +60,13 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     isAuthenticated,
     isDevelopment,
-    requiresTotpEnrollment,
+    isSuperAdmin,
+    requiresOnboarding,
     hasPermission,
     initialize,
     refresh,
     login,
-    setup,
+    apply,
     logout,
   }
 })

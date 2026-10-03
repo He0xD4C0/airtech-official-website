@@ -1,5 +1,6 @@
 import { isolatedTestEnvironment } from './isolated-test-environment.mjs'
 import { testProcess } from './test-process.mjs'
+import { repositoryDotenv } from './dotenv.mjs'
 import { createHash } from 'node:crypto'
 import { readdirSync } from 'node:fs'
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
@@ -14,6 +15,9 @@ const adminPort = process.env.AIRTEK_E2E_ADMIN_PORT ?? '3310'
 const apiPort = process.env.AIRTEK_E2E_API_PORT ?? '8800'
 const minioPort = process.env.AIRTEK_E2E_MINIO_PORT ?? '19100'
 const minioConsolePort = process.env.AIRTEK_E2E_MINIO_CONSOLE_PORT ?? '19101'
+const mailpitPort = process.env.AIRTEK_E2E_MAILPIT_PORT ?? '18025'
+const smsStubPort = process.env.AIRTEK_E2E_SMS_STUB_PORT ?? '18099'
+const captchaStubPort = process.env.AIRTEK_E2E_CAPTCHA_STUB_PORT ?? '18098'
 const publicOrigin = `http://www.airtek.localhost:${gatewayPort}`
 const adminOrigin = `http://admin.airtek.localhost:${gatewayPort}`
 const apiOrigin = `http://api.airtek.localhost:${gatewayPort}`
@@ -38,16 +42,36 @@ const latestMigrationVersion = Math.max(...readdirSync('services/platform/migrat
   .filter(Boolean)
   .map((match) => Number(match[1])))
 const environment = {
+  ...repositoryDotenv(),
   ...process.env,
   ...isolation,
-  COMPOSE_PROFILES: 'minio',
+  COMPOSE_PROFILES: 'minio,e2e-integrations',
+  AIRTEK_MAILPIT_BIND_ADDRESS: '127.0.0.1',
+  AIRTEK_MAILPIT_HOST_PORT: mailpitPort,
+  AIRTEK_SMS_STUB_BIND_ADDRESS: '127.0.0.1',
+  AIRTEK_SMS_STUB_HOST_PORT: smsStubPort,
+  AIRTEK_SMS_ENDPOINT: 'http://e2e-sms-stub:8099/sms',
+  AIRTEK_SMS_ALLOW_ENDPOINT_OVERRIDE: 'true',
+  AIRTEK_CAPTCHA_STUB_BIND_ADDRESS: '127.0.0.1',
+  AIRTEK_CAPTCHA_STUB_HOST_PORT: captchaStubPort,
+  AIRTEK_CAPTCHA_ENDPOINT: 'http://e2e-captcha-stub:8098/siteverify',
+  AIRTEK_CAPTCHA_ALLOW_ENDPOINT_OVERRIDE: 'true',
+  // The acceptance stack proves the production-shaped failure mode: an
+  // unreachable provider keeps password sign-in only.
+  AIRTEK_CAPTCHA_FAILURE_MODE: 'fail-closed',
+  E2E_MAILPIT_ORIGIN: `http://127.0.0.1:${mailpitPort}`,
+  E2E_SMS_STUB_ORIGIN: `http://127.0.0.1:${smsStubPort}`,
+  E2E_CAPTCHA_STUB_ORIGIN: `http://127.0.0.1:${captchaStubPort}`,
+  E2E_ADMIN_PHONE: process.env.E2E_ADMIN_PHONE ?? '+8613800138000',
   AIRTEK_PUBLIC_HOST_PORT: publicPort,
   AIRTEK_ADMIN_HOST_PORT: adminPort,
   AIRTEK_API_HOST_PORT: apiPort,
   AIRTEK_GATEWAY_HOST_PORT: gatewayPort,
-  AIRTEK_OBJECT_STORE_BIND_ADDRESS: '0.0.0.0',
   AIRTEK_OBJECT_STORE_HOST_PORT: minioPort,
   AIRTEK_OBJECT_STORE_CONSOLE_HOST_PORT: minioConsolePort,
+  // The API validates object storage through the host gateway, so the isolated
+  // stack publishes MinIO beyond loopback for the duration of the run.
+  AIRTEK_OBJECT_STORE_BIND_ADDRESS: '0.0.0.0',
   AIRTEK_COMPOSE_PUBLIC_ORIGIN: publicOrigin,
   AIRTEK_COMPOSE_ADMIN_ORIGIN: adminOrigin,
   AIRTEK_COMPOSE_API_ORIGIN: apiOrigin,
@@ -56,13 +80,19 @@ const environment = {
   ADMIN_HOST: 'admin.airtek.localhost',
   API_HOST: 'api.airtek.localhost',
   AIRTEK_COMPOSE_SUBNET: process.env.AIRTEK_E2E_COMPOSE_SUBNET ?? '172.29.0.0/24',
-  AIRTEK_GATEWAY_INTERNAL_IP: process.env.AIRTEK_E2E_GATEWAY_INTERNAL_IP ?? '172.29.0.10',
-  AIRTEK_TRUSTED_PROXY_CIDRS: process.env.AIRTEK_E2E_TRUSTED_PROXY_CIDRS ?? '172.29.0.10/32',
+  // The gateway keeps a deterministic address so the API can trust its
+  // X-Forwarded-For hops, but the address must sit outside the range Docker
+  // assigns sequentially: capture services now share this network, and an
+  // early dynamic lease on .10 would break the gateway's static address.
+  AIRTEK_GATEWAY_INTERNAL_IP: process.env.AIRTEK_E2E_GATEWAY_INTERNAL_IP ?? '172.29.0.240',
+  AIRTEK_TRUSTED_PROXY_CIDRS: process.env.AIRTEK_E2E_TRUSTED_PROXY_CIDRS ?? '172.29.0.240/32',
   AIRTEK_PLATFORM_FEATURES: 'production',
   AIRTEK_MAINTENANCE_COMMAND: 'prepare-runtime',
   AIRTEK_FLYWAY_TARGET: String(latestMigrationVersion),
-  AIRTEK_ADMIN_BOOTSTRAP_TOKEN: process.env.E2E_ADMIN_BOOTSTRAP_TOKEN
-    ?? 'airtek-e2e-bootstrap-token-change-me',
+  AIRTEK_ADMIN_EMAIL: process.env.E2E_ADMIN_EMAIL ?? 'e2e-admin@airtek.invalid',
+  AIRTEK_ADMIN_DISPLAY_NAME: 'AIRTEK E2E Administrator',
+  AIRTEK_ADMIN_PASSWORD: process.env.E2E_ADMIN_PASSWORD ?? 'Airtek-E2E-Admin-123!',
+  AIRTEK_ADMIN_RECOVERY_KEY_MODE: 'auto',
   AIRTEK_TOTP_ENCRYPTION_KEY: process.env.AIRTEK_TOTP_ENCRYPTION_KEY
     ?? Buffer.alloc(32, 0x42).toString('base64'),
   AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: process.env.AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY
@@ -134,33 +164,6 @@ async function waitForSuccessfulJobs(services, timeoutMs = 300_000) {
   return 0
 }
 
-async function waitForReadyServices(services, timeoutMs = 300_000) {
-  const deadline = Date.now() + timeoutMs
-  const pending = new Set(services)
-  while (pending.size > 0 && Date.now() < deadline) {
-    for (const service of pending) {
-      const listed = await capture('docker', ['compose', '--project-directory', '.', 'ps', '--all', '--quiet', service])
-      const containerId = listed.stdout.trim()
-      if (listed.status !== 0 || !containerId) continue
-      const inspected = await capture('docker', [
-        'inspect', '--format', '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}', containerId,
-      ])
-      const [status, health] = inspected.stdout.trim().split(/\s+/)
-      if (['dead', 'exited'].includes(status)) {
-        console.error(`${service} stopped before becoming ready.`)
-        return 1
-      }
-      if (status === 'running' && ['healthy', 'none'].includes(health)) pending.delete(service)
-    }
-    if (pending.size > 0) await new Promise((resolve) => setTimeout(resolve, 500))
-  }
-  if (pending.size > 0) {
-    console.error(`Timed out waiting for healthy services: ${[...pending].join(', ')}`)
-    return 1
-  }
-  return 0
-}
-
 let testStatus = 1
 let owned = false
 try {
@@ -174,7 +177,8 @@ try {
     ? await waitForSuccessfulJobs(['flyway-migrate', 'platform-maintenance', 'minio-create-bucket'])
     : launchStatus
   const readyStatus = initStatus === 0
-    ? await waitForReadyServices([
+    ? await run('docker', [
+        'compose', '--project-directory', '.', 'up', '--detach', '--wait', '--wait-timeout', '300', '--no-deps',
         'postgres', 'minio', 'platform-api', 'platform-worker', 'public-web', 'admin-web', 'gateway',
       ])
     : initStatus

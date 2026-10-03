@@ -281,6 +281,7 @@ mod tests {
                 state: FactState::Verified,
                 source_reference: Some("feishu:record:voltage".into()),
             }],
+            source_facts: Vec::new(),
             performance_curves: vec![PerformanceCurve {
                 airflow_unit: "m3/h".into(),
                 pressure_unit: "Pa".into(),

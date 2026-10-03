@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::error::ApiError;
 use crate::services::media;
 
-use super::AssetProbe;
+use crate::services::feishu::client::AssetProbe;
 
 #[derive(Clone, Copy)]
 pub(super) struct AssetType {

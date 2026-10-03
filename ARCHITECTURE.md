@@ -234,6 +234,21 @@ The supported operator entry points are `pnpm db:migrate`, `pnpm db:info`, and
 commands. Operational data preparation is exposed only by the dedicated
 maintenance binary. SQLx performs runtime queries and transactions only.
 
+The migration artifact's default `release` command owns deployment-time data
+safety. It compares the applied Flyway version with the newest packaged
+migration and, only when a migration is pending, writes a PostgreSQL 17 custom
+dump into the mounted migration state directory before invoking Flyway. A
+successful promotion removes that dump. A failed promotion terminates the
+previous release's client connections, restores the dump, and writes a retained
+JSON failure record; when the restore succeeds it also inserts a
+`migrationApply` failure row into `operation_runs` so the database records the
+failed attempt. Exit code `2` means the database was restored, `3` means the
+restore failed and the database state is unknown. `AIRTEK_KEEP_FAILED_DUMP=true`
+retains the dump for manual analysis. Migrations must stay backward compatible
+with the previous release (expand/contract) because the previous containers
+keep serving until the new release passes its health gates, and only the
+on-host CD agent may roll application images back.
+
 An existing database with the exact legacy SQLx v1-10 history requires a
 controlled, one-time takeover. Confirm the target environment and database,
 then run:

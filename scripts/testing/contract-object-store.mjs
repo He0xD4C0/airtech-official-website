@@ -1,3 +1,14 @@
+function requireObjectStoreImage(variable) {
+  const value = process.env[variable]
+  if (!value) {
+    throw new Error(
+      `${variable} must reference the source-built object-storage image. ` +
+      'Set it in the repository .env and run `docker login ghcr.io` with a read:packages token.',
+    )
+  }
+  return value
+}
+
 // Tests own this tmpfs-backed container and its random loopback port. Never use
 // the development bucket or the fixed subnet of an existing Compose project.
 export function contractObjectStore(name, run, capture) {
@@ -5,8 +16,8 @@ export function contractObjectStore(name, run, capture) {
     throw new Error('Object-storage tests require an isolated test container name.')
   }
   let owned = false
-  const minio = 'airtek/minio:RELEASE.2025-09-07T16-13-09Z'
-  const mc = 'airtek/minio-mc:RELEASE.2025-08-13T08-35-41Z'
+  const minio = requireObjectStoreImage('AIRTEK_OBJECT_STORE_IMAGE')
+  const mc = requireObjectStoreImage('AIRTEK_OBJECT_STORE_MC_IMAGE')
   async function checked(args) {
     if (await run('docker', args) !== 0) throw new Error('Disposable object-storage setup failed.')
   }
@@ -14,10 +25,10 @@ export function contractObjectStore(name, run, capture) {
     async start() {
       const existing = await capture('docker', ['container', 'ls', '--all', '--quiet', '--filter', `name=^/${name}$`])
       if (existing.status !== 0 || existing.stdout.trim()) throw new Error('Object-storage container name is already in use.')
-      await checked(['build', '--file', 'infra/docker/Dockerfile.minio', '--tag', minio, '.'])
-      await checked(['build', '--file', 'infra/docker/Dockerfile.minio-mc', '--tag', mc, '.'])
       owned = true
-      await checked(['run', '--detach', '--name', name, '--publish', '127.0.0.1::9000', '--tmpfs', '/data:rw',
+      // The source-built server runs as UID 10001, so its tmpfs data directory
+      // must belong to that user instead of the default root-owned mount.
+      await checked(['run', '--detach', '--name', name, '--publish', '127.0.0.1::9000', '--tmpfs', '/data:rw,uid=10001,gid=10001',
         '-e', 'MINIO_ROOT_USER=airtek', '-e', 'MINIO_ROOT_PASSWORD=local-contract-only', minio, 'server', '/data'])
       let healthy = false
       for (let attempt = 0; attempt < 60; attempt++) {

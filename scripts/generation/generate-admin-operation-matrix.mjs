@@ -94,6 +94,7 @@ function permissionFor(path, method) {
     return write && path.endsWith('/drafts') ? 'content.write' : 'content.read'
   }
   if (path.includes('/content-drafts')) return write ? 'content.write' : 'content.read'
+  if (path === '/api/admin/v1/source-metadata') return 'product.read'
   if (path.endsWith('/content') || path.includes('/content/')) {
     if (path.endsWith('/publish') || path.endsWith('/unpublish')) return 'content.publish'
     return write ? 'content.write' : 'content.read'
@@ -108,6 +109,10 @@ function permissionFor(path, method) {
   if ((path.includes('/rfqs/') || path.includes('/contacts/')) && path.endsWith('/pii')) return 'rfq.read_pii'
   if (path.includes('/rfqs') || path.includes('/contacts')) return write ? 'rfq.assign' : 'rfq.read'
   if (path.includes('/analytics/')) return 'analytics.read'
+  if ((path.endsWith('/roles') || path.includes('/roles/')) && write) return 'identity.roles.manage'
+  if (path.includes('/settings/mail')) return 'mail.manage'
+  if (path.includes('/settings/sms')) return 'sms.manage'
+  if (path.includes('/settings/captcha')) return 'captcha.manage'
   if (path.includes('/user-invitations') || path.includes('/users') || path.includes('/roles')) return 'identity.manage'
   if (path.includes('/settings')) return 'settings.manage'
   if (path.includes('/operations/')) return 'product.write'
@@ -127,6 +132,7 @@ function auditFor(path, method, operationId) {
 
 function frontendConsumerFor(path) {
   if (path.includes('/operations/')) return 'apps/admin/src/shared/services/operationPolling.ts'
+  if (path === '/api/admin/v1/source-metadata') return 'apps/admin/src/features/catalog/services/adminProductApi.ts'
   if (path.includes('/auth/')) return 'apps/admin/src/shared/services/adminAuthApi.ts'
   if (path.includes('/site-singletons/')) return 'apps/admin/src/features/content/services/contentApi.ts'
   if (path.includes('/content')) return 'apps/admin/src/features/content/services/contentApi.ts'

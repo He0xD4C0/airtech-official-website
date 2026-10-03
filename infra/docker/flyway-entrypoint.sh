@@ -5,9 +5,9 @@ runtime_role=${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:-}
 allow_shared_role=${AIRTEK_FLYWAY_ALLOW_SHARED_ROLE:-false}
 schema_target=${AIRTEK_FLYWAY_TARGET:-}
 case "$schema_target" in
-  27 ) ;;
+  31 ) ;;
   * )
-    echo "AIRTEK_FLYWAY_TARGET must be 27." >&2
+    echo "AIRTEK_FLYWAY_TARGET must be 31." >&2
     exit 64
     ;;
 esac
@@ -45,12 +45,16 @@ if [ "$#" -ne 1 ]; then
   exit 64
 fi
 case "$1" in
-  baseline|migrate|info|validate ) flyway_command=$1 ;;
+  baseline|migrate|info|validate|release ) flyway_command=$1 ;;
   * )
     echo "Unsupported Flyway command: $1" >&2
     exit 64
     ;;
 esac
+
+if [ "$flyway_command" = "release" ]; then
+  exec /usr/local/bin/airtek-flyway-release
+fi
 
 exec flyway \
   -configFiles=/flyway/project/flyway.toml \

@@ -93,8 +93,13 @@ Before deployment:
 7. After Flyway succeeds, run the Platform image's one-shot
    `airtek-maintenance prepare-runtime` command with the runtime `DATABASE_URL`.
    Start API and Worker only after it exits successfully.
-8. Supply any initial setup token from a secret manager and remove it after the
-   first Super Admin has been created.
+8. Supply `AIRTEK_ADMIN_EMAIL`, `AIRTEK_ADMIN_DISPLAY_NAME`, and
+   `AIRTEK_ADMIN_PASSWORD` from the secret manager, plus
+   `AIRTEK_ADMIN_RECOVERY_KEY_DIR` pointing at a host directory that the
+   container user owns (`chmod 0700`, `chown -R 10001:10001`). The runtime reads
+   or generates `recovery-key` (mode `0600`) inside that directory; the database
+   keeps only its Argon2 hash. Set `AIRTEK_ADMIN_RECOVERY_KEY_MODE=load` when the
+   mount is read-only, and never point two replicas at one writable directory.
 9. Configure object storage after startup through Admin. Use a least-privilege
    identity and a reviewed public delivery base URL; do not place S3 fields or
    credentials in `production.env` or application Compose.
@@ -110,8 +115,12 @@ The fixed local-development administrator is not a deployment mechanism.
 Production images compile only the `production` feature and expose only the
 maintenance commands `prepare-runtime`, `inspect-public-site`, and
 `check-public-readiness`; they receive no `AIRTEK_DEV_ADMIN_*` configuration.
-A fresh production database therefore remains without users until the one-time
-setup flow is completed.
+An empty database is provisioned from the `AIRTEK_ADMIN_*` values at startup:
+the first Super Admin signs in with the supplied password, is forced through
+the onboarding wizard (password change plus recovery-key confirmation), and
+TOTP stays optional. Startup refuses to run when the database has no active
+Super Admin, when the recovery-key file contradicts the stored hash, or when a
+`local-admin@airtek.invalid` account cannot be renamed to `AIRTEK_ADMIN_EMAIL`.
 
 ## Direct media object identity
 
@@ -147,59 +156,78 @@ activated when a core route, CMS shell, CORS preflight, canonical URL,
 sitemap, manifest, icon, or origin contract fails, or when published
 development placeholders are present. A missing custom icon is warning-only.
 
-## Git tag application release
+## Tag-triggered application release
 
-A pushed Git tag is the only CI and image-publication trigger. The tag must also
-be a valid OCI image tag; the name `latest` is reserved for the mutable alias.
-The single `.github/workflows/ci.yml` workflow runs the MSRV,
-generated-contract, frontend, browser, Rust/PostgreSQL and
-deployment-configuration gates first. Only after every gate succeeds does its
-publishing matrix build the five domain-neutral images and push them to GHCR
-with both the exact Git tag and the `latest` alias.
+Pushing a release tag runs the full CI gate set and then publishes five
+domain-neutral images to GHCR. Only two prefixes are accepted: `dev-arm64-*`
+builds `linux/arm64` for the development VM, and `release-x86-*` builds
+`linux/amd64` for production. Tags must carry a lexically sortable suffix, for
+example `dev-arm64-20261002-01`, because the on-host agent resolves the newest
+release from registry tag names. The publishing job keeps the newest five
+versions per package and never publishes a mutable `latest` tag.
 
-Create an annotated release tag on the reviewed commit and push only that tag:
+The two streams never share a container package: development images publish to
+`airtekpower-<component>-dev` while release images keep
+`airtekpower-<component>`. A development release therefore cannot overwrite or
+evict a release artifact, and retention pruning is scoped to the publishing
+stream. Packages published from this public repository default to public
+visibility, which is the current state, so target hosts pull anonymously. To
+make them private, change each package's visibility in GitHub and add a
+`read:packages` token to `/etc/airtek/cd.env`; the on-host agent already
+supports that credential.
 
-```sh
-git tag -a v1.0.0 -m "AIRTEKPOWER v1.0.0"
-git push origin v1.0.0
-```
+MinIO withdrew its public images and prebuilt binaries, so the release also
+publishes `airtekpower-minio[-dev]` and `airtekpower-minio-mc[-dev]` built from
+the pinned upstream source commits in `infra/docker/Dockerfile.minio` and
+`infra/docker/Dockerfile.mc`. The tag workflow is the only publisher of the
+application and object-storage images.
 
-The images record the source commit SHA as OCI metadata and include provenance
-and SBOM attestations. Repository operations must protect release tags from
-deletion or retargeting so a tag continues to identify one reviewed source
-commit and one released image set. Ordinary branch pushes do not run this
-release workflow, and no manual or secondary image-publishing workflow exists.
+The source-built server runs as UID `10001`, so a host media directory created
+for the previous root-running public image must be reassigned once before the
+first GitHub-backed media release: `chown -R 10001:10001 /srv/airtek/data/minio`.
 
-The server keeps `/etc/airtek/production.env` and its registry pull credential.
-The publishing workflow never receives PostgreSQL superuser, object-storage,
-or server access secrets. The separate deployment script retains its application
-health rollback; schema migrations are forward-only and are never automatically
-reversed.
+Set the repository variable `AIRTEK_IMAGE_PREFIX` when the package owner is not
+the default `ghcr.io/<repository-owner>/airtekpower`, and `AIRTEK_ARM64_RUNNER`
+when the native arm64 runner is unavailable; the `ubuntu-latest` fallback builds
+ARM64 through QEMU and is substantially slower. Publishing uses the workflow's
+short-lived `GITHUB_TOKEN` with `packages: write`, so no registry secret is
+stored in the repository. Images are named
+`${AIRTEK_IMAGE_PREFIX}-{public-web,admin-web,platform,migrations,gateway}` with
+the exact release tag. Runtime domains are deliberately absent from publishing.
 
-The optional `PRODUCTION_CONTAINER_PLATFORM` GitHub repository variable defaults
-to `linux/amd64`. Runtime domains are deliberately absent from image publishing.
+The `airtek-cd-agent` lives in its own public repository,
+`https://github.com/He0xD4C0/airtek-cd-agent` (agent `v1.0.0` or newer). Each
+target host pulls the published tag, checks out the same tag and runs a strict
+flash-cut release: stop the gateway, stop API/Worker/Public/Admin, run
+`flyway-migrate release`, run `platform-maintenance prepare-runtime`, start the
+new revision and only then open the gateway. The full-site interruption is
+roughly one to three minutes. When the readiness gate fails after a schema
+promotion, the agent restores the retained pre-migration dump and starts the
+previous tag before it alerts, so a failed release never leaves the database
+ahead of the running images. State, failure records and the retained dump live
+under `/opt/airtek/cd` and the migration state directory. The server keeps
+runtime origins in `/etc/airtek/production.env` and its read-only pull
+credential in `/etc/airtek/cd.env` (mode 0600), so a released tag can be
+redeployed under different reviewed domains without rebuilding. Publishing
+never receives PostgreSQL superuser, object-storage, or server access secrets.
 
-Image publishing uses the publishing job's short-lived `GITHUB_TOKEN` with
-`packages: write`; no external registry credentials are required. After all
-five images publish successfully, a retention job keeps the five newest
-Git-tagged versions of each package and deletes older release versions. The
-`latest` alias points at the newest release and does not consume another slot;
-untagged provenance and SBOM artifacts are excluded from the five-version count.
-Images use
-the names `ghcr.io/<owner>/airtekpower-{public-web,admin-web,platform,migrations,gateway}`
-and the exact release Git tag plus `latest`. No additional SHA tag is published.
-
-Deployment is intentionally outside GitHub Actions. On the target server, run
-`deploy-app.sh <release-tag> <image-prefix> <production-compose-path>` after
-authenticating its Docker client to `ghcr.io` with a
-dedicated read-only GitHub token that has `read:packages`. Keep that credential
-only in the server's Docker credential store; never add it to the repository or
-the workflow. Public packages may be pulled anonymously if their visibility is
-deliberately changed after review.
+`infra/deploy/deploy-app.sh` remains in the repository as a manual stop-the-site
+fallback for an operator without the agent. It performs the same ordering but
+rolls application images back only; it does not restore the retained dump, so
+prefer the agent for every release that promotes the schema. The legacy Jenkins
+pipeline was retired once the agent owned releases; publishing and deployment
+now run only through the tag workflow and `airtek-cd-agent`.
 
 ## Deployment order
 
-The current schema target is V27. Deploy the migration artifact first, then the
+The release that introduces the login refactor stops the site for a short
+window: the CD agent (or `deploy-app.sh`) stops the gateway, stops API and
+Worker, runs `flyway-migrate release`, runs
+`platform-maintenance prepare-runtime`, and only then starts the new release.
+Public SSR returns errors while the API is down, so announce the window as a
+full-site interruption. The current schema target is V31: V29 adds the role and
+login foundation, V30 retires the legacy authentication schema and stored TOTP
+enrolments, and V31 adds account phone binding. Deploy the migration artifact first, then the
 API and ordinary Worker, and finally Admin and Public Web. V17 introduces
 private drafts and review, V18 removes persisted content history, and V19 adds
 current-state query indexes. V20 moves application-side object-storage settings
@@ -213,15 +241,40 @@ plaintext PostgreSQL columns; database operators and backups are therefore part
 of the trusted boundary. V26 adds dynamic selected sources, independent interval
 and daily schedules, connection-test revisions, and frozen run configuration.
 V27 adds explicit source ownership, per-table reconciliation, durable product
-purge/object compensation, and removes Feishu rollback/conflict state. Before
-promotion, verify both a fresh database and a V21 database migrate to V27, and a
+purge/object compensation, and removes Feishu rollback/conflict state. V28 adds
+admin-only supplier and brand archive provenance. Before promotion, verify both
+a fresh database and a V21 database migrate to V28, and a
 controlled legacy SQLx v1-v10 database passes
 `baseline -> migrate -> validate`.
 
-Run the non-root `flyway-migrate` artifact as a one-shot task before API and
-Worker start; both services wait for its successful completion. Database schema
-changes must remain compatible with the currently running Public/API release
-during a rolling update.
+Compose runs the non-root `flyway-migrate` artifact's `release` command before
+API and Worker start; both services wait for its successful completion. That
+command writes a custom-format dump into `/srv/airtek/migration-state` only when
+migrations are pending, retains it after a successful promotion (the next
+successful release prunes the previous file), and restores it when the migration
+fails. A restored failure exits `2`, writes a retained JSON record under
+`migration-state/failures`, and inserts a `migrationApply` failure row into
+`operation_runs`; an unrestorable failure exits `3` and keeps the dump. Database
+schema changes default to expand/contract because Public/API containers may keep
+serving during a migration window; a breaking migration is allowed only inside a
+documented stop-the-site window where the gateway and application containers
+stop first and the retained pre-migration dump stays recoverable.
+
+The path of the retained dump is written to
+`migration-state/latest-migration-dump`. To roll a release back at the database
+level, restore that dump before starting the previous image:
+
+```sh
+sudo docker compose --project-directory /opt/airtek/cd/repo \
+  --env-file /etc/airtek/production.env --env-file /opt/airtek/cd/images.env \
+  -f infra/compose/production.app.yaml \
+  run --rm --no-deps --entrypoint pg_restore flyway-migrate \
+  --clean --if-exists --no-owner --no-acl --dbname "$PGDATABASE" \
+  "$(cat /srv/airtek/migration-state/latest-migration-dump)"
+```
+
+Migration failure records under `/srv/airtek/migration-state/failures` and the
+matching `operation_runs` rows are audit evidence; never delete or edit them.
 
 For a new empty production database, run only the migrations artifact with
 `migrate`. For an existing database with SQLx versions 1 through 10, confirm the

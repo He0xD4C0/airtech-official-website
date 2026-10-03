@@ -88,6 +88,7 @@ fn cms_principal() -> AdminPrincipal {
         display_name: "TEST ONLY CMS admin".into(),
         email: format!("cms-test-{}@example.com", Uuid::new_v4().simple()),
         role: "super-admin".into(),
+        role_keys: vec!["super-admin".into()],
         permissions: [
             "content.read",
             "content.write",
@@ -101,7 +102,9 @@ fn cms_principal() -> AdminPrincipal {
         session_token_hash: vec![1; 32],
         csrf_hash: vec![2; 32],
         totp_enabled: true,
-        development_password_only: false,
+        must_change_password: false,
+        must_confirm_recovery_key: false,
+        phone_verified: false,
     }
 }
 
@@ -133,11 +136,11 @@ mod admin_workflows;
 #[path = "postgres_contract/cms_private_workflow.rs"]
 mod cms_private_workflow;
 #[cfg(feature = "devtools")]
-#[path = "postgres_contract/development_admin.rs"]
-mod development_admin;
 #[cfg(feature = "devtools")]
 #[path = "postgres_contract/development_public_site.rs"]
 mod development_public_site;
+#[path = "postgres_contract/feishu_archive_asset_storage.rs"]
+mod feishu_archive_asset_storage;
 #[path = "postgres_contract/feishu_asset_storage.rs"]
 mod feishu_asset_storage;
 #[path = "postgres_contract/feishu_reconciliation.rs"]

@@ -59,7 +59,6 @@ impl AssetProbe {
         }
     }
 
-    #[cfg(test)]
     pub fn from_bytes(bytes: &[u8]) -> Self {
         let mut builder = ProbeBuilder::default();
         builder.observe(bytes);

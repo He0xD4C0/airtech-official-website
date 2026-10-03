@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BannerCarousel from './BannerCarousel.vue'
 import { computed } from 'vue'
 import type {
   ContentBlock,
@@ -18,7 +19,14 @@ const props = withDefaults(defineProps<{
   pendingMediaUrls: () => ({}),
 })
 
-const blocks = computed(() => props.document.composition.blocks)
+const blocks = computed(() => props.document.composition.blocks.filter(block => props.document.kind !== 'home' || block.type !== 'hero'))
+const slides = computed(() => props.document.kind !== 'home' ? []
+  : props.document.composition.blocks.flatMap(block => block.type === 'hero' ? [{
+    id: block.id, eyebrow: block.eyebrow ?? '', heading: block.heading ?? props.document.title,
+    lead: block.lead ?? props.document.summary ?? '', image: mediaUrl(block.media),
+    alt: block.media?.decorative ? '' : block.media?.altText ?? '',
+    actions: block.actions.map(action => ({ label: actionLabel(action), href: actionTarget(action) })),
+  }] : []))
 
 function bodyText(value: unknown): string {
   if (typeof value === 'string') return value
@@ -62,6 +70,7 @@ function referenceTitle(block: ContentBlock): string {
       <p v-if="document.summary" class="draft-canvas__lead">{{ document.summary }}</p>
     </header>
 
+    <BannerCarousel :slides="slides" preview />
     <template v-for="block in blocks" :key="block.id">
       <section v-if="block.type === 'hero'" class="draft-canvas__hero">
         <div>
@@ -123,6 +132,7 @@ function referenceTitle(block: ContentBlock): string {
   .draft-canvas__header { background: linear-gradient(135deg, var(--airtek-blue-soft), var(--airtek-white)); }
   .draft-canvas h1 { max-width: 18ch; margin: 0; font-size: clamp(2rem, 5vw, 4rem); }
   .draft-canvas h2 { margin: 0 0 var(--space-3); font-size: clamp(1.4rem, 3vw, 2.2rem); }
+  .draft-canvas :deep(.banner-carousel h1), .draft-canvas :deep(.banner-carousel h2) { max-width: var(--banner-copy-width); margin: 0 0 1.25rem; color: white; font-size: var(--banner-heading-size); line-height: 1.12; }
   .draft-canvas h3 { margin: var(--space-2) 0; }
   .draft-canvas p { line-height: 1.7; }
   .draft-canvas__eyebrow { color: var(--airtek-blue); font-size: 0.75rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }

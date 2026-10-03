@@ -4,6 +4,43 @@ use std::{
 };
 
 const LEGACY_CURSOR_ENDPOINT_COUNT: usize = 14;
+const CAPTCHA_OUTCOME_COUNT: usize = 3;
+
+#[derive(Clone, Copy, Debug)]
+#[repr(usize)]
+pub enum CaptchaOutcome {
+    Passed,
+    Rejected,
+    Degraded,
+}
+
+impl CaptchaOutcome {
+    const ALL: [Self; CAPTCHA_OUTCOME_COUNT] = [Self::Passed, Self::Rejected, Self::Degraded];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Passed => "passed",
+            Self::Rejected => "rejected",
+            Self::Degraded => "degraded",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+#[repr(usize)]
+pub enum DeliveryChannel {
+    Mail,
+    Sms,
+}
+
+impl DeliveryChannel {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Mail => "mail",
+            Self::Sms => "sms",
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 #[repr(usize)]
@@ -69,6 +106,10 @@ pub struct RequestMetrics {
     active: AtomicUsize,
     server_errors: AtomicU64,
     legacy_cursor_requests: [AtomicU64; LEGACY_CURSOR_ENDPOINT_COUNT],
+    captcha_checks: [AtomicU64; CAPTCHA_OUTCOME_COUNT],
+    risk_challenges: AtomicU64,
+    mail_deliveries: [AtomicU64; 2],
+    sms_deliveries: [AtomicU64; 2],
 }
 
 impl Default for RequestMetrics {
@@ -79,6 +120,10 @@ impl Default for RequestMetrics {
             active: AtomicUsize::new(0),
             server_errors: AtomicU64::new(0),
             legacy_cursor_requests: std::array::from_fn(|_| AtomicU64::new(0)),
+            captcha_checks: std::array::from_fn(|_| AtomicU64::new(0)),
+            risk_challenges: AtomicU64::new(0),
+            mail_deliveries: std::array::from_fn(|_| AtomicU64::new(0)),
+            sms_deliveries: std::array::from_fn(|_| AtomicU64::new(0)),
         }
     }
 }
@@ -98,6 +143,24 @@ impl RequestMetrics {
 
     pub fn record_legacy_cursor(&self, endpoint: LegacyCursorEndpoint) {
         self.legacy_cursor_requests[endpoint as usize].fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// CAPTCHA outcomes are fixed labels, so the operator can chart provider
+    /// rejections separately from the degraded path that skips verification.
+    pub fn record_captcha(&self, outcome: CaptchaOutcome) {
+        self.captcha_checks[outcome as usize].fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn record_risk_challenge(&self) {
+        self.risk_challenges.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn record_delivery(&self, channel: DeliveryChannel, delivered: bool) {
+        let counters = match channel {
+            DeliveryChannel::Mail => &self.mail_deliveries,
+            DeliveryChannel::Sms => &self.sms_deliveries,
+        };
+        counters[usize::from(!delivered)].fetch_add(1, Ordering::Relaxed);
     }
 
     pub fn render(&self) -> String {
@@ -125,6 +188,34 @@ impl RequestMetrics {
                 self.legacy_cursor_requests[endpoint as usize].load(Ordering::Relaxed)
             ));
         }
+        metrics.push_str("# TYPE airtek_auth_captcha_checks_total counter\n");
+        for outcome in CaptchaOutcome::ALL {
+            metrics.push_str(&format!(
+                "airtek_auth_captcha_checks_total{{outcome=\"{}\"}} {}\n",
+                outcome.label(),
+                self.captcha_checks[outcome as usize].load(Ordering::Relaxed)
+            ));
+        }
+        metrics.push_str("# TYPE airtek_auth_risk_challenges_total counter\n");
+        metrics.push_str(&format!(
+            "airtek_auth_risk_challenges_total {}\n",
+            self.risk_challenges.load(Ordering::Relaxed)
+        ));
+        metrics.push_str("# TYPE airtek_auth_outbound_deliveries_total counter\n");
+        for channel in [DeliveryChannel::Mail, DeliveryChannel::Sms] {
+            let counters = match channel {
+                DeliveryChannel::Mail => &self.mail_deliveries,
+                DeliveryChannel::Sms => &self.sms_deliveries,
+            };
+            for (slot, outcome) in ["sent", "failed"].iter().enumerate() {
+                metrics.push_str(&format!(
+                    "airtek_auth_outbound_deliveries_total{{channel=\"{}\",outcome=\"{}\"}} {}\n",
+                    channel.label(),
+                    outcome,
+                    counters[slot].load(Ordering::Relaxed)
+                ));
+            }
+        }
         metrics.push_str("# EOF\n");
         metrics
     }
@@ -138,6 +229,11 @@ mod tests {
     fn legacy_cursor_metrics_use_only_fixed_endpoint_labels() {
         let metrics = RequestMetrics::default();
         metrics.record_legacy_cursor(LegacyCursorEndpoint::AdminAudit);
+        metrics.record_captcha(CaptchaOutcome::Passed);
+        metrics.record_captcha(CaptchaOutcome::Degraded);
+        metrics.record_risk_challenge();
+        metrics.record_delivery(DeliveryChannel::Mail, true);
+        metrics.record_delivery(DeliveryChannel::Sms, false);
         let rendered = metrics.render();
         assert!(
             rendered.contains("airtek_legacy_cursor_requests_total{endpoint=\"admin_audit\"} 1")
@@ -149,5 +245,14 @@ mod tests {
                 .count(),
             LEGACY_CURSOR_ENDPOINT_COUNT
         );
+        assert!(rendered.contains("airtek_auth_captcha_checks_total{outcome=\"passed\"} 1"));
+        assert!(rendered.contains("airtek_auth_captcha_checks_total{outcome=\"degraded\"} 1"));
+        assert!(rendered.contains("airtek_auth_risk_challenges_total 1"));
+        assert!(rendered.contains(
+            "airtek_auth_outbound_deliveries_total{channel=\"mail\",outcome=\"sent\"} 1"
+        ));
+        assert!(rendered.contains(
+            "airtek_auth_outbound_deliveries_total{channel=\"sms\",outcome=\"failed\"} 1"
+        ));
     }
 }

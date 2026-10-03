@@ -15,6 +15,7 @@ export function product(id: string): BackendProduct {
     summary: null,
     status: 'draft',
     specifications: [],
+    sourceFacts: [],
     performanceCurves: [],
     sourceSnapshotId: '20000000-0000-4000-8000-000000000001',
     sourceRevision: 'source-1',

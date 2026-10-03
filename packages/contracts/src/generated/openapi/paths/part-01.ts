@@ -74,6 +74,40 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
+"/api/admin/v1/auth/attempt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify the password or send an email or SMS verification code */
+        post: operations["attemptAdministratorSignIn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/auth/identify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a multi-step administrator sign-in without revealing whether the account exists */
+        post: operations["identifyAdministrator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 "/api/admin/v1/auth/invitations/accept": {
         parameters: {
             query?: never;
@@ -125,7 +159,7 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/auth/recovery-codes/regenerate": {
+"/api/admin/v1/auth/password": {
         parameters: {
             query?: never;
             header?: never;
@@ -134,8 +168,93 @@ export interface PathsPart01 {
         };
         get?: never;
         put?: never;
-        /** Invalidate prior recovery codes and return a new one-time set */
-        post: operations["regenerateRecoveryCodes"];
+        /** Change the current administrator password and revoke other sessions */
+        post: operations["changeAdministratorPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/auth/phone/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm the binding code and mark the phone number verified */
+        post: operations["confirmAdministratorPhoneVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/auth/phone/verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a binding code to a new phone number after verifying the current password */
+        post: operations["startAdministratorPhoneVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/auth/recovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset the root administrator with the offline recovery key and rotate it */
+        post: operations["recoverAdministratorWithKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/auth/recovery-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read recovery-key state; plaintext is returned only before first confirmation */
+        get: operations["getAdministratorRecoveryKey"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/auth/recovery-key/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record that the administrator stored the recovery key offline */
+        post: operations["confirmAdministratorRecoveryKey"];
         delete?: never;
         options?: never;
         head?: never;
@@ -193,23 +312,6 @@ export interface PathsPart01 {
         patch?: never;
         trace?: never;
     };
-"/api/admin/v1/auth/setup": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create the first administrator with a deployment bootstrap token */
-        post: operations["setupInitialAdministrator"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 "/api/admin/v1/auth/totp/confirm": {
         parameters: {
             query?: never;
@@ -219,7 +321,7 @@ export interface PathsPart01 {
         };
         get?: never;
         put?: never;
-        /** Verify enrollment and return a one-time recovery-code set */
+        /** Verify the enrollment code and enable TOTP for the account */
         post: operations["confirmTotpEnrollment"];
         delete?: never;
         options?: never;
@@ -238,6 +340,23 @@ export interface PathsPart01 {
         put?: never;
         /** Create or replace an unconfirmed encrypted TOTP enrollment secret */
         post: operations["startTotpEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+"/api/admin/v1/auth/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete a sign-in factor; the final factor returns the admin session */
+        post: operations["verifyAdministratorSignIn"];
         delete?: never;
         options?: never;
         head?: never;
@@ -358,126 +477,6 @@ export interface PathsPart01 {
         put?: never;
         /** Create a new private draft */
         post: operations["createPrivateContentDraft"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content-drafts/{draftId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read a visible private draft */
-        get: operations["getPrivateContentDraft"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Explicitly save an owned editing draft */
-        patch: operations["savePrivateContentDraft"];
-        trace?: never;
-    };
-"/api/admin/v1/content-drafts/{draftId}/claim": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Claim an unassigned migrated draft as Super Admin */
-        post: operations["claimUnassignedPrivateContentDraft"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content-drafts/{draftId}/shares": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Replace read-only draft shares */
-        put: operations["setPrivateContentDraftShares"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content-drafts/{draftId}/submit": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Submit a clean saved draft for review or automatic publication */
-        post: operations["submitPrivateContentDraft"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content-drafts/{draftId}/withdraw": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Withdraw an owned pending draft */
-        post: operations["withdrawPrivateContentDraft"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content-drafts/templates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List controlled CMS templates */
-        get: operations["listContentDraftTemplates"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-"/api/admin/v1/content-reviews": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List the current review queue */
-        get: operations["listContentReviews"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;

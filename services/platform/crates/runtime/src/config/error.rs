@@ -8,12 +8,8 @@ pub enum ConfigError {
     InvalidHost(String),
     #[error("{0} must be an absolute http(s) origin without a path")]
     InvalidOrigin(&'static str),
-    #[error("AIRTEK_ADMIN_BOOTSTRAP_TOKEN must contain at least 24 characters when configured")]
-    WeakBootstrapToken,
     #[error("AIRTEK_TOTP_ENCRYPTION_KEY must be Base64 for exactly 32 bytes")]
     InvalidTotpEncryptionKey,
-    #[error("AIRTEK_TOTP_ENCRYPTION_KEY is required in production builds")]
-    MissingTotpEncryptionKey,
     #[error("AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY must be Base64 for exactly 32 bytes")]
     InvalidInvitationReplayEncryptionKey,
     #[error("AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY is required in production builds")]
@@ -54,6 +50,10 @@ pub enum ConfigError {
     InvalidTrustedProxyCidr(String),
     #[error("media configuration is invalid: {0}")]
     InvalidMediaSettings(String),
-    #[error("a devtools build requires DATABASE_URL or AIRTEK_ADMIN_BOOTSTRAP_TOKEN so an authenticated administrator can be established")]
-    MissingDevtoolsAuthentication,
+    #[error("AIRTEK_ADMIN_RECOVERY_KEY_MODE must be auto, generate or load")]
+    InvalidAdminRecoveryKeyMode,
+    #[error("AIRTEK_ADMIN_RECOVERY_KEY_DIR is required in production builds")]
+    MissingAdminRecoveryKeyDir,
+    #[error("AIRTEK_CAPTCHA_FAILURE_MODE must be fail-open or fail-closed")]
+    InvalidCaptchaFailureMode,
 }

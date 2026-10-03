@@ -249,6 +249,11 @@ pub(super) fn revision() -> Value {
     json!({"type": "integer", "format": "int64", "minimum": 1})
 }
 
+/// Singleton settings rows report revision 0 until they are first saved.
+pub(super) fn settings_revision() -> Value {
+    json!({"type": "integer", "format": "int64", "minimum": 0})
+}
+
 pub(super) fn counter() -> Value {
     json!({"type": "integer", "minimum": 0})
 }

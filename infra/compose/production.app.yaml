@@ -6,37 +6,70 @@ name: ${AIRTEK_APP_PROJECT_NAME:-airtek-app}
 # artifacts instead of rebuilding from the production checkout.
 services:
   flyway-migrate:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_MIGRATIONS_IMAGE:?set AIRTEK_MIGRATIONS_IMAGE to an immutable image reference}
-    command: ["migrate"]
+    command: ["release"]
     environment:
       FLYWAY_URL: ${FLYWAY_URL:?set FLYWAY_URL to a JDBC PostgreSQL URL}
       FLYWAY_USER: ${FLYWAY_USER:?set the migration role}
       FLYWAY_PASSWORD: ${FLYWAY_PASSWORD:?set the migration role password from the secret manager}
       FLYWAY_PLACEHOLDERS_RUNTIME_ROLE: ${FLYWAY_PLACEHOLDERS_RUNTIME_ROLE:?set the existing API and Worker database role}
-      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:?set AIRTEK_FLYWAY_TARGET=27}
+      AIRTEK_FLYWAY_TARGET: ${AIRTEK_FLYWAY_TARGET:?set AIRTEK_FLYWAY_TARGET=31}
+      AIRTEK_RELEASE_TAG: ${AIRTEK_RELEASE_TAG:?set AIRTEK_RELEASE_TAG to the deployed release tag}
+      AIRTEK_IMAGE_REVISION: ${AIRTEK_IMAGE_REVISION:-unknown}
+      AIRTEK_MIGRATION_STATE_DIR: /var/lib/airtek/migration-state
+    volumes:
+      - "${AIRTEK_MIGRATION_STATE_DIR:-/srv/airtek/migration-state}:/var/lib/airtek/migration-state:Z"
     restart: "no"
 
   platform-maintenance:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_PLATFORM_IMAGE:?set AIRTEK_PLATFORM_IMAGE to an immutable image reference}
     entrypoint: ["/usr/local/bin/airtek-maintenance"]
     command: ["prepare-runtime"]
     environment:
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
+      AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:-}
+      AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: ${AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY:?set AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY from the secret manager}
+      AIRTEK_ANALYTICS_TOKEN_HMAC_KEY: ${AIRTEK_ANALYTICS_TOKEN_HMAC_KEY:?set AIRTEK_ANALYTICS_TOKEN_HMAC_KEY from the secret manager}
+      AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY: ${AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY:?set AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY from the secret manager}
+      AIRTEK_PRODUCT_IMPORT_MAPPING_VERSION: ${AIRTEK_PRODUCT_IMPORT_MAPPING_VERSION:?set the reviewed Product Master mapping version}
+      AIRTEK_APPROVED_PRODUCT_MASTER_SHA256: ${AIRTEK_APPROVED_PRODUCT_MASTER_SHA256:?set the approved Product Master SHA-256}
+      AIRTEK_APPROVED_PRODUCT_MASTER_MAPPING_VERSION: ${AIRTEK_APPROVED_PRODUCT_MASTER_MAPPING_VERSION:?set the approved Product Master mapping version}
+      AIRTEK_APPROVED_PRODUCT_MASTER_VALID_ROWS: ${AIRTEK_APPROVED_PRODUCT_MASTER_VALID_ROWS:?set the approved Product Master valid-row count}
+      AIRTEK_APPROVED_PRODUCT_MASTER_ERROR_ROWS: ${AIRTEK_APPROVED_PRODUCT_MASTER_ERROR_ROWS:?set the approved Product Master error-row count}
+      AIRTEK_ARCHIVE_OBJECT_ROOT: /var/lib/airtek/archive
+      AIRTEK_ADMIN_EMAIL: ${AIRTEK_ADMIN_EMAIL:?set the initial administrator email}
+      AIRTEK_ADMIN_DISPLAY_NAME: ${AIRTEK_ADMIN_DISPLAY_NAME:?set the initial administrator display name}
+      AIRTEK_ADMIN_PASSWORD: ${AIRTEK_ADMIN_PASSWORD:?set the initial administrator password from the secret manager}
+      AIRTEK_ADMIN_RECOVERY_KEY_DIR: /var/lib/airtek/admin-recovery-key
+      AIRTEK_ADMIN_RECOVERY_KEY_MODE: ${AIRTEK_ADMIN_RECOVERY_KEY_MODE:-auto}
       RUST_LOG: ${RUST_LOG:-airtek_runtime=info,airtek_http=info,airtek_jobs=info}
+    volumes:
+      - "${AIRTEK_ARCHIVE_DIR:-/srv/airtek/archive}:/var/lib/airtek/archive:ro,Z"
+      - "${AIRTEK_ADMIN_RECOVERY_KEY_DIR:-/srv/airtek/keys/admin-recovery-key}:/var/lib/airtek/admin-recovery-key:Z"
     depends_on:
       flyway-migrate:
         condition: service_completed_successfully
     restart: "no"
 
   platform-api:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_PLATFORM_IMAGE:?set AIRTEK_PLATFORM_IMAGE to an immutable image reference}
     environment:
       AIRTEK_API_HOST: 0.0.0.0
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
       AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:?set AIRTEK_PUBLIC_ORIGIN}
       AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:?set AIRTEK_ADMIN_ORIGIN}
-      AIRTEK_ADMIN_BOOTSTRAP_TOKEN: ${AIRTEK_ADMIN_BOOTSTRAP_TOKEN:-}
-      AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:?set AIRTEK_TOTP_ENCRYPTION_KEY from the secret manager}
+      AIRTEK_ADMIN_EMAIL: ${AIRTEK_ADMIN_EMAIL:?set the initial administrator email}
+      AIRTEK_ADMIN_DISPLAY_NAME: ${AIRTEK_ADMIN_DISPLAY_NAME:?set the initial administrator display name}
+      AIRTEK_ADMIN_PASSWORD: ${AIRTEK_ADMIN_PASSWORD:?set the initial administrator password from the secret manager}
+      AIRTEK_ADMIN_RECOVERY_KEY_DIR: /var/lib/airtek/admin-recovery-key
+      AIRTEK_ADMIN_RECOVERY_KEY_MODE: ${AIRTEK_ADMIN_RECOVERY_KEY_MODE:-auto}
+      # CAPTCHA provider failures fail closed by default in production: only the
+      # password method stays available instead of skipping verification.
+      AIRTEK_CAPTCHA_FAILURE_MODE: ${AIRTEK_CAPTCHA_FAILURE_MODE:-fail-closed}
+      AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:-}
       AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: ${AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY:?set AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY from the secret manager}
       AIRTEK_ANALYTICS_TOKEN_HMAC_KEY: ${AIRTEK_ANALYTICS_TOKEN_HMAC_KEY:?set AIRTEK_ANALYTICS_TOKEN_HMAC_KEY from the secret manager}
       AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY: ${AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY:?set AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY from the secret manager}
@@ -54,6 +87,8 @@ services:
       RUST_LOG: ${RUST_LOG:-airtek_runtime=info,airtek_http=info,airtek_jobs=info,tower_http=info}
     expose:
       - "8080"
+    volumes:
+      - "${AIRTEK_ADMIN_RECOVERY_KEY_DIR:-/srv/airtek/keys/admin-recovery-key}:/var/lib/airtek/admin-recovery-key:Z"
     depends_on:
       platform-maintenance:
         condition: service_completed_successfully
@@ -66,13 +101,14 @@ services:
     restart: unless-stopped
 
   platform-worker:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_PLATFORM_IMAGE:?set AIRTEK_PLATFORM_IMAGE to an immutable image reference}
     entrypoint: ["/usr/local/bin/airtek-worker"]
     environment:
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
       AIRTEK_PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:?set AIRTEK_PUBLIC_ORIGIN}
       AIRTEK_ADMIN_ORIGIN: ${AIRTEK_ADMIN_ORIGIN:?set AIRTEK_ADMIN_ORIGIN}
-      AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:?set AIRTEK_TOTP_ENCRYPTION_KEY from the secret manager}
+      AIRTEK_TOTP_ENCRYPTION_KEY: ${AIRTEK_TOTP_ENCRYPTION_KEY:-}
       AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY: ${AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY:?set AIRTEK_PRODUCT_STAGING_ENCRYPTION_KEY from the secret manager}
       AIRTEK_ANALYTICS_TOKEN_HMAC_KEY: ${AIRTEK_ANALYTICS_TOKEN_HMAC_KEY:?set AIRTEK_ANALYTICS_TOKEN_HMAC_KEY from the secret manager}
       AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY: ${AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY:?set AIRTEK_INVITATION_REPLAY_ENCRYPTION_KEY from the secret manager}
@@ -94,11 +130,13 @@ services:
     restart: unless-stopped
 
   public-web:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_PUBLIC_WEB_IMAGE:?set AIRTEK_PUBLIC_WEB_IMAGE to an immutable image reference}
     environment:
       PUBLIC_API_INTERNAL_URL: http://platform-api:8080/api/public/v1
       PUBLIC_API_BROWSER_ORIGIN: ${AIRTEK_API_ORIGIN:?set AIRTEK_API_ORIGIN}
       PUBLIC_ORIGIN: ${AIRTEK_PUBLIC_ORIGIN:?set AIRTEK_PUBLIC_ORIGIN}
+      PUBLIC_MEDIA_ORIGIN: ${PUBLIC_MEDIA_ORIGIN:-}
     expose:
       - "3000"
     depends_on:
@@ -113,10 +151,11 @@ services:
     restart: unless-stopped
 
   admin-web:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_ADMIN_WEB_IMAGE:?set AIRTEK_ADMIN_WEB_IMAGE to an immutable image reference}
     environment:
       ADMIN_API_ORIGIN: ${AIRTEK_API_ORIGIN:?set AIRTEK_API_ORIGIN}
-      ADMIN_MEDIA_IMAGE_SOURCES: "https:"
+      ADMIN_MEDIA_IMAGE_SOURCES: "${AIRTEK_API_ORIGIN:?set AIRTEK_API_ORIGIN} ${PUBLIC_MEDIA_ORIGIN:-https:}"
     expose:
       - "3100"
     depends_on:
@@ -131,13 +170,14 @@ services:
     restart: unless-stopped
 
   gateway:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_GATEWAY_IMAGE:?set AIRTEK_GATEWAY_IMAGE to an immutable image reference}
     environment:
       PUBLIC_HOST: ${PUBLIC_HOST:?set PUBLIC_HOST}
       ADMIN_HOST: ${ADMIN_HOST:?set ADMIN_HOST}
       API_HOST: ${API_HOST:?set API_HOST}
       API_BROWSER_ORIGIN: ${AIRTEK_API_ORIGIN:?set AIRTEK_API_ORIGIN}
-      MEDIA_IMAGE_SOURCES: "https:"
+      MEDIA_IMAGE_SOURCES: "${AIRTEK_API_ORIGIN:?set AIRTEK_API_ORIGIN} ${PUBLIC_MEDIA_ORIGIN:-https:}"
     ports:
       - "${AIRTEK_INGRESS_BIND_ADDRESS:-127.0.0.1}:${AIRTEK_INGRESS_HTTP_PORT:-8088}:8088"
     depends_on:
@@ -159,6 +199,7 @@ services:
     restart: unless-stopped
 
   public-readiness:
+    platform: ${AIRTEK_TARGET_PLATFORM:-}
     image: ${AIRTEK_PLATFORM_IMAGE:?set AIRTEK_PLATFORM_IMAGE to an immutable image reference}
     entrypoint: ["/usr/local/bin/airtek-maintenance"]
     command: ["check-public-readiness"]
